@@ -1,0 +1,13 @@
+{
+  "theme": "default",
+  "parsables": {
+    "Pet Store": {
+      "theme": "default",
+      "url": "/specs/pet-store.json"
+    },
+    "Spotify": {
+      "theme": "default",
+      "url": "/specs/search-api.json"
+    }
+  }
+}

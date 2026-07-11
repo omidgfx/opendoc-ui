@@ -1,0 +1,444 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');*/
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "Vazirmatn", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Vazirmatn", "Consolas", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/s/vazirmatn/v16/Dxxo8j6PP2D_kU2muijlGMWWMmk.woff2) format('woff2');
+    unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC4, U+10EFC-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+
+@theme {
+    --font-sans: "Vazirmatn", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Vazirmatn", "Consolas", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+.import-dummy {
+    background: var(--method-get);
+}
+
+/* Base Styles */
+html, body, #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--background);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Custom Scrollbars Support */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* Webkit browser scrollbars styling */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+}
+
+/* Completely hide standard scrollbars but support scrolling */
+.scrollbar-none {
+    scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
+/* ----- GitHub‑like Markdown Styling (RTL‑aware) ----- */
+.markdown-body {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text);
+    background-color: transparent;
+    word-wrap: break-word;
+}
+
+/* Headings */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    margin-top: 1.25em;
+    margin-bottom: 0.4em;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--text-heading);
+}
+
+.markdown-body h1 {
+    font-size: 1.65em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25em;
+}
+
+.markdown-body h2 {
+    font-size: 1.35em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25em;
+}
+
+.markdown-body h3 {
+    font-size: 1.15em;
+}
+
+.markdown-body h4 {
+    font-size: 1em;
+}
+
+.markdown-body h5 {
+    font-size: 0.875em;
+}
+
+.markdown-body h6 {
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+/* Paragraphs */
+.markdown-body p {
+    margin-top: 0;
+    margin-bottom: 0.75em;
+}
+
+/* Links */
+.markdown-body a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+/* Lists – using logical padding */
+.markdown-body ul {
+    list-style-type: disc !important;
+    list-style-position: outside !important;
+    padding-inline-start: 1.75em !important;
+    margin-top: 0.25em !important;
+    margin-bottom: 0.75em !important;
+}
+
+.markdown-body ol {
+    list-style-type: decimal !important;
+    list-style-position: outside !important;
+    padding-inline-start: 1.75em !important;
+    margin-top: 0.25em !important;
+    margin-bottom: 0.75em !important;
+}
+
+.markdown-body li {
+    display: list-item !important;
+    margin-bottom: 0.15em !important;
+}
+
+.markdown-body li > ul {
+    list-style-type: circle !important;
+    margin-top: 0.15em !important;
+    margin-bottom: 0 !important;
+    padding-inline-start: 1.25em !important;
+}
+
+.markdown-body li > ol {
+    list-style-type: lower-roman !important;
+    margin-top: 0.15em !important;
+    margin-bottom: 0 !important;
+    padding-inline-start: 1.25em !important;
+}
+
+/* Blockquotes – logical border and border‑radius */
+.markdown-body blockquote {
+    margin: .25rem 0.25rem;
+    padding: 0.5rem;
+    color: var(--text-muted);
+    border-inline-start: .25em solid;
+    @apply border-s-[var(--text-muted)]/35 bg-[var(--text-muted)]/5 rounded;
+    font-size: 0.95em;
+}
+
+.markdown-body blockquote > :first-child {
+    margin-top: 0;
+}
+
+.markdown-body blockquote > :last-child {
+    margin-bottom: 0;
+}
+
+/* Code (inline) */
+.markdown-body code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    padding: 0.25em 0.5em;
+    @apply bg-[var(--text-muted)]/15 text-[var(--text)] mx-[.125em];
+    border-radius: 5px;
+}
+
+/* Code blocks (already handled by custom renderer, but add fallback) */
+.markdown-body pre {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85em;
+    overflow-x: auto;
+    margin: 0.75em 0;
+}
+
+.markdown-body pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+    border: none;
+}
+
+/* Tables – text‑align now uses `start` */
+.markdown-body table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin: 0.75em 0;
+    font-size: 0.95em;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+    padding: 0.4em 0.75em;
+    border: 1px solid var(--border);
+    text-align: start;
+}
+
+.markdown-body table th {
+    font-weight: 600;
+    background-color: var(--surface-hover);
+    color: var(--text-heading);
+}
+
+.markdown-body table tr:nth-child(2n) {
+    background-color: var(--surface);
+}
+
+/* Horizontal rules */
+.markdown-body hr {
+    height: 0.1em;
+    padding: 0;
+    margin: 1.25em 0;
+    border: 0;
+    @apply bg-linear-to-r from-[var(--border)]/10 via-[var(--border)] to-[var(--border)]/10;
+}
+
+/* Images */
+.markdown-body img {
+    max-width: 100%;
+    box-sizing: border-box;
+    border-radius: 6px;
+}
+
+/* Task lists (GitHub style) – checkbox margin uses logical end */
+.markdown-body .task-list-item {
+    list-style-type: none;
+}
+
+.markdown-body .task-list-item input[type="checkbox"] {
+    margin-inline-end: 0.5em;
+}
+
+/* Footers / extra */
+.markdown-body strong {
+    font-weight: 600;
+}
+
+.markdown-body em {
+    font-style: italic;
+}
+
+.markdown-body del {
+    text-decoration: line-through;
+}
+
+
+.markdown-body.markdown-body-simple,
+.markdown-body.markdown-body-simple * {
+
+    color: var(--text) !important;
+    font-size: inherit;
+    font-weight: inherit;
+    border: none;
+    padding: 0 !important;
+    margin: 0;
+
+}
+
+.markdown-body.markdown-body-simple hr {
+    display: none;
+}
+
+/* Custom CSS-variable based Prism Syntax Coloring (Follows User Selected Theme) */
+pre, code {
+    font-family: var(--font-mono) !important;
+}
+
+code[class*="language-"],
+pre[class*="language-"] {
+    color: var(--text) !important;
+    background: none !important;
+    font-family: var(--font-mono) !important;
+}
+
+/* Overriding token styling to map correctly to user Selected theme variables */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+    color: var(--text-muted) !important;
+    font-style: italic !important;
+}
+
+.token.punctuation {
+    color: var(--text-muted) !important;
+    opacity: 0.8 !important;
+}
+
+/* Syntax colors are derived entirely from the selected application theme. */
+.token.property {
+    color: var(--primary) !important;
+}
+
+.token.string {
+    color: var(--method-get) !important;
+}
+
+.token.number {
+    color: var(--method-put) !important;
+}
+
+.token.boolean {
+    color: var(--method-patch) !important;
+}
+
+.token.keyword,
+.token.null {
+    color: var(--method-delete) !important;
+}
+
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+    color: var(--accent) !important;
+}
+
+.token.selector,
+.token.attr-name,
+.token.char,
+.token.builtin,
+.token.inserted {
+    color: var(--method-get) !important;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+    color: var(--text-heading) !important;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.class-name {
+    color: var(--primary) !important;
+    font-weight: bold !important;
+}
+
+.token.function,
+.token.important {
+    color: var(--method-post) !important;
+}
+
+.token.regex,
+.token.variable {
+    color: var(--method-put) !important;
+}
+
+/* Custom Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-zoom-in {
+    animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+}
+/* Mobile viewport fixes */
+@supports (height: 100dvh) {
+    html, body, #root {
+        height: 100dvh;
+    }
+}
+
+/* Prevent horizontal overflow on small screens */
+body {
+    overscroll-behavior-x: none;
+}
+
+/* Make sure flex children don't blow out */
+.min-w-0 { min-width: 0; }
