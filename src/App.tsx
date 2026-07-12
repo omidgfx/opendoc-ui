@@ -1,15 +1,13 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
 
-// Types
-import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from './types';
-
-// Data & helpers
-import {THEME_LIST} from './data/themes';
-import {normalizeOpenApiSpec} from './utils/openapi';
-import {getContrastColor} from './utils/color';
-import {generateSmartRoute, getEndpointId, parseSmartRoute, resolveEndpointFromId, HTTP_METHODS} from './utils/routing';
+import type { ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute } from './types';
+import { THEME_LIST } from './data/themes';
+import { normalizeOpenApiSpec } from './utils/openapi';
+import { getContrastColor } from './utils/color';
+import { generateSmartRoute, getEndpointId, parseSmartRoute, resolveEndpointFromId, HTTP_METHODS } from './utils/routing';
+import { useBreakpoint } from './hooks/useBreakpoint';
 
 // Layout
 import Topbar from './components/layout/Topbar';
@@ -30,27 +28,31 @@ import ExamineTab from './components/endpoint/ExamineTab/ExamineTab';
 // Modals
 import ModalsStack from './components/modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from './components/modals/CodeGeneratorModal';
+import ThemeSelectorModal from './components/modals/ThemeSelectorModal';
+import AuthModal from './components/modals/AuthModal';
 
 // Common
 import MethodBadge from './components/common/MethodBadge';
+import {Tip, TooltipProvider} from './components/common/Tooltip';
 
 declare global {
-    interface Window {
-        INITIAL_CONFIG?: any;
-    }
+    interface Window { INITIAL_CONFIG?: any; }
 }
 
 const parseSpecDraft = (text: string): OpenApiSpec => {
-    const trimmed = text.trim();
-    const parsed = trimmed.startsWith('{') || trimmed.startsWith('[') ? JSON.parse(text) : jsYaml.load(text);
+    const t = text.trim();
+    const parsed = (t.startsWith('{') || t.startsWith('[')) ? JSON.parse(text) : jsYaml.load(text);
     return normalizeOpenApiSpec(parsed);
 };
 
-type EndpointKey = string; // `${method}:${path}`
-const endpointKey = (path: string, method: string): EndpointKey => `${method.toLowerCase()}:${path}`;
+type EndpointKey = string;
+const endpointKey = (p: string, m: string): EndpointKey => `${m.toLowerCase()}:${p}`;
 
 export default function App() {
-    // ---------- Config & Specs ----------
+    const bp = useBreakpoint();
+    const isMobile = bp === 'mobile' || bp === 'tablet';
+
+    // Config/spec
     const [, setConfig] = useState<any>(null);
     const [parsables, setParsables] = useState<ParsableConfig>({});
     const [selectedParsableKey, setSelectedParsableKey] = useState<string>('');
@@ -58,128 +60,86 @@ export default function App() {
     const [isLoadingSpec, setIsLoadingSpec] = useState(false);
     const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
 
-    // ---------- Navigation state ----------
-    const [searchQuery, setSearchQuery] = useState<string>('');
+    // Navigation
+    const [searchQuery, setSearchQuery] = useState('');
     const [selectedEndpoint, setSelectedEndpoint] = useState<{ path: string; method: string } | null>(null);
-    const [showHome, setShowHome] = useState<boolean>(true);
-    const [showSchemaExplorer, setShowSchemaExplorer] = useState<boolean>(false);
-    const [showAbout, setShowAbout] = useState<boolean>(false);
+    const [showHome, setShowHome] = useState(true);
+    const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
+    const [showAbout, setShowAbout] = useState(false);
 
-    // ---------- Advanced filters ----------
+    // Advanced filters
     const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [onlyProtected, setOnlyProtected] = useState<boolean | null>(null);
 
-    // ---------- Theme ----------
-    const [selectedThemeName, setSelectedThemeName] = useState<string>('Default Slate');
+    // Theme
+    const [selectedThemeName, setSelectedThemeName] = useState('Default Slate');
     const [currentThemeMode, setCurrentThemeMode] = useState<'light' | 'dark'>('dark');
 
-    // ---------- Sidebar collapsed preferences ----------
-    const [userSidebarCollapsed, setUserSidebarCollapsed] = useState<boolean>(() => {
+    // Desktop sidebar collapse (persisted); mobile has its own open/closed
+    const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
         try { return localStorage.getItem('sidebar_collapsed') === 'true'; } catch { return false; }
     });
-    const [searchResultSidebarCollapsed, setSearchResultSidebarCollapsed] = useState<boolean>(() => {
-        try { return localStorage.getItem('search_result_sidebar_collapsed') === 'true'; } catch { return false; }
-    });
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(userSidebarCollapsed);
-
-    useEffect(() => { localStorage.setItem('sidebar_collapsed', String(userSidebarCollapsed)); }, [userSidebarCollapsed]);
-    useEffect(() => { localStorage.setItem('search_result_sidebar_collapsed', String(searchResultSidebarCollapsed)); }, [searchResultSidebarCollapsed]);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
-        const hasActiveSearch = searchQuery.trim().length > 0 || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-        setIsSidebarCollapsed(hasActiveSearch ? searchResultSidebarCollapsed : userSidebarCollapsed);
-    }, [searchQuery, selectedMethods, selectedTags, onlyProtected, userSidebarCollapsed, searchResultSidebarCollapsed]);
+        if (!isMobile) localStorage.setItem('sidebar_collapsed', String(desktopCollapsed));
+    }, [desktopCollapsed, isMobile]);
 
-    // ---------- Schema modals ----------
+    // Schema modals
     const [modalsStack, setModalsStack] = useState<string[]>([]);
-
-    // ---------- Code generator ----------
     const [codeGenEndpoint, setCodeGenEndpoint] = useState<{ path: string; method: string } | null>(null);
-
-    // ---------- Tab (docs / examine) ----------
     const [selectedTab, setSelectedTab] = useState<'docs' | 'examine'>('docs');
-
-    // ---------- Response deep-link ----------
     const [activeResponseCode, setActiveResponseCode] = useState<string | null>(null);
 
-    // ---------- Auth ----------
+    // Auth
     const [activeAuth, setActiveAuth] = useState<ActiveAuth>({
-        activeScheme: 'none',
-        cookieValues: {},
-        bearerToken: '',
-        apiKeyName: 'X-API-KEY',
-        apiKeyValue: '',
-        apiKeyIn: 'header',
-        basicUsername: '',
-        basicPassword: '',
+        activeScheme: 'none', cookieValues: {}, bearerToken: '',
+        apiKeyName: 'X-API-KEY', apiKeyValue: '', apiKeyIn: 'header',
+        basicUsername: '', basicPassword: '',
     });
-    const [selectedServer, setSelectedServer] = useState<string>('');
+    const [selectedServer, setSelectedServer] = useState('');
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showThemeModal, setShowThemeModal] = useState(false);
 
-    // ---------- Per-endpoint examine response (keyed by `${method}:${path}`) ----------
-    // Storing responses per-endpoint lets users switch between endpoints without
-    // losing the last "examine run" log for each one.
+    // Per-endpoint examine responses
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse>>({});
 
-    const persistExamineResponse = useCallback((path: string, method: string, response: ExamineResponse) => {
-        setExamineResponses(prev => ({ ...prev, [endpointKey(path, method)]: response }));
-    }, []);
-    const clearExamineResponse = useCallback((path: string, method: string) => {
-        setExamineResponses(prev => {
-            const next = { ...prev };
-            delete next[endpointKey(path, method)];
-            return next;
-        });
-    }, []);
-
-    // ---------- Hash loop guard ----------
+    // Hash guard
     const [isUpdatingHash, setIsUpdatingHash] = useState(false);
 
-    // ---------- Window title ----------
+    // ---------- Title ----------
     useEffect(() => {
         if (spec?.info?.title) document.title = `${spec.info.title} — OpenDoc UI`;
         else if (selectedParsableKey) document.title = `${selectedParsableKey} — OpenDoc UI`;
         else document.title = 'OpenDoc UI';
     }, [spec, selectedParsableKey]);
 
-    // ---------- Theme & mode (localStorage per parsable) ----------
+    // ---------- Theme per-parsable ----------
     useEffect(() => {
         if (!selectedParsableKey) return;
-        const savedTheme = localStorage.getItem(`selected_theme_name_${selectedParsableKey}`);
-        setSelectedThemeName(savedTheme && THEME_LIST.some(t => t.name === savedTheme) ? savedTheme : 'Default Slate');
-        const savedMode = localStorage.getItem(`theme_mode_${selectedParsableKey}`);
-        setCurrentThemeMode(savedMode === 'light' || savedMode === 'dark' ? savedMode : 'dark');
+        const t = localStorage.getItem(`selected_theme_name_${selectedParsableKey}`);
+        setSelectedThemeName(t && THEME_LIST.some(x => x.name === t) ? t : 'Default Slate');
+        const m = localStorage.getItem(`theme_mode_${selectedParsableKey}`);
+        setCurrentThemeMode(m === 'light' || m === 'dark' ? m : 'dark');
     }, [selectedParsableKey]);
-
     useEffect(() => { if (selectedParsableKey) localStorage.setItem(`selected_theme_name_${selectedParsableKey}`, selectedThemeName); }, [selectedThemeName, selectedParsableKey]);
     useEffect(() => { if (selectedParsableKey) localStorage.setItem(`theme_mode_${selectedParsableKey}`, currentThemeMode); }, [currentThemeMode, selectedParsableKey]);
     useEffect(() => { if (selectedParsableKey) localStorage.setItem('selected_parsable_key', selectedParsableKey); }, [selectedParsableKey]);
 
     const activeTheme = useMemo(() => THEME_LIST.find(t => t.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
-
     const styleVars = useMemo(() => {
-        const vars = currentThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
+        const v = currentThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
         const out: Record<string, string> = {
-            '--background': vars.background,
-            '--surface': vars.surface,
-            '--surface-hover': vars.surfaceHover,
-            '--border': vars.border,
-            '--text': vars.text,
-            '--text-heading': vars.textHeading,
-            '--text-muted': vars.textMuted,
-            '--primary': vars.primary,
-            '--primary-hover': vars.primaryHover,
-            '--primary-contrast': getContrastColor(vars.primary),
-            '--accent': vars.accent,
-            '--sidebar': vars.sidebar,
-            '--sidebar-text': vars.sidebarText,
-            '--navbar': vars.navbar,
+            '--background': v.background, '--surface': v.surface, '--surface-hover': v.surfaceHover,
+            '--border': v.border, '--text': v.text, '--text-heading': v.textHeading, '--text-muted': v.textMuted,
+            '--primary': v.primary, '--primary-hover': v.primaryHover, '--primary-contrast': getContrastColor(v.primary),
+            '--accent': v.accent, '--sidebar': v.sidebar, '--sidebar-text': v.sidebarText, '--navbar': v.navbar,
         };
-        const methodKeys = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const;
-        methodKeys.forEach(k => {
-            const color = (vars as any)[`method${k.charAt(0).toUpperCase()}${k.slice(1)}`];
-            out[`--method-${k}`] = color;
-            out[`--method-${k}-contrast`] = getContrastColor(color);
+        (['get','post','put','delete','patch','head','connect','options','trace'] as const).forEach(k => {
+            const c = (v as any)[`method${k.charAt(0).toUpperCase()}${k.slice(1)}`];
+            out[`--method-${k}`] = c;
+            out[`--method-${k}-contrast`] = getContrastColor(c);
         });
         return out as React.CSSProperties;
     }, [activeTheme, currentThemeMode]);
@@ -188,316 +148,219 @@ export default function App() {
     const loadSpec = async (parsable: any) => {
         setIsLoadingSpec(true);
         try {
-            let specObj: OpenApiSpec | null = null;
-            if (parsable.isCustom && parsable.rawSpec) {
-                specObj = parseSpecDraft(parsable.rawSpec);
-            } else if (parsable.url) {
-                const res = await fetch(parsable.url);
-                if (!res.ok) throw new Error(`Failed to fetch ${parsable.url}`);
-                specObj = parseSpecDraft(await res.text());
+            let obj: OpenApiSpec | null = null;
+            if (parsable.isCustom && parsable.rawSpec) obj = parseSpecDraft(parsable.rawSpec);
+            else if (parsable.url) {
+                const r = await fetch(parsable.url);
+                if (!r.ok) throw new Error(`Failed to fetch ${parsable.url}`);
+                obj = parseSpecDraft(await r.text());
             }
-            setSpec(specObj);
-            if (specObj) {
-                setSelectedServer(specObj.servers?.[0]?.url || 'https://api.example.com');
-            }
-        } catch (e) {
-            console.error('Failed to load spec', e);
-            setSpec(null);
-        } finally {
-            setIsLoadingSpec(false);
-        }
+            setSpec(obj);
+            if (obj) setSelectedServer(obj.servers?.[0]?.url || 'https://api.example.com');
+        } catch (e) { console.error('Failed to load spec', e); setSpec(null); }
+        finally { setIsLoadingSpec(false); }
     };
-
     useEffect(() => {
         if (!selectedParsableKey) return;
-        const parsable = parsables[selectedParsableKey];
-        if (parsable) loadSpec(parsable);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        const p = parsables[selectedParsableKey];
+        if (p) loadSpec(p);
+        // eslint-disable-next-line
     }, [selectedParsableKey, parsables]);
 
-    // ---------- Persist selectedTab per parsable ----------
+    // ---------- Tab persistence ----------
     const getTabFromHash = () => parseSmartRoute(window.location.hash).tab;
     const hashHasExplicitTab = () => window.location.hash.includes('?tab=');
-
     useEffect(() => {
         if (!selectedParsableKey) return;
-        if (hashHasExplicitTab()) {
-            setSelectedTab(getTabFromHash() === 'examine' ? 'examine' : 'docs');
-            return;
-        }
-        const savedTab = localStorage.getItem(`preferred_tab_${selectedParsableKey}`);
-        setSelectedTab(savedTab === 'examine' ? 'examine' : 'docs');
+        if (hashHasExplicitTab()) { setSelectedTab(getTabFromHash() === 'examine' ? 'examine' : 'docs'); return; }
+        const t = localStorage.getItem(`preferred_tab_${selectedParsableKey}`);
+        setSelectedTab(t === 'examine' ? 'examine' : 'docs');
     }, [selectedParsableKey]);
-
-    useEffect(() => { if (selectedParsableKey) localStorage.setItem(`preferred_tab_${selectedParsableKey}`, selectedTab === 'examine' ? 'examine' : 'view'); }, [selectedTab, selectedParsableKey]);
+    useEffect(() => {
+        if (selectedParsableKey) localStorage.setItem(`preferred_tab_${selectedParsableKey}`, selectedTab === 'examine' ? 'examine' : 'view');
+    }, [selectedTab, selectedParsableKey]);
 
     // ---------- Hash sync ----------
     const syncHashToState = useCallback(() => {
         const parsed: ParsedRoute = parseSmartRoute(window.location.hash);
-
         if (parsed.parsableKey && parsed.parsableKey !== selectedParsableKey && parsables[parsed.parsableKey]) {
             setSelectedParsableKey(parsed.parsableKey);
         }
-        if (parsed.searchQuery !== undefined) setSearchQuery(parsed.searchQuery);
+        setSearchQuery(parsed.searchQuery || '');
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
-
         if (parsed.legacyOperationId && spec) {
-            const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
-            setSelectedEndpoint(resolved);
-        } else {
-            setSelectedEndpoint(parsed.endpoint);
-        }
-
+            const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
+            if (r) { setSelectedEndpoint(r); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
+            else setSelectedEndpoint(null);
+        } else setSelectedEndpoint(parsed.endpoint);
         if (hashHasExplicitTab()) setSelectedTab(getTabFromHash() === 'examine' ? 'examine' : 'docs');
-        if (parsed.responseCode !== activeResponseCode) setActiveResponseCode(parsed.responseCode);
-
+        setActiveResponseCode(parsed.responseCode);
         if (spec?.components?.schemas) {
-            const validSchemas = parsed.schemas.filter(n => spec.components!.schemas![n]);
-            const nextNames = validSchemas.join(',');
-            const currentNames = modalsStack.join(',');
-            if (nextNames !== currentNames) setModalsStack(validSchemas);
-        } else if (parsed.schemas.length > 0) {
-            setModalsStack(parsed.schemas);
+            const valid = parsed.schemas.filter(n => spec.components!.schemas![n]);
+            setModalsStack(valid.length ? valid : []);
         }
-    }, [parsables, selectedParsableKey, spec, modalsStack, activeResponseCode]);
+    }, [parsables, selectedParsableKey, spec]);
 
-    const updateHashFromState = () => {
+    const updateHashFromState = useCallback(() => {
         if (isLoadingSpec || isUpdatingHash || !isInitialLoadComplete || !spec) return;
         setIsUpdatingHash(true);
-        const newHash = generateSmartRoute({
-            parsableKey: selectedParsableKey,
-            showHome,
-            showAbout,
-            showSchemaExplorer,
-            endpoint: selectedEndpoint,
-            tab: selectedTab,
+        const h = generateSmartRoute({
+            parsableKey: selectedParsableKey, showHome, showAbout, showSchemaExplorer,
+            endpoint: selectedEndpoint, tab: selectedTab,
             schemaModals: modalsStack.map(n => ({ schemaName: n, schema: spec?.components?.schemas?.[n] || {} })),
-            responseCode: activeResponseCode,
-            searchQuery,
-            activeSpec: spec,
+            responseCode: activeResponseCode, searchQuery, activeSpec: spec,
         });
-        if (window.location.hash !== newHash) window.location.hash = newHash;
+        if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
-    };
+    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery]);
 
-    // When spec loads, apply hash state
     useEffect(() => {
-        if (!spec || !spec.paths || isLoadingSpec) return;
+        if (!spec?.paths || isLoadingSpec) return;
         const parsed = parseSmartRoute(window.location.hash);
         setSearchQuery(parsed.searchQuery || '');
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
         setActiveResponseCode(parsed.responseCode);
-
         if (parsed.legacyOperationId) {
-            const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
-            if (resolved) {
-                setSelectedEndpoint(resolved);
-                setShowHome(false);
-                setShowSchemaExplorer(false);
-                setShowAbout(false);
-            } else {
-                setSelectedEndpoint(null);
-            }
-        } else {
-            setSelectedEndpoint(null);
-        }
-
-        if (parsed.schemas.length > 0) {
-            const valid = parsed.schemas.filter(n => spec.components?.schemas?.[n]);
-            setModalsStack(valid.length ? valid : []);
-        } else {
-            setModalsStack([]);
-        }
+            const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
+            if (r) { setSelectedEndpoint(r); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
+            else setSelectedEndpoint(null);
+        } else setSelectedEndpoint(null);
+        setModalsStack(parsed.schemas.filter(n => spec.components?.schemas?.[n]));
         if (window.location.hash.includes('?tab=')) setSelectedTab(parsed.tab === 'examine' ? 'examine' : 'docs');
     }, [spec, selectedParsableKey, isLoadingSpec]);
 
-    // Initial config fetch
     const fetchConfigs = async () => {
         try {
             let data: any = null;
-            if (window?.['INITIAL_CONFIG']) {
-                data = window['INITIAL_CONFIG'];
-            } else {
+            if (window?.INITIAL_CONFIG) data = window.INITIAL_CONFIG;
+            else {
                 setIsLoadingSpec(true);
-                const res = await fetch('/config.json');
-                if (!res.ok) throw new Error('Failed to fetch /config.json');
-                data = await res.json();
+                const r = await fetch('/config.json');
+                if (!r.ok) throw new Error('Failed to fetch /config.json');
+                data = await r.json();
                 setIsLoadingSpec(false);
             }
             if (data) {
                 setConfig(data);
                 if (data.parsables) {
                     const loaded: ParsableConfig = {};
-                    Object.entries(data.parsables).forEach(([key, value]: [string, any]) => {
-                        loaded[key] = {
-                            theme: value.theme || 'Default Slate',
-                            url: value.url || '',
-                            title: value.title || key,
-                            isCustom: value.isCustom !== false,
-                            rawSpec: value.rawSpec || '',
-                        };
+                    Object.entries(data.parsables).forEach(([k, v]: [string, any]) => {
+                        loaded[k] = { theme: v.theme || 'Default Slate', url: v.url || '', title: v.title || k, isCustom: v.isCustom !== false, rawSpec: v.rawSpec || '' };
                     });
                     setParsables(loaded);
                     let initialKey = '';
-                    const parsed = parseSmartRoute(window.location.hash);
-                    if (parsed.parsableKey && loaded[parsed.parsableKey]) initialKey = parsed.parsableKey;
+                    const p = parseSmartRoute(window.location.hash);
+                    if (p.parsableKey && loaded[p.parsableKey]) initialKey = p.parsableKey;
                     else {
-                        const savedKey = localStorage.getItem('selected_parsable_key');
-                        if (savedKey && loaded[savedKey]) initialKey = savedKey;
-                        else {
-                            const keys = Object.keys(loaded);
-                            if (keys.length > 0) initialKey = keys[0];
-                        }
+                        const sk = localStorage.getItem('selected_parsable_key');
+                        if (sk && loaded[sk]) initialKey = sk;
+                        else initialKey = Object.keys(loaded)[0] || '';
                     }
                     if (initialKey) setSelectedParsableKey(initialKey);
                     setIsInitialLoadComplete(true);
                 }
             }
-        } catch (err) {
-            console.warn('⚠️ Error loading configs', err);
-            setIsInitialLoadComplete(true);
-        }
+        } catch (err) { console.warn(err); setIsInitialLoadComplete(true); }
     };
-
     useEffect(() => { fetchConfigs(); }, []);
 
-    // Debounced hash update on state change
-    const [hashUpdateTimer, setHashUpdateTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [hashTimer, setHashTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (isLoadingSpec) return;
-        if (hashUpdateTimer) { clearTimeout(hashUpdateTimer); setHashUpdateTimer(null); }
+        if (hashTimer) { clearTimeout(hashTimer); setHashTimer(null); }
         const t = setTimeout(updateHashFromState, 300);
-        setHashUpdateTimer(t);
+        setHashTimer(t);
         return () => { if (t) clearTimeout(t); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, spec, isLoadingSpec]);
+    }, [selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, spec, isLoadingSpec, updateHashFromState]);
 
     useEffect(() => {
-        const handler = () => { if (!isUpdatingHash && !isLoadingSpec && spec) syncHashToState(); };
-        window.addEventListener('hashchange', handler);
-        return () => window.removeEventListener('hashchange', handler);
+        const h = () => { if (!isUpdatingHash && !isLoadingSpec && spec) syncHashToState(); };
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
     }, [spec, isLoadingSpec, isUpdatingHash, syncHashToState]);
 
     // ---------- Handlers ----------
+    const closeMobileIfNeeded = () => { if (isMobile) setMobileOpen(false); };
+
     const handleSelectEndpoint = (path: string, method: string) => {
         setSelectedEndpoint({ path, method });
-        setShowHome(false);
-        setShowSchemaExplorer(false);
-        setShowAbout(false);
-        setActiveResponseCode(null);
-        setSearchQuery('');
-        setSelectedMethods([]);
-        setSelectedTags([]);
-        setOnlyProtected(null);
+        setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
+        setActiveResponseCode(null); setSearchQuery('');
+        setSelectedMethods([]); setSelectedTags([]); setOnlyProtected(null);
+        closeMobileIfNeeded();
     };
-    const handleSelectSearchResult = (path: string, method: string) => {
-        setUserSidebarCollapsed(false);
-        setIsSidebarCollapsed(false);
+    const handleSearchResult = (path: string, method: string) => {
+        if (!isMobile) setDesktopCollapsed(false);
         handleSelectEndpoint(path, method);
     };
-    const [searchDebounceTimer, setSearchDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [searchDebounce, setSearchDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); setSearchDebounceTimer(null); }
+        if (searchDebounce) { clearTimeout(searchDebounce); setSearchDebounce(null); }
         const t = setTimeout(() => {
             const hasFilters = selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-            if (query.trim().length > 0 || hasFilters) {
-                setSelectedEndpoint(null); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
-            } else {
-                setSelectedEndpoint(null); setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false);
-            }
+            if (query.trim().length || hasFilters) { setSelectedEndpoint(null); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
+            else { setSelectedEndpoint(null); setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false); }
         }, 500);
-        setSearchDebounceTimer(t);
+        setSearchDebounce(t);
     };
-    const handleOpenHome = () => {
-        setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false);
-        setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null);
-    };
-    const handleOpenAbout = () => {
-        setShowHome(false); setShowSchemaExplorer(false); setShowAbout(true);
-        setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null);
-    };
-    const handleOpenSchemaExplorer = () => {
-        setShowSchemaExplorer(true); setShowHome(false); setShowAbout(false);
-        setSelectedEndpoint(null); setSearchQuery('');
-    };
-    const handleDownloadSpec = () => {
+    const handleOpenHome = () => { setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false); setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null); closeMobileIfNeeded(); };
+    const handleOpenAbout = () => { setShowAbout(true); setShowHome(false); setShowSchemaExplorer(false); setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null); closeMobileIfNeeded(); };
+    const handleOpenSchemaExplorer = () => { setShowSchemaExplorer(true); setShowHome(false); setShowAbout(false); setSelectedEndpoint(null); setSearchQuery(''); closeMobileIfNeeded(); };
+    const handleDownload = () => {
         if (!spec) return;
-        const data = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(spec, null, 2));
-        const a = document.createElement('a');
-        a.href = data; a.download = `${selectedParsableKey}-spec.json`;
-        a.click();
+        const d = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(spec, null, 2));
+        const a = document.createElement('a'); a.href = d; a.download = `${selectedParsableKey}-spec.json`; a.click();
     };
-    const handlePushSchema = (schemaName: string) => setModalsStack(prev => [...prev, schemaName]);
-    const handlePopSchema = () => setModalsStack(prev => prev.slice(0, -1));
-    const handleSelectParsable = (key: string) => {
-        if (key === selectedParsableKey) return;
+    const handlePushSchema = (n: string) => setModalsStack(p => [...p, n]);
+    const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
+    const handleSelectParsable = (k: string) => {
+        if (k === selectedParsableKey) return;
         setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false);
         setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null); setModalsStack([]);
-        setSelectedTab('docs');
-        setSelectedMethods([]); setSelectedTags([]); setOnlyProtected(null);
-        setSelectedParsableKey(key);
+        setSelectedTab('docs'); setSelectedMethods([]); setSelectedTags([]); setOnlyProtected(null);
+        setSelectedParsableKey(k);
         setExamineResponses({});
         setIsUpdatingHash(true);
-        const newHash = `#/parsable/${encodeURIComponent(key)}`;
-        if (window.location.hash !== newHash) window.location.hash = newHash;
+        const h = `#/parsable/${encodeURIComponent(k)}`;
+        if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
+        closeMobileIfNeeded();
     };
 
-    const resolvedModalsList = useMemo(() => {
-        if (!spec?.components?.schemas) return [];
-        return modalsStack.map(n => ({ schemaName: n, schema: spec.components!.schemas![n] || {} })).filter(i => i.schema);
-    }, [modalsStack, spec]);
-
-    // ---------- Render content ----------
-    const renderContent = () => {
+    // ---------- Render ----------
+    const content = () => {
         if (!spec) {
             return (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 select-none text-center h-full">
-                    <span className="w-16 h-16 rounded-full bg-[var(--surface-hover)] bg-[var(--background)] flex items-center justify-center text-xl mb-4">
+                    <span className="w-16 h-16 rounded-full bg-[var(--surface-hover)] flex items-center justify-center text-xl mb-4">
                         <i className="ph ph-file-x text-[var(--method-delete)]"></i>
                     </span>
-                    <h2 className="text-lg font-bold">No specification loaded</h2>
-                    <p className="text-xs text-muted max-w-sm mt-1 text-[var(--text-muted)]">
-                        Ensure you choose a valid Swagger/OpenAPI compliant resource descriptor config from the dropdown.
-                    </p>
+                    <h2 className="text-lg font-bold text-[var(--text-heading)]">No specification loaded</h2>
+                    <p className="text-xs max-w-sm mt-1 text-[var(--text-muted)]">Choose a valid Swagger/OpenAPI resource descriptor from the dropdown.</p>
                 </div>
             );
         }
-
-        const hasActiveFilters = selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-        if (searchQuery.trim().length > 0 || hasActiveFilters) {
-            return (
-                <SearchResultsView
-                    spec={spec}
-                    searchQuery={searchQuery}
-                    onSelectEndpoint={handleSelectSearchResult}
-                    selectedServer={selectedServer}
-                    selectedMethods={selectedMethods}
-                    setSelectedMethods={setSelectedMethods}
-                    selectedTags={selectedTags}
-                    setSelectedTags={setSelectedTags}
-                    onlyProtected={onlyProtected}
-                    setOnlyProtected={setOnlyProtected}
-                    parsableKey={selectedParsableKey}
-                />
-            );
+        const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
+        if (searchQuery.trim().length || hasFilters) {
+            return <SearchResultsView spec={spec} searchQuery={searchQuery} onSelectEndpoint={handleSearchResult}
+                selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
+                selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
         }
-
         if (selectedEndpoint) {
-            const pathObj = spec.paths[selectedEndpoint.path];
-            if (pathObj) {
-                const opObj = (pathObj as any)[selectedEndpoint.method];
-                if (opObj) {
+            const po = spec.paths[selectedEndpoint.path];
+            if (po) {
+                const op = (po as any)[selectedEndpoint.method];
+                if (op) {
                     const key = endpointKey(selectedEndpoint.path, selectedEndpoint.method);
-                    const currentResponse = examineResponses[key] || null;
+                    const current = examineResponses[key] || null;
                     return (
                         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-                            <div className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 sm:py-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
+                            <div className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
                                 <div className="flex items-center gap-1.5 text-[10.5px] min-w-0 overflow-hidden">
                                     <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden sm:inline">Endpoint:</span>
                                     <MethodBadge method={selectedEndpoint.method} size="xs" className="rounded-full shrink-0" />
@@ -505,65 +368,41 @@ export default function App() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <div className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">
-                                        <button
-                                            onClick={() => setSelectedTab('docs')}
-                                            className={clsx(
-                                                'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                selectedTab === 'docs' ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]'
-                                            )}>
+                                        <button onClick={() => setSelectedTab('docs')}
+                                            className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                                selectedTab === 'docs' ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
                                             <i className="ph ph-book-open-text text-[16px]"></i>
-                                            <span className="hidden sm:inline">View Documentation</span>
-                                            <span className="sm:hidden">Docs</span>
+                                            <span className="hidden sm:inline">View Documentation</span><span className="sm:hidden">Docs</span>
                                         </button>
-                                        <button
-                                            onClick={() => setSelectedTab('examine')}
-                                            className={clsx(
-                                                'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                selectedTab === 'examine' ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]'
-                                            )}>
+                                        <button onClick={() => setSelectedTab('examine')}
+                                            className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                                selectedTab === 'examine' ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
                                             <i className="ph ph-flask text-[16px]"></i>
-                                            <span className="hidden sm:inline">API Runner</span>
-                                            <span className="sm:hidden">Run</span>
+                                            <span className="hidden sm:inline">API Runner</span><span className="sm:hidden">Run</span>
                                         </button>
                                     </div>
                                     <div className="h-5 w-[1px] bg-[var(--border)] hidden sm:block"></div>
-                                    <button
-                                        onClick={() => setCodeGenEndpoint(selectedEndpoint)}
-                                        className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0"
-                                        title="Generate Fetch/Axios snippets">
-                                        <i className="ph ph-code text-[16px]"></i>
-                                    </button>
+                                    <Tip content="Generate Fetch/Axios snippets and TypeScript models">
+                                        <button onClick={() => setCodeGenEndpoint(selectedEndpoint)}
+                                            className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0">
+                                            <i className="ph ph-code text-[16px]"></i>
+                                        </button>
+                                    </Tip>
                                 </div>
                             </div>
-
                             <div className="flex-1 overflow-hidden h-full min-h-0">
                                 {selectedTab === 'docs' ? (
-                                    <ViewTab
-                                        key={`${selectedEndpoint.path}-${selectedEndpoint.method}`}
-                                        spec={spec}
-                                        path={selectedEndpoint.path}
-                                        method={selectedEndpoint.method}
-                                        operation={opObj}
-                                        onOpenSchemaModal={handlePushSchema}
-                                        activeAuth={activeAuth}
-                                        activeResponseCode={activeResponseCode}
-                                        onSelectResponseCode={setActiveResponseCode}
-                                    />
+                                    <ViewTab key={`${selectedEndpoint.path}-${selectedEndpoint.method}`} spec={spec}
+                                        path={selectedEndpoint.path} method={selectedEndpoint.method} operation={op}
+                                        onOpenSchemaModal={handlePushSchema} activeAuth={activeAuth}
+                                        activeResponseCode={activeResponseCode} onSelectResponseCode={setActiveResponseCode} />
                                 ) : (
-                                    <ExamineTab
-                                        key={`examine-${selectedEndpoint.path}-${selectedEndpoint.method}`}
-                                        spec={spec}
-                                        path={selectedEndpoint.path}
-                                        method={selectedEndpoint.method}
-                                        operation={opObj}
-                                        activeAuth={activeAuth}
-                                        selectedServer={selectedServer}
-                                        parsableKey={selectedParsableKey}
-                                        themeMode={currentThemeMode}
-                                        initialResponse={currentResponse}
-                                        onResponseChange={(resp) => persistExamineResponse(selectedEndpoint.path, selectedEndpoint.method, resp)}
-                                        onClearResponse={() => clearExamineResponse(selectedEndpoint.path, selectedEndpoint.method)}
-                                    />
+                                    <ExamineTab spec={spec} path={selectedEndpoint.path} method={selectedEndpoint.method}
+                                        operation={op} activeAuth={activeAuth} selectedServer={selectedServer}
+                                        parsableKey={selectedParsableKey} themeMode={currentThemeMode}
+                                        initialResponse={current}
+                                        onResponseChange={(r) => setExamineResponses(prev => ({ ...prev, [key]: r }))}
+                                        onClearResponse={() => setExamineResponses(prev => { const n = { ...prev }; delete n[key]; return n; })} />
                                 )}
                             </div>
                         </div>
@@ -571,139 +410,98 @@ export default function App() {
                 }
             }
         }
-
-        if (showSchemaExplorer) {
-            return (
-                <SchemaExplorer
-                    schemas={spec.components?.schemas}
-                    onSelectSchema={handlePushSchema}
-                    parsableKey={selectedParsableKey}
-                />
-            );
-        }
-
-        if (showAbout) {
-            return <AboutView specTitle={spec?.info?.title} parsableKey={selectedParsableKey} />;
-        }
-
-        return (
-            <HomeView
-                spec={spec}
-                selectedEndpoint={selectedEndpoint}
-                onSelectEndpoint={handleSelectEndpoint}
-                selectedServer={selectedServer}
-                onSelectServer={setSelectedServer}
-                activeAuth={activeAuth}
-                onDeepLinkResponse={(path, method, code) => {
-                    setSelectedEndpoint({ path, method });
-                    setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
-                    setSelectedTab('docs');
-                    setActiveResponseCode(code);
-                }}
-            />
-        );
+        if (showSchemaExplorer) return <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={handlePushSchema} parsableKey={selectedParsableKey} />;
+        if (showAbout) return <AboutView specTitle={spec?.info?.title} parsableKey={selectedParsableKey} />;
+        return <HomeView spec={spec} selectedEndpoint={selectedEndpoint} onSelectEndpoint={handleSelectEndpoint}
+            selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
+            onDeepLinkResponse={(path, method, code) => {
+                setSelectedEndpoint({ path, method }); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
+                setSelectedTab('docs'); setActiveResponseCode(code);
+            }} />;
     };
 
-    // ---------- Render ----------
+    const isSidebarCollapsed = isMobile ? false : desktopCollapsed;
+    const onToggleCollapse = () => {
+        if (isMobile) setMobileOpen(o => !o);
+        else setDesktopCollapsed(c => !c);
+    };
+
     return (
-        <div
-            style={styleVars}
-            className="w-full h-screen overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
+        <TooltipProvider>
+            <div style={styleVars} className="w-full h-screen overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
+                <Topbar
+                    parsables={parsables} selectedParsableKey={selectedParsableKey} onSelectParsable={handleSelectParsable}
+                    activeAuth={activeAuth} onUpdateAuth={setActiveAuth} onOpenAuthModal={() => setShowAuthModal(true)}
+                    searchQuery={searchQuery} onSearchChange={handleSearchChange}
+                    currentThemeMode={currentThemeMode} onToggleThemeMode={() => setCurrentThemeMode(m => m === 'light' ? 'dark' : 'light')}
+                    onDownloadSpec={handleDownload}
+                    title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec}
+                    showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
+                    onOpenMobileSidebar={() => setMobileOpen(true)}
+                    selectedThemeName={selectedThemeName} onSelectTheme={setSelectedThemeName}
+                    onOpenThemeModal={() => setShowThemeModal(true)}
+                />
 
-            <Topbar
-                parsables={parsables}
-                selectedParsableKey={selectedParsableKey}
-                onSelectParsable={handleSelectParsable}
-                activeAuth={activeAuth}
-                onUpdateAuth={setActiveAuth}
-                searchQuery={searchQuery}
-                onSearchChange={handleSearchChange}
-                currentThemeMode={currentThemeMode}
-                onToggleThemeMode={() => setCurrentThemeMode(currentThemeMode === 'light' ? 'dark' : 'light')}
-                onDownloadSpec={handleDownloadSpec}
-                title={spec?.info?.title || 'OpenDoc UI'}
-                showSchemaExplorer={showSchemaExplorer}
-                spec={spec}
-                showHome={showHome}
-                showAbout={showAbout}
-                onOpenHome={handleOpenHome}
-                onOpenAbout={handleOpenAbout}
-                selectedThemeName={selectedThemeName}
-                onSelectTheme={setSelectedThemeName}
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapse={() => {
-                    const hasActiveSearch = searchQuery.trim().length > 0 || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-                    const next = !isSidebarCollapsed;
-                    setIsSidebarCollapsed(next);
-                    if (hasActiveSearch) setSearchResultSidebarCollapsed(next);
-                    else setUserSidebarCollapsed(next);
-                }}
-            />
-
-            <div className="flex-1 flex overflow-hidden w-full h-full min-w-0">
-                {isLoadingSpec ? (
-                    <div className="m-auto flex flex-col items-center gap-1 text-[10px] font-bold">
-                        <div className="size-8 relative">
-                            <i className="block animate-spin size-full border-4 border-[var(--text-muted)]/30 rounded-full absolute"></i>
-                            <i className="block animate-spin size-full border-4 border-r-[var(--primary)] border-transparent rounded-full absolute"></i>
+                <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
+                    {isLoadingSpec ? (
+                        <div className="m-auto flex flex-col items-center gap-1 text-[10px] font-bold">
+                            <div className="size-8 relative">
+                                <i className="block animate-spin size-full border-4 border-[var(--text-muted)]/30 rounded-full absolute"></i>
+                                <i className="block animate-spin size-full border-4 border-r-[var(--primary)] border-transparent rounded-full absolute"></i>
+                            </div>
+                            Please wait&hellip;
                         </div>
-                        Please wait&hellip;
-                    </div>
-                ) : (
-                    <>
-                        <Sidebar
-                            spec={spec}
-                            selectedServer={selectedServer}
-                            onSelectServer={setSelectedServer}
-                            isCollapsed={isSidebarCollapsed}
-                            onOpenSchemaExplorer={handleOpenSchemaExplorer}
-                            showSchemaExplorer={showSchemaExplorer}
-                            selectedMethods={selectedMethods}
-                            setSelectedMethods={setSelectedMethods}
-                            selectedTags={selectedTags}
-                            setSelectedTags={setSelectedTags}
-                            onlyProtected={onlyProtected}
-                            setOnlyProtected={setOnlyProtected}
-                            searchQuery={searchQuery}
-                            selectedEndpoint={selectedEndpoint}
-                            onSelectEndpoint={handleSelectEndpoint}
-                            onOpenHome={handleOpenHome}
-                            showHome={showHome}
-                            showAbout={showAbout}
-                            onOpenAbout={handleOpenAbout}
-                        />
+                    ) : (
+                        <>
+                            <Sidebar
+                                spec={spec}
+                                parsables={isMobile ? parsables : undefined}
+                                selectedParsableKey={isMobile ? selectedParsableKey : undefined}
+                                onSelectParsable={isMobile ? handleSelectParsable : undefined}
+                                selectedServer={selectedServer} onSelectServer={setSelectedServer}
+                                isCollapsed={desktopCollapsed} onToggleCollapse={() => setDesktopCollapsed(c => !c)}
+                                onOpenSchemaExplorer={handleOpenSchemaExplorer} showSchemaExplorer={showSchemaExplorer}
+                                selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
+                                selectedTags={selectedTags} setSelectedTags={setSelectedTags}
+                                onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected}
+                                searchQuery={searchQuery} selectedEndpoint={selectedEndpoint}
+                                onSelectEndpoint={handleSelectEndpoint} onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout}
+                                showHome={showHome} showAbout={showAbout}
+                                currentThemeMode={currentThemeMode} onToggleThemeMode={() => setCurrentThemeMode(m => m === 'light' ? 'dark' : 'light')}
+                                selectedThemeName={selectedThemeName}
+                                onOpenThemeModal={() => setShowThemeModal(true)}
+                                onOpenAuthModal={() => setShowAuthModal(true)}
+                                activeAuth={activeAuth} onDownloadSpec={handleDownload}
+                                mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onOpenMobile={() => setMobileOpen(true)}
+                            />
+                            <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">{content()}</div>
+                        </>
+                    )}
+                </div>
 
-                        <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
-                            {renderContent()}
-                        </div>
-                    </>
+                {resolved_moda_list(modalsStack, spec) && spec?.components?.schemas && (
+                    <ModalsStack
+                        modals={modalsStack.map(n => ({ schemaName: n, schema: spec.components!.schemas![n] || {} })).filter(i => i.schema)}
+                        onPopSchema={handlePopSchema} onPushSchema={handlePushSchema}
+                        onCloseAll={() => setModalsStack([])}
+                        componentsSchemas={spec.components.schemas} parsableKey={selectedParsableKey} />
                 )}
+                {codeGenEndpoint && spec && (
+                    <CodeGeneratorModal isOpen={!!codeGenEndpoint} onClose={() => setCodeGenEndpoint(null)}
+                        spec={spec} path={codeGenEndpoint.path} method={codeGenEndpoint.method}
+                        operation={(spec.paths[codeGenEndpoint.path] as any)?.[codeGenEndpoint.method] || {}}
+                        activeAuth={activeAuth} />
+                )}
+                <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} spec={spec} activeAuth={activeAuth} onSave={setActiveAuth} />
+                <ThemeSelectorModal isOpen={showThemeModal} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode}
+                    onSelectTheme={(t) => { setSelectedThemeName(t); }} onToggleThemeMode={() => setCurrentThemeMode(m => m === 'light' ? 'dark' : 'light')}
+                    onClose={() => setShowThemeModal(false)} />
             </div>
-
-            {resolvedModalsList.length > 0 && spec?.components?.schemas && (
-                <ModalsStack
-                    modals={resolvedModalsList}
-                    onPopSchema={handlePopSchema}
-                    onPushSchema={handlePushSchema}
-                    onCloseAll={() => setModalsStack([])}
-                    componentsSchemas={spec.components.schemas}
-                    parsableKey={selectedParsableKey}
-                />
-            )}
-
-            {codeGenEndpoint && spec && (
-                <CodeGeneratorModal
-                    isOpen={!!codeGenEndpoint}
-                    onClose={() => setCodeGenEndpoint(null)}
-                    spec={spec}
-                    path={codeGenEndpoint.path}
-                    method={codeGenEndpoint.method}
-                    operation={(spec.paths[codeGenEndpoint.path] as any)?.[codeGenEndpoint.method] || {}}
-                    activeAuth={activeAuth}
-                />
-            )}
-        </div>
+        </TooltipProvider>
     );
 }
+
+// Helper to avoid undefined fn call in JSX above (kept as helper for readability)
+function resolved_moda_list(_stack: string[], _spec: OpenApiSpec | null) { return true; }
 
 export { HTTP_METHODS, getEndpointId };

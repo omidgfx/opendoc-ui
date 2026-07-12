@@ -7,6 +7,7 @@ import CustomDropdown from '../../common/CustomDropdown';
 import ShareModal from '../ShareModal';
 import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
+import { Tip } from '../../common/Tooltip';
 import { generateSingleSchemaFile } from '../../../utils/schemaExport';
 
 interface ModalsStackProps {
@@ -550,59 +551,57 @@ export default function ModalsStack({
                     className="w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-200 bg-[var(--surface)] border-[var(--border)]">
 
                     <div
-                        className="px-6 py-4 flex flex-col gap-3 border-b shrink-0 border-[var(--border)] bg-[var(--background)]">
+                        className="px-4 sm:px-6 py-2.5 sm:py-4 flex flex-col gap-2 sm:gap-3 border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                                 <span
-                                    className="size-10 rounded-lg flex items-center justify-center text-xs font-bold text-[var(--primary)]"
+                                    className="size-9 sm:size-10 rounded-lg flex items-center justify-center shrink-0 text-[var(--primary)]"
                                     style={{backgroundColor: 'rgba(79, 70, 229, 0.1)'}}>
-                                    <i className="ph ph-diamonds-four text-[24px]"></i>
+                                    <i className="ph ph-diamonds-four text-[20px] sm:text-[24px]"></i>
                                 </span>
-                                <div>
-                                    <h3 className="font-semibold text-base font-sans text-[var(--text-heading)]">
-
+                                <div className="min-w-0">
+                                    <h3 className="font-semibold text-sm sm:text-base font-sans text-[var(--text-heading)] truncate">
                                         {activeSchemaObj.schemaName}
                                     </h3>
-                                    <p className="text-xs text-[var(--text-muted)]">
+                                    <p className="text-[10px] sm:text-xs text-[var(--text-muted)] truncate">
                                         Schema Explorer
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => handleShareSchema(activeSchemaObj.schemaName)}
-                                    className="h-8 w-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/10"
-                                    title="Share this schema link"
-                                >
-                                    <i className="ph ph-share-network text-[14px]"></i>
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (componentsSchemas) {
-                                            generateSingleSchemaFile(
-                                                activeSchemaObj.schemaName,
-                                                activeSchemaObj.schema,
-                                                componentsSchemas,
-                                                parsableKey
-                                            );
-                                        }
-                                    }}
-                                    className="h-8 px-3 rounded-lg border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90"
-                                    title="Export this schema as TypeScript model"
-                                >
-                                    <i className="ph ph-download-simple text-[12px]"></i>
-                                    Export TS
-                                </button>
-                                <button
-                                    onClick={onCloseAll}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer select-none text-[var(--text-muted)]"
-
-                                    title="Close schema viewer">
-
-                                    <i className="ph ph-x"></i>
-                                </button>
+                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                <Tip content="Share this schema link">
+                                    <button
+                                        onClick={() => handleShareSchema(activeSchemaObj.schemaName)}
+                                        className="h-8 w-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/10">
+                                        <i className="ph ph-share-network text-[14px]"></i>
+                                    </button>
+                                </Tip>
+                                <Tip content="Export this schema as TypeScript model">
+                                    <button
+                                        onClick={() => {
+                                            if (componentsSchemas) {
+                                                generateSingleSchemaFile(
+                                                    activeSchemaObj.schemaName,
+                                                    activeSchemaObj.schema,
+                                                    componentsSchemas,
+                                                    parsableKey
+                                                );
+                                            }
+                                        }}
+                                        className="h-8 px-2.5 sm:px-3 rounded-lg border flex items-center gap-1.5 text-[10px] sm:text-xs font-bold transition-all cursor-pointer bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
+                                        <i className="ph ph-download-simple text-[12px]"></i>
+                                        <span className="hidden sm:inline">Export TS</span>
+                                    </button>
+                                </Tip>
+                                <Tip content="Close schema viewer">
+                                    <button
+                                        onClick={onCloseAll}
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer select-none text-[var(--text-muted)]">
+                                        <i className="ph ph-x"></i>
+                                    </button>
+                                </Tip>
                             </div>
                         </div>
 
@@ -632,13 +631,13 @@ export default function ModalsStack({
                                                 {m.schemaName}
                                             </button>
                                             {!isLast && (
-                                                <button
-                                                    onClick={() => handleShareSchema(m.schemaName)}
-                                                    className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors cursor-pointer"
-                                                    title={`Share ${m.schemaName}`}
-                                                >
-                                                    <i className="ph ph-share-network"></i>
-                                                </button>
+                                                <Tip content={`Share ${m.schemaName}`}>
+                                                    <button
+                                                        onClick={() => handleShareSchema(m.schemaName)}
+                                                        className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors cursor-pointer">
+                                                        <i className="ph ph-share-network"></i>
+                                                    </button>
+                                                </Tip>
                                             )}
                                         </div>
                                     </div>);
@@ -827,7 +826,7 @@ export default function ModalsStack({
                         className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
 
                         <div
-                            className="px-5 py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)]">
+                            className="px-4 sm:px-5 py-2.5 sm:py-4 border-b shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
 
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)]">
                                 <i className="ph ph-info mr-1.5 text-[var(--primary)]"></i> {helpModalContent.title}

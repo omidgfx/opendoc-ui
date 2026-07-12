@@ -1,6 +1,10 @@
 {
   "theme": "default",
   "parsables": {
+    "Player API": {
+      "theme": "default",
+      "url": "https://api-player.hamvarz.local/docs-json?api-docs.json"
+    },
     "Pet Store": {
       "theme": "default",
       "url": "/specs/pet-store.json"
@@ -8,6 +12,10 @@
     "Spotify": {
       "theme": "default",
       "url": "/specs/search-api.json"
+    },
+    "Hamvarz Player API": {
+      "theme": "default",
+      "url": "/specs/hamvarz-docs.json"
     }
   }
 }

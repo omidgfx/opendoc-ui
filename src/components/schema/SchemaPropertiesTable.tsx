@@ -1,5 +1,6 @@
 import React from 'react';
 import Markdown from '../common/Markdown';
+import { Tip } from '../common/Tooltip';
 
 interface SchemaPropertiesTableProps {
     properties: { [name: string]: any; };
@@ -50,15 +51,14 @@ export default function SchemaPropertiesTable({
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);
             return (
-                <button
-                    title={refName}
-                    onClick={() => onPushSchema(refName)}
-                    className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
-
-                    <i className="ph ph-diamonds-four text-[12px]"></i>
-                    <div className={'max-w-32 truncate'}>{refName}</div>
-                </button>);
-
+                <Tip content={`Inspect schema: ${refName}`}>
+                    <button
+                        onClick={() => onPushSchema(refName)}
+                        className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
+                        <i className="ph ph-diamonds-four text-[12px]"></i>
+                        <div className={'max-w-32 truncate'}>{refName}</div>
+                    </button>
+                </Tip>);
         }
 
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
@@ -175,8 +175,8 @@ export default function SchemaPropertiesTable({
 
     return (
         <div className="border rounded-xl overflow-hidden mt-2 mb-3 border-[var(--border)] bg-[var(--background)]">
-
-            <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs min-w-[560px]">
                 <thead>
                 <tr className={"whitespace-nowrap brightness-95 bg-[var(--surface-hover)]"}>
                     <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
@@ -192,18 +192,17 @@ export default function SchemaPropertiesTable({
 
                         <div className={'flex justify-between'}>
                             <span>Description</span>
-                            {useModal && schemaName &&
-                                <button
-                                    type="button"
-                                    onClick={() => onPushSchema(schemaName)}
-                                    className="px-2 py-1 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]">
-
-
-                                    <i className="ph ph-diamonds-four text-[10px]"></i>
-                                    Inspect Schema
-                                    <i className="ph ph-fw fa-external-link text-[10px]"></i>
-                                </button>
-                            }
+                            {useModal && schemaName && (
+                                <Tip content={`Inspect ${schemaName} schema`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => onPushSchema(schemaName)}
+                                        className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]">
+                                        <i className="ph ph-diamonds-four text-[11px]"></i>
+                                        <span className="hidden sm:inline">Inspect Schema</span>
+                                    </button>
+                                </Tip>
+                            )}
                         </div>
                     </th>
                 </tr>
@@ -236,12 +235,12 @@ export default function SchemaPropertiesTable({
                             className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]">
                             <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)]">
                                 <div className={'flex items-start gap-1'}>
-                                    {name} {isRequired &&
-                                    <span
-                                        className="text-[var(--method-delete)] leading-none -mt-0.5 font-semibold text-[16px]"
-                                        title="Required">
-                                        *
-                                    </span>}
+                                    <span className="break-all">{name}</span>
+                                    {isRequired && (
+                                        <Tip content="Required field">
+                                            <span className="text-[var(--method-delete)] leading-none -mt-0.5 font-semibold text-[16px] cursor-help">*</span>
+                                        </Tip>
+                                    )}
                                 </div>
                             </td>
                             <td className="px-3 py-2.5">
@@ -277,16 +276,16 @@ export default function SchemaPropertiesTable({
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap">
                                 <div className="flex flex-col gap-1.5">
-                                    {isComplexType &&
-                                        <button
-                                            type="button"
-                                            onClick={() => onViewExample(name, pVal)}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0"
-                                            title="Generate dynamic simulated example for this specific sub-schema">
-
-                                            <i className="ph ph-vial text-[9px]"></i> View Example
-                                        </button>
-                                    }
+                                    {isComplexType && (
+                                        <Tip content="Generate simulated example for this sub-schema">
+                                            <button
+                                                type="button"
+                                                onClick={() => onViewExample(name, pVal)}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0">
+                                                <i className="ph ph-vial text-[9px]"></i> View Example
+                                            </button>
+                                        </Tip>
+                                    )}
 
                                     {/* Show quick scalar inline representation if available */}
                                     {!isComplexType && (pVal.example !== undefined || pVal.default !== undefined) &&
@@ -342,6 +341,7 @@ export default function SchemaPropertiesTable({
                 })}
                 </tbody>
             </table>
+            </div>
         </div>);
 
 }

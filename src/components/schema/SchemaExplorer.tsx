@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import { generateAndDownloadZip, generateSingleSchemaFile } from '../../utils/schemaExport';
 import ShareModal from '../modals/ShareModal';
 import { useEscClose } from '../../hooks/useEscClose';
+import { Tip } from '../common/Tooltip';
 
 interface SchemaExplorerProps {
     schemas: { [key: string]: any; } | undefined;
@@ -94,14 +95,14 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                    <button
-                        onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
-                        className="h-8 px-4 rounded-lg border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90"
-                        title="Export all schemas as TypeScript models zip"
-                    >
-                        <i className="ph ph-download-simple text-[14px]"></i>
-                        Export TS (ZIP)
-                    </button>
+                    <Tip content="Export all schemas as a zip of TypeScript models">
+                        <button
+                            onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
+                            className="h-8 px-3 sm:px-4 rounded-lg border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
+                            <i className="ph ph-download-simple text-[14px]"></i>
+                            <span className="hidden sm:inline">Export TS (ZIP)</span><span className="sm:hidden">TS ZIP</span>
+                        </button>
+                    </Tip>
 
                     {/* Search */}
                     <div className="relative w-full md:w-80">
@@ -192,23 +193,23 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                         </span>
 
                                         <div className="flex items-center gap-1.5">
-                                            <button
-                                                onClick={() => handleShareSchema(name, schema)}
-                                                className="w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5"
-                                                title="Share this schema"
-                                            >
-                                                <i className="ph ph-share-network text-[11px]"></i>
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (schemas) generateSingleSchemaFile(name, schema, schemas as any, parsableKey);
-                                                }}
-                                                className="text-[10px] font-bold px-2 h-7 rounded-lg border flex items-center gap-1 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30"
-                                                title="Export this schema as TS"
-                                            >
-                                                <i className="ph ph-download-simple text-[10px]"></i>
-                                                TS
-                                            </button>
+                                            <Tip content="Share this schema">
+                                                <button
+                                                    onClick={() => handleShareSchema(name, schema)}
+                                                    className="w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5">
+                                                    <i className="ph ph-share-network text-[11px]"></i>
+                                                </button>
+                                            </Tip>
+                                            <Tip content="Export this schema as TypeScript">
+                                                <button
+                                                    onClick={() => {
+                                                        if (schemas) generateSingleSchemaFile(name, schema, schemas as any, parsableKey);
+                                                    }}
+                                                    className="text-[10px] font-bold px-2 h-7 rounded-lg border flex items-center gap-1 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30">
+                                                    <i className="ph ph-download-simple text-[10px]"></i>
+                                                    TS
+                                                </button>
+                                            </Tip>
                                             <button
                                                 onClick={() => onSelectSchema(name)}
                                                 className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-1.5 focus:outline-none cursor-pointer">

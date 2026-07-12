@@ -159,7 +159,7 @@ export default function ApiSpecificationSelectorModal({
                 className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in"
             >
                 <header
-                    className="flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                    className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 sm:px-5 py-2.5 sm:py-4 shrink-0 modal-header-mobile-pad">
                     <div className="flex min-w-0 items-center gap-3">
                         <span
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">

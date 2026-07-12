@@ -3,6 +3,7 @@ import {ActiveAuth, OpenApiSpec} from '../../../types';
 import Markdown from '../../common/Markdown';
 import ShareModal from '../../modals/ShareModal';
 import { useEscClose } from '../../../hooks/useEscClose';
+import { Tip } from '../../common/Tooltip';
 
 interface HomeViewProps {
     spec: OpenApiSpec | null;
@@ -130,7 +131,7 @@ export default function HomeView({
 
     return (
         <div
-            className="flex-1 w-full h-[calc(100vh-130px)] overflow-y-auto p-4 md:p-8 mx-auto space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin">
+            className="flex-1 w-full h-full overflow-y-auto p-3 sm:p-4 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0">
             {/* API Hero Frame */}
             <div
                 className="max-w-7xl mx-auto w-full p-6 md:p-8 rounded-2xl border relative overflow-hidden bg-[var(--surface)] border-[var(--border)]">
@@ -151,14 +152,14 @@ export default function HomeView({
                                 {spec.swagger ? `Swagger v${spec.swagger}` : `OAS v${spec.openapi || '3.x'}`}
                             </span>
                         </div>
-                        <button
-                            onClick={handleShareSpec}
-                            className="h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] border-[var(--primary)] hover:opacity-90 shadow-sm"
-                            title="Share this specification"
-                        >
-                            <i className="ph ph-share-network text-[14px]"></i>
-                            Share Spec
-                        </button>
+                        <Tip content="Share this specification">
+                            <button
+                                onClick={handleShareSpec}
+                                className="h-8 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] border-[var(--primary)] hover:opacity-90 shadow-sm">
+                                <i className="ph ph-share-network text-[14px]"></i>
+                                <span className="hidden sm:inline">Share Spec</span>
+                            </button>
+                        </Tip>
                     </div>
 
                     <div className="space-y-1">

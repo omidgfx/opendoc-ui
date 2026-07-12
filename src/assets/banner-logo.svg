@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 320" width="1100" height="320" role="img" aria-label="OpenDoc UI">
+  <defs>
+    <linearGradient id="od-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="od-g2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="od-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#6366f1" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Icon mark (rounded square with doc + braces + connected dots) -->
+  <g transform="translate(60 40)" filter="url(#od-shadow)">
+    <rect x="0" y="0" width="240" height="240" rx="56" ry="56" fill="url(#od-g)"/>
+    <!-- Document page -->
+    <rect x="56" y="44" width="112" height="152" rx="14" fill="white" fill-opacity="0.96"/>
+    <!-- Fold corner -->
+    <path d="M144 44 L168 68 L144 68 Z" fill="#e0e7ff"/>
+    <!-- Lines -->
+    <rect x="74" y="92" width="76" height="8" rx="4" fill="#c7d2fe"/>
+    <rect x="74" y="112" width="58" height="8" rx="4" fill="#c7d2fe"/>
+    <rect x="74" y="132" width="68" height="8" rx="4" fill="#c7d2fe"/>
+    <!-- Braces -->
+    <text x="120" y="184" text-anchor="middle" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-weight="800" font-size="36" fill="#4f46e5">{ }</text>
+    <!-- Connected endpoint dots around icon -->
+    <circle cx="32" cy="46" r="8" fill="white" fill-opacity="0.9"/>
+    <circle cx="208" cy="46" r="8" fill="white" fill-opacity="0.9"/>
+    <circle cx="208" cy="194" r="8" fill="white" fill-opacity="0.9"/>
+    <circle cx="32" cy="194" r="8" fill="white" fill-opacity="0.9"/>
+    <path d="M32 46 Q120 10 208 46" stroke="white" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M208 46 Q244 120 208 194" stroke="white" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M32 194 Q120 230 208 194" stroke="white" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M32 46 Q-4 120 32 194" stroke="white" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(340 130)">
+    <text x="0" y="0" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="96" letter-spacing="-2" fill="#0f172a">OpenDoc</text>
+    <text x="540" y="0" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="96" letter-spacing="-2" fill="url(#od-g2)">UI</text>
+    <!-- Tagline -->
+    <text x="0" y="56" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="500" font-size="20" letter-spacing="3.5" fill="#64748b" text-transform="uppercase">OpenAPI Documentation Interface</text>
+    <!-- Thin rule -->
+    <rect x="2" y="74" width="120" height="3" rx="1.5" fill="url(#od-g)"/>
+  </g>
+</svg>

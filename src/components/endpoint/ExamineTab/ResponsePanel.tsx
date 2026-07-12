@@ -1,5 +1,6 @@
 import CodeViewer from '../../common/CodeViewer';
 import type { ExamineResponse } from '../../../types';
+import { Tip } from '../../common/Tooltip';
 
 interface ResponsePanelProps {
     method: string;
@@ -31,14 +32,15 @@ export default function ResponsePanel({ method, selectedServer, path, isRunning,
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     {hasResponse && !isRunning && (
-                        <button
-                            type="button"
-                            onClick={onClear}
-                            title="Clear last response"
-                            className="py-2 px-2.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--method-delete)] hover:bg-[var(--surface-hover)] rounded-lg transition-all cursor-pointer select-none"
-                        >
-                            <i className="ph ph-trash text-[16px]"></i>
-                        </button>
+                        <Tip content="Clear last response">
+                            <button
+                                type="button"
+                                onClick={onClear}
+                                className="py-2 px-2.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--method-delete)] hover:bg-[var(--surface-hover)] rounded-lg transition-all cursor-pointer select-none"
+                            >
+                                <i className="ph ph-trash text-[16px]"></i>
+                            </button>
+                        </Tip>
                     )}
                     <button
                         onClick={onExecute}

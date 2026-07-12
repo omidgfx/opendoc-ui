@@ -49,7 +49,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                 onClick={(e) => e.stopPropagation()}>
 
                 <div
-                    className="px-5 py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)]">
+                    className="px-4 sm:px-5 py-2.5 sm:py-4 border-b shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
 
 
                     <span className="font-bold text-sm tracking-wide text-[var(--text-heading)]">
