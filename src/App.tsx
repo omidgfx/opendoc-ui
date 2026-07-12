@@ -33,7 +33,7 @@ import AuthModal from './components/modals/AuthModal';
 
 // Common
 import MethodBadge from './components/common/MethodBadge';
-import {Tip, TooltipProvider} from './components/common/Tooltip';
+import { TooltipProvider, Tip } from './components/common/Tooltip';
 
 declare global {
     interface Window { INITIAL_CONFIG?: any; }
@@ -128,6 +128,33 @@ export default function App() {
     useEffect(() => { if (selectedParsableKey) localStorage.setItem('selected_parsable_key', selectedParsableKey); }, [selectedParsableKey]);
 
     const activeTheme = useMemo(() => THEME_LIST.find(t => t.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
+
+    // Apply theme CSS variables to documentElement so portaled elements (tooltips, etc.) pick them up
+    useEffect(() => {
+        const v = currentThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
+        const root = document.documentElement;
+        root.style.setProperty('--background', v.background);
+        root.style.setProperty('--surface', v.surface);
+        root.style.setProperty('--surface-hover', v.surfaceHover);
+        root.style.setProperty('--border', v.border);
+        root.style.setProperty('--text', v.text);
+        root.style.setProperty('--text-contrast', getContrastColor(v.text));
+        root.style.setProperty('--text-heading', v.textHeading);
+        root.style.setProperty('--text-muted', v.textMuted);
+        root.style.setProperty('--primary', v.primary);
+        root.style.setProperty('--primary-hover', v.primaryHover);
+        root.style.setProperty('--primary-contrast', getContrastColor(v.primary));
+        root.style.setProperty('--accent', v.accent);
+        root.style.setProperty('--sidebar', v.sidebar);
+        root.style.setProperty('--sidebar-text', v.sidebarText);
+        root.style.setProperty('--navbar', v.navbar);
+        (['get','post','put','delete','patch','head','connect','options','trace'] as const).forEach(k => {
+            const c = (v as any)[`method${k.charAt(0).toUpperCase()}${k.slice(1)}`];
+            root.style.setProperty(`--method-${k}`, c);
+            root.style.setProperty(`--method-${k}-contrast`, getContrastColor(c));
+        });
+    }, [activeTheme, currentThemeMode]);
+
     const styleVars = useMemo(() => {
         const v = currentThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
         const out: Record<string, string> = {

@@ -304,6 +304,7 @@ html, body, #root {
     border: none;
     padding: 0 !important;
     margin: 0;
+    background: transparent;
 
 }
 
@@ -443,32 +444,45 @@ body {
 /* Make sure flex children don't blow out */
 .min-w-0 { min-width: 0; }
 
-/* Standard top scroll-fader (for endpoint navigator). Uses CSS mask to fade
-   only the top edge; keeps scrollbar fully clickable/visible. The gradient
-   fades from transparent at top → opaque within 28px, so the bottom of the
-   list stays readable and fade strength is subtle. */
-.nav-scroll-fader {
-    -webkit-mask-image: linear-gradient(
-        to bottom,
-        transparent 0,
-        #000 28px,
-        #000 calc(100% - 0px),
-        #000 100%
-    );
-    mask-image: linear-gradient(
-        to bottom,
-        transparent 0,
-        #000 28px,
-        #000 100%
-    );
+/* Top scroll-fader for endpoint navigator. Uses an absolutely-positioned
+   gradient overlay at the top of the scroll container. It fades out the first
+   ~28px of content so users know there's more above, but only when the
+   container is actually scrolled (class toggled via JS). Scrollbar stays
+   fully interactive because we never use mask-image. */
+.nav-scroll-wrapper {
+    position: relative;
 }
-.nav-scroll-fader--scrolled {
-    -webkit-mask-image: linear-gradient(
+.nav-scroll-top-fader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    pointer-events: none;
+    z-index: 5;
+    background: linear-gradient(
         to bottom,
-        transparent 0,
-        #000 28px,
-        #000 100%
+        var(--sidebar, var(--surface)) 0%,
+        var(--sidebar, var(--surface)) 30%,
+        transparent 100%
     );
+    @apply transition-all;
+}
+
+/* Simple modal enter animation: fade + gentle zoom-in */
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.96) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes backdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+.modal-backdrop {
+    animation: backdropIn 180ms ease-out both;
+}
+.modal-panel {
+    animation: modalIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Ensure scroll container takes the full right edge of its parent (no stray

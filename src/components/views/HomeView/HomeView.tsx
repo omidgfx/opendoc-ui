@@ -134,7 +134,7 @@ export default function HomeView({
             className="flex-1 w-full h-full overflow-y-auto p-3 sm:p-4 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0">
             {/* API Hero Frame */}
             <div
-                className="max-w-7xl mx-auto w-full p-6 md:p-8 rounded-2xl border relative overflow-hidden bg-[var(--surface)] border-[var(--border)]">
+                className="w-full p-6 md:p-8 rounded-2xl border relative overflow-hidden bg-[var(--surface)] border-[var(--border)]">
 
                 <div className="relative z-10 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -180,7 +180,7 @@ export default function HomeView({
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 items-start">
+            <div className="w-full flex flex-col md:flex-row gap-8 items-start">
                 <div className="flex-1 min-w-0 space-y-8">
                     {/* Description Block */}
                     {(description || spec.externalDocs) &&

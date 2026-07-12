@@ -94,7 +94,7 @@ export default function MethodBadge({
                 variant === 'plain' && colors.text,
                 className
             )}
-            title={title || label}
+            title={title}
         >
             {label}
         </span>

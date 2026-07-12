@@ -80,7 +80,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
 
     return (
         <div
-            className="flex-1 h-full flex flex-col p-4 md:p-8 w-full mx-auto space-y-3 animate-in fade-in duration-200 select-text font-sans overflow-hidden">
+            className="flex-1 h-full flex flex-col p-4 md:p-8 w-full space-y-3 animate-in fade-in duration-200 select-text font-sans overflow-hidden min-w-0">
             {/* Search and Header - Sticky / Static at the top */}
             <div
                 className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 shrink-0 border-[var(--border)]">
@@ -154,12 +154,12 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             return (
                                 <div
                                     key={name}
-                                    className="p-5 rounded-2xl border flex flex-col justify-between hover:shadow-md transition-all group overflow-hidden bg-[var(--surface)] border-[var(--border)]">
+                                    className="p-5 rounded-2xl border flex flex-col cursor-default justify-between transition-all group overflow-hidden bg-[var(--surface)] border-[var(--border)]">
 
 
                                     <div className="min-w-0">
                                         <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
-                                            <h3 className="font-bold text-sm tracking-tight group-hover:text-[var(--primary)] transition-colors truncate flex-1 text-[var(--text-heading)]"
+                                            <h3 className="font-bold text-sm tracking-tight transition-colors truncate flex-1 text-[var(--text-heading)]"
                                                 title={name}>
                                                 {name}
                                             </h3>
@@ -210,13 +210,14 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                                     TS
                                                 </button>
                                             </Tip>
-                                            <button
-                                                onClick={() => onSelectSchema(name)}
-                                                className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-1.5 focus:outline-none cursor-pointer">
-
-                                                <span>View Specifications</span>
-                                                <i className="ph ph-arrow-right text-[10px] transition-transform group-hover:translate-x-1"></i>
-                                            </button>
+                                            <Tip content="Inspect schema details">
+                                                <button
+                                                    onClick={() => onSelectSchema(name)}
+                                                    className="h-7 px-2 rounded-lg border flex items-center gap-1 text-[10px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30">
+                                                    <span>View</span>
+                                                    <i className="ph ph-arrow-right text-[10px]"></i>
+                                                </button>
+                                            </Tip>
                                         </div>
                                     </div>
                                 </div>);

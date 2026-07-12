@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import clsx from 'clsx';
+import { Tip } from '../common/Tooltip';
 
 interface SchemaJsonEditorProps {
     value: string;
@@ -30,7 +31,7 @@ export default function SchemaJsonEditor({
                 });
             } catch (err) { console.warn('Error setting JSON schemas diagnostics:', err); }
         }
-    }, [schema, componentsSchemas, monacoRef.current]);
+    }, [schema, componentsSchemas]);
 
     useEffect(() => {
         if (!value.trim()) { setErrorFeedback(null); return; }
@@ -78,9 +79,9 @@ export default function SchemaJsonEditor({
     const triggerFind = () => { editorRef.current?.focus(); editorRef.current?.getAction('actions.find')?.run(); };
 
     return (
-        <div className="flex flex-col gap-2 sm:gap-3 w-full min-w-0">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--surface)] border border-[var(--border)] px-2.5 py-2 rounded-xl shadow-sm">
+        <div className="flex flex-col w-full min-w-0 rounded-xl border border-[var(--border)] overflow-hidden shadow-sm bg-[var(--background)]">
+            {/* Toolbar — flush with editor (no gap, bottom corners squared via rounding of outer) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-2.5 py-1.5">
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] select-none">
                         <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: errorFeedback ? '#ef4444' : '#10b981' }}></span>
@@ -91,22 +92,31 @@ export default function SchemaJsonEditor({
                     <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">JSON Body</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                    <ToolBtn active onClick={triggerFind} icon="ph-magnifying-glass" label="Find" title="Search (Ctrl+F)" iconColor="text-sky-500" />
-                    <ToolBtn active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap" title="Toggle line wrapping" />
-                    <ToolBtn active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers" label="Numbers" title="Toggle line numbers" />
-                    <ToolBtn active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap" title="Toggle code minimap" />
+                    <Tip content="Search (Ctrl+F)">
+                        <ToolBtn active onClick={triggerFind} icon="ph-magnifying-glass" label="Find" iconColor="text-sky-500" />
+                    </Tip>
+                    <Tip content="Toggle line wrapping">
+                        <ToolBtn active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap" />
+                    </Tip>
+                    <Tip content="Toggle line numbers">
+                        <ToolBtn active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers" label="Numbers" />
+                    </Tip>
+                    <Tip content="Toggle code minimap">
+                        <ToolBtn active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap" />
+                    </Tip>
                     <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
-                    <button type="button" onClick={handleFormat}
-                        title="Prettify JSON"
-                        className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
-                        <i className="ph ph-wand text-[var(--primary)] text-[11px]"></i>
-                        <span className="hidden sm:inline">Prettify</span>
-                    </button>
+                    <Tip content="Prettify JSON">
+                        <button type="button" onClick={handleFormat}
+                            className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
+                            <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>
+                            <span className="hidden sm:inline">Prettify</span>
+                        </button>
+                    </Tip>
                 </div>
             </div>
 
             {/* Editor */}
-            <div className="flex flex-col relative w-full border border-[var(--border)] rounded-xl overflow-hidden shadow-sm bg-[var(--background)] animate-in fade-in min-w-0"
+            <div className="flex flex-col relative w-full min-w-0 animate-in fade-in"
                 style={{ height: 380 }}>
                 <Editor
                     height="100%"
@@ -142,7 +152,7 @@ export default function SchemaJsonEditor({
             </div>
 
             {errorFeedback && (
-                <div className="p-3 rounded-xl bg-[var(--method-delete)]/10 border border-[var(--method-delete)]/20 text-[11px] font-mono text-[var(--method-delete)] break-all leading-normal animate-in slide-in-from-top-1">
+                <div className="px-3 py-2 border-t border-[var(--method-delete)]/20 bg-[var(--method-delete)]/5 text-[11px] font-mono text-[var(--method-delete)] break-all leading-normal">
                     <i className="ph ph-warning mr-1.5 text-[var(--method-delete)]/80"></i>{errorFeedback}
                 </div>
             )}
@@ -150,16 +160,16 @@ export default function SchemaJsonEditor({
     );
 }
 
-function ToolBtn({ active, onClick, icon, label, title, iconColor }: {
-    active?: boolean; onClick: () => void; icon: string; label: string; title: string; iconColor?: string;
+function ToolBtn({ active, onClick, icon, label, iconColor }: {
+    active?: boolean; onClick: () => void; icon: string; label: string; iconColor?: string;
 }) {
     return (
-        <button type="button" onClick={onClick} title={title}
+        <button type="button" onClick={onClick}
             className={clsx(
-                'p-1.5 rounded-md bg-[var(--background)] border text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1',
-                active ? 'text-[var(--primary)] border-[var(--primary)]/30 hover:bg-[var(--surface-hover)]' : 'text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
+                'p-1.5 rounded-md bg-[var(--background)] border text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 hover:bg-[var(--surface-hover)]',
+                active ? 'text-[var(--primary)] border-[var(--primary)]/30' : 'text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-heading)]',
             )}>
-            <i className={clsx(`ph ${icon} text-[11px]`, iconColor)}></i>
+            <i className={clsx(`ph ${icon} text-[12px]`, iconColor)}></i>
             <span className="hidden sm:inline">{label}</span>
         </button>
     );

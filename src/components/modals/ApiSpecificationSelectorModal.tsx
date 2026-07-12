@@ -3,6 +3,7 @@ import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
 import {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
 import {normalizeOpenApiSpec} from '../../utils/openapi';
+import { Tip } from '../common/Tooltip';
 
 type ApiSpecificationSelectorModalProps = {
     isOpen: boolean;
@@ -175,15 +176,17 @@ export default function ApiSpecificationSelectorModal({
                             </p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        autoFocus
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
-                        aria-label="Close API specification selector"
-                    >
-                        <i className="ph ph-x"/>
-                    </button>
+                    <Tip content="Close">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            autoFocus
+                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                            aria-label="Close API specification selector"
+                        >
+                            <i className="ph ph-x"/>
+                        </button>
+                    </Tip>
                 </header>
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">

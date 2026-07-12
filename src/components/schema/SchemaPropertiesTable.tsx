@@ -188,7 +188,7 @@ export default function SchemaPropertiesTable({
                     <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider animate-pulse text-[var(--primary)] text-[var(--text-heading)]">
                         EXAMPLE
                     </th>
-                    <th className="px-3 w-full! py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
+                    <th className="px-3 w-full py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]" style={{ width: '100%' }}>
 
                         <div className={'flex justify-between'}>
                             <span>Description</span>

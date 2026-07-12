@@ -559,9 +559,9 @@ export default function ViewTab({
             if (Array.isArray(value)) {
                 const itemName = getSchemaDisplayName(schema?.items || schema, 'item');
                 const children = value.map(item => toXml(item, itemName, 1)).join('\n');
-                return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<response>\n${children}\n</response>`;
+                return `<?xml version="1.0" encoding="UTF-8"?>\n<response>\n${children}\n</response>`;
             }
-            return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n${toXml(value, getSchemaDisplayName(schema))}`;
+            return `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, getSchemaDisplayName(schema))}`;
         }
         if (c.includes('html')) return typeof value === 'object' ? `<pre>${escapeXml(JSON.stringify(value, null, 2))}</pre>` : String(value ?? '');
         if (c.includes('yaml') || c.includes('yml')) return jsYaml.dump(value);
@@ -781,21 +781,31 @@ export default function ViewTab({
 
                             return (
                                 <div key={code} id={`response-${code}`}
-                                    className="rounded-xl border overflow-hidden transition-all duration-150 animate-in fade-in bg-[var(--surface)] border-[var(--border)]">
+                                    className="rounded-xl border overflow-hidden transition-all duration-150 animate-in fade-in bg-[var(--surface)] border-[var(--border)] group/resp">
                                     <div onClick={() => toggleResponse(code)}
-                                        className="px-3 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between cursor-pointer group select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0">
+                                        className={clsx(
+                                            'px-3 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between cursor-pointer select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0'
+                                        )}>
                                         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 flex-wrap">
                                             <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded shrink-0 ${isSuccess ? 'bg-[var(--method-get)]/10 text-[var(--method-get)] border border-[var(--method-get)]/20' : 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] border border-[var(--method-delete)]/20'}`}>{code}</span>
                                             <span className="text-xs font-semibold leading-none text-[var(--text-heading)] truncate min-w-0 flex-1">
                                                 {resp.description || 'Response details'}
                                             </span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--text-muted)] shrink-0">
-                                            {!isMobile && (
-                                                <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity uppercase font-bold pr-1">
-                                                    {isCollapsed ? 'Expand' : 'Collapse'}
+                                            {/* Desktop: schema badges inline next to description */}
+                                            {!isMobile && schemaNames.length > 0 && (
+                                                <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] min-w-0 flex-wrap">
+                                                    {schemaNames.map((name, idx) => (
+                                                        <React.Fragment key={name}>
+                                                            {idx > 0 && <span className="opacity-50">|</span>}
+                                                            <span className="px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--background)] truncate max-w-[180px]">
+                                                                {humanizeSchemaName(name)}
+                                                            </span>
+                                                        </React.Fragment>
+                                                    ))}
                                                 </span>
                                             )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--text-muted)] shrink-0">
                                             <Tip content="Share link to this response">
                                                 <button onClick={(e) => handleShareResponse(code, resp, e)}
                                                     className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors cursor-pointer border border-transparent hover:border-[var(--primary)]/20">
@@ -805,21 +815,6 @@ export default function ViewTab({
                                             <i className={`ph transform transition-transform duration-100 ${isCollapsed ? 'ph-caret-down' : 'ph-caret-up'}`}></i>
                                         </div>
                                     </div>
-
-                                    {/* Schema badges on a new row (mobile-friendly) */}
-                                    {schemaNames.length > 0 && (
-                                        <div onClick={(e) => e.stopPropagation()} className="px-3 sm:px-5 -mt-1 pb-2 flex items-center gap-1 flex-wrap text-[10px] font-mono text-[var(--text-muted)]">
-                                            <span className="text-[9px] uppercase tracking-wider font-bold opacity-70 mr-1">Schema:</span>
-                                            {schemaNames.map((name, idx) => (
-                                                <React.Fragment key={name}>
-                                                    {idx > 0 && <span className="opacity-50">|</span>}
-                                                    <span className="px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--background)] truncate max-w-[160px]">
-                                                        {humanizeSchemaName(name)}
-                                                    </span>
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
-                                    )}
 
                                     {!isCollapsed && (
                                         <div className="p-3 sm:p-5 border-t space-y-4 animate-in fade-in border-[var(--border)] min-w-0">
@@ -955,7 +950,7 @@ export default function ViewTab({
             </div>
 
             {helpModalContent && (
-                <div className="fixed inset-0 flex items-center justify-center p-4 z-[2000] backdrop-blur-[2px]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) setHelpModalContent(null); }}>
+                <div className="fixed inset-0 flex items-center justify-center p-4 z-[2000] backdrop-blur-[2px] animate-in fade-in duration-150" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) setHelpModalContent(null); }}>
                     <div className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
                         <div className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">
@@ -979,7 +974,7 @@ export default function ViewTab({
             )}
 
             {exampleModalContent && (
-                <div className="fixed inset-0 flex items-center justify-center p-4 z-[3000] backdrop-blur-[2px]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) setExampleModalContent(null); }}>
+                <div className="fixed inset-0 flex items-center justify-center p-4 z-[3000] backdrop-blur-[2px] animate-in fade-in duration-150" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onMouseDown={(e) => { if (e.target === e.currentTarget) setExampleModalContent(null); }}>
                     <div className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
                         <div className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">

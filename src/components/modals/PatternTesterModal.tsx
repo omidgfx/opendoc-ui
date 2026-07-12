@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react';
+import { Tip } from '../common/Tooltip';
 
 interface PatternTesterModalProps {
     pattern: string;
@@ -39,12 +40,12 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center p-4 z-[9999] backdrop-blur-[2px]"
+            className="fixed inset-0 flex items-center justify-center p-4 z-[9999] backdrop-blur-[2px] animate-in fade-in duration-150"
             style={{backgroundColor: 'rgba(0,0,0,0.5)'}}
             onClick={onClose}>
 
             <div
-                className="w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)]"
+                className="w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] animate-in zoom-in-95 duration-200"
 
                 onClick={(e) => e.stopPropagation()}>
 
@@ -55,13 +56,13 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                     <span className="font-bold text-sm tracking-wide text-[var(--text-heading)]">
                         <i className="ph ph-vial mr-1.5 text-[var(--primary)]"></i> Regex Pattern Tester
                     </span>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors text-[var(--text-muted)]">
-
-
-                        <i className="ph ph-x"></i>
-                    </button>
+                    <Tip content="Close">
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors text-[var(--text-muted)]">
+                            <i className="ph ph-x"></i>
+                        </button>
+                    </Tip>
                 </div>
 
                 <div className="p-6 space-y-4 text-xs font-sans">

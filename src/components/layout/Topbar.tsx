@@ -62,7 +62,7 @@ export default function Topbar({
     return (
         <>
             <div className="h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <Tip content={isMobile ? 'Open menu' : (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar')} placement="bottom">
                         <button
                             onClick={isMobile ? onOpenMobileSidebar : onToggleCollapse}
@@ -116,7 +116,7 @@ export default function Topbar({
 
                 {/* Title (mobile center) */}
                 {isMobile && !showMobileSearch && (
-                    <div className="flex-1 min-w-0 text-center px-2">
+                    <div className="flex-1 min-w-0 px-2">
                         <div className="text-[11px] text-[var(--text-muted)] font-medium truncate">{title}</div>
                     </div>
                 )}

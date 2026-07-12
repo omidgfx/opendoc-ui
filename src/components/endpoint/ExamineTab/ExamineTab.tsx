@@ -304,7 +304,7 @@ export default function ExamineTab({
     };
 
     return (
-        <div className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin max-w-5xl">
+        <div className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0">
             {/* Action header */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 border-[var(--border)]">
                 <div>

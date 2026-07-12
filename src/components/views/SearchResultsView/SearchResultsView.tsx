@@ -210,8 +210,8 @@ export default function SearchResultsView({
     };
 
     return (
-        <div className="flex-1 w-full h-full overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 scrollbar-thin select-text font-sans bg-[var(--background)] min-w-0">
-            <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-6 md:gap-8 items-start min-w-0">
+        <div className="flex-1 w-full h-full overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 scrollbar-thin select-text font-sans bg-[var(--surface)] min-w-0">
+            <div className="w-full flex flex-col md:flex-row gap-6 md:gap-8 items-start min-w-0">
                 {/* Mobile header */}
                 <div className="w-full flex md:hidden items-center justify-between gap-2 shrink-0">
                     <p className="text-xs tracking-wide text-[var(--text-muted)] truncate">
@@ -220,12 +220,13 @@ export default function SearchResultsView({
                     <div className="flex items-center gap-1.5 shrink-0">
                         <Tip content="Share this search">
                             <button onClick={handleShareSearch}
-                                className="size-8 rounded-lg border flex items-center justify-center cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] border-[var(--primary)] hover:opacity-90">
-                                <i className="ph ph-share-network text-[13px]"></i>
+                                    className="size-8 text-[10px] font-bold rounded-lg border flex items-center justify-center cursor-pointer border-[var(--border)] text-[var(--text-heading)] bg-[var(--surface)]">
+
+                            <i className="ph ph-share-network text-[13px]"></i>
                             </button>
                         </Tip>
                         <button onClick={() => setFiltersModalOpen(true)}
-                            className="px-3 py-1.5 text-[10px] font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer border-[var(--border)] text-[var(--text-heading)] bg-[var(--surface)]">
+                            className="px-3 h-8 text-[10px] font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer border-[var(--border)] text-[var(--text-heading)] bg-[var(--surface)]">
                             <i className="ph ph-funnel text-[14px]"></i> Filters
                             {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]"></span>}
                         </button>
@@ -240,17 +241,16 @@ export default function SearchResultsView({
                         </p>
                         <Tip content="Share this search">
                             <button onClick={handleShareSearch}
-                                className="h-7 px-2.5 rounded-lg border text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] border-[var(--primary)] hover:opacity-90">
+                                    className="px-3 h-8 text-[10px] font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer border-[var(--border)] text-[var(--text-heading)] bg-[var(--surface)]">
                                 <i className="ph ph-share-network text-[12px]"></i> Share Search
                             </button>
                         </Tip>
                     </div>
 
                     {searchResults.length > 0 ? (
-                        <div className="space-y-8 sm:space-y-10 w-full max-w-full">
-                            {searchResults.map(({ path, method, operation, isProtected }) =>
-                                <div key={`${method}-${path}`} className="animate-fade-in min-w-0 w-full">
-                                    <div className="flex items-center gap-2 mb-0.5 group min-w-0 w-full">
+                        <div className="space-y-8 sm:space-y-10 w-full max-w-full">                            {searchResults.map(({ path, method, operation, isProtected }) =>
+                                <div key={`${method}-${path}`} className="animate-fade-in min-w-0 w-full max-w-lg">
+                                    <div className="flex items-center gap-2 mb-0.5 group min-w-0 w-fit">
                                         <div className="inline-flex items-center gap-2 cursor-pointer flex-1 min-w-0"
                                             onClick={() => onSelectEndpoint(path, method)}>
                                             <MethodBadge method={method} size="xs" className="tracking-wide shrink-0" />
@@ -258,12 +258,6 @@ export default function SearchResultsView({
                                                 {operation.summary || path}
                                             </h3>
                                         </div>
-                                        <Tip content="Share endpoint">
-                                            <button onClick={(e) => handleShareEndpoint(path, method, operation.summary, e)}
-                                                className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-all cursor-pointer shrink-0">
-                                                <i className="ph ph-share-network text-[12px]"></i>
-                                            </button>
-                                        </Tip>
                                         <div className="flex items-center gap-1 shrink-0">
                                             {operation.deprecated && (
                                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold text-[var(--method-put)] bg-[var(--method-put)]/10 border-[var(--method-put)]/20 select-none">
@@ -276,6 +270,12 @@ export default function SearchResultsView({
                                                 </Tip>
                                             )}
                                         </div>
+                                        <Tip content="Share endpoint">
+                                            <button onClick={(e) => handleShareEndpoint(path, method, operation.summary, e)}
+                                                    className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-all cursor-pointer shrink-0">
+                                                <i className="ph ph-share-network text-[12px]"></i>
+                                            </button>
+                                        </Tip>
                                     </div>
 
                                     <div className="text-[11px] leading-tight mb-1.5 min-w-0 text-[var(--text-muted)]">

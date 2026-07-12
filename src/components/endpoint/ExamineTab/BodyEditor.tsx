@@ -200,10 +200,10 @@ export default function BodyEditor(props: BodyEditorProps) {
 
                             return (
                                 <div key={pName} className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-baseline">
-                                    <span className="text-xs font-semibold truncate sm:col-span-2" title={pName}>
+                                    <span className="text-xs font-semibold truncate sm:col-span-2 md:col-span-1" title={pName}>
                                         {pName} {isRequired && <span className="text-[var(--method-delete)]">*</span>}
                                     </span>
-                                    <div className="sm:col-span-4 space-y-1.5 mb-4">
+                                    <div className="sm:col-span-4 md:col-span-5 space-y-1.5 mb-4">
                                         {resolvedP.description && <Markdown text={resolvedP.description} className="mb-2" />}
                                         <div className="flex flex-wrap items-center justify-between gap-1 text-[9.5px] font-mono select-none px-1">
                                             <div className="flex items-center gap-1.5 flex-wrap">

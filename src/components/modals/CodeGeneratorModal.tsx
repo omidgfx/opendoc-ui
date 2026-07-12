@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
+import { Tip } from '../common/Tooltip';
 
 interface CodeGeneratorModalProps {
     isOpen: boolean;
@@ -194,6 +195,40 @@ class Program
  Console.WriteLine(responseBody);
  }
 }`;
+            case 'angular': {
+                const bodySnippet = ['post', 'put', 'patch'].includes(method.toLowerCase()) ? `,
+  body: {} // replace with your request payload` : '';
+                return `// Angular HttpClient example
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  private baseUrl = '${serverUrl}';
+
+  constructor(private http: HttpClient) {}
+
+  callEndpoint(): Observable<any> {
+    const headers = new HttpHeaders({
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'${activeAuth.activeScheme === 'bearer' && activeAuth.bearerToken ? `,
+      'Authorization': 'Bearer ${activeAuth.bearerToken}'` : ''}
+    });
+
+    return this.http.${method.toLowerCase()}<any>(
+      \`\${this.baseUrl}${cleanPath}\`${bodySnippet},
+      { headers, withCredentials: true }
+    );
+  }
+}
+
+// Usage in a component:
+// this.apiService.callEndpoint().subscribe({
+//   next: (data) => console.log(data),
+//   error: (err) => console.error(err)
+// });`;
+            }
             default:
                 return '';
         }
@@ -212,6 +247,8 @@ class Program
                 return 'php';
             case 'csharp':
                 return 'csharp';
+            case 'angular':
+                return 'typescript';
             default:
                 return 'javascript';
         }
@@ -244,13 +281,13 @@ class Program
                         </div>
                     </div>
 
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] transition-all cursor-pointer text-[var(--text-muted)]">
-
-
-                        <i className="ph ph-x"></i>
-                    </button>
+                    <Tip content="Close">
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] transition-all cursor-pointer text-[var(--text-muted)]">
+                            <i className="ph ph-x"></i>
+                        </button>
+                    </Tip>
                 </div>
 
                 {/* Modal Body */}
@@ -266,6 +303,7 @@ class Program
                                 {id: 'curl', name: 'cURL'},
                                 {id: 'js-fetch', name: 'JS Fetch'},
                                 {id: 'js-axios', name: 'Axios'},
+                                {id: 'angular', name: 'Angular'},
                                 {id: 'laravel', name: 'Laravel'},
                                 {id: 'php', name: 'PHP'},
                                 {id: 'python', name: 'Python'},
