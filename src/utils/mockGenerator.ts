@@ -42,7 +42,15 @@ export function generateMock(
     }
     if (s.default !== undefined) return s.default;
     if (s.additionalProperties) {
-        return { property1: generateMock(s.additionalProperties, spec, depth + 1, new Set(visited)) };
+        // Map / dictionary type (object defined via `additionalProperties`).
+        const sample: any = {};
+        if (s.properties) {
+            Object.entries(s.properties).forEach(([k, v]: [string, any]) => {
+                sample[k] = generateMock(v, spec, depth + 1, new Set(visited));
+            });
+        }
+        sample.key = generateMock(s.additionalProperties, spec, depth + 1, new Set(visited));
+        return sample;
     }
     if (s.allOf) {
         let merged: any = {};

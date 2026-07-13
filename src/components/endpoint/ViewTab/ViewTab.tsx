@@ -39,6 +39,25 @@ const getRefName = (refStr: string): string => {
     return parts[parts.length - 1];
 };
 
+/** Human-readable type label for the value schema of a Map / dictionary
+ *  (i.e. an `object` defined only through `additionalProperties`). */
+const mapValueLabel = (additionalProperties: any): string => {
+    if (!additionalProperties) return 'any';
+    if (additionalProperties.$ref) return getRefName(additionalProperties.$ref);
+    const t = Array.isArray(additionalProperties.type)
+        ? additionalProperties.type.find((x: string) => x !== 'null')
+        : additionalProperties.type;
+    if (t === 'array') {
+        if (additionalProperties.items?.$ref) return `Array<${getRefName(additionalProperties.items.$ref)}>`;
+        const it = Array.isArray(additionalProperties.items?.type)
+            ? additionalProperties.items.type.find((x: string) => x !== 'null')
+            : additionalProperties.items?.type;
+        return `Array<${it || 'any'}>`;
+    }
+    if (t) return additionalProperties.format ? `${t} (${additionalProperties.format})` : `${t}`;
+    return 'any';
+};
+
 const getPatternFromParam = (param: any, spec: OpenApiSpec | null): string | null => {
     if (!param) return null;
     if (param.pattern) return param.pattern;
@@ -183,6 +202,13 @@ export default function ViewTab({
                 </Tip>
             );
         }
+        if (prop.type === 'object' && !prop.properties && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
+            return (
+                <span className="font-mono text-xs text-[var(--text)]">
+                    object <span className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
+                </span>
+            );
+        }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             return (
                 <div className="flex flex-col gap-1.5 items-start">
@@ -283,6 +309,13 @@ export default function ViewTab({
                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                     <i className="ph ph-diamonds-four text-[12px] mr-1"></i> {refName}
                 </button>
+            );
+        }
+        if (prop.type === 'object' && !prop.properties && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
+            return (
+                <span className="font-mono text-xs text-[var(--text)]">
+                    object <span className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
+                </span>
             );
         }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
@@ -393,6 +426,11 @@ export default function ViewTab({
         }
         if (sObj.oneOf && Array.isArray(sObj.oneOf)) sObj.oneOf.forEach((sub: any) => { props = { ...props, ...resolveProperties(sub, prefix, new Set(visited)) }; });
         if (sObj.anyOf && Array.isArray(sObj.anyOf)) sObj.anyOf.forEach((sub: any) => { props = { ...props, ...resolveProperties(sub, prefix, new Set(visited)) }; });
+        // Map / dictionary types: object defined only via `additionalProperties` (no named `properties`).
+        if (!sObj.properties && sObj.additionalProperties && typeof sObj.additionalProperties === 'object') {
+            const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
+            props[mapKey] = sObj.additionalProperties;
+        }
         return props;
     };
 
@@ -472,6 +510,13 @@ export default function ViewTab({
             if (s.anyOf && Array.isArray(s.anyOf) && s.anyOf.length > 0) return generateMock(s.anyOf[0], depth + 1, new Set(visited));
             const typeVal = s.type;
             const resolvedType = Array.isArray(typeVal) ? typeVal.find(t => t !== 'null') : typeVal;
+            // Map / dictionary types: object defined through `additionalProperties`.
+            if ((resolvedType === 'object' || resolvedType === undefined) && s.additionalProperties && typeof s.additionalProperties === 'object') {
+                const obj: any = {};
+                if (s.properties) Object.entries(s.properties).forEach(([k, v]: [string, any]) => { obj[k] = generateMock(v, depth + 1, new Set(visited)); });
+                obj.key = generateMock(s.additionalProperties, depth + 1, new Set(visited));
+                return obj;
+            }
             if (resolvedType === 'object' || s.properties) {
                 const obj: any = {};
                 if (s.properties) Object.entries(s.properties).forEach(([k, v]: [string, any]) => { obj[k] = generateMock(v, depth + 1, new Set(visited)); });

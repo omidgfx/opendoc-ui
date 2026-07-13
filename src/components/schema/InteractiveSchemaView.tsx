@@ -126,6 +126,12 @@ export default function InteractiveSchemaView({
                 });
             }
 
+            // Map / dictionary types: object defined only via `additionalProperties`.
+            if (!sObj.properties && sObj.additionalProperties && typeof sObj.additionalProperties === 'object') {
+                const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
+                props[mapKey] = sObj.additionalProperties;
+            }
+
             return props;
         };
 

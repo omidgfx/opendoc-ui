@@ -185,6 +185,12 @@ export default function ModalsStack({
             });
         }
 
+        // Map / dictionary types: object defined only via `additionalProperties`.
+        if (!schema.properties && schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+            const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
+            props[mapKey] = schema.additionalProperties;
+        }
+
         return props;
     };
 

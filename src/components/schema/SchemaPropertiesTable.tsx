@@ -36,6 +36,23 @@ export default function SchemaPropertiesTable({
 
     const schemaName = getSchemaName();
 
+    const mapValueLabel = (additionalProperties: any): string => {
+        if (!additionalProperties) return 'any';
+        if (additionalProperties.$ref) return getRefName(additionalProperties.$ref);
+        const t = Array.isArray(additionalProperties.type)
+            ? additionalProperties.type.find((x: string) => x !== 'null')
+            : additionalProperties.type;
+        if (t === 'array') {
+            if (additionalProperties.items?.$ref) return `Array<${getRefName(additionalProperties.items.$ref)}>`;
+            const it = Array.isArray(additionalProperties.items?.type)
+                ? additionalProperties.items.type.find((x: string) => x !== 'null')
+                : additionalProperties.items?.type;
+            return `Array<${it || 'any'}>`;
+        }
+        if (t) return additionalProperties.format ? `${t} (${additionalProperties.format})` : `${t}`;
+        return 'any';
+    };
+
     const renderSchemaType = (prop: any): React.ReactNode => {
         if (!prop) {
             return <span className="text-xs font-mono opacity-50">any</span>;
@@ -59,6 +76,14 @@ export default function SchemaPropertiesTable({
                         <div className={'max-w-32 truncate'}>{refName}</div>
                     </button>
                 </Tip>);
+        }
+
+        if (prop.type === 'object' && !prop.properties && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
+            return (
+                <span className="font-mono text-xs text-[var(--text)]">
+                    object <span className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
+                </span>
+            );
         }
 
         if (prop.oneOf && Array.isArray(prop.oneOf)) {

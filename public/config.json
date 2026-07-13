@@ -1,6 +1,10 @@
 {
   "theme": "default",
   "parsables": {
+    "Player API": {
+      "theme": "default",
+      "url": "https://api-player.hamvarz.local/docs-json?api-docs.json"
+    },
     "Pet Store": {
       "theme": "default",
       "url": "/specs/pet-store.json"
