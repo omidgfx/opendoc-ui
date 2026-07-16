@@ -649,7 +649,7 @@ export default function ViewTab({
             <div className="p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
-                        <MethodBadge method={method} size="md" className="rounded-full px-3 py-1 shrink-0" />
+                        <MethodBadge method={method} size="md" className="rounded-full px-3 py-1 shrink-0 w-16" />
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             <span className="font-mono text-sm font-bold truncate tracking-tight break-all text-[var(--text-heading)]">{path}</span>
                             <Tip content="Copy endpoint path">
