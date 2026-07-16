@@ -54,7 +54,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
 
 
                     <span className="font-bold text-sm tracking-wide text-[var(--text-heading)]">
-                        <i className="ph ph-vial mr-1.5 text-[var(--primary)]"></i> Regex Pattern Tester
+                        <i className="ph ph-dna mr-1.5 text-[var(--primary)]"></i> Regex Pattern Tester
                     </span>
                     <Tip content="Close">
                         <button

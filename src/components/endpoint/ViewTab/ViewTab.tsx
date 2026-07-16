@@ -751,7 +751,7 @@ export default function ViewTab({
                                                                     <Tip content="Test this regex pattern">
                                                                         <button type="button" onClick={() => setPatternToTest(pattern)}
                                                                             className="px-1 py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 hover:underline inline-flex items-center gap-0.5 rounded cursor-pointer transition-colors">
-                                                                            <i className="ph ph-vial text-[7px]"></i> Test
+                                                                            <i className="ph ph-dna text-[7px]"></i> Test
                                                                         </button>
                                                                     </Tip>
                                                                 </div>

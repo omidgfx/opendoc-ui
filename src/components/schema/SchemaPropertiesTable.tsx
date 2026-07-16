@@ -258,7 +258,7 @@ export default function SchemaPropertiesTable({
                     return (
                         <tr key={name}
                             className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]">
-                            <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)]">
+                            <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
                                 <div className={'flex items-start gap-1'}>
                                     <span className="break-all">{name}</span>
                                     {isRequired && (
@@ -293,7 +293,7 @@ export default function SchemaPropertiesTable({
                                                 onClick={() => onTestPattern(pattern)}
                                                 className="px-1 whitespace-nowrap py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 hover:underline inline-flex items-center gap-0.5 rounded cursor-pointer transition-colors">
 
-                                                <i className="ph ph-vial text-[8px]"></i> Test Pattern
+                                                <i className="ph ph-dna text-[8px]"></i> Test Pattern
                                             </button>
                                         </div>
                                     }
@@ -307,7 +307,7 @@ export default function SchemaPropertiesTable({
                                                 type="button"
                                                 onClick={() => onViewExample(name, pVal)}
                                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0">
-                                                <i className="ph ph-vial text-[9px]"></i> View Example
+                                                <i className="ph ph-dna text-[9px]"></i> View Example
                                             </button>
                                         </Tip>
                                     )}

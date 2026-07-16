@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import CodeViewer from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import Markdown from '../../common/Markdown';
@@ -7,8 +7,8 @@ import CustomDropdown from '../../common/CustomDropdown';
 import ShareModal from '../ShareModal';
 import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
-import { Tip } from '../../common/Tooltip';
-import { generateSingleSchemaFile } from '../../../utils/schemaExport';
+import {Tip} from '../../common/Tooltip';
+import {generateSingleSchemaFile} from '../../../utils/schemaExport';
 
 interface ModalsStackProps {
     modals: Array<{ schemaName: string; schema: any; }>;
@@ -508,6 +508,40 @@ export default function ModalsStack({
         return `${indent}<${safeName}>${escapeXml(value)}</${safeName}>`;
     };
 
+// Convert a JS value into a PHP short-array literal: ['key' => 'value', ...]
+    const toPhpArray = (value: any, indentLevel = 0): string => {
+        const pad = (n: number) => '    '.repeat(n); // 4-space indentation
+
+        if (value === null || value === undefined) return 'null';
+        if (typeof value === 'string') {
+            const escaped = value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `'${escaped}'`;
+        }
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        if (typeof value === 'number') return String(value);
+        if (typeof value === 'bigint') return String(value);
+
+        if (Array.isArray(value)) {
+            if (value.length === 0) return '[]';
+            const items = value.map(
+                (v) => `${pad(indentLevel + 1)}${toPhpArray(v, indentLevel + 1)}`
+            );
+            return `[\n${items.join(',\n')}\n${pad(indentLevel)}]`;
+        }
+
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            if (keys.length === 0) return '[]';
+            const items = keys.map((k) => {
+                const escapedKey = k.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `${pad(indentLevel + 1)}'${escapedKey}' => ${toPhpArray(value[k], indentLevel + 1)}`;
+            });
+            return `[\n${items.join(',\n')}\n${pad(indentLevel)}]`;
+        }
+
+        return 'null';
+    };
+
     const formatSimulationExample = (schema: any, schemaName: string, encoding: string) => {
         const json = getMockSnippet(schema);
         let value: any;
@@ -523,6 +557,9 @@ export default function ModalsStack({
         if (encoding === 'application/yaml') {
             return jsYaml.dump(value, {noRefs: true, lineWidth: 100});
         }
+        if (encoding === 'application/x-php-array') {
+            return toPhpArray(value);
+        }
         return typeof value === 'string' ? JSON.stringify(value, null, 2) : JSON.stringify(value, null, 2);
     };
 
@@ -532,9 +569,13 @@ export default function ModalsStack({
     const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
     const activeTab = activeTabs[activeModalIndex] || 'table';
     const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
-    const simulationLanguage = activeExampleEncoding === 'application/xml' ?
-        'xml' :
-        activeExampleEncoding === 'application/yaml' ? 'yaml' : 'json';
+    const simulationLanguage = activeExampleEncoding === 'application/xml'
+        ? 'xml'
+        : activeExampleEncoding === 'application/yaml'
+            ? 'yaml'
+            : activeExampleEncoding === 'application/x-php-array'
+                ? 'php'
+                : 'json';
 
     const setTab = (tab: 'table' | 'example' | 'enum') => {
         setActiveTabs((prev) => ({
@@ -652,7 +693,9 @@ export default function ModalsStack({
                         </div>
                         <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
                             <i className="ph ph-keyboard"></i>
-                            <span>Press <kbd className="px-1 py-0.5 rounded border text-[9px] bg-[var(--surface-hover)] border-[var(--border)]">ESC</kbd> to {modals.length > 1 ? 'go back' : 'close'}</span>
+                            <span>Press <kbd
+                                className="px-1 py-0.5 rounded border text-[9px] bg-[var(--surface-hover)] border-[var(--border)]">ESC</kbd> to {modals.length > 1 ? 'go back' : 'close'}
+                            </span>
                         </div>
                     </div>
 
@@ -693,7 +736,7 @@ export default function ModalsStack({
                                             'hover:bg-[var(--surface-hover)]'
                                     )}>
 
-                                    <i className="ph ph-vial mr-1 text-[10px]"/> Unified Simulation Example
+                                    <i className="ph ph-dna mr-1 text-[10px]"/> Unified Simulation Example
                                 </button>
                             </div>
 
@@ -712,8 +755,9 @@ export default function ModalsStack({
                                         options={[
                                             {value: 'application/json', label: 'application/json'},
                                             {value: 'application/xml', label: 'application/xml'},
-                                            {value: 'application/yaml', label: 'application/yaml'}]
-                                        }
+                                            {value: 'application/yaml', label: 'application/yaml'},
+                                            {value: 'application/x-php-array', label: 'PHP array'}
+                                        ]}
                                         icon="ph ph-code-block text-[13px]"
                                         className="min-w-[170px]"/>
 
