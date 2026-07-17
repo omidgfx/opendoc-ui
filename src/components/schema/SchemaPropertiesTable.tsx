@@ -268,7 +268,7 @@ export default function SchemaPropertiesTable({
                                     )}
                                 </div>
                             </td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-3 py-2.5 whitespace-nowrap">
                                 <div className="flex flex-col gap-1">
                                     <div>{renderSchemaType(pVal)}</div>
                                     {pVal.format &&
