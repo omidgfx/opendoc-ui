@@ -59,6 +59,7 @@ export default function App() {
     const [spec, setSpec] = useState<OpenApiSpec | null>(null);
     const [isLoadingSpec, setIsLoadingSpec] = useState(false);
     const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+    const loadSpecSeq = useRef(0);
 
     // Navigation
     const [searchQuery, setSearchQuery] = useState('');
@@ -172,25 +173,43 @@ export default function App() {
     }, [activeTheme, currentThemeMode]);
 
     // ---------- Load spec ----------
-    const loadSpec = async (parsable: any) => {
+    const loadSpec = async (parsableKey: string, parsable: any) => {
+        const seq = ++loadSpecSeq.current;
         setIsLoadingSpec(true);
+        setSpec(null);
+
         try {
             let obj: OpenApiSpec | null = null;
-            if (parsable.isCustom && parsable.rawSpec) obj = parseSpecDraft(parsable.rawSpec);
-            else if (parsable.url) {
-                const r = await fetch(parsable.url);
+
+            if (parsable.isCustom === true && parsable.rawSpec) {
+                obj = parseSpecDraft(parsable.rawSpec);
+            } else if (parsable.url) {
+                const r = await fetch(parsable.url, { cache: 'no-store' });
                 if (!r.ok) throw new Error(`Failed to fetch ${parsable.url}`);
                 obj = parseSpecDraft(await r.text());
             }
+
+            // If the user switched parsables while this request was in-flight,
+            // ignore this stale response. Without this guard an older request can
+            // overwrite the currently selected spec, making the UI appear as if it
+            // does not understand the selected parsable.
+            if (seq !== loadSpecSeq.current) return;
+
             setSpec(obj);
             if (obj) setSelectedServer(obj.servers?.[0]?.url || 'https://api.example.com');
-        } catch (e) { console.error('Failed to load spec', e); setSpec(null); }
-        finally { setIsLoadingSpec(false); }
+        } catch (e) {
+            if (seq !== loadSpecSeq.current) return;
+            console.error(`Failed to load spec for parsable '${parsableKey}'`, e);
+            setSpec(null);
+        } finally {
+            if (seq === loadSpecSeq.current) setIsLoadingSpec(false);
+        }
     };
+
     useEffect(() => {
         if (!selectedParsableKey) return;
         const p = parsables[selectedParsableKey];
-        if (p) loadSpec(p);
+        if (p) loadSpec(selectedParsableKey, p);
         // eslint-disable-next-line
     }, [selectedParsableKey, parsables]);
 
@@ -276,7 +295,15 @@ export default function App() {
                 if (data.parsables) {
                     const loaded: ParsableConfig = {};
                     Object.entries(data.parsables).forEach(([k, v]: [string, any]) => {
-                        loaded[k] = { theme: v.theme || 'Default Slate', url: v.url || '', title: v.title || k, isCustom: v.isCustom !== false, rawSpec: v.rawSpec || '' };
+                        loaded[k] = {
+                            theme: v.theme || 'Default Slate',
+                            url: v.url || '',
+                            title: v.title || k,
+                            // A parsable is remote by default. It is custom only when
+                            // explicitly marked as custom or when rawSpec is provided.
+                            isCustom: v.isCustom === true || !!v.rawSpec,
+                            rawSpec: v.rawSpec || '',
+                        };
                     });
                     setParsables(loaded);
                     let initialKey = '';
@@ -375,8 +402,8 @@ export default function App() {
         const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
         if (searchQuery.trim().length || hasFilters) {
             return <SearchResultsView spec={spec} searchQuery={searchQuery} onSelectEndpoint={handleSearchResult}
-                selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
-                selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
+                                      selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
+                                      selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
         }
         if (selectedEndpoint) {
             const po = spec.paths[selectedEndpoint.path];
@@ -396,14 +423,14 @@ export default function App() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <div className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">
                                         <button onClick={() => setSelectedTab('docs')}
-                                            className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                selectedTab === 'docs' ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
+                                                className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                                    selectedTab === 'docs' ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
                                             <i className="ph ph-book-open-text text-[16px]"></i>
                                             <span className="hidden sm:inline">View Documentation</span><span className="sm:hidden">Docs</span>
                                         </button>
                                         <button onClick={() => setSelectedTab('examine')}
-                                            className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                selectedTab === 'examine' ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
+                                                className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                                    selectedTab === 'examine' ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
                                             <i className="ph ph-flask text-[16px]"></i>
                                             <span className="hidden sm:inline">API Runner</span><span className="sm:hidden">Run</span>
                                         </button>
@@ -411,7 +438,7 @@ export default function App() {
                                     <div className="h-5 w-[1px] bg-[var(--border)] hidden sm:block"></div>
                                     <Tip content="Generate Fetch/Axios snippets and TypeScript models">
                                         <button onClick={() => setCodeGenEndpoint(selectedEndpoint)}
-                                            className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0">
+                                                className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0">
                                             <i className="ph ph-code text-[16px]"></i>
                                         </button>
                                     </Tip>
@@ -420,16 +447,16 @@ export default function App() {
                             <div className="flex-1 overflow-hidden h-full min-h-0">
                                 {selectedTab === 'docs' ? (
                                     <ViewTab key={`${selectedEndpoint.path}-${selectedEndpoint.method}`} spec={spec}
-                                        path={selectedEndpoint.path} method={selectedEndpoint.method} operation={op}
-                                        onOpenSchemaModal={handlePushSchema} activeAuth={activeAuth}
-                                        activeResponseCode={activeResponseCode} onSelectResponseCode={setActiveResponseCode} />
+                                             path={selectedEndpoint.path} method={selectedEndpoint.method} operation={op}
+                                             onOpenSchemaModal={handlePushSchema} activeAuth={activeAuth}
+                                             activeResponseCode={activeResponseCode} onSelectResponseCode={setActiveResponseCode} />
                                 ) : (
                                     <ExamineTab spec={spec} path={selectedEndpoint.path} method={selectedEndpoint.method}
-                                        operation={op} activeAuth={activeAuth} selectedServer={selectedServer}
-                                        parsableKey={selectedParsableKey} themeMode={currentThemeMode}
-                                        initialResponse={current}
-                                        onResponseChange={(r) => setExamineResponses(prev => ({ ...prev, [key]: r }))}
-                                        onClearResponse={() => setExamineResponses(prev => { const n = { ...prev }; delete n[key]; return n; })} />
+                                                operation={op} activeAuth={activeAuth} selectedServer={selectedServer}
+                                                parsableKey={selectedParsableKey} themeMode={currentThemeMode}
+                                                initialResponse={current}
+                                                onResponseChange={(r) => setExamineResponses(prev => ({ ...prev, [key]: r }))}
+                                                onClearResponse={() => setExamineResponses(prev => { const n = { ...prev }; delete n[key]; return n; })} />
                                 )}
                             </div>
                         </div>
@@ -440,11 +467,11 @@ export default function App() {
         if (showSchemaExplorer) return <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={handlePushSchema} parsableKey={selectedParsableKey} />;
         if (showAbout) return <AboutView specTitle={spec?.info?.title} parsableKey={selectedParsableKey} />;
         return <HomeView spec={spec} selectedEndpoint={selectedEndpoint} onSelectEndpoint={handleSelectEndpoint}
-            selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
-            onDeepLinkResponse={(path, method, code) => {
-                setSelectedEndpoint({ path, method }); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
-                setSelectedTab('docs'); setActiveResponseCode(code);
-            }} />;
+                         selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
+                         onDeepLinkResponse={(path, method, code) => {
+                             setSelectedEndpoint({ path, method }); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
+                             setSelectedTab('docs'); setActiveResponseCode(code);
+                         }} />;
     };
 
     const isSidebarCollapsed = isMobile ? false : desktopCollapsed;
@@ -515,14 +542,14 @@ export default function App() {
                 )}
                 {codeGenEndpoint && spec && (
                     <CodeGeneratorModal isOpen={!!codeGenEndpoint} onClose={() => setCodeGenEndpoint(null)}
-                        spec={spec} path={codeGenEndpoint.path} method={codeGenEndpoint.method}
-                        operation={(spec.paths[codeGenEndpoint.path] as any)?.[codeGenEndpoint.method] || {}}
-                        activeAuth={activeAuth} />
+                                        spec={spec} path={codeGenEndpoint.path} method={codeGenEndpoint.method}
+                                        operation={(spec.paths[codeGenEndpoint.path] as any)?.[codeGenEndpoint.method] || {}}
+                                        activeAuth={activeAuth} />
                 )}
                 <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} spec={spec} activeAuth={activeAuth} onSave={setActiveAuth} />
                 <ThemeSelectorModal isOpen={showThemeModal} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode}
-                    onSelectTheme={(t) => { setSelectedThemeName(t); }} onToggleThemeMode={() => setCurrentThemeMode(m => m === 'light' ? 'dark' : 'light')}
-                    onClose={() => setShowThemeModal(false)} />
+                                    onSelectTheme={(t) => { setSelectedThemeName(t); }} onToggleThemeMode={() => setCurrentThemeMode(m => m === 'light' ? 'dark' : 'light')}
+                                    onClose={() => setShowThemeModal(false)} />
             </div>
         </TooltipProvider>
     );
