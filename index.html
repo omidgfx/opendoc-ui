@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>OpenDoc UI</title>
+    <link
+            rel="stylesheet"
+            type="text/css"
+            href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"
+    />
+    <link
+            rel="stylesheet"
+            type="text/css"
+            href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"
+    />
+
+    <link
+            rel="stylesheet"
+            type="text/css"
+            href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css"
+    />
+    <script>
+        // Seed a few core colors before React mounts so a dark OS doesn't flash a white page.
+        (function () {
+            var root = document.documentElement;
+            var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (dark) {
+                root.style.setProperty('--background', '#181a20');
+                root.style.setProperty('--surface', '#21242d');
+                root.style.setProperty('--navbar', '#21242d');
+                root.style.setProperty('--text', '#abb2bf');
+            } else {
+                root.style.setProperty('--background', '#fbfbfb');
+                root.style.setProperty('--surface', '#ffffff');
+                root.style.setProperty('--navbar', '#ffffff');
+                root.style.setProperty('--text', '#4a4d55');
+            }
+        })();
+    </script>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
