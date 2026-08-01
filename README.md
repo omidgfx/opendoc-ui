@@ -15,10 +15,9 @@ system. No backend required.
 - [Features](#features)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
-  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
-  - [Which mode wins?](#which-mode-wins)
+    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [Local history](#local-history)
 - [Theme system](#theme-system)
@@ -28,7 +27,7 @@ system. No backend required.
 - [localStorage keys](#localstorage-keys)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
-- [Troubleshooting & FAQ](#troubleshooting--faq)
+- [FAQ](#faq)
 - [License](#license)
 
 ---
@@ -77,6 +76,9 @@ npm run lint
 There is **no server-side logic** — `dist/` is plain static files and can be dropped on any
 static host (nginx, GitHub Pages, S3, `python -m http.server`, …).
 
+> The repository intentionally ships **without** a `config.json` or sample spec files, so each
+> deployment keeps its own. Until you add one, the app runs in [local mode](#mode-3--no-configuration-local-mode).
+
 ---
 
 ## Configuration
@@ -84,11 +86,11 @@ static host (nginx, GitHub Pages, S3, `python -m http.server`, …).
 OpenDoc UI supports **three deployment modes**. The mode is decided at startup, entirely by
 what is present on the page:
 
-| Mode | Trigger | What the user sees |
-| --- | --- | --- |
-| **1. config.json** | `public/config.json` exists and is served at `/config.json` | A spec selector in the navbar + switch modal, specs auto-load |
-| **2. `window.INITIAL_CONFIG`** | A global object injected before the app boots | Same as mode 1; the inline object wins over `config.json` |
-| **3. Local mode** | Neither of the above exists (no config source at all) | An **Open** button instead of the selector; users open local files |
+| Mode                           | Trigger                                                     | What the user sees                                                 |
+|--------------------------------|-------------------------------------------------------------|--------------------------------------------------------------------|
+| **1. config.json**             | `public/config.json` exists and is served at `/config.json` | A spec selector in the navbar + switch modal, specs auto-load      |
+| **2. `window.INITIAL_CONFIG`** | A global object injected before the app boots               | Same as mode 1; the inline object wins over `config.json`          |
+| **3. Local mode**              | Neither of the above exists (no config source at all)       | An **Open** button instead of the selector; users open local files |
 
 ### Mode 1 — `public/config.json` (pre-defined specs)
 
@@ -119,16 +121,16 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 Supported keys per entry:
 
-| Key | Type | Description |
-| --- | --- | --- |
-| `url` | string | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
-| `title` | string | Display name in the selector / navbar. Defaults to the object key. |
-| `theme` | string | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme. |
-| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source). |
-| `rawSpec` | string | The full spec document as a string (JSON or YAML). |
+| Key        | Type    | Description                                                                                                                                         |
+|------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
+| `title`    | string  | Display name in the selector / navbar. Defaults to the object key.                                                                                  |
+| `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
+| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
+| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
 
 The **first entry** is selected on first visit; afterwards the app remembers the last
-selection and the URL hash wins over both.
+selection, and the URL hash wins over both.
 
 ### Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)
 
@@ -136,11 +138,12 @@ Identical shape to `config.json`, but injected as a JavaScript global **before**
 script runs, e.g. in `index.html`:
 
 ```html
+
 <script>
     window.INITIAL_CONFIG = {
         "theme": "default",
         "parsables": {
-            "Pet Store": { "url": "/specs/pet-store.json" }
+            "Pet Store": {"url": "/specs/pet-store.json"}
         }
     };
 </script>
@@ -189,12 +192,10 @@ The cache lives under the `opendoc_spec_cache_v1:` prefix. It is per-URL, so swi
 between configured specs never re-fetches a spec you already loaded once.
 
 The **refresh button** (circular arrows, next to the spec selector in the navbar and in the
-mobile sidebar toolbar) does exactly what its tooltip says: *drop the cache and reload*.
-It clears every cached spec and re-fetches the current one from the network. In local mode
-the same button re-reads the opened file from disk (when the file handle is still
-available) or re-parses the stored text.
-
-The button icon spins while a refresh is in flight.
+mobile sidebar toolbar) drops the cache and reloads: it clears every cached spec and
+re-fetches the current one from the network. In local mode the same button re-reads the
+opened file from disk (when the file handle is still available) or re-parses the stored
+text. The icon spins while a refresh is in flight.
 
 ---
 
@@ -221,15 +222,15 @@ History specifics:
 Themes come from `src/data/themes.ts`. Each theme defines full **light** and **dark**
 palettes. The **mode** can be:
 
-| Mode | Behavior |
-| --- | --- |
+| Mode     | Behavior                                                                       |
+|----------|--------------------------------------------------------------------------------|
 | `system` | Follows the OS setting (`prefers-color-scheme`) live — this is the **default** |
-| `light` | Always the light palette |
-| `dark` | Always the dark palette |
+| `light`  | Always the light palette                                                       |
+| `dark`   | Always the dark palette                                                        |
 
 The mode toggle button cycles `system → light/dark → dark/light`; the icon shows a monitor
-while in system mode and the current OS state is reflected immediately if the OS theme
-changes while the app is open.
+while in system mode, and the palette updates immediately if the OS theme changes while the
+app is open.
 
 Theme name and mode are remembered **per spec** (`selected_theme_name_<key>` and
 `theme_mode_<key>`), so switching between APIs restores each one's own look.
@@ -257,14 +258,14 @@ is loaded.
 
 The app is hash-routed. Main shapes:
 
-| Hash | Meaning |
-| --- | --- |
-| `#/` | Home (no spec) |
-| `#/parsable/<key>` | Home of the spec with the given config key |
-| `#/parsable/<key>/api/<endpointId>` | A specific endpoint (docs view) |
-| `#/parsable/<key>/about` | About page for that spec |
-| `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open |
-| `#/about` | About page without a spec |
+| Hash                                              | Meaning                                    |
+|---------------------------------------------------|--------------------------------------------|
+| `#/`                                              | Home (no spec)                             |
+| `#/parsable/<key>`                                | Home of the spec with the given config key |
+| `#/parsable/<key>/api/<endpointId>`               | A specific endpoint (docs view)            |
+| `#/parsable/<key>/about`                          | About page for that spec                   |
+| `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open         |
+| `#/about`                                         | About page without a spec                  |
 
 Query params: `?tab=examine|doc`, `?schemas=a,b`, `?search=...` and `#response-<code>`.
 
@@ -275,12 +276,12 @@ reload.
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl / ⌘ + K` | Focus global search |
-| `Esc` | Close the top-most modal / overlay |
-| `Alt + ←` / `Alt + →` | Previous / next endpoint tab |
-| `Ctrl+Enter` (in runner) | Send the request from the active pane |
+| Shortcut                            | Action                                   |
+|-------------------------------------|------------------------------------------|
+| `Ctrl / ⌘ + K`                      | Focus global search                      |
+| `Esc`                               | Close the top-most modal / overlay       |
+| `Alt + ←` / `Alt + →`               | Previous / next endpoint tab             |
+| `Ctrl+Enter` (in runner)            | Send the request from the active pane    |
 | `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes |
 
 The About page lists the full set, including mouse interactions (middle-click a sidebar
@@ -290,17 +291,17 @@ endpoint to pin a permanent tab, double-click to keep the preview tab, etc.).
 
 ## localStorage keys
 
-| Key | Purpose |
-| --- | --- |
-| `opendoc_spec_cache_v1:<url>` | Cached raw text of a remotely loaded spec |
-| `opendoc_local_history` | Recently opened local files (title, file name, raw text, timestamp) |
-| `selected_parsable_key` | Last selected spec key |
-| `endpoint_tabs_<key>` | Open endpoint tabs + active tab + view modes per spec |
-| `preferred_tab_<key>` | Last used tab mode (docs / examine / split) per spec |
-| `selected_theme_name_<key>` / `theme_mode_<key>` | Theme name & mode per spec |
-| `sidebar_collapsed` / `sidebar_width` | Desktop sidebar state |
-| `collapsed_tags` | Collapsed tag folders in the sidebar navigation |
-| `endpoint_split_docs_width` | Split-view pane width |
+| Key                                              | Purpose                                                             |
+|--------------------------------------------------|---------------------------------------------------------------------|
+| `opendoc_spec_cache_v1:<url>`                    | Cached raw text of a remotely loaded spec                           |
+| `opendoc_local_history`                          | Recently opened local files (title, file name, raw text, timestamp) |
+| `selected_parsable_key`                          | Last selected spec key                                              |
+| `endpoint_tabs_<key>`                            | Open endpoint tabs + active tab + view modes per spec               |
+| `preferred_tab_<key>`                            | Last used tab mode (docs / examine / split) per spec                |
+| `selected_theme_name_<key>` / `theme_mode_<key>` | Theme name & mode per spec                                          |
+| `sidebar_collapsed` / `sidebar_width`            | Desktop sidebar state                                               |
+| `collapsed_tags`                                 | Collapsed tag folders in the sidebar navigation                     |
+| `endpoint_split_docs_width`                      | Split-view pane width                                               |
 
 ---
 
@@ -333,23 +334,23 @@ src/
 
 - Serve `dist/` from any static host. The app needs **no API** of its own.
 - **Pre-defined mode:** make sure `config.json` is reachable at `/config.json` (i.e. it
-  must live in the public folder, not somewhere deeper).
+  must live in the public folder, not somewhere deeper), and that it actually contains
+  your `parsables` — an empty file still counts as pre-defined mode.
 - **Remote spec URLs** must send CORS headers (`Access-Control-Allow-Origin`) or the
   browser will block the fetch. Relative URLs (`/specs/...`) avoid this entirely.
-- **Local mode:** do *not* ship a `config.json` — a 404 is what enables local file
-  loading. Note that "file exists but is invalid/empty" also counts as pre-defined, so if
-  you ship a `config.json` at all, make sure it actually contains your `parsables`.
+- **Local mode:** simply don't ship a config source — a 404 on `/config.json` is what
+  enables local file loading.
 - The API runner calls endpoints directly from the visitor's browser. If your API does not
   allow CORS, the runner will show the browser's CORS error — the docs still work.
 
 ---
 
-## Troubleshooting & FAQ
+## FAQ
 
-**The app spins on "Please wait" forever.**
-This happened when the app waited on `/config.json` that was missing. It now treats a 404
-(or a network error) as "no configuration" and switches to local mode, so the loading
-screen always resolves.
+**Why does the app open in local mode?**
+No config source was found at startup (no `config.json`, no `window.INITIAL_CONFIG`).
+That's the local experience — you can open spec files from disk. To use pre-defined specs,
+add a `config.json` to the public folder.
 
 **There is no Open button / I can't load local files.**
 Your deployment has a config source (a `config.json` or `window.INITIAL_CONFIG`), which
@@ -363,7 +364,7 @@ remote URLs must be CORS-enabled. The selector shows per-entry error messages.
 No. Refresh only drops the spec cache; local history and settings are untouched.
 
 **Why is my theme different per spec?**
-Theme name and mode are stored per spec key. It's a feature — each API keeps its own look.
+Theme name and mode are stored per spec key — each API keeps its own look.
 
 **Can I use Swagger 2.0 files?**
 Yes. Files are normalized to OpenAPI 3 internally; both `swagger: "2.0"` and
