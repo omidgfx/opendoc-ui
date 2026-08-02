@@ -12,6 +12,7 @@ import ShareModal from '../../modals/ShareModal';
 import { useEscClose } from '../../../hooks/useEscClose';
 import { Tip } from '../../common/Tooltip';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { storage, specStorage } from '../../../utils/storage';
 
 interface ViewTabProps {
     key: any;
@@ -126,6 +127,7 @@ export default function ViewTab({
 
     const [requestBodyContentType, setRequestBodyContentType] = useState('');
     const [viewerExampleSchemas, setViewerExampleSchemas] = useState<{ [code: string]: any }>({});
+    const [viewerExampleNames, setViewerExampleNames] = useState<{ [code: string]: string }>({});
     const [collapsedResponses, setCollapsedResponses] = useState<{ [code: string]: boolean }>(() => {
         const initial: { [code: string]: boolean } = {};
         if (operation.responses) {
@@ -139,16 +141,16 @@ export default function ViewTab({
     useEffect(() => {
         if (activeResponseCode && operation.responses?.[activeResponseCode]) {
             setCollapsedResponses(prev => ({ ...prev, [activeResponseCode]: false }));
-            const timer = setTimeout(() => {
+            const raf = requestAnimationFrame(() => {
                 const el = document.getElementById(`response-${activeResponseCode}`);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    el.classList.add('ring-2', 'ring-[var(--primary)]', 'scale-[1.01]');
-                    const removeHighlight = setTimeout(() => { el.classList.remove('ring-2', 'ring-[var(--primary)]', 'scale-[1.01]'); }, 2000);
+                    el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    el.classList.add('ring-2', 'ring-[var(--primary)]', 'response-flash');
+                    const removeHighlight = setTimeout(() => { el.classList.remove('ring-2', 'ring-[var(--primary)]', 'response-flash'); }, 1100);
                     return () => clearTimeout(removeHighlight);
                 }
-            }, 300);
-            return () => clearTimeout(timer);
+            });
+            return () => cancelAnimationFrame(raf);
         }
     }, [activeResponseCode, operation.responses]);
 
@@ -164,7 +166,7 @@ export default function ViewTab({
     // (handled by the effect above / below) always takes priority over the saved
     // offset, since that's an explicit deep-link the user (or another link) asked for.
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-    const scrollStorageKey = `viewtab_scroll_${parsableKey || 'default'}_${method.toLowerCase()}_${path}`;
+    const scrollStorageKey = specStorage.key(parsableKey || 'default', `scroll:${method.toLowerCase()}:${path}`);
     const initialResponseCodeRef = useRef(activeResponseCode);
 
     useEffect(() => {
@@ -173,15 +175,13 @@ export default function ViewTab({
         // If we arrived here via a #response-xxx deep link, let that effect own the
         // scroll position instead of restoring the old saved offset.
         if (initialResponseCodeRef.current) return;
-        try {
-            const saved = localStorage.getItem(scrollStorageKey);
-            if (saved) {
-                const top = parseInt(saved, 10);
-                if (Number.isFinite(top) && top > 0) {
-                    requestAnimationFrame(() => { el.scrollTop = top; });
-                }
+        const saved = storage.get(scrollStorageKey);
+        if (saved) {
+            const top = parseInt(saved, 10);
+            if (Number.isFinite(top) && top > 0) {
+                requestAnimationFrame(() => { el.scrollTop = top; });
             }
-        } catch { /* ignore */ }
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -192,7 +192,7 @@ export default function ViewTab({
         const onScroll = () => {
             if (raf) cancelAnimationFrame(raf);
             raf = requestAnimationFrame(() => {
-                try { localStorage.setItem(scrollStorageKey, String(el.scrollTop)); } catch { /* ignore */ }
+                storage.set(scrollStorageKey, String(el.scrollTop));
             });
         };
         el.addEventListener('scroll', onScroll, { passive: true });
@@ -237,7 +237,7 @@ export default function ViewTab({
             else {
                 setCollapsedResponses(prev => ({ ...prev, [nextCode]: false }));
                 const el = document.getElementById(`response-${nextCode}`);
-                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el?.scrollIntoView({ behavior: 'auto', block: 'center' });
             }
         };
         window.addEventListener('keydown', handler);
@@ -378,6 +378,7 @@ export default function ViewTab({
 
     const renderSchemaTypeExample = (prop: any, code: string): React.ReactNode => {
         if (!prop) return <span className="text-xs font-mono opacity-50">any</span>;
+        const fallbackName = prop?.$ref ? getRefName(prop.$ref) : (prop?.title || null);
         const renderTypeName = (tValue: any, format?: string) => {
             if (Array.isArray(tValue)) return tValue.map(t => `${t}${format ? ` (${format})` : ''}`).join(' | ');
             return `${tValue || 'any'}${format ? ` (${format})` : ''}`;
@@ -398,7 +399,7 @@ export default function ViewTab({
             const viewerSchema = viewerExampleSchemas[code];
             const isActive = isSchemaActive(prop, code, viewerSchema);
             return (
-                <button onClick={() => setViewerExampleSchemas(prev => ({ ...prev, [code]: refSchema || prop }))}
+                <button onClick={() => pickViewerSchema(code, refSchema || prop, refName)}
                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                     <i className="ph ph-diamonds-four text-[12px] mr-1"></i> {refName}
                 </button>
@@ -420,7 +421,7 @@ export default function ViewTab({
                         {prop.oneOf.map((sub: any, sIdx: number) => {
                             const isActive = isSchemaActive(sub, code, viewerSchema);
                             return (
-                                <button key={sIdx} onClick={() => setViewerExampleSchemas(prev => ({ ...prev, [code]: sub }))}
+                                <button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                     {getSubLabel(sub, sIdx)}
                                 </button>
@@ -439,7 +440,7 @@ export default function ViewTab({
                         {prop.anyOf.map((sub: any, sIdx: number) => {
                             const isActive = isSchemaActive(sub, code, viewerSchema);
                             return (
-                                <button key={sIdx} onClick={() => setViewerExampleSchemas(prev => ({ ...prev, [code]: sub }))}
+                                <button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                     {getSubLabel(sub, sIdx)}
                                 </button>
@@ -458,7 +459,7 @@ export default function ViewTab({
                         {prop.allOf.map((sub: any, sIdx: number) => {
                             const isActive = isSchemaActive(sub, code, viewerSchema);
                             return (
-                                <button key={sIdx} onClick={() => setViewerExampleSchemas(prev => ({ ...prev, [code]: sub }))}
+                                <button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                     {getSubLabel(sub, sIdx)}
                                 </button>
@@ -476,7 +477,7 @@ export default function ViewTab({
                 const isActive = isSchemaActive(prop.items, code, viewerSchema);
                 return (
                     <span className="text-xs font-sans">Array&lt;
-                        <button onClick={() => setViewerExampleSchemas(prev => ({ ...prev, [code]: refSchema || prop.items }))}
+                        <button onClick={() => pickViewerSchema(code, refSchema || prop.items, refName)}
                             className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>{refName}</button>&gt;
                     </span>
                 );
@@ -527,12 +528,12 @@ export default function ViewTab({
         return props;
     };
 
-    const renderSchemaPropertiesTable = (schema: any) => {
+    const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null) => {
         if (!schema) return null;
         const properties = resolveProperties(schema);
         return (
             <SchemaPropertiesTable properties={properties} schema={schema} resolveReference={resolveReference} getRefName={getRefName}
-                onPushSchema={onOpenSchemaModal}
+                onPushSchema={onOpenSchemaModal} inspectName={inspectName ?? null}
                 onViewExample={(name, subSchema) => setExampleModalContent({ title: `${name} Simulated Example`, content: getMockSnippet(subSchema) })}
                 onTestPattern={setPatternToTest} useModal={true} />
         );
@@ -659,6 +660,22 @@ export default function ViewTab({
             return `${indent}<${safeName}>\n${children}\n${indent}</${safeName}>`;
         }
         return `${indent}<${safeName}>${escapeXml(value)}</${safeName}>`;
+    };
+
+    // Pick a schema for the viewer and remember a valid name for it. The name is
+    // what the "Inspect Schema" button pushes into the modal stack, so it must
+    // resolve against components.schemas — anonymous inline branches fall back
+    // to the parent schema's name instead of hiding the button.
+    const pickViewerSchema = (code: string, sub: any, fallbackName?: string | null) => {
+        let name: string | null = null;
+        if (sub?.$ref) name = getRefName(sub.$ref);
+        else {
+            const resolved = resolveReference(sub) || sub;
+            if (resolved?.title) name = resolved.title;
+        }
+        if (!name || !spec.components?.schemas?.[name]) name = fallbackName || null;
+        setViewerExampleSchemas(prev => ({ ...prev, [code]: sub }));
+        setViewerExampleNames(prev => ({ ...prev, [code]: name || '' }));
     };
 
     const getSchemaDisplayName = (schema: any, fallback = 'response') => {
@@ -894,7 +911,12 @@ export default function ViewTab({
                                     <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">Encoding TYPE:</span>
                                     <span className="rounded bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] break-all">{selectedRequestBodyContentType}</span>
                                 </p>
-                                <div className="pt-1 min-w-0">{renderSchemaPropertiesTable(selectedRequestBodyContent.schema)}</div>
+                                <div className="pt-1 min-w-0">{renderSchemaPropertiesTable(
+                                    selectedRequestBodyContent.schema,
+                                    selectedRequestBodyContent.schema?.$ref
+                                        ? getRefName(selectedRequestBodyContent.schema.$ref)
+                                        : (selectedRequestBodyContent.schema?.title || null),
+                                )}</div>
                                 <div className="border-t border-[var(--border)] pt-2">
                                     <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Inspect Body Schema</h4>
                                     <div>{renderSchemaButton(selectedRequestBodyContent.schema)}</div>
@@ -1067,7 +1089,12 @@ export default function ViewTab({
                                                                                     )}
                                                                                 </div>
                                                                             </div>
-                                                                            {renderSchemaPropertiesTable(activeSchema)}
+                                                                            {renderSchemaPropertiesTable(
+                                                                                activeSchema,
+                                                                                viewerExampleNames[code] || (cObj.schema?.$ref
+                                                                                    ? getRefName(cObj.schema.$ref)
+                                                                                    : (cObj.schema?.title || null)),
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </div>

@@ -11,6 +11,13 @@ interface SchemaExplorerProps {
 }
 
 export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKey = 'API'}: SchemaExplorerProps) {
+    // "CompleteRegistrationAlreadyRegistered" -> "Complete Registration Already Registered"
+    const humanizeName = (name: string) =>
+        name
+            .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+            .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+            .trim();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +105,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     <Tip content="Export all schemas as a zip of TypeScript models">
                         <button
                             onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
-                            className="h-8 px-3 sm:px-4 rounded-lg border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
+                            className="h-9 px-3 sm:px-4 rounded-lg border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
                             <i className="ph ph-download-simple text-[14px]"></i>
                             <span className="hidden sm:inline">Export TS (ZIP)</span><span className="sm:hidden">TS ZIP</span>
                         </button>
@@ -112,7 +119,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                         placeholder="Search schemas (Ctrl+K)..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-14 h-8 text-xs rounded-lg border outline-none focus:border-[var(--primary)] transition-all font-sans bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"/>
+                        className="w-full pl-9 pr-14 h-9 text-xs rounded-lg border outline-none focus:border-[var(--primary)] transition-all font-sans bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"/>
 
 
                     <div
@@ -159,10 +166,16 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
 
                                     <div className="min-w-0">
                                         <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
-                                            <h3 className="font-bold text-sm tracking-tight transition-colors truncate flex-1 text-[var(--text-heading)]"
-                                                title={name}>
-                                                {name}
-                                            </h3>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="font-bold text-sm tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words"
+                                                    title={name}>
+                                                    {humanizeName(name)}
+                                                </h3>
+                                                <p className="mt-0.5 truncate text-[10px] font-bold text-[var(--primary)]"
+                                                    title={name}>
+                                                    {name}
+                                                </p>
+                                            </div>
                                             <span
                                                 className="px-2 py-0.5 rounded text-[10px] uppercase font-bold select-none shrink-0 bg-[var(--background)] text-[var(--primary)]">
 
@@ -170,19 +183,6 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                             </span>
                                         </div>
 
-                                        {schema.description ?
-                                            <p className="text-xs leading-relaxed mb-4 opacity-80 line-clamp-3 text-[var(--text-muted)]">
-
-                                                {schema.description.length > 120 ?
-                                                    schema.description.substring(0, 120) + '...' :
-                                                    schema.description}
-                                            </p> :
-
-                                            <p className="text-xs italic leading-relaxed mb-4 opacity-50 text-[var(--text-muted)]">
-
-                                                No description provided.
-                                            </p>
-                                        }
                                     </div>
 
                                     <div

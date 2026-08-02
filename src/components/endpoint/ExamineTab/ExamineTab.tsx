@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveRequestBody} from '../../../utils/openapi';
@@ -9,6 +9,7 @@ import PatternTesterModal from '../../modals/PatternTesterModal';
 import ParameterInput from './ParameterInput';
 import BodyEditor from './BodyEditor';
 import ResponsePanel from './ResponsePanel';
+import {specStorage} from '../../../utils/storage';
 
 interface ExamineTabProps {
     spec: OpenApiSpec;
@@ -34,7 +35,7 @@ export default function ExamineTab({
     onResponseChange, onClearResponse,
     isActive = true,
 }: ExamineTabProps) {
-    const storageKey = `api_inputs_${parsableKey ? `${parsableKey}_` : ''}${method.toLowerCase()}_${path}`;
+    const storageKey = specStorage.key(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`);
 
     // ------- Input state -------
     const [params, setParams] = useState<Record<string, string | string[]>>({});
@@ -58,38 +59,33 @@ export default function ExamineTab({
 
     // ------- Load/save inputs from localStorage (per endpoint) -------
     const loadInputs = useCallback(() => {
-        try {
-            const saved = localStorage.getItem(storageKey);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                setParams(parsed.params || {});
-                setHeaders(parsed.headers || {});
-                setRequestBodyText(parsed.bodyText || '');
-                setRequestBodyType(parsed.bodyType || 'application/json');
-                if (parsed.bodyText) {
-                    try {
-                        const json = JSON.parse(parsed.bodyText);
-                        const flatFields: Record<string, string> = {};
-                        Object.entries(json).forEach(([k, v]) => {
-                            flatFields[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
-                        });
-                        setBodyFields(flatFields);
-                    } catch { /* body was not JSON */ }
-                }
-                return;
+        const parsed = specStorage.getJSON<any>(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`, null, (v) => !!v && typeof v === 'object');
+        if (parsed) {
+            setParams(parsed.params || {});
+            setHeaders(parsed.headers || {});
+            setRequestBodyText(parsed.bodyText || '');
+            setRequestBodyType(parsed.bodyType || 'application/json');
+            if (parsed.bodyText) {
+                try {
+                    const json = JSON.parse(parsed.bodyText);
+                    const flatFields: Record<string, string> = {};
+                    Object.entries(json).forEach(([k, v]) => {
+                        flatFields[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                    });
+                    setBodyFields(flatFields);
+                } catch { /* body was not JSON */ }
             }
-        } catch (e) {
-            console.error('Failed to load inputs', e);
+            return;
         }
         resetToDefaults();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [storageKey]);
+    }, [storageKey, parsableKey, method, path]);
 
     useEffect(() => { loadInputs(); }, [loadInputs]);
 
     const handleSave = () => {
         const payload = { params, headers, bodyText: requestBodyText, bodyType: requestBodyType };
-        localStorage.setItem(storageKey, JSON.stringify(payload));
+        specStorage.setJSON(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`, payload);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 1500);
     };
@@ -254,16 +250,28 @@ export default function ExamineTab({
     // Ctrl/Cmd+Enter shortcut to send — active whenever this Examine/Runner pane
     // is the currently focused pane (in side-by-side mode only one pane is active
     // at a time; outside of split mode this is always true).
+    // Latest handlers, kept in refs so the keydown listener never calls a stale
+    // closure (it would save empty inputs).
+    const handleSaveRef = useRef(handleSave);
+    handleSaveRef.current = handleSave;
+    const executeRef = useRef(executeRequest);
+    executeRef.current = executeRequest;
+
     useEffect(() => {
         if (!isActive) return;
         const handler = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
-                if (!isRunning) executeRequest();
+                if (!isRunning) executeRef.current();
+            }
+            // Ctrl/Cmd+S saves the current inputs (same as the Save button).
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                handleSaveRef.current();
             }
         };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
+        window.addEventListener('keydown', handler, true);
+        return () => window.removeEventListener('keydown', handler, true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isRunning, isActive]);
 
@@ -307,8 +315,18 @@ export default function ExamineTab({
         );
     };
 
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!isRunning) executeRequest();
+    };
+
     return (
-        <div className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0">
+        <form
+            onSubmit={handleFormSubmit}
+            className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
+        >
+            {/* Hidden submit button so Enter inside any input runs the request. */}
+            <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
             {/* Action header */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 border-[var(--border)]">
                 <div>
@@ -316,13 +334,13 @@ export default function ExamineTab({
                     <p className="text-[11px] text-[var(--text-muted)]">Execute requests, test responses, and verify session cookie states.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <button onClick={handleClearFields} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-[var(--surface-hover)] transition-colors cursor-pointer select-none border-[var(--border)] text-[var(--text-heading)]">
+                    <button type="button" onClick={handleClearFields} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-[var(--surface-hover)] transition-colors cursor-pointer select-none border-[var(--border)] text-[var(--text-heading)]">
                         Clear Fields
                     </button>
-                    <button onClick={resetToDefaults} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-[var(--surface-hover)] transition-colors cursor-pointer select-none border-[var(--border)] text-[var(--text-heading)]">
+                    <button type="button" onClick={resetToDefaults} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-[var(--surface-hover)] transition-colors cursor-pointer select-none border-[var(--border)] text-[var(--text-heading)]">
                         Reset Examples
                     </button>
-                    <button onClick={handleSave} className="px-4 py-1.5 text-xs font-bold text-[var(--method-get-contrast)] rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer select-none hover:brightness-110 active:scale-95 bg-[var(--method-get)]">
+                    <button type="button" onClick={handleSave} className="px-4 py-1.5 text-xs font-bold text-[var(--method-get-contrast)] rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer select-none hover:brightness-110 active:scale-95 bg-[var(--method-get)]">
                         {saveSuccess ? <><i className="ph ph-check"></i> Saved</> : <><i className="ph ph-floppy-disk"></i> Save Inputs</>}
                     </button>
                 </div>
@@ -388,6 +406,7 @@ export default function ExamineTab({
                                 selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}
                                 setPatternToTest={setPatternToTest}
                                 themeMode={themeMode}
+                                onExecute={executeRequest}
                             />
                         </div>
                     </div>
@@ -405,6 +424,6 @@ export default function ExamineTab({
             />
 
             {patternToTest && <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)} />}
-        </div>
+        </form>
     );
 }

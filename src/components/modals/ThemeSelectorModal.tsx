@@ -13,6 +13,7 @@ type ThemeSelectorModalProps = {
     resolvedThemeMode: 'light' | 'dark';
     onSelectTheme: (themeName: string) => void;
     onToggleThemeMode: () => void;
+    onSetThemeMode: (mode: ThemeMode) => void;
     onClose: () => void;
 };
 
@@ -261,7 +262,7 @@ function DetailedThemeView({ selectedTheme, selectedThemeName, currentThemeMode,
     );
 }
 
-export default function ThemeSelectorModal({ isOpen, selectedThemeName, currentThemeMode, resolvedThemeMode, onSelectTheme, onClose, onToggleThemeMode }: ThemeSelectorModalProps) {
+export default function ThemeSelectorModal({ isOpen, selectedThemeName, currentThemeMode, resolvedThemeMode, onSelectTheme, onClose, onToggleThemeMode, onSetThemeMode }: ThemeSelectorModalProps) {
     const [view, setView] = useState<ThemeSelectorView>('gallery');
 
     const selectedTheme = useMemo(() => THEME_LIST.find((theme) => theme.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
@@ -307,16 +308,24 @@ export default function ThemeSelectorModal({ isOpen, selectedThemeName, currentT
                             </button>
                         </Tip>
 
-                        <Tip content={currentThemeMode === 'system' ? `Preview follows your system (${resolvedThemeMode})` : 'Toggle light/dark preview'}>
-                            <button onClick={onToggleThemeMode}
-                                className="size-8 sm:size-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
-                                {currentThemeMode === 'system'
-                                    ? <i className="ph ph-monitor text-[var(--accent)] text-[16px]"></i>
-                                    : currentThemeMode === 'dark'
-                                        ? <i className="ph ph-sun text-[var(--method-put)] text-[16px]"></i>
-                                        : <i className="ph-fill ph-moon text-[var(--primary)] text-[16px]"></i>}
-                            </button>
-                        </Tip>
+                        <div className="flex p-0.5 gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)]">
+                            {([
+                                ['system', 'ph ph-monitor', `Follow system (${resolvedThemeMode})`],
+                                ['light', 'ph-fill ph-sun', 'Light mode'],
+                                ['dark', 'ph-fill ph-moon', 'Dark mode'],
+                            ] as [ThemeMode, string, string][]).map(([mode, icon, tip]) => (
+                                <Tip key={mode} content={tip}>
+                                    <button type="button" onClick={() => onSetThemeMode(mode)}
+                                        aria-pressed={currentThemeMode === mode}
+                                        className={clsx('size-8 sm:size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer',
+                                            currentThemeMode === mode
+                                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]')}>
+                                        <i className={`${icon} text-[15px]`}></i>
+                                    </button>
+                                </Tip>
+                            ))}
+                        </div>
 
                         <Tip content="Close">
                             <button type="button" onClick={onClose} autoFocus
@@ -338,7 +347,7 @@ export default function ThemeSelectorModal({ isOpen, selectedThemeName, currentT
                                 </div>
                                 <span className="rounded-full border px-2.5 py-1 text-[9px] font-bold border-[var(--border)] text-[var(--text-muted)] shrink-0">{THEME_LIST.length} themes</span>
                             </div>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
                                 {THEME_LIST.map((theme) =>
                                     <ThemePreviewCard key={theme.name} theme={theme} selected={theme.name === selectedThemeName}
                                         resolvedThemeMode={resolvedThemeMode} onSelect={() => onSelectTheme(theme.name)} />)}

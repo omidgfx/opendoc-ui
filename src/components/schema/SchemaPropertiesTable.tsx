@@ -11,6 +11,9 @@ interface SchemaPropertiesTableProps {
     onViewExample: (name: string, schema: any) => void;
     onTestPattern: (pattern: string) => void;
     useModal?: boolean;
+    /** Explicit name for the "Inspect Schema" button. Use this when the schema
+     *  object has no $ref/title (e.g. a resolved schema) but a name is known. */
+    inspectName?: string | null;
 }
 
 export default function SchemaPropertiesTable({
@@ -21,7 +24,8 @@ export default function SchemaPropertiesTable({
                                                   onPushSchema,
                                                   onViewExample,
                                                   onTestPattern,
-                                                  useModal = false
+                                                  useModal = false,
+                                                  inspectName = null
                                               }: SchemaPropertiesTableProps) {
 
     const getSchemaName = (): string | null => {
@@ -217,11 +221,11 @@ export default function SchemaPropertiesTable({
 
                         <div className={'flex justify-between'}>
                             <span>Description</span>
-                            {useModal && schemaName && (
-                                <Tip content={`Inspect ${schemaName} schema`}>
+                            {useModal && (inspectName ?? schemaName) && (
+                                <Tip content={`Inspect ${inspectName ?? schemaName} schema`}>
                                     <button
                                         type="button"
-                                        onClick={() => onPushSchema(schemaName)}
+                                        onClick={() => onPushSchema(inspectName ?? schemaName!)}
                                         className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]">
                                         <i className="ph ph-diamonds-four text-[11px]"></i>
                                         <span className="hidden sm:inline">Inspect Schema</span>

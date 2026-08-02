@@ -24,6 +24,7 @@ interface BodyEditorProps {
     setSelectedFiles: (v: Record<string, File | null>) => void;
     setPatternToTest: (p: string | null) => void;
     themeMode: 'light' | 'dark';
+    onExecute: () => void;
 }
 
 function getPropertiesOfSchema(schema: any, spec: OpenApiSpec): Record<string, any> {
@@ -48,7 +49,7 @@ export default function BodyEditor(props: BodyEditorProps) {
         bodyFields, setBodyFields,
         selectedFile, setSelectedFile,
         selectedFiles, setSelectedFiles,
-        setPatternToTest, themeMode,
+        setPatternToTest, themeMode, onExecute,
     } = props;
 
     const resolvedBody = resolveRequestBody(operation.requestBody, spec);
@@ -253,6 +254,7 @@ export default function BodyEditor(props: BodyEditorProps) {
                     schema={contentSchema || {}}
                     componentsSchemas={spec.components?.schemas}
                     themeMode={themeMode}
+                    onCtrlEnter={onExecute}
                 />
             </div>
         );

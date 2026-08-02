@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {OpenApiSpec, ParsableConfig, ThemeMode} from '../../../types';
+import type {ViewTabKind} from '../../endpoint/EndpointTabs';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {useSwipeEdgeOpen} from '../../../hooks/useSwipeOpen';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -8,6 +9,7 @@ import MethodBadge from '../../common/MethodBadge';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
 import type {LocalHistoryEntry} from '../../../utils/localHistory';
+import {uiStorage} from '../../../utils/storage';
 import pkg from '../../../../package.json';
 
 interface TreeNode {
@@ -125,6 +127,13 @@ interface SidebarProps {
     onMiddleClickEndpoint?: (path: string, method: string) => void;
     onOpenHome: () => void;
     onOpenAbout: () => void;
+    onOpenSearch: () => void;
+    isSearchActive: boolean;
+    scrollIntent: { type: 'endpoint' | 'view'; id: string } | null;
+    setScrollIntent: (v: { type: 'endpoint' | 'view'; id: string } | null) => void;
+    onOpenViewPermanent: (view: ViewTabKind) => void;
+    onContextAction: (action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link',
+                      target: { type: 'endpoint'; path: string; method: string } | { type: 'view'; view: ViewTabKind }) => void;
     showHome: boolean;
     showAbout: boolean;
     themeMode: ThemeMode;
@@ -159,7 +168,7 @@ export default function Sidebar(props: SidebarProps) {
         onOpenSchemaExplorer, showSchemaExplorer,
         selectedMethods, selectedTags, onlyProtected, searchQuery,
         selectedEndpoint, onSelectEndpoint, onMiddleClickEndpoint,
-        onOpenHome, onOpenAbout, showHome, showAbout,
+        onOpenHome, onOpenAbout, onOpenSearch, isSearchActive, onOpenViewPermanent, onContextAction, scrollIntent, setScrollIntent, showHome, showAbout,
         themeMode, resolvedThemeMode, onToggleThemeMode,
         onOpenThemeModal, onOpenAuthModal, activeAuth,
         onDownloadSpec,
@@ -174,11 +183,11 @@ export default function Sidebar(props: SidebarProps) {
     const isMobile = bp === 'mobile' || bp === 'tablet';
 
     const [width, setWidth] = useState<number>(() => {
-        const saved = localStorage.getItem('sidebar_width');
-        return saved ? Math.max(220, Math.min(480, parseInt(saved, 10))) : 280;
+        const saved = uiStorage.getJSON<number>('sidebar_width', 280, (v) => Number.isFinite(v));
+        return Math.max(220, Math.min(480, saved));
     });
     useEffect(() => {
-        if (!isMobile) localStorage.setItem('sidebar_width', String(width));
+        if (!isMobile) uiStorage.setJSON('sidebar_width', Math.round(width));
     }, [width, isMobile]);
 
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -204,17 +213,12 @@ export default function Sidebar(props: SidebarProps) {
         document.removeEventListener('mouseup', onResizeUp);
     };
 
-    const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>(() => {
-        try {
-            const saved = localStorage.getItem('collapsed_tags');
-            return saved ? JSON.parse(saved) : {};
-        } catch {
-            return {};
-        }
-    });
+    const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>(() =>
+        uiStorage.getJSON<Record<string, boolean>>('collapsed_tags', {}, (v) => !!v && typeof v === 'object' && !Array.isArray(v)),
+    );
     const toggleNode = (path: string) => setCollapsedNodes(prev => {
         const next = {...prev, [path]: !prev[path]};
-        localStorage.setItem('collapsed_tags', JSON.stringify(next));
+        uiStorage.setJSON('collapsed_tags', next);
         return next;
     });
 
@@ -262,6 +266,29 @@ export default function Sidebar(props: SidebarProps) {
     // Mobile spec selector modal
     const [showSpecModal, setShowSpecModal] = useState(false);
 
+    // Right-click context menu
+    const [contextMenu, setContextMenu] = useState<{
+        x: number; y: number;
+        target: { type: 'endpoint'; path: string; method: string } | { type: 'view'; view: ViewTabKind };
+    } | null>(null);
+
+    useEffect(() => {
+        if (!contextMenu) return;
+        const close = () => setContextMenu(null);
+        window.addEventListener('click', close);
+        window.addEventListener('scroll', close, true);
+        return () => {
+            window.removeEventListener('click', close);
+            window.removeEventListener('scroll', close, true);
+        };
+    }, [contextMenu]);
+
+    const openContextMenu = (e: React.MouseEvent, target: { type: 'endpoint'; path: string; method: string } | { type: 'view'; view: ViewTabKind }) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY, target });
+    };
+
     const countEndpoints = (n: TreeNode): number => {
         let c = n.endpoints.length;
         Object.values(n.children).forEach(ch => {
@@ -294,7 +321,7 @@ export default function Sidebar(props: SidebarProps) {
                     changed = true;
                 }
             });
-            if (changed) localStorage.setItem('collapsed_tags', JSON.stringify(next));
+            if (changed) uiStorage.setJSON('collapsed_tags', next);
             return changed ? next : curr;
         });
         const key = `${sm}:${selectedEndpoint.path}`;
@@ -305,9 +332,26 @@ export default function Sidebar(props: SidebarProps) {
         return () => clearTimeout(t);
     }, [selectedEndpoint, tagTree, isCollapsed, isMobile]);
 
+    // Scroll to the clicked nav item (Overview/Search/About/Schema Explorer) —
+    // same behavior endpoints have via endpointRefs.
+    useEffect(() => {
+        if (!scrollIntent) return;
+        const { type, id } = scrollIntent;
+        const t = setTimeout(() => {
+            if (type === 'endpoint') {
+                endpointRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                const el = navScrollRef.current?.querySelector(`[data-nav-view="${id}"]`);
+                (el as HTMLElement | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            setScrollIntent(null);
+        }, 80);
+        return () => clearTimeout(t);
+    }, [scrollIntent, setScrollIntent]);
+
     useSwipeEdgeOpen(isMobile && !mobileOpen, onOpenMobile);
 
-    const isOverview = showHome && !showSchemaExplorer && !showAbout && !selectedEndpoint;
+    const isOverview = showHome && !showSchemaExplorer && !showAbout && !selectedEndpoint && !isSearchActive;
 
     // Folder path from root to the folder holding the selected endpoint.
     const findEndpointAncestorPath = useMemo((): string[] | null => {
@@ -469,6 +513,7 @@ export default function Sidebar(props: SidebarProps) {
                                                 endpointRefs.current[`${ep.method.toLowerCase()}:${ep.path}`] = el;
                                             }}
                                             onClick={navTo(() => onSelectEndpoint(ep.path, ep.method))}
+                                            onContextMenu={(e) => openContextMenu(e, { type: 'endpoint', path: ep.path, method: ep.method })}
                                             onDoubleClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
@@ -515,6 +560,15 @@ export default function Sidebar(props: SidebarProps) {
                 className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
                 style={{width: 56}}>
                 <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
+                    {isSearchActive && (
+                    <Tip content="Search">
+                        <button onClick={onOpenSearch}
+                                className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                                    isSearchActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
+                            <i className="ph-fill ph-magnifying-glass text-[16px]"></i>
+                        </button>
+                    </Tip>
+                    )}
                     <Tip content="Overview">
                         <button onClick={onOpenHome}
                                 className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
@@ -657,8 +711,24 @@ export default function Sidebar(props: SidebarProps) {
                     ref={navScrollRef}
                     className="h-full overflow-y-auto p-2 space-y-1 scrollbar-thin"
                 >
+                    {isSearchActive && (
+                    <Tip content="Search the specification">
+                        <button data-nav-view="view:search" onClick={navTo(onOpenSearch)}
+                                onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'search' })}
+                                onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenViewPermanent('search'); }}
+                                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); onOpenViewPermanent('search'); } }}
+                                className={clsx('flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-left text-xs transition-all cursor-pointer select-none font-medium',
+                                    isSearchActive ? 'text-[var(--primary-contrast)] bg-[var(--primary)]' : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]')}>
+                            <i className="ph-fill ph-magnifying-glass text-[14px]"></i>
+                            <span>Search</span>
+                        </button>
+                    </Tip>
+                    )}
                     <Tip content="Overview and statistics">
-                        <button onClick={navTo(onOpenHome)}
+                        <button data-nav-view="view:home" onClick={navTo(onOpenHome)}
+                                onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'home' })}
+                                onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenViewPermanent('home'); }}
+                                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); onOpenViewPermanent('home'); } }}
                                 className={clsx('flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-left text-xs transition-all cursor-pointer select-none font-medium',
                                     isOverview ? 'text-[var(--primary-contrast)] bg-[var(--primary)]' : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]')}>
                             <i className="ph-fill ph-house text-[14px]"></i>
@@ -666,7 +736,10 @@ export default function Sidebar(props: SidebarProps) {
                         </button>
                     </Tip>
                     <Tip content="About OpenDoc UI">
-                        <button onClick={navTo(onOpenAbout)}
+                        <button data-nav-view="view:about" onClick={navTo(onOpenAbout)}
+                                onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'about' })}
+                                onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenViewPermanent('about'); }}
+                                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); onOpenViewPermanent('about'); } }}
                                 className={clsx('flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-left text-xs transition-all cursor-pointer select-none font-medium',
                                     showAbout ? 'text-[var(--primary-contrast)] bg-[var(--primary)]' : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]')}>
                             <i className="ph-fill ph-info text-[14px]"></i>
@@ -674,7 +747,10 @@ export default function Sidebar(props: SidebarProps) {
                         </button>
                     </Tip>
                     <Tip content="Browse all schemas and models">
-                        <button onClick={navTo(onOpenSchemaExplorer)}
+                        <button data-nav-view="view:schemas" onClick={navTo(onOpenSchemaExplorer)}
+                                onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'schemas' })}
+                                onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenViewPermanent('schemas'); }}
+                                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); onOpenViewPermanent('schemas'); } }}
                                 className={clsx('flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-left text-xs transition-all cursor-pointer select-none font-medium',
                                     showSchemaExplorer ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--sidebar-text)] hover:bg-[var(--surface-hover)]')}>
                             <i className="ph-fill ph-diamonds-four text-[14px]"></i>
@@ -758,6 +834,42 @@ export default function Sidebar(props: SidebarProps) {
     if (isMobile) {
         return (
             <>
+                {/* Right-click context menu */}
+            {contextMenu && (
+                <div
+                    className="fixed z-[5000] min-w-[200px] rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => e.preventDefault()}
+                >
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('open-new-tab', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-plus-square text-[12px] text-[var(--primary)]" />
+                        Open in new tab
+                    </button>
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('open-browser', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-arrow-square-out text-[12px] text-[var(--text-muted)]" />
+                        Open in new browser tab
+                    </button>
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('copy-link', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-link text-[12px] text-[var(--text-muted)]" />
+                        Copy link
+                    </button>
+                    <div className="my-1 border-t border-[var(--border)]" />
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('share', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-share-network text-[12px] text-[var(--method-get)]" />
+                        Share
+                    </button>
+                </div>
+            )}
+
                 <div
                     onClick={onCloseMobile}
                     className={clsx(
@@ -779,5 +891,45 @@ export default function Sidebar(props: SidebarProps) {
         );
     }
 
-    return sidebarContent;
+    return (
+        <>
+            {/* Right-click context menu */}
+            {contextMenu && (
+                <div
+                    className="fixed z-[5000] min-w-[200px] rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => e.preventDefault()}
+                >
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('open-new-tab', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-plus-square text-[12px] text-[var(--primary)]" />
+                        Open in new tab
+                    </button>
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('open-browser', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-arrow-square-out text-[12px] text-[var(--text-muted)]" />
+                        Open in new browser tab
+                    </button>
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('copy-link', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-link text-[12px] text-[var(--text-muted)]" />
+                        Copy link
+                    </button>
+                    <div className="my-1 border-t border-[var(--border)]" />
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                        onClick={() => { onContextAction('share', contextMenu.target); setContextMenu(null); }}>
+                        <i className="ph ph-share-network text-[12px] text-[var(--method-get)]" />
+                        Share
+                    </button>
+                </div>
+            )}
+
+            {sidebarContent}
+        </>
+    );
 }

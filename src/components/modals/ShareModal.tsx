@@ -13,6 +13,7 @@ interface ShareModalProps {
 
 export default function ShareModal({ isOpen, onClose, url, title, description }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedChat, setCopiedChat] = useState<'slack' | 'mattermost' | null>(null);
   const [originUrl, setOriginUrl] = useState(url);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +58,20 @@ export default function ShareModal({ isOpen, onClose, url, title, description }:
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [originUrl]);
+
+  // Slack & Mattermost have no public one-click share intents (their Share
+  // buttons require app registration), so we copy a paste-ready message
+  // instead — paste it into any channel.
+  const handleCopyChat = async (target: 'slack' | 'mattermost') => {
+    const message = `[${shareText}](${originUrl})`;
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch {
+      /* clipboard unavailable */
+    }
+    setCopiedChat(target);
+    setTimeout(() => setCopiedChat(null), 2000);
+  };
 
   const handleNativeShare = async () => {
     if ((navigator as any).share) {
@@ -158,6 +173,23 @@ export default function ShareModal({ isOpen, onClose, url, title, description }:
                 </Tip>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Tip content="Copies a paste-ready markdown link for Slack">
+              <button onClick={() => handleCopyChat('slack')}
+                className="flex-1 py-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                <i className={`ph-fill ph-slack-logo text-[15px] ${copiedChat === 'slack' ? 'text-[var(--method-get)]' : 'text-[#611f69]'}`}></i>
+                {copiedChat === 'slack' ? 'Copied!' : 'Slack'}
+              </button>
+            </Tip>
+            <Tip content="Copies a paste-ready markdown link for Mattermost">
+              <button onClick={() => handleCopyChat('mattermost')}
+                className="flex-1 py-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                <i className={`ph-fill ph-chats-circle text-[15px] ${copiedChat === 'mattermost' ? 'text-[var(--method-get)]' : 'text-[var(--primary)]'}`}></i>
+                {copiedChat === 'mattermost' ? 'Copied!' : 'Mattermost'}
+              </button>
+            </Tip>
           </div>
 
           {(navigator as any).share && (

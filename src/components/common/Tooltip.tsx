@@ -101,8 +101,18 @@ export function Tip({
     role,
   ]);
 
-  const childrenRef = (children as any).ref;
+  // React 19: `ref` is a regular prop on the element (`children.props.ref`).
+  const childrenRef = (children as any).props?.ref;
   const mergedRef = useMergeRefs([refs.setReference, childrenRef]);
+
+  // Hide the tooltip as soon as the page/sidebar scrolls — a tooltip that
+  // follows the scrolled element around looks broken.
+  useEffect(() => {
+    if (!open) return;
+    const hide = () => setOpen(false);
+    window.addEventListener('scroll', hide, true);
+    return () => window.removeEventListener('scroll', hide, true);
+  }, [open]);
 
   if (disabled || !content) {
     return children;
@@ -113,17 +123,10 @@ export function Tip({
       {React.cloneElement(children as React.ReactElement<any>, {
         ...getReferenceProps({
           ...(children.props as any),
-          // `ref: mergedRef` must come AFTER spreading children.props, otherwise an
-          // explicit `ref` already present on the child (a regular prop as of React 19)
-          // would silently overwrite the merged ref and disconnect floating-ui's
-          // reference element — causing the tooltip to never open for that element.
           ref: mergedRef,
         }),
-        // Remove native title so we don't get double tooltips; data-title stores it for fallback/debug
+        // Remove native title so we don't get double tooltips.
         title: undefined,
-        'data-title':
-          (children.props as any).title ??
-          (typeof content === 'string' ? content : undefined),
       })}
       {open && (
         <FloatingPortal>

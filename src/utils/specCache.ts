@@ -7,6 +7,8 @@
  * navbar wipes the cache before forcing a re-fetch.
  */
 
+import { storage } from './storage';
+
 const PREFIX = 'opendoc_spec_cache_v1:';
 
 type CacheEntry = {
@@ -17,54 +19,28 @@ type CacheEntry = {
 const cacheKeyFor = (url: string) => `${PREFIX}${url}`;
 
 export const readCachedSpec = (url: string): string | null => {
-    try {
-        const entry = localStorage.getItem(cacheKeyFor(url));
-        if (!entry) return null;
-        const parsed = JSON.parse(entry) as CacheEntry;
-        if (typeof parsed?.raw !== 'string') return null;
-        return parsed.raw;
-    } catch {
-        return null;
-    }
+    const entry = storage.getJSON<CacheEntry | null>(cacheKeyFor(url), null,
+        (v) => !!v && typeof v.raw === 'string');
+    return entry?.raw ?? null;
 };
 
 export const writeCachedSpec = (url: string, raw: string) => {
     const entry: CacheEntry = { raw, fetchedAt: Date.now() };
-    try {
-        localStorage.setItem(cacheKeyFor(url), JSON.stringify(entry));
-    } catch (e) {
-        // Storage might be full or unavailable; a cache miss is never fatal.
-        console.warn('Could not cache spec, storage unavailable.', e);
-    }
+    storage.setJSON(cacheKeyFor(url), entry);
 };
 
 export const clearCachedSpec = (url: string) => {
-    try {
-        localStorage.removeItem(cacheKeyFor(url));
-    } catch {
-        /* noop */
-    }
+    storage.remove(cacheKeyFor(url));
 };
 
 export const clearAllCachedSpecs = () => {
-    try {
-        Object.keys(localStorage)
-            .filter((k) => k.startsWith(PREFIX))
-            .forEach((k) => localStorage.removeItem(k));
-    } catch {
-        /* noop */
-    }
+    storage.clearPrefix(PREFIX);
 };
 
 export const getCachedSpecAge = (url: string): number | null => {
-    try {
-        const entry = localStorage.getItem(cacheKeyFor(url));
-        if (!entry) return null;
-        const parsed = JSON.parse(entry) as CacheEntry;
-        return typeof parsed?.fetchedAt === 'number' ? parsed.fetchedAt : null;
-    } catch {
-        return null;
-    }
+    const entry = storage.getJSON<CacheEntry | null>(cacheKeyFor(url), null,
+        (v) => !!v && typeof v.raw === 'string');
+    return entry?.fetchedAt ?? null;
 };
 
 /**

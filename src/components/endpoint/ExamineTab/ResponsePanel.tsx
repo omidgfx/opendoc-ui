@@ -47,7 +47,7 @@ export default function ResponsePanel({ method, selectedServer, path, isRunning,
                         )}
                         <Tip content="Ctrl/⌘+Enter">
                             <button
-                                onClick={onExecute}
+                                type="submit"
                                 disabled={isRunning}
                                 id="examine-send-btn"
                                 className="py-2 px-3 text-sm font-bold text-[var(--primary-contrast)] bg-[var(--method-get)] hover:brightness-110 rounded-lg shadow-md transition-all shrink-0 flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 select-none"

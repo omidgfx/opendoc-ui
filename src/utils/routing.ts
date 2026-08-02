@@ -38,6 +38,9 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         responseCode: null,
         legacyOperationId: null,
         searchQuery: '',
+        searchMethods: [],
+        searchTags: [],
+        searchSecured: null,
     };
 
     if (!hash || hash === '#/' || hash === '#') return empty;
@@ -54,6 +57,9 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     let tab: 'view' | 'examine' | 'both' = 'view';
     let schemas: string[] = [];
     let searchQuery = '';
+    let searchMethods: string[] = [];
+    let searchTags: string[] = [];
+    let searchSecured: boolean | null = null;
     const qMarkIndex = raw.indexOf('?');
     if (qMarkIndex !== -1) {
         const queryString = raw.substring(qMarkIndex + 1);
@@ -71,7 +77,14 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         const schemasParam = searchParams.get('schemas');
         if (schemasParam) schemas = schemasParam.split(',').filter(Boolean);
         if (searchParams.get('search')) searchQuery = searchParams.get('search') || '';
+        // Search filters ride along in the URL so a shared search link
+        // restores the exact filter state too.
+        searchMethods = (searchParams.get('methods') || '').split(',').filter(Boolean);
+        searchTags = (searchParams.get('tags') || '').split(',').filter(Boolean);
+        const securedRaw = searchParams.get('secured');
+        searchSecured = securedRaw === 'true' ? true : securedRaw === 'false' ? false : null;
     }
+
 
     const parts = raw.split('/').filter(Boolean);
 
@@ -103,9 +116,9 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         if (parts[2] === 'schema-explorer') {
             showSchemaExplorer = true;
         } else if (parts[2] === 'api' && parts[3]) {
-            return { parsableKey, showSchemaExplorer: false, showHome: false, showAbout: false, endpoint: null, tab, schemas, responseCode, legacyOperationId: decodeURIComponent(parts[3]), searchQuery };
+            return { parsableKey, showSchemaExplorer: false, showHome: false, showAbout: false, endpoint: null, tab, schemas, responseCode, legacyOperationId: decodeURIComponent(parts[3]), searchQuery, searchMethods, searchTags, searchSecured };
         } else if (parts[2] === 'about') {
-            return { parsableKey, showSchemaExplorer: false, showHome: false, showAbout: true, endpoint: null, tab, schemas, responseCode: null, legacyOperationId: null, searchQuery };
+            return { parsableKey, showSchemaExplorer: false, showHome: false, showAbout: true, endpoint: null, tab, schemas, responseCode: null, legacyOperationId: null, searchQuery, searchMethods, searchTags, searchSecured };
         } else {
             showHome = true;
         }
@@ -113,7 +126,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         showHome = true;
     }
 
-    return { parsableKey, showSchemaExplorer, showHome, showAbout: false, endpoint, tab, schemas, responseCode, legacyOperationId: null, searchQuery };
+    return { parsableKey, showSchemaExplorer, showHome, showAbout: false, endpoint, tab, schemas, responseCode, legacyOperationId: null, searchQuery, searchMethods, searchTags, searchSecured };
 };
 
 interface BuildRouteOpts {
@@ -126,12 +139,15 @@ interface BuildRouteOpts {
     schemaModals: Array<{ schemaName: string; schema: any }>;
     responseCode?: string | null;
     searchQuery?: string;
+    searchMethods?: string[];
+    searchTags?: string[];
+    searchSecured?: boolean | null;
     activeSpec?: OpenApiSpec | null;
 }
 
 /** Build a hash URL from state. */
 export const generateSmartRoute = (state: BuildRouteOpts): string => {
-    const { parsableKey, showHome, showAbout, showSchemaExplorer, endpoint, tab, schemaModals, responseCode, searchQuery, activeSpec } = state;
+    const { parsableKey, showHome, showAbout, showSchemaExplorer, endpoint, tab, schemaModals, responseCode, searchQuery, searchMethods, searchTags, searchSecured, activeSpec } = state;
     if (!parsableKey) return showAbout ? '#/about' : '#/';
     if (showAbout) return `#/parsable/${encodeURIComponent(parsableKey)}/about`;
 
@@ -156,6 +172,10 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     else if (tab === 'both') qp.set('tab', 'examine,doc');
     if (schemaModals.length > 0) qp.set('schemas', schemaModals.map(m => m.schemaName).join(','));
     if (searchQuery && searchQuery.trim().length > 0) qp.set('search', searchQuery);
+    if (searchMethods && searchMethods.length > 0) qp.set('methods', searchMethods.join(','));
+    if (searchTags && searchTags.length > 0) qp.set('tags', searchTags.join(','));
+    if (searchSecured === true) qp.set('secured', 'true');
+    else if (searchSecured === false) qp.set('secured', 'false');
     const qs = qp.toString();
     if (qs) route += `?${qs}`;
     if (responseCode) route += `#response-${responseCode}`;

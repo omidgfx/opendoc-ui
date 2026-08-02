@@ -19,26 +19,16 @@ const STORAGE_KEY = 'opendoc_local_history';
 const MAX_ENTRIES = 12;
 const MAX_RAW_BYTES = 2_000_000;
 
+import { storage } from './storage';
+
 export const readLocalHistory = (): LocalHistoryEntry[] => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return [];
-        const parsed = JSON.parse(stored);
-        if (!Array.isArray(parsed)) return [];
-        return parsed.filter(
-            (e) => e && typeof e.key === 'string' && typeof e.raw === 'string',
-        );
-    } catch {
-        return [];
-    }
+    const parsed = storage.getJSON<LocalHistoryEntry[]>(STORAGE_KEY, [],
+        (v) => Array.isArray(v) && v.every((e) => e && typeof e.key === 'string' && typeof e.raw === 'string'));
+    return parsed;
 };
 
 const writeLocalHistory = (list: LocalHistoryEntry[]) => {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    } catch (e) {
-        console.warn('Could not persist local spec history.', e);
-    }
+    storage.setJSON(STORAGE_KEY, list);
 };
 
 export const upsertLocalHistory = (entry: LocalHistoryEntry) => {

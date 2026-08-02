@@ -9,10 +9,11 @@ interface SchemaJsonEditorProps {
     schema: any;
     componentsSchemas: any;
     themeMode?: 'light' | 'dark';
+    onCtrlEnter?: () => void;
 }
 
 export default function SchemaJsonEditor({
-    value, onChange, schema, componentsSchemas, themeMode = 'dark'
+    value, onChange, schema, componentsSchemas, themeMode = 'dark', onCtrlEnter
 }: SchemaJsonEditorProps) {
     const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
     const editorRef = useRef<any>(null);
@@ -54,6 +55,11 @@ export default function SchemaJsonEditor({
     const handleEditorDidMount = (editor: any, monaco: any) => {
         editorRef.current = editor;
         monacoRef.current = monaco;
+        // Ctrl/Cmd+Enter inside Monaco is swallowed by the editor, so it never
+        // reaches the window listener — register it directly on the editor.
+        if (onCtrlEnter) {
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => onCtrlEnter());
+        }
         if (schema) {
             try {
                 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({

@@ -15,4 +15,7 @@ export interface ParsedRoute {
     responseCode: string | null;
     legacyOperationId: string | null;
     searchQuery: string;
+    searchMethods: string[];
+    searchTags: string[];
+    searchSecured: boolean | null;
 }

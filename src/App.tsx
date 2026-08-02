@@ -9,6 +9,7 @@ import { getContrastColor } from './utils/color';
 import { generateSmartRoute, getEndpointId, parseSmartRoute, resolveEndpointFromId } from './utils/routing';
 import { useBreakpoint } from './hooks/useBreakpoint';
 import { fetchSpecText, clearAllCachedSpecs } from './utils/specCache';
+import { storage, uiStorage, specStorage, migrateLegacyStorage } from './utils/storage';
 import {
     readLocalHistory, upsertLocalHistory, removeLocalHistoryEntry, clearLocalHistory,
     findLocalHistoryEntry, type LocalHistoryEntry,
@@ -20,19 +21,21 @@ import HomeView from './components/views/HomeView/HomeView';
 import SearchResultsView from './components/views/SearchResultsView/SearchResultsView';
 import AboutView from './components/views/AboutView';
 import NoSpecView from './components/views/NoSpecView';
+import WelcomeView from './components/views/WelcomeView';
 import SchemaExplorer from './components/schema/SchemaExplorer';
 import ViewTab from './components/endpoint/ViewTab/ViewTab';
 import ExamineTab from './components/endpoint/ExamineTab/ExamineTab';
 import ModalsStack from './components/modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from './components/modals/CodeGeneratorModal';
 import ThemeSelectorModal from './components/modals/ThemeSelectorModal';
+import ShareModal from './components/modals/ShareModal';
 import AuthModal from './components/modals/AuthModal';
 import MethodBadge from './components/common/MethodBadge';
 import { TooltipProvider, Tip } from './components/common/Tooltip';
 import { OperationLinkProvider } from './contexts/OperationLinkContext';
 import FocusPane from './components/common/FocusPane';
 import { useResizableSplit } from './hooks/useResizableSplit';
-import EndpointTabs, { type TabItem } from './components/endpoint/EndpointTabs';
+import EndpointTabs, { type TabItem, type ViewTabKind, VIEW_TAB_META } from './components/endpoint/EndpointTabs';
 
 declare global {
     interface Window { INITIAL_CONFIG?: any; }
@@ -71,6 +74,7 @@ export default function App() {
     const loadSpecSeq = useRef(0);
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [showWelcome, setShowWelcome] = useState(false);
     const [selectedEndpoint, setSelectedEndpoint] = useState<{ path: string; method: string } | null>(null);
     const [showHome, setShowHome] = useState(true);
     const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
@@ -96,20 +100,27 @@ export default function App() {
     const resolvedThemeMode: 'light' | 'dark' =
         currentThemeMode === 'system' ? (systemPrefersLight ? 'light' : 'dark') : currentThemeMode;
 
+    // Cycles system → the mode opposite to the OS → the other explicit mode →
+    // system, so both explicit modes are reachable and there is always a way
+    // back to "follow the OS" (every third click).
     const toggleThemeMode = useCallback(() => {
+        // Fixed rotation driven only by the OS preference (not the current
+        // resolved mode, which changes as the user toggles):
+        //   OS dark:  system → light → dark → system
+        //   OS light: system → dark → light → system
+        // Every third click returns to "follow the OS".
         setCurrentThemeMode(m => {
-            if (m === 'system') return resolvedThemeMode === 'dark' ? 'light' : 'dark';
-            return m === 'light' ? 'dark' : 'light';
+            if (m === 'system') return systemPrefersLight ? 'dark' : 'light';
+            if (m === 'light') return systemPrefersLight ? 'system' : 'dark';
+            return systemPrefersLight ? 'light' : 'system';
         });
-    }, [resolvedThemeMode]);
+    }, [systemPrefersLight]);
 
-    const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
-        try { return localStorage.getItem('sidebar_collapsed') === 'true'; } catch { return false; }
-    });
+    const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => uiStorage.get('sidebar_collapsed') === 'true');
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
-        if (!isMobile) localStorage.setItem('sidebar_collapsed', String(desktopCollapsed));
+        if (!isMobile) uiStorage.set('sidebar_collapsed', String(desktopCollapsed));
     }, [desktopCollapsed, isMobile]);
 
     const [modalsStack, setModalsStack] = useState<string[]>([]);
@@ -117,7 +128,7 @@ export default function App() {
     const [selectedTab, setSelectedTab] = useState<'docs' | 'examine' | 'both'>('docs');
     const [activeSplitPane, setActiveSplitPane] = useState<'docs' | 'examine'>('docs');
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
-    const { leftWidth: docsPaneWidth, isDragging: isSplitDragging, onMouseDown: onSplitResizeMouseDown } = useResizableSplit(splitContainerRef, 'endpoint_split_docs_width');
+    const { leftWidth: docsPaneWidth, isDragging: isSplitDragging, onMouseDown: onSplitResizeMouseDown } = useResizableSplit(splitContainerRef, 'opendoc:ui:endpoint_split_width');
     useEffect(() => {
         if (selectedTab === 'both') setActiveSplitPane('docs');
     }, [selectedTab, selectedEndpoint]);
@@ -137,6 +148,8 @@ export default function App() {
 
     // ---------- Endpoint tabs ----------
     const [endpointTabs, setEndpointTabs] = useState<TabItem[]>([]);
+    const endpointTabsRef = useRef<TabItem[]>([]);
+    endpointTabsRef.current = endpointTabs;
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
     const [tabViewModes, setTabViewModes] = useState<Record<string, 'docs' | 'examine' | 'both'>>({});
 
@@ -158,6 +171,12 @@ export default function App() {
     }, [spec]);
 
     const openEndpointPreview = useCallback((path: string, method: string) => {
+        setShowWelcome(false);
+        // Leaving the search session: drop the query so the hash sync can't
+        // force the search tab back over the endpoint we just opened.
+        if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
+        setSearchQuery('');
+        setResultsQuery('');
         const id = `${method.toLowerCase()}:${path}`;
         setEndpointTabs(prev => {
             const existing = prev.find(t => t.id === id);
@@ -187,6 +206,10 @@ export default function App() {
     }, [getEndpointLabel, withPreviewLast]);
 
     const openEndpointPermanent = useCallback((path: string, method: string) => {
+        setShowWelcome(false);
+        if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
+        setSearchQuery('');
+        setResultsQuery('');
         const id = `${method.toLowerCase()}:${path}`;
         setEndpointTabs(prev => {
             const existing = prev.find(t => t.id === id);
@@ -209,17 +232,201 @@ export default function App() {
         setSelectedEndpoint({ path, method: method.toLowerCase() });
     }, [getEndpointLabel]);
 
+    /** Stash the current search query + filters onto the search tab so they
+     *  survive navigating away and back. */
+    const stashSearchTab = useCallback(() => {
+        console.log('[st] stash q=', searchQuery);
+        setEndpointTabs(prev => prev.map(t => t.id === 'view:search'
+            ? { ...t, query: searchQuery, filters: { methods: selectedMethods, tags: selectedTags, onlyProtected } }
+            : t));
+    }, [searchQuery, selectedMethods, selectedTags, onlyProtected]);
+
+    const [scrollIntent, setScrollIntent] = useState<{ type: 'endpoint' | 'view'; id: string } | null>(null);
+
     const handleSelectTab = useCallback((id: string) => {
+        if (activeTabId === 'view:search' && id !== 'view:search') stashSearchTab();
         setActiveTabId(id);
         const tab = endpointTabs.find(t => t.id === id);
-        if (tab) {
-            setSelectedEndpoint({ path: tab.path, method: tab.method });
+        if (!tab) return;
+
+        if (tab.kind && tab.kind !== 'endpoint') {
+            // View tab (overview / search / schema explorer / about)
+            setSelectedEndpoint(null);
+            setShowHome(tab.kind === 'home');
+            setShowSchemaExplorer(tab.kind === 'schemas');
+            setShowAbout(tab.kind === 'about');
+            if (tab.kind === 'search') {
+                // Bring back the query AND the filters for this search session.
+                setSearchQuery(tab.query || '');
+                setResultsQuery(tab.query || '');
+                setSelectedMethods(tab.filters?.methods || []);
+                setSelectedTags(tab.filters?.tags || []);
+                setOnlyProtected(tab.filters?.onlyProtected ?? null);
+            } else {
+                setSearchQuery('');
+            }
+            setActiveResponseCode(null);
+            setScrollIntent({ type: 'view', id: tab.id });
+            return;
+        }
+        setSelectedEndpoint({ path: tab.path, method: tab.method });
+        setShowHome(false);
+        setShowSchemaExplorer(false);
+        setShowAbout(false);
+        setSearchQuery('');
+    }, [endpointTabs, activeTabId, stashSearchTab]);
+
+    /** Open (or re-activate) one of the named view tabs: overview, search,
+     *  schema explorer or about. View tabs are permanent tabs and never touch
+     *  the endpoint preview slot — opening search while reading an endpoint
+     *  keeps that endpoint tab around, so clearing the search can return to it. */
+    /** Open (or re-activate) one of the four sidebar view tabs with PREVIEW
+     *  semantics — exactly like an endpoint preview tab: reuses an existing tab
+     *  of the same id, otherwise replaces the current preview slot and stays a
+     *  preview (double-click / middle-click pins it via openViewTabPermanent). */
+    const openViewTab = useCallback((view: ViewTabKind, query = '') => {
+        setShowWelcome(false);
+        const id = `view:${view}`;
+        const label = view === 'search'
+            ? (query ? `Search: ${query}` : 'Search')
+            : VIEW_TAB_META[view].label;
+        setEndpointTabs(prev => {
+            const existing = prev.find(t => t.id === id);
+            if (existing) {
+                return prev.map(t => t.id === id ? { ...t, query: view === 'search' ? query : undefined } : t);
+            }
+            const newTab: TabItem = { id, path: '', method: '', isPreview: true, label, kind: view, query: view === 'search' ? query : undefined };
+            const previewIdx = prev.findIndex(t => t.isPreview);
+            if (previewIdx >= 0) {
+                const next = prev.filter(t => !t.isPreview);
+                return [...next, newTab];
+            }
+            return [...prev, newTab];
+        });
+        setActiveTabId(id);
+        setSelectedEndpoint(null);
+        setShowHome(view === 'home');
+        setShowSchemaExplorer(view === 'schemas');
+        setShowAbout(view === 'about');
+        setSearchQuery(view === 'search' ? query : '');
+        setActiveResponseCode(null);
+        setModalsStack([]);
+    }, []);
+
+    /** Open a view tab as a permanent tab (double/middle click on the sidebar
+     *  nav buttons) — same semantics as openEndpointPermanent. */
+    const openViewTabPermanent = useCallback((view: ViewTabKind, query = '') => {
+        setShowWelcome(false);
+        const id = `view:${view}`;
+        const label = view === 'search'
+            ? (query ? `Search: ${query}` : 'Search')
+            : VIEW_TAB_META[view].label;
+        setEndpointTabs(prev => {
+            const existing = prev.find(t => t.id === id);
+            if (existing) return prev.map(t => t.id === id ? { ...t, isPreview: false, query: view === 'search' ? query : undefined } : t);
+            const newTab: TabItem = { id, path: '', method: '', isPreview: false, label, kind: view, query: view === 'search' ? query : undefined };
+            const previewIdx = prev.findIndex(t => t.isPreview);
+            if (previewIdx >= 0) {
+                const next = [...prev];
+                next.splice(previewIdx, 0, newTab);
+                return next;
+            }
+            return [...prev, newTab];
+        });
+        setActiveTabId(id);
+        setSelectedEndpoint(null);
+        setShowHome(view === 'home');
+        setShowSchemaExplorer(view === 'schemas');
+        setShowAbout(view === 'about');
+        setSearchQuery(view === 'search' ? query : '');
+        setActiveResponseCode(null);
+        setModalsStack([]);
+    }, []);
+
+    /** Apply the view state that matches a tab (used when closing tabs or
+     *  restoring state from a deep link). */
+    const applyTabViewState = useCallback((tab: TabItem | null) => {
+        if (!tab) {
+            // Every tab closed -> welcome page (not the overview).
+            setSelectedEndpoint(null);
             setShowHome(false);
             setShowSchemaExplorer(false);
             setShowAbout(false);
             setSearchQuery('');
+            setShowWelcome(true);
+            return;
         }
-    }, [endpointTabs]);
+        setShowWelcome(false);
+        if (tab.kind && tab.kind !== 'endpoint') {
+            setSelectedEndpoint(null);
+            setShowHome(tab.kind === 'home');
+            setShowSchemaExplorer(tab.kind === 'schemas');
+            setShowAbout(tab.kind === 'about');
+            setSearchQuery(tab.kind === 'search' ? (tab.query || '') : '');
+            // Make the sidebar scroll to the activated page (like endpoints do).
+            setScrollIntent({ type: 'view', id: tab.id });
+            return;
+        }
+        setSelectedEndpoint({ path: tab.path, method: tab.method });
+        setShowHome(false);
+        setShowSchemaExplorer(false);
+        setShowAbout(false);
+        setSearchQuery('');
+    }, []);
+
+    // Latest navigation flags kept in a ref so ensureViewTabFromState can stay
+    // referentially stable. If its identity changed on every navigation, the
+    // spec-load effect that calls it would re-run mid-navigation and revert the
+    // freshly applied state using the still-stale URL hash.
+    const navStateRef = useRef({ searchQuery: '', showSchemaExplorer: false, showAbout: false, showHome: true, showWelcome: false, selectedMethodsLength: 0, selectedTagsLength: 0, onlyProtected: null as boolean | null });
+    navStateRef.current = { searchQuery, showSchemaExplorer, showAbout, showHome, showWelcome, selectedMethodsLength: selectedMethods.length, selectedTagsLength: selectedTags.length, onlyProtected };
+
+    /** After hash-driven state changes, make sure the matching view tab exists
+     *  and is the active one (deep links like #/parsable/x/schema-explorer). */
+    const ensureViewTabFromState = useCallback((override?: { searchQuery?: string; showSchemaExplorer?: boolean; showAbout?: boolean; showHome?: boolean }) => {
+        const s = { ...navStateRef.current, ...override };
+        if (s.showWelcome) return;
+        const expected: ViewTabKind | null =
+            s.searchQuery.trim().length || s.selectedMethodsLength > 0 || s.selectedTagsLength > 0 || s.onlyProtected !== null
+                ? 'search'
+                : s.showSchemaExplorer
+                    ? 'schemas'
+                    : s.showAbout
+                        ? 'about'
+                        : s.showHome
+                            ? 'home'
+                            : null;
+        if (!expected) return;
+        setShowWelcome(false);
+        // If the search tab is already active, don't force anything (this was
+        // making clicking a result bounce straight back to the search tab).
+        if (expected === 'search') {
+            const already = endpointTabsRef.current.find(t => t.id === 'view:search');
+            if (already) {
+                setActiveTabId('view:search');
+                return;
+            }
+        }
+        const id = `view:${expected}`;
+        setEndpointTabs(prev => {
+            if (prev.some(t => t.id === id)) return prev;
+            const label = expected === 'search'
+                ? (s.searchQuery ? `Search: ${s.searchQuery}` : 'Search')
+                : VIEW_TAB_META[expected].label;
+            const newTab: TabItem = {
+                id, path: '', method: '', isPreview: false, label, kind: expected,
+                query: expected === 'search' ? s.searchQuery : undefined,
+            };
+            const previewIdx = prev.findIndex(t => t.isPreview);
+            if (previewIdx >= 0) {
+                const next = [...prev];
+                next.splice(previewIdx, 0, newTab);
+                return next;
+            }
+            return [...prev, newTab];
+        });
+        setActiveTabId(id);
+    }, []);
 
     const handleCloseTab = useCallback((id: string) => {
         setEndpointTabs(prev => {
@@ -229,12 +436,7 @@ export default function App() {
             if (id === activeTabId) {
                 const newActive = next[Math.min(idx, next.length - 1)] || null;
                 setActiveTabId(newActive?.id || null);
-                if (newActive) {
-                    setSelectedEndpoint({ path: newActive.path, method: newActive.method });
-                } else {
-                    setSelectedEndpoint(null);
-                    setShowHome(true);
-                }
+                applyTabViewState(newActive);
             }
             return next;
         });
@@ -243,7 +445,7 @@ export default function App() {
             delete next[id];
             return next;
         });
-    }, [activeTabId]);
+    }, [activeTabId, applyTabViewState]);
 
     const handleDoubleClickTab = useCallback((id: string) => {
         setEndpointTabs(prev => withPreviewLast(prev.map(t => t.id === id ? { ...t, isPreview: false } : t)));
@@ -258,7 +460,7 @@ export default function App() {
             if (toRemove.includes(activeTabId || '')) {
                 setActiveTabId(id);
                 const tab = next.find(t => t.id === id);
-                if (tab) setSelectedEndpoint({ path: tab.path, method: tab.method });
+                if (tab) applyTabViewState(tab);
             }
             setTabViewModes(vm => {
                 const n = { ...vm };
@@ -267,7 +469,7 @@ export default function App() {
             });
             return next;
         });
-    }, [activeTabId]);
+    }, [activeTabId, applyTabViewState]);
 
     const handleCloseAllRight = useCallback((id: string) => {
         setEndpointTabs(prev => {
@@ -278,7 +480,7 @@ export default function App() {
             if (toRemove.includes(activeTabId || '')) {
                 setActiveTabId(id);
                 const tab = next.find(t => t.id === id);
-                if (tab) setSelectedEndpoint({ path: tab.path, method: tab.method });
+                if (tab) applyTabViewState(tab);
             }
             setTabViewModes(vm => {
                 const n = { ...vm };
@@ -287,7 +489,7 @@ export default function App() {
             });
             return next;
         });
-    }, [activeTabId]);
+    }, [activeTabId, applyTabViewState]);
 
     const handleCloseOthers = useCallback((id: string) => {
         setEndpointTabs(prev => {
@@ -295,7 +497,7 @@ export default function App() {
             if (!keep) return prev;
             const toRemove = prev.filter(t => t.id !== id).map(t => t.id);
             setActiveTabId(id);
-            setSelectedEndpoint({ path: keep.path, method: keep.method });
+            applyTabViewState(keep);
             setTabViewModes(vm => {
                 const n: Record<string, 'docs' | 'examine' | 'both'> = {};
                 if (vm[id]) n[id] = vm[id];
@@ -303,7 +505,7 @@ export default function App() {
             });
             return [keep];
         });
-    }, []);
+    }, [applyTabViewState]);
 
     const handleReorderTabs = useCallback((fromIndex: number, toIndex: number) => {
         setEndpointTabs(prev => {
@@ -316,10 +518,11 @@ export default function App() {
 
     useEffect(() => {
         if (!spec) return;
-        setEndpointTabs(prev => prev.map(t => ({
-            ...t,
-            label: getEndpointLabel(t.path, t.method),
-        })));
+        setEndpointTabs(prev => prev.map(t =>
+            t.kind && t.kind !== 'endpoint'
+                ? t
+                : { ...t, label: getEndpointLabel(t.path, t.method) },
+        ));
     }, [spec, getEndpointLabel]);
 
     // ---------- Tab persistence (localStorage) ----------
@@ -327,13 +530,14 @@ export default function App() {
 
     useEffect(() => {
         if (!selectedParsableKey || endpointTabs.length === 0) return;
-        const key = `endpoint_tabs_${selectedParsableKey}`;
-        const data = { tabs: endpointTabs, activeTabId, viewModes: tabViewModes };
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch (e) {
-            console.warn('Failed to save tabs to localStorage', e);
-        }
+        // The search tab is ephemeral (its query/filters live in state) — never
+        // persist it. Without this, a refresh would restore a stale search tab
+        // that crashes or shows a blank results page.
+        const persistable = endpointTabs.filter(t => t.id !== 'view:search');
+        const activeId = activeTabId === 'view:search' ? (persistable[persistable.length - 1]?.id || '') : activeTabId;
+        if (persistable.length === 0) return;
+        const data = { tabs: persistable, activeTabId: activeId, viewModes: tabViewModes };
+        specStorage.setJSON(selectedParsableKey, 'tabs', data);
     }, [endpointTabs, activeTabId, tabViewModes, selectedParsableKey]);
 
     useEffect(() => {
@@ -341,36 +545,30 @@ export default function App() {
         if (tabsRestoredRef.current.has(selectedParsableKey)) return;
         tabsRestoredRef.current.add(selectedParsableKey);
 
-        const key = `endpoint_tabs_${selectedParsableKey}`;
-        try {
-            const stored = localStorage.getItem(key);
-            if (stored) {
-                const data = JSON.parse(stored);
-                if (data.tabs && Array.isArray(data.tabs) && data.tabs.length > 0) {
-                    const updatedTabs = withPreviewLast(data.tabs.map((t: TabItem) => ({
-                        ...t,
-                        label: getEndpointLabel(t.path, t.method),
-                    })));
-                    setEndpointTabs(updatedTabs);
-                    if (data.activeTabId) {
-                        setActiveTabId(data.activeTabId);
-                        const activeTab = updatedTabs.find((t: TabItem) => t.id === data.activeTabId);
-                        if (activeTab) {
-                            setSelectedEndpoint({ path: activeTab.path, method: activeTab.method });
-                            setShowHome(false);
-                            setShowSchemaExplorer(false);
-                            setShowAbout(false);
-                        }
-                    }
-                    if (data.viewModes) {
-                        setTabViewModes(data.viewModes);
-                    }
-                }
+        const data = specStorage.getJSON<{ tabs?: TabItem[]; activeTabId?: string; viewModes?: Record<string, 'docs' | 'examine' | 'both'> }>(
+            selectedParsableKey, 'tabs', null,
+            (v) => !!v && Array.isArray(v.tabs),
+        );
+        if (data?.tabs && data.tabs.length > 0) {
+            // Never restore a stored search tab (it is ephemeral).
+            const filtered = data.tabs.filter((t: TabItem) => t.id !== 'view:search');
+            if (filtered.length === 0) return;
+            const updatedTabs = withPreviewLast(filtered.map((t: TabItem) =>
+                t.kind && t.kind !== 'endpoint'
+                    ? t
+                    : { ...t, label: getEndpointLabel(t.path, t.method) },
+            ));
+            setEndpointTabs(updatedTabs);
+            if (data.activeTabId) {
+                setActiveTabId(data.activeTabId);
+                const activeTab = updatedTabs.find((t: TabItem) => t.id === data.activeTabId);
+                if (activeTab) applyTabViewState(activeTab);
             }
-        } catch (e) {
-            console.warn('Failed to load tabs from localStorage', e);
+            if (data.viewModes) {
+                setTabViewModes(data.viewModes);
+            }
         }
-    }, [spec, selectedParsableKey, getEndpointLabel, withPreviewLast]);
+    }, [spec, selectedParsableKey, getEndpointLabel, withPreviewLast, applyTabViewState]);
 
     useEffect(() => {
         if (activeTabId && tabViewModes[activeTabId]) {
@@ -422,17 +620,17 @@ export default function App() {
         else document.title = 'OpenDoc UI';
     }, [spec, selectedParsableKey]);
 
-    // ---------- Theme (per parsable) ----------
+    // ---------- Theme (per spec) ----------
     useEffect(() => {
         if (!selectedParsableKey) return;
-        const t = localStorage.getItem(`selected_theme_name_${selectedParsableKey}`);
+        const t = specStorage.get(selectedParsableKey, 'theme');
         setSelectedThemeName(t && THEME_LIST.some(x => x.name === t) ? t : 'Default Slate');
-        const m = localStorage.getItem(`theme_mode_${selectedParsableKey}`);
+        const m = specStorage.get(selectedParsableKey, 'theme_mode');
         setCurrentThemeMode(m === 'light' || m === 'dark' || m === 'system' ? m : 'system');
     }, [selectedParsableKey]);
-    useEffect(() => { if (selectedParsableKey) localStorage.setItem(`selected_theme_name_${selectedParsableKey}`, selectedThemeName); }, [selectedThemeName, selectedParsableKey]);
-    useEffect(() => { if (selectedParsableKey) localStorage.setItem(`theme_mode_${selectedParsableKey}`, currentThemeMode); }, [currentThemeMode, selectedParsableKey]);
-    useEffect(() => { if (selectedParsableKey && parsables[selectedParsableKey]) localStorage.setItem('selected_parsable_key', selectedParsableKey); }, [selectedParsableKey, parsables]);
+    useEffect(() => { if (selectedParsableKey) specStorage.set(selectedParsableKey, 'theme', selectedThemeName); }, [selectedThemeName, selectedParsableKey]);
+    useEffect(() => { if (selectedParsableKey) specStorage.set(selectedParsableKey, 'theme_mode', currentThemeMode); }, [currentThemeMode, selectedParsableKey]);
+    useEffect(() => { if (selectedParsableKey && parsables[selectedParsableKey]) uiStorage.set('last_parsable', selectedParsableKey); }, [selectedParsableKey, parsables]);
 
     const activeTheme = useMemo(() => THEME_LIST.find(t => t.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
 
@@ -528,11 +726,6 @@ export default function App() {
         setSpec(obj);
         setIsLoadingSpec(false);
         if (obj) setSelectedServer(obj.servers?.[0]?.url || 'https://api.example.com');
-        setShowHome(true);
-        setShowSchemaExplorer(false);
-        setShowAbout(false);
-        setSelectedEndpoint(null);
-        setSearchQuery('');
         setActiveResponseCode(null);
         setModalsStack([]);
         setSelectedTab('docs');
@@ -547,8 +740,9 @@ export default function App() {
         const h = `#/parsable/${encodeURIComponent(key)}`;
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
+        openViewTab('home');
         return obj;
-    }, []);
+    }, [openViewTab]);
 
     const handleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -587,6 +781,9 @@ export default function App() {
     // ---------- Refresh (drop cache, reload) ----------
     const handleRefreshSpec = useCallback(async () => {
         setIsRefreshingSpec(true);
+        // Keep the spinner visible for at least ~700ms; a local fetch can be
+        // nearly instant and the animation would otherwise be invisible.
+        const minVisible = new Promise(r => setTimeout(r, 700));
         try {
             if (selectedParsableKey && parsables[selectedParsableKey]) {
                 clearAllCachedSpecs();
@@ -603,6 +800,7 @@ export default function App() {
             console.error('Refresh failed', e);
             setLocalOpenError('Could not re-read the specification.');
         } finally {
+            await minVisible;
             setIsRefreshingSpec(false);
         }
     }, [selectedParsableKey, parsables, localSpec, applyLocalSpec]);
@@ -612,6 +810,7 @@ export default function App() {
         let cancelled = false;
 
         const bootstrap = async () => {
+            migrateLegacyStorage();
             let data: any = null;
             let source: ConfigSource = 'none';
             if (window.INITIAL_CONFIG) {
@@ -651,11 +850,13 @@ export default function App() {
                 const p = parseSmartRoute(window.location.hash);
                 if (p.parsableKey && loaded[p.parsableKey]) initialKey = p.parsableKey;
                 else {
-                    const sk = localStorage.getItem('selected_parsable_key');
+                    const sk = uiStorage.get('last_parsable');
                     if (sk && loaded[sk]) initialKey = sk;
                     else initialKey = Object.keys(loaded)[0] || '';
                 }
                 if (initialKey) setSelectedParsableKey(initialKey);
+                // Self-repair: drop per-spec data for specs that no longer exist.
+                specStorage.prune(Object.keys(loaded));
             } else if (window.location.hash) {
                 // Local mode: a deep link may point at a previously opened spec.
                 const p = parseSmartRoute(window.location.hash);
@@ -679,11 +880,19 @@ export default function App() {
 
     // ---------- Hash sync ----------
     const syncHashToState = useCallback(() => {
+        // While the welcome page is showing, the URL may hold a stale ?search=
+        // from before the tabs were closed — ignore it entirely.
+        if (navStateRef.current.showWelcome) return;
         const parsed: ParsedRoute = parseSmartRoute(window.location.hash);
+
         if (parsed.parsableKey && parsed.parsableKey !== selectedParsableKey && parsables[parsed.parsableKey]) {
             setSelectedParsableKey(parsed.parsableKey);
         }
         setSearchQuery(parsed.searchQuery || '');
+        setResultsQuery(parsed.searchQuery || '');
+        setSelectedMethods(parsed.searchMethods || []);
+        setSelectedTags(parsed.searchTags || []);
+        setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
@@ -706,25 +915,39 @@ export default function App() {
             const valid = parsed.schemas.filter(n => spec.components!.schemas![n]);
             setModalsStack(valid.length ? valid : []);
         }
-    }, [parsables, selectedParsableKey, spec, openEndpointPreview]);
+        ensureViewTabFromState({
+            searchQuery: parsed.searchQuery || '',
+            showSchemaExplorer: parsed.showSchemaExplorer,
+            showAbout: parsed.showAbout,
+            showHome: parsed.showHome,
+        });
+    }, [parsables, selectedParsableKey, spec, openEndpointPreview, ensureViewTabFromState]);
 
     const updateHashFromState = useCallback(() => {
         if (isLoadingSpec || isUpdatingHash || !isInitialLoadComplete || !spec) return;
         setIsUpdatingHash(true);
+
         const h = generateSmartRoute({
             parsableKey: selectedParsableKey, showHome, showAbout, showSchemaExplorer,
             endpoint: selectedEndpoint, tab: selectedTab,
             schemaModals: modalsStack.map(n => ({ schemaName: n, schema: spec?.components?.schemas?.[n] || {} })),
-            responseCode: activeResponseCode, searchQuery, activeSpec: spec,
+            responseCode: activeResponseCode, searchQuery, searchMethods: selectedMethods, searchTags: selectedTags, searchSecured: onlyProtected,
+            activeSpec: spec,
         });
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
-    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery]);
+    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, showWelcome, selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, selectedMethods, selectedTags, onlyProtected]);
 
     useEffect(() => {
         if (!spec?.paths || isLoadingSpec) return;
         const parsed = parseSmartRoute(window.location.hash);
         setSearchQuery(parsed.searchQuery || '');
+        // Results must render immediately on a deep-linked search URL — without
+        // this, the search tab opens but shows the overview until re-clicked.
+        setResultsQuery(parsed.searchQuery || '');
+        setSelectedMethods(parsed.searchMethods || []);
+        setSelectedTags(parsed.searchTags || []);
+        setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
@@ -740,7 +963,13 @@ export default function App() {
         }
         setModalsStack(parsed.schemas.filter(n => spec.components?.schemas?.[n]));
         if (window.location.hash.includes('?tab=')) setSelectedTab(mapRouteTabToState(parsed.tab));
-    }, [spec, selectedParsableKey, isLoadingSpec]);
+        ensureViewTabFromState({
+            searchQuery: parsed.searchQuery || '',
+            showSchemaExplorer: parsed.showSchemaExplorer,
+            showAbout: parsed.showAbout,
+            showHome: parsed.showHome,
+        });
+    }, [spec, selectedParsableKey, isLoadingSpec, ensureViewTabFromState]);
 
     const getTabFromHash = () => parseSmartRoute(window.location.hash).tab;
     const hashHasExplicitTab = () => window.location.hash.includes('?tab=') || window.location.hash.includes('&tab=');
@@ -749,11 +978,11 @@ export default function App() {
     useEffect(() => {
         if (!selectedParsableKey) return;
         if (hashHasExplicitTab()) { setSelectedTab(mapRouteTabToState(getTabFromHash())); return; }
-        const t = localStorage.getItem(`preferred_tab_${selectedParsableKey}`);
+        const t = specStorage.get(selectedParsableKey, 'tab_mode');
         setSelectedTab(t === 'examine' ? 'examine' : t === 'both' ? 'both' : 'docs');
     }, [selectedParsableKey]);
     useEffect(() => {
-        if (selectedParsableKey) localStorage.setItem(`preferred_tab_${selectedParsableKey}`, mapStateTabToStorage(selectedTab));
+        if (selectedParsableKey) specStorage.set(selectedParsableKey, 'tab_mode', mapStateTabToStorage(selectedTab));
     }, [selectedTab, selectedParsableKey]);
 
     const [hashTimer, setHashTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -774,7 +1003,67 @@ export default function App() {
     // ---------- Handlers ----------
     const closeMobileIfNeeded = () => { if (isMobile) setMobileOpen(false); };
 
+    const [shareTarget, setShareTarget] = useState<{ url: string; title: string; description?: string } | null>(null);
+
+    const endpointDeepLink = useCallback((path: string, method: string) => {
+        const op = (spec?.paths?.[path] as any)?.[method] || {};
+        const opId = getEndpointId(op, path, method);
+        return `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}/api/${encodeURIComponent(opId)}`;
+    }, [spec, selectedParsableKey]);
+
+    const viewDeepLink = useCallback((view: ViewTabKind) => {
+        const base = `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}`;
+        if (view === 'about') return `${base}/about`;
+        if (view === 'schemas') return `${base}/schema-explorer`;
+        if (view === 'search') return `${base}?search=`;
+        return base;
+    }, [selectedParsableKey]);
+
+    const openEndpointInBrowserTab = useCallback((path: string, method: string) => {
+        window.open(endpointDeepLink(path, method), '_blank', 'noopener');
+    }, [endpointDeepLink]);
+
+    const openViewInBrowserTab = useCallback((view: ViewTabKind) => {
+        window.open(viewDeepLink(view), '_blank', 'noopener');
+    }, [viewDeepLink]);
+
+    const copyText = useCallback(async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            /* clipboard unavailable */
+        }
+    }, []);
+
+    /** Single entry point for the sidebar context menus. */
+    const handleContextAction = useCallback((
+        action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link',
+        target: { type: 'endpoint'; path: string; method: string } | { type: 'view'; view: ViewTabKind },
+    ) => {
+        if (target.type === 'endpoint') {
+            const { path, method } = target;
+            if (action === 'open-new-tab') { openEndpointPermanent(path, method); return; }
+            if (action === 'open-browser') { openEndpointInBrowserTab(path, method); return; }
+            const op = (spec?.paths?.[path] as any)?.[method] || {};
+            const label = op?.summary || `${method.toUpperCase()} ${path}`;
+            const url = endpointDeepLink(path, method);
+            if (action === 'copy-link') { copyText(url); return; }
+            setShareTarget({ url, title: `${method.toUpperCase()} ${path} — ${label}`, description: label });
+            return;
+        }
+        const { view } = target;
+        if (action === 'open-new-tab') { openViewTabPermanent(view); return; }
+        if (action === 'open-browser') { openViewInBrowserTab(view); return; }
+        const url = viewDeepLink(view);
+        const title = VIEW_TAB_META[view].label;
+        if (action === 'copy-link') { copyText(url); return; }
+        setShareTarget({ url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}` });
+    }, [spec, openEndpointPermanent, openViewTabPermanent, openEndpointInBrowserTab, openViewInBrowserTab, endpointDeepLink, viewDeepLink, copyText]);
+
     const handleSelectEndpoint = (path: string, method: string) => {
+        if (activeTabId === 'view:search') stashSearchTab();
+        if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
+        setResultsQuery('');
         openEndpointPreview(path, method);
         setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
         setActiveResponseCode(null); setSearchQuery('');
@@ -785,20 +1074,89 @@ export default function App() {
         if (!isMobile) setDesktopCollapsed(false);
         handleSelectEndpoint(path, method);
     };
-    const [searchDebounce, setSearchDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
+    // Debounced copy of the query used only for the (heavy) results rendering;
+    // the input and the tab switch stay instant so typing never lags.
+    const [resultsQuery, setResultsQuery] = useState('');
+    const searchRenderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Tab that was active before the search started — restored when it clears.
+    const preSearchTabRef = useRef<string | null>(null);
+
+    /** Cheap match check — used only when saving search history (5s after the
+     *  user stops typing) to avoid storing queries that found nothing. */
+    const searchHasResults = useCallback((q: string): boolean => {
+        if (!spec?.paths || !q.trim()) return false;
+        const needle = q.trim().toLowerCase();
+        for (const [pathStr, item] of Object.entries(spec.paths)) {
+            for (const [m, op] of Object.entries(item as any)) {
+                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(m)) continue;
+                const o = op as any;
+                if (pathStr.toLowerCase().includes(needle)) return true;
+                if ((o.summary || '').toLowerCase().includes(needle)) return true;
+                if ((o.description || '').toLowerCase().includes(needle)) return true;
+                if ((o.tags || []).some((t: string) => t.toLowerCase().includes(needle))) return true;
+            }
+        }
+        return false;
+    }, [spec]);
+
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        if (searchDebounce) { clearTimeout(searchDebounce); setSearchDebounce(null); }
-        const t = setTimeout(() => {
-            const hasFilters = selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-            if (query.trim().length || hasFilters) { setSelectedEndpoint(null); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
-            else { setSelectedEndpoint(null); setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false); }
-        }, 500);
-        setSearchDebounce(t);
+        if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
+        searchRenderTimer.current = setTimeout(() => setResultsQuery(query), 250);
+
+        const hasFilters = selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
+        if (query.trim().length || hasFilters) {
+            setShowWelcome(false);
+            if (activeTabId === 'view:search' && query.trim().length) {
+                // Already on the search tab with a non-empty query: update only
+                // the query + the tab's label — skip the full state churn.
+                setEndpointTabs(prev => prev.map(t => t.id === 'view:search' ? { ...t, query, label: `Search: ${query}` } : t));
+                return;
+            }
+            if (!preSearchTabRef.current && activeTabId && !activeTabId.startsWith('view:search')) {
+                preSearchTabRef.current = activeTabId;
+            }
+            // Show results immediately — no debounce delay on the first open,
+            // so the overview never flashes before the results appear.
+            if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
+            setResultsQuery(query);
+            openViewTab('search', query);
+        } else {
+            const prevId = preSearchTabRef.current;
+            preSearchTabRef.current = null;
+            // The search tab has served its purpose; drop it and go back to
+            // whatever the user was looking at before typing.
+            const rest = endpointTabs.filter(t => t.id !== 'view:search');
+            setEndpointTabs(rest);
+            const prevTab = prevId ? rest.find(t => t.id === prevId) : null;
+            const target = prevTab || rest[rest.length - 1] || null;
+            if (target) {
+                setActiveTabId(target.id);
+                applyTabViewState(target);
+            } else {
+                // Nothing else open -> welcome page, not the overview.
+                setSelectedEndpoint(null);
+                setShowHome(false);
+                setShowSchemaExplorer(false);
+                setShowAbout(false);
+                setSearchQuery('');
+                setResultsQuery('');
+                setShowWelcome(true);
+                // Scrub the stale ?search= param so a late hash-sync can't
+                // resurrect the search tab over the welcome page.
+                const clean = window.location.hash.replace(/[?&]search=[^&]*/, '');
+                if (clean !== window.location.hash) {
+                    setIsUpdatingHash(true);
+                    window.location.hash = clean;
+                    setIsUpdatingHash(false);
+                }
+            }
+        }
     };
-    const handleOpenHome = () => { setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false); setSelectedEndpoint(null); setActiveTabId(null); setSearchQuery(''); setActiveResponseCode(null); if (!spec) window.location.hash = '#/'; closeMobileIfNeeded(); };
-    const handleOpenAbout = () => { setShowAbout(true); setShowHome(false); setShowSchemaExplorer(false); setSelectedEndpoint(null); setActiveTabId(null); setSearchQuery(''); setActiveResponseCode(null); if (!spec) window.location.hash = '#/about'; closeMobileIfNeeded(); };
-    const handleOpenSchemaExplorer = () => { setShowSchemaExplorer(true); setShowHome(false); setShowAbout(false); setSelectedEndpoint(null); setActiveTabId(null); setSearchQuery(''); closeMobileIfNeeded(); };
+    const handleOpenHome = () => { setScrollIntent({ type: 'view', id: 'view:home' }); openViewTab('home'); if (!spec) window.location.hash = '#/'; closeMobileIfNeeded(); };
+    const handleOpenAbout = () => { setScrollIntent({ type: 'view', id: 'view:about' }); openViewTab('about'); if (!spec) window.location.hash = '#/about'; closeMobileIfNeeded(); };
+    const handleOpenSchemaExplorer = () => { setScrollIntent({ type: 'view', id: 'view:schemas' }); openViewTab('schemas'); closeMobileIfNeeded(); };
+    const handleOpenSearchNav = () => { setScrollIntent({ type: 'view', id: 'view:search' }); openViewTab('search', searchQuery); };
     const handleDownload = () => {
         if (!spec) return;
         const d = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(spec, null, 2));
@@ -808,7 +1166,6 @@ export default function App() {
     const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
     const handleSelectParsable = (k: string) => {
         if (k === selectedParsableKey) return;
-        setShowHome(true); setShowSchemaExplorer(false); setShowAbout(false);
         setSelectedEndpoint(null); setSearchQuery(''); setActiveResponseCode(null); setModalsStack([]);
         setSelectedTab('docs'); setSelectedMethods([]); setSelectedTags([]); setOnlyProtected(null);
         setEndpointTabs([]); setActiveTabId(null); setTabViewModes({});
@@ -818,6 +1175,7 @@ export default function App() {
         const h = `#/parsable/${encodeURIComponent(k)}`;
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
+        openViewTab('home');
         closeMobileIfNeeded();
     };
 
@@ -836,9 +1194,22 @@ export default function App() {
                 />
             );
         }
+        if (showWelcome) {
+            return (
+                <WelcomeView
+                    specTitle={spec.info?.title || selectedParsableKey}
+                    specKey={selectedParsableKey}
+                    onSearchSubmit={(q) => handleSearchChange(q)}
+                    onOpenAbout={handleOpenAbout}
+                    onOpenHome={handleOpenHome}
+                    onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                    canOpenLocal={canOpenLocal}
+                />
+            );
+        }
         const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
-        if (searchQuery.trim().length || hasFilters) {
-            return <SearchResultsView spec={spec} searchQuery={searchQuery} onSelectEndpoint={handleSearchResult}
+        if (activeTabId === 'view:search' && (resultsQuery.trim().length || hasFilters)) {
+            return <SearchResultsView spec={spec} searchQuery={resultsQuery} onSelectEndpoint={handleSearchResult}
                                       onMiddleClickEndpoint={openEndpointPermanent}
                                       selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
                                       selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
@@ -1006,6 +1377,8 @@ export default function App() {
                     localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry}
                     onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory}
                     localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)}
+                    onSearchHasResults={searchHasResults}
+                    hideSearch={showWelcome}
                 />
 
                 <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
@@ -1035,6 +1408,10 @@ export default function App() {
                                 searchQuery={searchQuery} selectedEndpoint={selectedEndpoint}
                                 onSelectEndpoint={handleSelectEndpoint} onMiddleClickEndpoint={openEndpointPermanent}
                                 onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout}
+                                onOpenViewPermanent={openViewTabPermanent} onContextAction={handleContextAction}
+                                onOpenSearch={handleOpenSearchNav}
+                                isSearchActive={activeTabId === 'view:search'}
+                                scrollIntent={scrollIntent} setScrollIntent={setScrollIntent}
                                 showHome={showHome} showAbout={showAbout}
                                 themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode} onToggleThemeMode={toggleThemeMode}
                                 selectedThemeName={selectedThemeName}
@@ -1054,13 +1431,7 @@ export default function App() {
                                     <EndpointTabs
                                         tabs={endpointTabs}
                                         activeTabId={activeTabId}
-                                        onSelectTab={(id) => {
-                                            handleSelectTab(id);
-                                            setShowHome(false);
-                                            setShowSchemaExplorer(false);
-                                            setShowAbout(false);
-                                            setSearchQuery('');
-                                        }}
+                                        onSelectTab={handleSelectTab}
                                         onCloseTab={handleCloseTab}
                                         onDoubleClickTab={handleDoubleClickTab}
                                         onCloseAllLeft={handleCloseAllLeft}
@@ -1089,9 +1460,14 @@ export default function App() {
                                         activeAuth={activeAuth} />
                 )}
                 <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} spec={spec} activeAuth={activeAuth} onSave={setActiveAuth} />
+                {shareTarget && (
+                    <ShareModal isOpen={!!shareTarget} onClose={() => setShareTarget(null)}
+                                url={shareTarget.url} title={shareTarget.title} description={shareTarget.description} />
+                )}
                 <ThemeSelectorModal isOpen={showThemeModal} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode}
                                     resolvedThemeMode={resolvedThemeMode}
                                     onSelectTheme={(t) => { setSelectedThemeName(t); }} onToggleThemeMode={toggleThemeMode}
+                                    onSetThemeMode={(m) => setCurrentThemeMode(m)}
                                     onClose={() => setShowThemeModal(false)} />
             </div>
         </OperationLinkProvider>

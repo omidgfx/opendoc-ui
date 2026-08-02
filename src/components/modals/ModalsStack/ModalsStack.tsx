@@ -859,6 +859,7 @@ export default function ModalsStack({
                                     <SchemaPropertiesTable
                                         properties={properties}
                                         schema={activeSchemaObj.schema}
+                                        inspectName={activeSchemaObj.schemaName}
                                         resolveReference={resolveReference}
                                         getRefName={getRefName}
                                         onPushSchema={onPushSchema}

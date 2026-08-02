@@ -5,6 +5,8 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
 import { Tip } from '../common/Tooltip';
 import type { LocalHistoryEntry } from '../../utils/localHistory';
+import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
+import { specStorage } from '../../utils/storage';
 // @ts-ignore
 import Logo from '../../logo.svg?react';
 
@@ -40,6 +42,9 @@ interface TopbarProps {
     onClearHistory: () => void;
     localOpenError: string | null;
     onDismissLocalError: () => void;
+    onSearchHasResults?: (q: string) => boolean;
+    /** Hide the navbar search (e.g. on the welcome page, which has its own). */
+    hideSearch?: boolean;
 }
 
 export default function Topbar({
@@ -52,21 +57,68 @@ export default function Topbar({
     isLocalMode, canOpenLocal, onOpenLocalFile,
     onRefreshSpec, isRefreshingSpec,
     localHistory, onSelectHistoryEntry, onRemoveHistoryEntry, onClearHistory,
-    localOpenError, onDismissLocalError,
+    localOpenError, onDismissLocalError, onSearchHasResults, hideSearch,
 }: TopbarProps & { selectedThemeName: string; onSelectTheme: (n: string) => void }) {
     const [showSpecificationModal, setShowSpecificationModal] = useState(false);
     const [showMobileSearch, setShowMobileSearch] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
+    const searchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [searchHistoryVersion, setSearchHistoryVersion] = useState(0);
+
+    const saveSearchHistory = (q: string) => {
+        // Only deliberate, meaningful searches belong in history.
+        if (!selectedParsableKey || q.trim().length < 3) return;
+        const items = specStorage.getJSON<string[]>(selectedParsableKey, 'search_history', [], (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'));
+        const next = [q.trim(), ...items.filter((x) => x !== q.trim())].slice(0, 10);
+        specStorage.setJSON(selectedParsableKey, 'search_history', next);
+        setSearchHistoryVersion(v => v + 1);
+    };
+
+    // Save the query once typing has stayed still for 5 seconds — that way only
+    // deliberate searches land in history. Queries that matched nothing are not
+    // stored (we ask the app via onSearchHasResults).
+    const lastSavedSearchRef = useRef('');
+    useEffect(() => {
+        if (!selectedParsableKey) return;
+        const q = searchQuery.trim();
+        if (q.length < 3 || q === lastSavedSearchRef.current) return;
+        const t = setTimeout(() => {
+            lastSavedSearchRef.current = q;
+            if (!onSearchHasResults || onSearchHasResults(q)) {
+                saveSearchHistory(q);
+            }
+        }, 5000);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, selectedParsableKey]);
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            saveSearchHistory(searchQuery);
+            (e.target as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    const handleSearchFocus = () => {
+        if (searchBlurTimer.current) { clearTimeout(searchBlurTimer.current); searchBlurTimer.current = null; }
+        setSearchFocused(true);
+    };
+    const handleSearchBlur = () => {
+        searchBlurTimer.current = setTimeout(() => setSearchFocused(false), 150);
+    };
     const searchInputRef = useRef<HTMLInputElement>(null);
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
     const hasSpec = !!spec;
-    const canRefresh = hasSpec || Object.keys(parsables).length > 0;
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                 const ae = document.activeElement;
                 if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+                if (hideSearch) return;
                 e.preventDefault();
                 if (isMobile) setShowMobileSearch(true);
                 searchInputRef.current?.focus();
@@ -74,7 +126,7 @@ export default function Topbar({
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [isMobile]);
+    }, [isMobile, hideSearch]);
 
     const authConnected = activeAuth.activeScheme && activeAuth.activeScheme !== 'none';
 
@@ -106,6 +158,15 @@ export default function Topbar({
                     <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                         {parsables[selectedParsableKey]?.title || selectedParsableKey || 'API Specifications'}
                     </span>
+                    {hasSpec && (
+                        // No nested tooltip here — the outer Tip on the selector
+                        // button is enough; two tooltips stacked look broken.
+                        <span role="button" tabIndex={-1} aria-label="Reload specification"
+                            onClick={(e) => { e.stopPropagation(); onRefreshSpec(); }}
+                            className="shrink-0 flex items-center justify-center size-5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer">
+                            <i className={`ph ph-arrows-clockwise text-[11px] inline-block ${isRefreshingSpec ? 'animate-spin' : ''}`}></i>
+                        </span>
+                    )}
                     <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
                 </button>
             </Tip>
@@ -132,15 +193,6 @@ export default function Topbar({
                         <>
                             <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>
                             {selectorButton}
-                            {canRefresh && (
-                                <Tip content="Reload specification (drop cache)">
-                                    <button type="button" onClick={onRefreshSpec}
-                                        className="size-8 -ms-2 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] shrink-0"
-                                        aria-label="Reload specification">
-                                        <i className={`ph-fill ph-arrows-clockwise text-[14px] text-[var(--primary)] ${isRefreshingSpec ? 'animate-spin' : ''}`}></i>
-                                    </button>
-                                </Tip>
-                            )}
                         </>
                     )}
                 </div>
@@ -156,11 +208,23 @@ export default function Topbar({
                 )}
 
                 {/* Desktop search */}
-                {hasSpec && !showSchemaExplorer && !isMobile && (
+                {hasSpec && !showSchemaExplorer && !isMobile && !hideSearch && (
                     <div className="hidden md:flex flex-1 items-center relative max-w-md min-w-0 select-none">
                         <input ref={searchInputRef} type="text" placeholder="Global Search (Ctrl+K)..." value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
-                            className="w-full min-w-0 pl-9 pr-14 h-8 text-xs rounded-lg border outline-none focus:border-[var(--primary)] transition-all font-sans border-[var(--border)] text-[var(--text)] bg-[var(--background)]" />
+                            onFocus={handleSearchFocus}
+                            onBlur={handleSearchBlur}
+                            onKeyDown={handleSearchKeyDown}
+                            className="w-full min-w-0 pl-9 pr-14 h-8 text-xs rounded-lg border outline-none focus:border-[var(--primary)] focus:bg-[var(--surface)] transition-all font-sans border-[var(--border)] text-[var(--text)] bg-[var(--background)]" />
+                        {searchFocused && selectedParsableKey && (
+                            <SearchHistoryDropdown
+                                key={searchHistoryVersion}
+                                specKey={selectedParsableKey}
+                                query={searchQuery}
+                                onPick={(q) => onSearchChange(q)}
+                                onClose={() => setSearchFocused(false)}
+                            />
+                        )}
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
                             <i className="ph ph-magnifying-glass text-[14px]"></i>
                         </div>
@@ -184,7 +248,7 @@ export default function Topbar({
                 )}
 
                 <div className="flex items-center gap-1 shrink-0">
-                    {hasSpec && !showSchemaExplorer && isMobile && (
+                    {hasSpec && !showSchemaExplorer && isMobile && !hideSearch && (
                         <Tip content="Search" placement="bottom">
                             <button onClick={() => setShowMobileSearch(v => !v)}
                                 className="size-8 rounded-lg flex items-center justify-center border cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
@@ -239,7 +303,19 @@ export default function Topbar({
                     <div className="relative flex-1 min-w-0">
                         <input ref={searchInputRef} type="text" autoFocus placeholder="Search..." value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
-                            className="w-full pl-9 pr-8 h-9 text-xs rounded-lg border outline-none focus:border-[var(--primary)] bg-[var(--background)] border-[var(--border)] text-[var(--text)]" />
+                            onFocus={handleSearchFocus}
+                            onBlur={handleSearchBlur}
+                            onKeyDown={handleSearchKeyDown}
+                            className="w-full pl-9 pr-8 h-9 text-xs rounded-lg border outline-none focus:border-[var(--primary)] focus:bg-[var(--surface)] bg-[var(--background)] border-[var(--border)] text-[var(--text)]" />
+                        {searchFocused && selectedParsableKey && (
+                            <SearchHistoryDropdown
+                                key={searchHistoryVersion}
+                                specKey={selectedParsableKey}
+                                query={searchQuery}
+                                onPick={(q) => onSearchChange(q)}
+                                onClose={() => setSearchFocused(false)}
+                            />
+                        )}
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
                             <i className="ph ph-magnifying-glass text-[14px]"></i>
                         </div>

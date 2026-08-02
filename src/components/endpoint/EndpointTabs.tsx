@@ -3,13 +3,30 @@ import clsx from 'clsx';
 import MethodBadge from '../common/MethodBadge';
 import { Tip } from '../common/Tooltip';
 
+export type ViewTabKind = 'home' | 'search' | 'schemas' | 'about';
+
 export interface TabItem {
     id: string;
     path: string;
     method: string;
     isPreview: boolean;
     label: string;
+    /** 'endpoint' (default) or a named view tab. */
+    kind?: 'endpoint' | ViewTabKind;
+    /** Search query carried by a 'search' view tab. */
+    query?: string;
+    /** Search filters (method/tag/security) carried by a 'search' view tab. */
+    filters?: { methods: string[]; tags: string[]; onlyProtected: boolean | null };
 }
+
+export const VIEW_TAB_META: Record<ViewTabKind, { icon: string; label: string }> = {
+    home: { icon: 'ph-fill ph-house', label: 'Specification Overview' },
+    search: { icon: 'ph-fill ph-magnifying-glass', label: 'Search' },
+    schemas: { icon: 'ph-fill ph-diamonds-four', label: 'Schema Explorer' },
+    about: { icon: 'ph-fill ph-info', label: 'About' },
+};
+
+export const isViewTab = (tab: TabItem) => !!tab.kind && tab.kind !== 'endpoint';
 
 interface EndpointTabsProps {
     tabs: TabItem[];
@@ -211,8 +228,9 @@ export default function EndpointTabs({
                         // the very last tab, where an inset shadow used to be clipped.
                         const showLeftIndicator = isDropTarget && dropTarget?.side === 'left';
                         const showRightIndicator = isDropTarget && dropTarget?.side === 'right';
+                        const viewTab = isViewTab(tab) ? VIEW_TAB_META[tab.kind as ViewTabKind] : null;
                         return (
-                            <Tip key={tab.id} content={`${tab.method.toUpperCase()} ${tab.path}`} placement="bottom">
+                            <Tip key={tab.id} content={viewTab ? tab.label : `${tab.method.toUpperCase()} ${tab.path}`} placement="bottom">
                                 <div
                                     data-tab-id={tab.id}
                                     draggable
@@ -245,7 +263,13 @@ export default function EndpointTabs({
                                     {isActive && (
                                         <span className="endpoint-tab-active-indicator" />
                                     )}
-                                    <MethodBadge method={tab.method} size="xs" className="shrink-0 w-8 h-3.5" />
+                                    {viewTab ? (
+                                        <span className="shrink-0 w-8 h-3.5 flex items-center justify-center text-[13px] text-[var(--primary)]">
+                                            <i className={viewTab.icon} />
+                                        </span>
+                                    ) : (
+                                        <MethodBadge method={tab.method} size="xs" className="shrink-0 w-8 h-3.5" />
+                                    )}
                                     <span
                                         className={clsx(
                                             'text-[11px] truncate font-medium inline-block pr-0.5',

@@ -57,7 +57,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                         <i className="ph ph-dna mr-1.5 text-[var(--primary)]"></i> Regex Pattern Tester
                     </span>
                     <Tip content="Close">
-                        <button
+                        <button type="button"
                             onClick={onClose}
                             className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors text-[var(--text-muted)]">
                             <i className="ph ph-x"></i>
@@ -129,7 +129,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                     className="px-5 py-3 border-t flex justify-end border-[var(--border)] bg-[var(--background)]">
 
 
-                    <button
+                    <button type="button"
                         onClick={onClose}
                         className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm select-none bg-[var(--primary)]">
 

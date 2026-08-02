@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { storage } from '../utils/storage';
 
 /**
  * Drag-to-resize behaviour for a horizontal split (two panes side-by-side),
@@ -9,18 +10,14 @@ import type { RefObject } from 'react';
  */
 export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, storageKey: string, minPx = 320) {
     const [leftWidth, setLeftWidth] = useState<number>(() => {
-        try {
-            const saved = localStorage.getItem(storageKey);
-            const parsed = saved ? parseInt(saved, 10) : NaN;
-            return Number.isFinite(parsed) && parsed > 0 ? parsed : -1; // -1 sentinel => 50/50 split
-        } catch {
-            return -1;
-        }
+        const saved = storage.get(storageKey);
+        const parsed = saved ? parseInt(saved, 10) : NaN;
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : -1; // -1 sentinel => 50/50 split
     });
 
     useEffect(() => {
         if (leftWidth >= 0) {
-            try { localStorage.setItem(storageKey, String(Math.round(leftWidth))); } catch { /* ignore */ }
+            storage.set(storageKey, String(Math.round(leftWidth)));
         }
     }, [leftWidth, storageKey]);
 
