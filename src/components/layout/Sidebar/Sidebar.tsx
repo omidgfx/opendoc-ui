@@ -259,7 +259,7 @@ export default function Sidebar(props: SidebarProps) {
         onScroll();
         el.addEventListener('scroll', onScroll, {passive: true});
         return () => el.removeEventListener('scroll', onScroll);
-    }, [spec, tagTree]);
+    }, [spec, tagTree, isCollapsed, isMobile]);
 
     // Mobile spec selector modal
     const [showSpecModal, setShowSpecModal] = useState(false);

@@ -467,7 +467,6 @@ export default function App() {
      *  and is the active one (deep links like #/parsable/x/schema-explorer). */
     const ensureViewTabFromState = useCallback((override?: { searchQuery?: string; showSchemaExplorer?: boolean; showAbout?: boolean; showHome?: boolean; searchMethods?: string[]; searchTags?: string[]; searchSecured?: boolean | null }) => {
         const s = { ...navStateRef.current, ...override };
-        if (s.showWelcome) return;
         const expected: ViewTabKind | null =
             (s.searchQuery || '').trim().length || (s.searchMethods?.length || 0) > 0 || (s.searchTags?.length || 0) > 0 || s.searchSecured !== null
                 ? 'search'
@@ -476,6 +475,10 @@ export default function App() {
                     : s.showAbout
                         ? 'about'
                         : null;
+        // While the welcome page shows there are no tabs, so nothing should be
+        // force-created — unless the URL explicitly asks for a view (about,
+        // schema explorer, search), which must leave welcome and open normally.
+        if (s.showWelcome && !expected) return;
         if (!expected) return;
         setShowWelcome(false);
         // If the search tab is already active, don't force anything (this was
