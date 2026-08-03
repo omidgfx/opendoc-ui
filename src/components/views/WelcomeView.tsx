@@ -69,7 +69,7 @@ export default function WelcomeView({
 
                     {/* Big search pill — Google style */}
                     <div className="relative mt-7 w-full max-w-lg">
-                        <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] pl-4 pr-2 h-12 shadow-sm transition-all hover:shadow-md focus-within:border-[var(--primary)] focus-within:shadow-md">
+                        <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] pl-4 pr-1 h-12 shadow-sm transition-all hover:shadow-md focus-within:border-[var(--primary)] focus-within:shadow-md">
                             <i className="ph ph-magnifying-glass text-[18px] text-[var(--text-muted)]"></i>
                             <input
                                 type="text"
@@ -84,15 +84,15 @@ export default function WelcomeView({
                             {query ? (
                                 <button type="button"
                                     onClick={() => setQuery('')}
-                                    className="size-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] transition-colors cursor-pointer shrink-0">
+                                    className="size-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] transition-colors cursor-pointer shrink-0">
                                     <i className="ph ph-x text-[13px]"></i>
                                 </button>
                             ) : null}
                             {/* Search button on the right side of the input */}
                             <button type="button" onClick={submit}
                                 aria-label="Search"
-                                className="size-9 rounded-full flex items-center justify-center bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90 transition-all cursor-pointer shrink-0 shadow-sm">
-                                <i className="ph ph-magnifying-glass text-[16px]"></i>
+                                className="size-9 rounded-full flex items-center justify-center bg-transparent hover:bg-[var(--primary)] text-[var(--primary)] hover:text-[var(--primary-contrast)] hover:opacity-90 transition-all cursor-pointer shrink-0">
+                                <i className="ph ph-arrow-right text-[16px]"></i>
                             </button>
                         </div>
 

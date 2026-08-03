@@ -38,6 +38,8 @@ interface EndpointTabsProps {
     onCloseAllRight: (id: string) => void;
     onCloseOthers: (id: string) => void;
     onReorderTabs: (fromIndex: number, toIndex: number) => void;
+    /** Opens the Ctrl+Tab-style tab switcher (sticky button at the bar's end). */
+    onOpenSwitcher?: () => void;
 }
 
 type ContextMenuState = {
@@ -56,6 +58,7 @@ export default function EndpointTabs({
     onCloseAllRight,
     onCloseOthers,
     onReorderTabs,
+    onOpenSwitcher,
 }: EndpointTabsProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
@@ -213,7 +216,7 @@ export default function EndpointTabs({
 
     return (
         <>
-            <div className="endpoint-tabs-bar border-b bg-[var(--background)] border-[var(--border)] shrink-0 select-none">
+            <div className="endpoint-tabs-bar border-b bg-[var(--background)] border-[var(--border)] shrink-0 select-none flex items-stretch">
                 <div
                     ref={scrollRef}
                     className="endpoint-tabs-scroll scrollbar-thin"
@@ -306,6 +309,20 @@ export default function EndpointTabs({
                         aria-hidden="true"
                     />
                 </div>
+
+                {/* Sticky tab-switcher button — visible only when there are 2+ tabs */}
+                {onOpenSwitcher && tabs.length > 1 && (
+                    <Tip content="Tab switcher (Ctrl+`)">
+                        <button
+                            type="button"
+                            onClick={onOpenSwitcher}
+                            className="endpoint-tabs-switcher-btn shrink-0 w-8 border-l border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                            aria-label="Open tab switcher"
+                        >
+                            <i className="ph ph-squares-four text-[14px]"></i>
+                        </button>
+                    </Tip>
+                )}
             </div>
 
             {/* Context Menu */}

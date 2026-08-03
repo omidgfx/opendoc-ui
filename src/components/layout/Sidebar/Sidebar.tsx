@@ -127,8 +127,6 @@ interface SidebarProps {
     onMiddleClickEndpoint?: (path: string, method: string) => void;
     onOpenHome: () => void;
     onOpenAbout: () => void;
-    onOpenSearch: () => void;
-    isSearchActive: boolean;
     scrollIntent: { type: 'endpoint' | 'view'; id: string } | null;
     setScrollIntent: (v: { type: 'endpoint' | 'view'; id: string } | null) => void;
     onOpenViewPermanent: (view: ViewTabKind) => void;
@@ -168,7 +166,7 @@ export default function Sidebar(props: SidebarProps) {
         onOpenSchemaExplorer, showSchemaExplorer,
         selectedMethods, selectedTags, onlyProtected, searchQuery,
         selectedEndpoint, onSelectEndpoint, onMiddleClickEndpoint,
-        onOpenHome, onOpenAbout, onOpenSearch, isSearchActive, onOpenViewPermanent, onContextAction, scrollIntent, setScrollIntent, showHome, showAbout,
+        onOpenHome, onOpenAbout, onOpenViewPermanent, onContextAction, scrollIntent, setScrollIntent, showHome, showAbout,
         themeMode, resolvedThemeMode, onToggleThemeMode,
         onOpenThemeModal, onOpenAuthModal, activeAuth,
         onDownloadSpec,
@@ -351,7 +349,7 @@ export default function Sidebar(props: SidebarProps) {
 
     useSwipeEdgeOpen(isMobile && !mobileOpen, onOpenMobile);
 
-    const isOverview = showHome && !showSchemaExplorer && !showAbout && !selectedEndpoint && !isSearchActive;
+    const isOverview = showHome && !showSchemaExplorer && !showAbout && !selectedEndpoint;
 
     // Folder path from root to the folder holding the selected endpoint.
     const findEndpointAncestorPath = useMemo((): string[] | null => {
@@ -560,15 +558,6 @@ export default function Sidebar(props: SidebarProps) {
                 className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
                 style={{width: 56}}>
                 <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
-                    {isSearchActive && (
-                    <Tip content="Search">
-                        <button onClick={onOpenSearch}
-                                className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                                    isSearchActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                            <i className="ph-fill ph-magnifying-glass text-[16px]"></i>
-                        </button>
-                    </Tip>
-                    )}
                     <Tip content="Overview">
                         <button onClick={onOpenHome}
                                 className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
@@ -711,19 +700,6 @@ export default function Sidebar(props: SidebarProps) {
                     ref={navScrollRef}
                     className="h-full overflow-y-auto p-2 space-y-1 scrollbar-thin"
                 >
-                    {isSearchActive && (
-                    <Tip content="Search the specification">
-                        <button data-nav-view="view:search" onClick={navTo(onOpenSearch)}
-                                onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'search' })}
-                                onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenViewPermanent('search'); }}
-                                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); onOpenViewPermanent('search'); } }}
-                                className={clsx('flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-left text-xs transition-all cursor-pointer select-none font-medium',
-                                    isSearchActive ? 'text-[var(--primary-contrast)] bg-[var(--primary)]' : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]')}>
-                            <i className="ph-fill ph-magnifying-glass text-[14px]"></i>
-                            <span>Search</span>
-                        </button>
-                    </Tip>
-                    )}
                     <Tip content="Overview and statistics">
                         <button data-nav-view="view:home" onClick={navTo(onOpenHome)}
                                 onContextMenu={(e) => openContextMenu(e, { type: 'view', view: 'home' })}

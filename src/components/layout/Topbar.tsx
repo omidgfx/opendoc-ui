@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import type { ActiveAuth, OpenApiSpec, ParsableConfig, ThemeMode } from '../../types';
+import type { ActiveAuth, OpenApiSpec, ParsableConfig } from '../../types';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
 import { Tip } from '../common/Tooltip';
@@ -19,9 +19,6 @@ interface TopbarProps {
     onOpenAuthModal: () => void;
     searchQuery: string;
     onSearchChange: (query: string) => void;
-    themeMode: ThemeMode;
-    resolvedThemeMode: 'light' | 'dark';
-    onToggleThemeMode: () => void;
     onDownloadSpec: () => void;
     title: string;
     showSchemaExplorer: boolean;
@@ -50,7 +47,7 @@ interface TopbarProps {
 export default function Topbar({
     parsables, selectedParsableKey, onSelectParsable,
     activeAuth, searchQuery, onSearchChange,
-    themeMode, resolvedThemeMode, onToggleThemeMode, onDownloadSpec,
+    onDownloadSpec,
     title, showSchemaExplorer, spec,
     selectedThemeName, onSelectTheme, isCollapsed, onToggleCollapse,
     onOpenMobileSidebar, onOpenAuthModal, onOpenThemeModal,
@@ -87,7 +84,7 @@ export default function Topbar({
             if (!onSearchHasResults || onSearchHasResults(q)) {
                 saveSearchHistory(q);
             }
-        }, 5000);
+        }, 3000);
         return () => clearTimeout(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery, selectedParsableKey]);
@@ -129,15 +126,6 @@ export default function Topbar({
     }, [isMobile, hideSearch]);
 
     const authConnected = activeAuth.activeScheme && activeAuth.activeScheme !== 'none';
-
-    const themeToggleIcon = themeMode === 'system'
-        ? <i className="ph ph-monitor text-[var(--accent)] text-[16px]"></i>
-        : themeMode === 'dark'
-            ? <i className="ph ph-sun text-[var(--method-put)] text-[16px]"></i>
-            : <i className="ph-fill ph-moon text-[var(--primary)] text-[16px]"></i>;
-    const themeToggleTip = themeMode === 'system'
-        ? `Theme follows your system (${resolvedThemeMode})`
-        : themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
 
     const selectorButton = isLocalMode
         ? canOpenLocal && (
@@ -275,23 +263,16 @@ export default function Topbar({
                                     <i className="ph-fill ph-download-simple text-[14px] text-[var(--primary)]"></i>
                                 </button>
                             </Tip>
-
-                            <Tip content="Choose theme">
-                                <button type="button" onClick={onOpenThemeModal}
-                                    className="hidden xl:flex h-8 w-40 items-center gap-2 rounded-lg border px-3 text-left transition-all cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
-                                    <i className="ph-fill ph-palette shrink-0 text-[14px] text-[var(--primary)]"></i>
-                                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">{selectedThemeName}</span>
-                                    <i className="ph ph-squares-four shrink-0 text-[12px] text-[var(--text-muted)]/60"></i>
-                                </button>
-                            </Tip>
                         </>
                     )}
 
                     {hasSpec && (
-                        <Tip content={themeToggleTip}>
-                            <button onClick={onToggleThemeMode}
-                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
-                                {themeToggleIcon}
+                        <Tip content="Choose theme">
+                            <button type="button" onClick={onOpenThemeModal}
+                                className="flex size-8 xl:w-40 items-center gap-2 rounded-lg border px-2 xl:px-3 text-left transition-all cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                <i className="ph-fill ph-palette shrink-0 text-[14px] text-[var(--primary)]"></i>
+                                <span className="hidden xl:block min-w-0 flex-1 truncate text-xs font-semibold">{selectedThemeName}</span>
+                                <i className="hidden xl:block ph ph-squares-four shrink-0 text-[12px] text-[var(--text-muted)]/60"></i>
                             </button>
                         </Tip>
                     )}

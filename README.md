@@ -15,9 +15,9 @@ system. No backend required.
 - [Features](#features)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
-  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [Local history](#local-history)
 - [Theme system](#theme-system)
@@ -89,11 +89,11 @@ static host (nginx, GitHub Pages, S3, `python -m http.server`, …).
 OpenDoc UI supports **three deployment modes**. The mode is decided at startup, entirely by
 what is present on the page:
 
-| Mode | Trigger | What the user sees |
-| --- | --- | --- |
-| **1. config.json** | `public/config.json` exists and is served at `/config.json` | A spec selector in the navbar + switch modal, specs auto-load |
-| **2. `window.INITIAL_CONFIG`** | A global object injected before the app boots | Same as mode 1; the inline object wins over `config.json` |
-| **3. Local mode** | Neither of the above exists (no config source at all) | An **Open** button instead of the selector; users open local files |
+| Mode                           | Trigger                                                     | What the user sees                                                 |
+|--------------------------------|-------------------------------------------------------------|--------------------------------------------------------------------|
+| **1. config.json**             | `public/config.json` exists and is served at `/config.json` | A spec selector in the navbar + switch modal, specs auto-load      |
+| **2. `window.INITIAL_CONFIG`** | A global object injected before the app boots               | Same as mode 1; the inline object wins over `config.json`          |
+| **3. Local mode**              | Neither of the above exists (no config source at all)       | An **Open** button instead of the selector; users open local files |
 
 ### Mode 1 — `public/config.json` (pre-defined specs)
 
@@ -124,13 +124,13 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 Supported keys per entry:
 
-| Key | Type | Description |
-| --- | --- | --- |
-| `url` | string | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
-| `title` | string | Display name in the selector / navbar. Defaults to the object key. |
-| `theme` | string | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme. |
-| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source). |
-| `rawSpec` | string | The full spec document as a string (JSON or YAML). |
+| Key        | Type    | Description                                                                                                                                         |
+|------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
+| `title`    | string  | Display name in the selector / navbar. Defaults to the object key.                                                                                  |
+| `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
+| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
+| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
 
 The **first entry** is selected on first visit; afterwards the app remembers the last
 selection, and the URL hash wins over both.
@@ -141,11 +141,12 @@ Identical shape to `config.json`, but injected as a JavaScript global **before**
 script runs, e.g. in `index.html`:
 
 ```html
+
 <script>
     window.INITIAL_CONFIG = {
         "theme": "default",
         "parsables": {
-            "Pet Store": { "url": "/specs/pet-store.json" }
+            "Pet Store": {"url": "/specs/pet-store.json"}
         }
     };
 </script>
@@ -224,15 +225,16 @@ History specifics:
 Themes come from `src/data/themes.ts`. Each theme defines full **light** and **dark**
 palettes. The **mode** can be:
 
-| Mode | Behavior |
-| --- | --- |
+| Mode     | Behavior                                                                       |
+|----------|--------------------------------------------------------------------------------|
 | `system` | Follows the OS setting (`prefers-color-scheme`) live — this is the **default** |
-| `light` | Always the light palette |
-| `dark` | Always the dark palette |
+| `light`  | Always the light palette                                                       |
+| `dark`   | Always the dark palette                                                        |
 
 The mode toggle button cycles `system → light/dark → dark/light`; the icon shows a monitor
 while in system mode, and the palette updates immediately if the OS theme changes while the
-app is open.
+app is open. The palette button in the navbar opens the theme picker, whose segmented
+control offers the same `system / light / dark` modes next to the theme gallery.
 
 Theme name and mode are remembered **per spec** (`selected_theme_name_<key>` and
 `theme_mode_<key>`), so switching between APIs restores each one's own look.
@@ -260,14 +262,14 @@ is loaded.
 
 The app is hash-routed. Main shapes:
 
-| Hash | Meaning |
-| --- | --- |
-| `#/` | Home (no spec) |
-| `#/parsable/<key>` | Home of the spec with the given config key |
-| `#/parsable/<key>/api/<endpointId>` | A specific endpoint (docs view) |
-| `#/parsable/<key>/about` | About page for that spec |
-| `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open |
-| `#/about` | About page without a spec |
+| Hash                                              | Meaning                                    |
+|---------------------------------------------------|--------------------------------------------|
+| `#/`                                              | Home (no spec)                             |
+| `#/parsable/<key>`                                | Home of the spec with the given config key |
+| `#/parsable/<key>/api/<endpointId>`               | A specific endpoint (docs view)            |
+| `#/parsable/<key>/about`                          | About page for that spec                   |
+| `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open         |
+| `#/about`                                         | About page without a spec                  |
 
 Query params: `?tab=examine|doc`, `?schemas=a,b`, `?search=...` and `#response-<code>`.
 
@@ -278,13 +280,14 @@ reload.
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl / ⌘ + K` | Focus global search |
-| `Esc` | Close the top-most modal / overlay |
-| `Alt + ←` / `Alt + →` | Previous / next endpoint tab |
-| `Ctrl+Enter` (in runner) | Send the request from the active pane |
-| `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes |
+| Shortcut                            | Action                                                                                                              |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `Ctrl / ⌘ + K`                      | Focus global search                                                                                                 |
+| `Esc`                               | Close the top-most modal / overlay                                                                                  |
+| `Alt + ←` / `Alt + →`               | Previous / next endpoint tab                                                                                        |
+| `Ctrl + \`` / `Ctrl + Shift + \``   | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
+| `Ctrl+Enter` (in runner)            | Send the request from the active pane                                                                               |
+| `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes                                                                            |
 
 The About page lists the full set, including mouse interactions (middle-click a sidebar
 endpoint to pin a permanent tab, double-click to keep the preview tab, etc.).
@@ -299,28 +302,28 @@ self-repairs corrupt entries by removing them and falling back to defaults.
 
 State is split into three namespaces:
 
-| Namespace | Contains |
-| --- | --- |
-| `opendoc:ui:<name>` | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width |
-| `opendoc:spec:<encoded spec key>:<encoded name>` | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position |
-| `opendoc_spec_cache_v1:<url>` / `opendoc_local_history` | Spec file cache and local-file history |
+| Namespace                                               | Contains                                                                                                       |
+|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| `opendoc:ui:<name>`                                     | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width |
+| `opendoc:spec:<encoded spec key>:<encoded name>`        | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position |
+| `opendoc_spec_cache_v1:<url>` / `opendoc_local_history` | Spec file cache and local-file history                                                                         |
 
 Per-spec data is pruned automatically when a spec disappears from the configuration, and
 legacy v0.1.0 keys are migrated into the namespaces once on first run. Known keys:
 
-| Key | Purpose |
-| --- | --- |
-| `opendoc:ui:sidebar_width` / `opendoc:ui:sidebar_collapsed` | Desktop sidebar state (global — not per spec) |
-| `opendoc:ui:collapsed_tags` | Collapsed tag folders in the sidebar navigation |
-| `opendoc:ui:last_parsable` | Last selected spec key |
-| `opendoc:ui:endpoint_split_width` | Split-view pane width |
-| `opendoc:spec:<key>:theme` / `:theme_mode` | Theme name & mode per spec |
-| `opendoc:spec:<key>:tab_mode` | Last used tab mode (docs / examine / split) |
-| `opendoc:spec:<key>:tabs` | Open tabs (endpoints + view tabs) with active tab |
-| `opendoc:spec:<key>:inputs:<method>:<path>` | Saved runner inputs per endpoint |
-| `opendoc:spec:<key>:scroll:<method>:<path>` | Docs scroll position per endpoint |
-| `opendoc_spec_cache_v1:<url>` | Cached raw text of a remotely loaded spec |
-| `opendoc_local_history` | Recently opened local files |
+| Key                                                         | Purpose                                           |
+|-------------------------------------------------------------|---------------------------------------------------|
+| `opendoc:ui:sidebar_width` / `opendoc:ui:sidebar_collapsed` | Desktop sidebar state (global — not per spec)     |
+| `opendoc:ui:collapsed_tags`                                 | Collapsed tag folders in the sidebar navigation   |
+| `opendoc:ui:last_parsable`                                  | Last selected spec key                            |
+| `opendoc:ui:endpoint_split_width`                           | Split-view pane width                             |
+| `opendoc:spec:<key>:theme` / `:theme_mode`                  | Theme name & mode per spec                        |
+| `opendoc:spec:<key>:tab_mode`                               | Last used tab mode (docs / examine / split)       |
+| `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab |
+| `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                  |
+| `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                 |
+| `opendoc_spec_cache_v1:<url>`                               | Cached raw text of a remotely loaded spec         |
+| `opendoc_local_history`                                     | Recently opened local files                       |
 
 ---
 

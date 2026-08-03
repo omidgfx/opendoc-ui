@@ -1,4 +1,5 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
+import clsx from 'clsx';
 import { generateAndDownloadZip, generateSingleSchemaFile } from '../../utils/schemaExport';
 import ShareModal from '../modals/ShareModal';
 import { useEscClose } from '../../hooks/useEscClose';
@@ -19,6 +20,31 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
             .trim();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [letterFilter, setLetterFilter] = useState<string | null>(null); // 'A'..'Z' | '#' | '&' | null = All
+    const [loading, setLoading] = useState(true);
+
+    // Brief loading mask so the first (heavy) render of a big schema grid does
+    // not feel janky. Never gets stuck: it is a plain timeout, and when there
+    // are no schemas at all we skip it entirely.
+    useEffect(() => {
+        const t = setTimeout(() => setLoading(false), 350);
+        return () => clearTimeout(t);
+    }, []);
+
+    // Letters (and # / &) that actually have at least one schema — used to
+    // disable filter buttons with nothing behind them.
+    const availableKeys = useMemo(() => {
+        const set = new Set<string>();
+        Object.keys(schemas || {}).forEach((name) => {
+            const first = (name[0] || '').toUpperCase();
+            if (/[0-9]/.test(first)) set.add('#');
+            else if (/[A-Z]/.test(first)) set.add(first);
+            else set.add('&');
+        });
+        return set;
+    }, [schemas]);
+
+    const hasSchemas = !!schemas && Object.keys(schemas).length > 0;
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +108,16 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
         const term = searchTerm.toLowerCase();
         const matchesName = name.toLowerCase().includes(term);
         const matchesDesc = schema.description?.toLowerCase().includes(term) || false;
-        return matchesName || matchesDesc;
+        const matchesText = matchesName || matchesDesc;
+        if (!matchesText) return false;
+        // letter filter: first character of the schema name
+        if (letterFilter) {
+            const first = (name[0] || '').toUpperCase();
+            if (letterFilter === '#') return /[0-9]/.test(first);
+            if (letterFilter === '&') return !/[A-Z0-9]/.test(first);
+            return first === letterFilter;
+        }
+        return true;
     });
 
     return (
@@ -105,7 +140,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     <Tip content="Export all schemas as a zip of TypeScript models">
                         <button
                             onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
-                            className="h-9 px-3 sm:px-4 rounded-lg border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
+                            className="h-8 px-3 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
                             <i className="ph ph-download-simple text-[14px]"></i>
                             <span className="hidden sm:inline">Export TS (ZIP)</span><span className="sm:hidden">TS ZIP</span>
                         </button>
@@ -119,7 +154,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                         placeholder="Search schemas (Ctrl+K)..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-14 h-9 text-xs rounded-lg border outline-none focus:border-[var(--primary)] transition-all font-sans bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"/>
+                        className="w-full pl-9 pr-14 h-8 text-xs rounded-lg border outline-none focus:border-[var(--primary)] transition-all font-sans bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"/>
 
 
                     <div
@@ -131,8 +166,6 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                         <button
                             onClick={() => setSearchTerm('')}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs hover:opacity-80 cursor-pointer text-[var(--text-muted)]">
-
-
                             <i className="ph ph-x"></i>
                         </button> :
 
@@ -140,8 +173,6 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             className="absolute inset-y-0 right-0 pr-1.5 flex items-center pointer-events-none select-none">
                             <kbd
                                 className="px-1.5 py-0.5 text-[9px] font-sans font-extrabold rounded border select-none transition-colors bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)]">
-
-
                                 Ctrl+K
                             </kbd>
                         </div>
@@ -150,10 +181,114 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                 </div>
             </div>
 
-            {/* Grid of Schemas - Scrollable container (content-only scrolling) */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin pr-1 pb-4">
-                {filteredSchemas.length > 0 ?
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Letter filter bar: All A B C ... Z # & — letters with no schemas are disabled */}
+            <div className="hidden md:flex items-center gap-0.5 flex-wrap shrink-0 select-none">
+                <button type="button"
+                    onClick={() => setLetterFilter(null)}
+                    className={clsx('px-2 h-6 rounded-md text-[10px] font-bold transition-all cursor-pointer',
+                        letterFilter === null
+                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]')}>
+                    All
+                </button>
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(ch => {
+                    const available = availableKeys.has(ch);
+                    return (
+                        <button key={ch} type="button" disabled={!available}
+                            onClick={() => setLetterFilter(letterFilter === ch ? null : ch)}
+                            className={clsx('px-1.5 h-6 min-w-[18px] rounded-md text-[10px] font-bold transition-all cursor-pointer',
+                                letterFilter === ch
+                                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                    : available
+                                        ? 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]'
+                                        : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                            {ch}
+                        </button>
+                    );
+                })}
+                <button type="button" disabled={!availableKeys.has('#')}
+                    onClick={() => setLetterFilter(letterFilter === '#' ? null : '#')}
+                    className={clsx('px-1.5 h-6 min-w-[18px] rounded-md text-[10px] font-bold transition-all cursor-pointer',
+                        letterFilter === '#'
+                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                            : availableKeys.has('#')
+                                ? 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]'
+                                : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                    #
+                </button>
+                <button type="button" disabled={!availableKeys.has('&')}
+                    onClick={() => setLetterFilter(letterFilter === '&' ? null : '&')}
+                    className={clsx('px-1.5 h-6 min-w-[18px] rounded-md text-[10px] font-bold transition-all cursor-pointer',
+                        letterFilter === '&'
+                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                            : availableKeys.has('&')
+                                ? 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]'
+                                : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                    &amp;
+                </button>
+            </div>
+
+            {/* Schemas area — on mobile the letter index is a vertical column
+                beside the grid (iOS contacts style), pushing it rather than
+                overlapping; the letters themselves scroll if they don't fit. */}
+            <div className="flex-1 min-h-0 flex flex-row">
+                {/* Mobile vertical letter index (iOS contacts style) */}
+                <div className="md:hidden shrink-0 flex flex-col justify-center py-1">
+                    <div className="flex flex-col items-center gap-0.5 select-none overflow-y-auto scrollbar-none max-h-full pr-0.5">
+                        <button type="button"
+                            onClick={() => setLetterFilter(null)}
+                            className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                letterFilter === null ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)]')}>
+                            All
+                        </button>
+                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(ch => {
+                            const available = availableKeys.has(ch);
+                            return (
+                                <button key={ch} type="button" disabled={!available}
+                                    onClick={() => setLetterFilter(letterFilter === ch ? null : ch)}
+                                    className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                        letterFilter === ch
+                                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                            : available ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                                    {ch}
+                                </button>
+                            );
+                        })}
+                        <button type="button" disabled={!availableKeys.has('#')}
+                            onClick={() => setLetterFilter(letterFilter === '#' ? null : '#')}
+                            className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                letterFilter === '#' ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : availableKeys.has('#') ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                            #
+                        </button>
+                        <button type="button" disabled={!availableKeys.has('&')}
+                            onClick={() => setLetterFilter(letterFilter === '&' ? null : '&')}
+                            className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                letterFilter === '&' ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : availableKeys.has('&') ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
+                            &amp;
+                        </button>
+                    </div>
+                </div>
+
+                {/* Grid of Schemas - Scrollable container (content-only scrolling) */}
+                <div className="flex-1 overflow-y-auto scrollbar-thin pr-1 pb-4">
+                {!hasSchemas ? (
+                    <div className="text-center py-20 animate-in fade-in duration-200 border-[var(--border)]">
+                        <span className="w-12 h-12 rounded-full flex items-center justify-center text-lg mx-auto mb-3 bg-[var(--background)] text-[var(--text-muted)]">
+                            <i className="ph ph-diamonds-four text-[48px]"></i>
+                        </span>
+                        <p className="text-sm font-semibold text-[var(--text-heading)]">No schemas found</p>
+                        <p className="text-xs mt-1 text-[var(--text-muted)]">This specification does not define any schemas.</p>
+                    </div>
+                ) : loading ? (
+                    <div className="text-center py-20 animate-in fade-in duration-200 border-[var(--border)]">
+                        <span className="w-12 h-12 rounded-full flex items-center justify-center text-lg mx-auto mb-3 bg-[var(--background)] text-[var(--text-muted)]">
+                            <i className="ph ph-spinner animate-spin text-[22px]"></i>
+                        </span>
+                        <p className="text-sm font-semibold text-[var(--text-heading)]">Loading schemas</p>
+                        <p className="text-xs mt-1 text-[var(--text-muted)]">Preparing the schema models…</p>
+                    </div>
+                ) : filteredSchemas.length > 0 ?
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {filteredSchemas.map(([name, schema]) => {
                             const propsCount = getPropertiesCount(schema);
                             const isObject = schema.type === 'object' || !!schema.properties || !!schema.allOf;
@@ -161,23 +296,26 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             return (
                                 <div
                                     key={name}
-                                    className="p-5 rounded-2xl border flex flex-col cursor-default justify-between transition-all group overflow-hidden bg-[var(--surface)] border-[var(--border)]">
-
+                                    onClick={() => onSelectSchema(name)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSchema(name); } }}
+                                    className="p-3 rounded-xl border flex flex-col cursor-pointer justify-between transition-all group overflow-hidden bg-[var(--surface)] border-[var(--border)] hover:border-[var(--primary)]/40 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40">
 
                                     <div className="min-w-0">
                                         <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="font-bold text-sm tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words"
+                                                <h3 className="font-medium text-xs tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words"
                                                     title={name}>
                                                     {humanizeName(name)}
                                                 </h3>
-                                                <p className="mt-0.5 truncate text-[10px] font-bold text-[var(--primary)]"
+                                                <p className="mt-0.5 truncate text-[10px] font-mono text-[var(--text-muted)]"
                                                     title={name}>
                                                     {name}
                                                 </p>
                                             </div>
                                             <span
-                                                className="px-2 py-0.5 rounded text-[10px] uppercase font-bold select-none shrink-0 bg-[var(--background)] text-[var(--primary)]">
+                                                className="px-1 py-0.5 rounded text-[9px] uppercase select-none shrink-0 bg-[var(--background)] text-[var(--text-muted)]">
 
                                                 {schema.type || (isObject ? 'object' : 'any')}
                                             </span>
@@ -188,34 +326,27 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                     <div
                                         className="flex items-center justify-between border-t pt-4 border-[var(--border)]">
 
-                                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                    <span className="text-[10px] font-mono text-[var(--text-muted)]">
                                             {propsCount > 0 ? `${propsCount} Properties` : 'No Properties'}
                                         </span>
 
                                         <div className="flex items-center gap-1.5">
                                             <Tip content="Share this schema">
                                                 <button
-                                                    onClick={() => handleShareSchema(name, schema)}
+                                                    onClick={(e) => { e.stopPropagation(); handleShareSchema(name, schema); }}
                                                     className="w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5">
                                                     <i className="ph ph-share-network text-[11px]"></i>
                                                 </button>
                                             </Tip>
                                             <Tip content="Export this schema as TypeScript">
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         if (schemas) generateSingleSchemaFile(name, schema, schemas as any, parsableKey);
                                                     }}
                                                     className="text-[10px] font-bold px-2 h-7 rounded-lg border flex items-center gap-1 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30">
                                                     <i className="ph ph-download-simple text-[10px]"></i>
                                                     TS
-                                                </button>
-                                            </Tip>
-                                            <Tip content="Inspect schema details">
-                                                <button
-                                                    onClick={() => onSelectSchema(name)}
-                                                    className="h-7 px-2 rounded-lg border flex items-center gap-1 text-[10px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/30">
-                                                    <span>View</span>
-                                                    <i className="ph ph-arrow-right text-[10px]"></i>
                                                 </button>
                                             </Tip>
                                         </div>
@@ -237,6 +368,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             "{searchTerm}". Try another search.</p>
                     </div>
                 }
+                </div>
             </div>
             {shareModal &&
                 <ShareModal

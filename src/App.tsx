@@ -162,6 +162,25 @@ export default function App() {
         return next;
     }, []);
 
+    // Canonical tab ordering: permanent (and pinned) tabs first, then the single
+    // preview slot. Every open/save/restore goes through this so the preview tab
+    // always occupies the LAST slot — that is the invariant that keeps refresh
+    // and deep-link restores from resurrecting replaced tabs in the wrong place.
+    const orderTabs = useCallback((list: TabItem[]): TabItem[] => {
+        const pinned = list.filter(t => t.isPreview && t.id.startsWith('view:'));
+        const previews = list.filter(t => t.isPreview && !t.id.startsWith('view:'));
+        const permanents = list.filter(t => !t.isPreview);
+        const ordered = withPreviewLast([...permanents, ...pinned, ...previews]);
+        // Enforce the single-preview invariant: at most one non-pinned preview.
+        const nonPinned = ordered.filter(t => t.isPreview && !t.id.startsWith('view:'));
+        if (nonPinned.length > 1) {
+            const keep = nonPinned[0];
+            const rest = new Set(nonPinned.slice(1).map(t => t.id));
+            return ordered.filter(t => !rest.has(t.id) || t.id === keep.id);
+        }
+        return ordered;
+    }, [withPreviewLast]);
+
     const getEndpointLabel = useCallback((path: string, method: string): string => {
         if (!spec?.paths) return path;
         const po = spec.paths[path];
@@ -184,10 +203,10 @@ export default function App() {
                 if (existing.isPreview) return withPreviewLast(prev);
                 return prev;
             }
-            const previewIdx = prev.findIndex(t => t.isPreview);
             const newTab: TabItem = { id, path, method: method.toLowerCase(), isPreview: true, label: getEndpointLabel(path, method) };
+            // Replace the current preview slot (there is only ever one).
+            const previewIdx = prev.findIndex(t => t.isPreview);
             if (previewIdx >= 0) {
-                const next = prev.filter(t => !t.isPreview);
                 const oldId = prev[previewIdx].id;
                 setTabViewModes(vm => {
                     const next2 = { ...vm };
@@ -197,7 +216,7 @@ export default function App() {
                     }
                     return next2;
                 });
-                return [...next, newTab];
+                return withPreviewLast(prev.map(t => t.id === oldId ? newTab : t));
             }
             return [...prev, newTab];
         });
@@ -235,7 +254,6 @@ export default function App() {
     /** Stash the current search query + filters onto the search tab so they
      *  survive navigating away and back. */
     const stashSearchTab = useCallback(() => {
-        console.log('[st] stash q=', searchQuery);
         setEndpointTabs(prev => prev.map(t => t.id === 'view:search'
             ? { ...t, query: searchQuery, filters: { methods: selectedMethods, tags: selectedTags, onlyProtected } }
             : t));
@@ -243,8 +261,76 @@ export default function App() {
 
     const [scrollIntent, setScrollIntent] = useState<{ type: 'endpoint' | 'view'; id: string } | null>(null);
 
+    // ---------- Ctrl+` tab switcher (Windows Alt+Tab style) ----------
+    const [switcherOpen, setSwitcherOpen] = useState(false);
+    const [switcherIndex, setSwitcherIndex] = useState(0);
+    const switcherPrevTabRef = useRef<string | null>(null);
+    // Kept current with the latest handleSelectTab (assigned after its
+    // definition below) so the switcher handlers never close over a stale one.
+    const handleSelectTabRef = useRef<(id: string) => void>(() => {});
+
+    const commitSwitcher = useCallback(() => {
+        const list = endpointTabsRef.current;
+        const tab = list[Math.min(switcherIndex, list.length - 1)];
+        setSwitcherOpen(false);
+        if (tab) handleSelectTabRef.current(tab.id);
+    }, [switcherIndex]);
+
+    const cancelSwitcher = useCallback(() => {
+        setSwitcherOpen(false);
+        // Esc returns to the tab that was active before the switcher opened.
+        if (switcherPrevTabRef.current) {
+            const tab = endpointTabsRef.current.find(t => t.id === switcherPrevTabRef.current);
+            if (tab) handleSelectTabRef.current(tab.id);
+        }
+        switcherPrevTabRef.current = null;
+    }, []);
+
+    useEffect(() => {
+        // Windows Alt+Tab semantics on Ctrl+` (and Ctrl+Tab as a best-effort
+        // accelerator where the browser allows it):
+        //   - Ctrl+`        opens the switcher with the NEXT tab selected
+        //   - Ctrl+Shift+`  opens it with the PREVIOUS tab selected
+        //   - holding and pressing again keeps cycling
+        //   - releasing Ctrl commits the highlighted tab; Esc cancels
+        const cycleSwitcher = (e: KeyboardEvent, dir: number) => {
+            e.preventDefault();
+            const list = endpointTabsRef.current;
+            if (list.length < 2) return;
+            if (!switcherOpen) {
+                const cur = list.findIndex(t => t.id === activeTabId);
+                switcherPrevTabRef.current = activeTabId;
+                setSwitcherIndex(cur >= 0 ? (cur + dir + list.length) % list.length : 0);
+                setSwitcherOpen(true);
+            } else {
+                setSwitcherIndex(i => (i + dir + list.length) % list.length);
+            }
+        };
+        const onKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.key === '~' || e.key === 'Tab')) {
+                cycleSwitcher(e, e.shiftKey ? -1 : 1);
+            } else if (e.key === 'Escape' && switcherOpen) {
+                e.preventDefault();
+                cancelSwitcher();
+            } else if (e.key === 'Enter' && switcherOpen) {
+                e.preventDefault();
+                commitSwitcher();
+            }
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            if ((e.key === 'Control' || e.key === 'Meta') && switcherOpen) commitSwitcher();
+        };
+        window.addEventListener('keydown', onKeyDown, true);
+        window.addEventListener('keyup', onKeyUp, true);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown, true);
+            window.removeEventListener('keyup', onKeyUp, true);
+        };
+    }, [switcherOpen, activeTabId, commitSwitcher, cancelSwitcher]);
+
     const handleSelectTab = useCallback((id: string) => {
         if (activeTabId === 'view:search' && id !== 'view:search') stashSearchTab();
+        setShowWelcome(false);
         setActiveTabId(id);
         const tab = endpointTabs.find(t => t.id === id);
         if (!tab) return;
@@ -276,6 +362,8 @@ export default function App() {
         setSearchQuery('');
     }, [endpointTabs, activeTabId, stashSearchTab]);
 
+    handleSelectTabRef.current = handleSelectTab;
+
     /** Open (or re-activate) one of the named view tabs: overview, search,
      *  schema explorer or about. View tabs are permanent tabs and never touch
      *  the endpoint preview slot — opening search while reading an endpoint
@@ -298,8 +386,8 @@ export default function App() {
             const newTab: TabItem = { id, path: '', method: '', isPreview: true, label, kind: view, query: view === 'search' ? query : undefined };
             const previewIdx = prev.findIndex(t => t.isPreview);
             if (previewIdx >= 0) {
-                const next = prev.filter(t => !t.isPreview);
-                return [...next, newTab];
+                const oldId = prev[previewIdx].id;
+                return withPreviewLast(prev.map(t => t.id === oldId ? newTab : t));
             }
             return [...prev, newTab];
         });
@@ -325,13 +413,7 @@ export default function App() {
             const existing = prev.find(t => t.id === id);
             if (existing) return prev.map(t => t.id === id ? { ...t, isPreview: false, query: view === 'search' ? query : undefined } : t);
             const newTab: TabItem = { id, path: '', method: '', isPreview: false, label, kind: view, query: view === 'search' ? query : undefined };
-            const previewIdx = prev.findIndex(t => t.isPreview);
-            if (previewIdx >= 0) {
-                const next = [...prev];
-                next.splice(previewIdx, 0, newTab);
-                return next;
-            }
-            return [...prev, newTab];
+            return orderTabs([...prev, newTab]);
         });
         setActiveTabId(id);
         setSelectedEndpoint(null);
@@ -341,7 +423,7 @@ export default function App() {
         setSearchQuery(view === 'search' ? query : '');
         setActiveResponseCode(null);
         setModalsStack([]);
-    }, []);
+    }, [orderTabs]);
 
     /** Apply the view state that matches a tab (used when closing tabs or
      *  restoring state from a deep link). */
@@ -383,19 +465,17 @@ export default function App() {
 
     /** After hash-driven state changes, make sure the matching view tab exists
      *  and is the active one (deep links like #/parsable/x/schema-explorer). */
-    const ensureViewTabFromState = useCallback((override?: { searchQuery?: string; showSchemaExplorer?: boolean; showAbout?: boolean; showHome?: boolean }) => {
+    const ensureViewTabFromState = useCallback((override?: { searchQuery?: string; showSchemaExplorer?: boolean; showAbout?: boolean; showHome?: boolean; searchMethods?: string[]; searchTags?: string[]; searchSecured?: boolean | null }) => {
         const s = { ...navStateRef.current, ...override };
         if (s.showWelcome) return;
         const expected: ViewTabKind | null =
-            s.searchQuery.trim().length || s.selectedMethodsLength > 0 || s.selectedTagsLength > 0 || s.onlyProtected !== null
+            (s.searchQuery || '').trim().length || (s.searchMethods?.length || 0) > 0 || (s.searchTags?.length || 0) > 0 || s.searchSecured !== null
                 ? 'search'
                 : s.showSchemaExplorer
                     ? 'schemas'
                     : s.showAbout
                         ? 'about'
-                        : s.showHome
-                            ? 'home'
-                            : null;
+                        : null;
         if (!expected) return;
         setShowWelcome(false);
         // If the search tab is already active, don't force anything (this was
@@ -417,18 +497,21 @@ export default function App() {
                 id, path: '', method: '', isPreview: false, label, kind: expected,
                 query: expected === 'search' ? s.searchQuery : undefined,
             };
-            const previewIdx = prev.findIndex(t => t.isPreview);
-            if (previewIdx >= 0) {
-                const next = [...prev];
-                next.splice(previewIdx, 0, newTab);
-                return next;
-            }
-            return [...prev, newTab];
+            return orderTabs([...prev, newTab]);
         });
         setActiveTabId(id);
-    }, []);
+    }, [orderTabs]);
 
     const handleCloseTab = useCallback((id: string) => {
+        // Closing the search tab ends the search session — drop phrase + filters
+        // so the URL is scrubbed clean instead of keeping orphan filter params.
+        if (id === 'view:search') {
+            setSearchQuery('');
+            setResultsQuery('');
+            setSelectedMethods([]);
+            setSelectedTags([]);
+            setOnlyProtected(null);
+        }
         setEndpointTabs(prev => {
             const idx = prev.findIndex(t => t.id === id);
             if (idx < 0) return prev;
@@ -527,16 +610,38 @@ export default function App() {
 
     // ---------- Tab persistence (localStorage) ----------
     const tabsRestoredRef = useRef<Set<string>>(new Set());
+    // True once the per-spec tab restore has run. Before that, the URL sync
+    // must not create/activate tabs — otherwise a stored tab gets duplicated
+    // (once by restore, once by the deep-link handler).
+    const tabsRestoreDoneRef = useRef(false);
+    // True once the spec-load effect has run once after mount. On that first
+    // run the URL is a stale deep link from the previous session — it must not
+    // recreate tabs (previews or home); only persisted tabs may be restored.
+    const specLoadInitRef = useRef(false);
 
     useEffect(() => {
-        if (!selectedParsableKey || endpointTabs.length === 0) return;
-        // The search tab is ephemeral (its query/filters live in state) — never
-        // persist it. Without this, a refresh would restore a stale search tab
-        // that crashes or shows a blank results page.
-        const persistable = endpointTabs.filter(t => t.id !== 'view:search');
-        const activeId = activeTabId === 'view:search' ? (persistable[persistable.length - 1]?.id || '') : activeTabId;
-        if (persistable.length === 0) return;
-        const data = { tabs: persistable, activeTabId: activeId, viewModes: tabViewModes };
+        if (!selectedParsableKey) return;
+        // Persist only "committed" tabs: permanents (including pinned view tabs,
+        // e.g. a pinned search tab keeps its query). Preview tabs are transient
+        // by definition and must never survive a refresh — restoring them is
+        // what made closed tabs come back. The persisted active id is the last
+        // committed tab. When nothing is committed (all tabs closed) the stored
+        // session must be REMOVED, or a reload would resurrect a closed tab.
+        const persistable = endpointTabs.filter(t => !t.isPreview);
+        const activeId = activeTabId && endpointTabs.some(t => t.id === activeTabId && !t.isPreview)
+            ? activeTabId
+            : (persistable[persistable.length - 1]?.id || '');
+        if (persistable.length === 0) {
+            // Only remove the stored session once the boot-time restore has
+            // finished — before that, an empty tab bar is just the initial
+            // state and wiping storage would destroy the session we're about
+            // to restore.
+            if (tabsRestoreDoneRef.current) {
+                specStorage.remove(selectedParsableKey, 'tabs');
+            }
+            return;
+        }
+        const data = { tabs: orderTabs(persistable), activeTabId: activeId, viewModes: tabViewModes };
         specStorage.setJSON(selectedParsableKey, 'tabs', data);
     }, [endpointTabs, activeTabId, tabViewModes, selectedParsableKey]);
 
@@ -550,25 +655,62 @@ export default function App() {
             (v) => !!v && Array.isArray(v.tabs),
         );
         if (data?.tabs && data.tabs.length > 0) {
-            // Never restore a stored search tab (it is ephemeral).
-            const filtered = data.tabs.filter((t: TabItem) => t.id !== 'view:search');
-            if (filtered.length === 0) return;
-            const updatedTabs = withPreviewLast(filtered.map((t: TabItem) =>
+            // Drop any stray preview tabs / search previews from older saves and
+            // drop endpoint tabs that no longer exist in this spec.
+            const filtered = orderTabs(data.tabs.filter((t: TabItem) =>
+                // Keep committed tabs only: permanents (endpoints have no kind;
+                // view tabs have kind set). Drop anything still marked preview.
+                !t.isPreview,
+            )).filter((t: TabItem) =>
+                t.kind && t.kind !== 'endpoint' ? true : !!spec?.paths?.[t.path]?.[t.method],
+            );
+            if (filtered.length === 0) {
+                // Nothing committed survived. If the URL is a plain home (no
+                // deep link) show the welcome page; otherwise let the URL
+                // handler open the deep link.
+                const p2 = parseSmartRoute(window.location.hash);
+                tabsRestoreDoneRef.current = true;
+                if (!p2.endpoint && !p2.legacyOperationId && !p2.searchQuery && !p2.showSchemaExplorer && !p2.showAbout) {
+                    setShowWelcome(true);
+                }
+                return;
+            }
+            const updatedTabs = filtered.map((t: TabItem) =>
                 t.kind && t.kind !== 'endpoint'
                     ? t
                     : { ...t, label: getEndpointLabel(t.path, t.method) },
-            ));
+            );
             setEndpointTabs(updatedTabs);
             if (data.activeTabId) {
-                setActiveTabId(data.activeTabId);
                 const activeTab = updatedTabs.find((t: TabItem) => t.id === data.activeTabId);
-                if (activeTab) applyTabViewState(activeTab);
+                if (activeTab) {
+                    setActiveTabId(activeTab.id);
+                    applyTabViewState(activeTab);
+                } else {
+                    setActiveTabId(updatedTabs[updatedTabs.length - 1]?.id || null);
+                    applyTabViewState(updatedTabs[updatedTabs.length - 1] || null);
+                }
             }
             if (data.viewModes) {
                 setTabViewModes(data.viewModes);
             }
         }
-    }, [spec, selectedParsableKey, getEndpointLabel, withPreviewLast, applyTabViewState]);
+        if (!data?.tabs || data.tabs.length === 0) {
+            // No persisted tabs: with no deep link in the URL this is a plain
+            // boot — show the welcome page (all tabs closed). Any URL route
+            // (endpoint / about / schema-explorer / search / filters) is handled
+            // by the URL processing in the spec-load effect, not welcome.
+            const p = parseSmartRoute(window.location.hash);
+            const urlHasRoute = !!(p.endpoint || p.legacyOperationId || p.searchQuery
+                || p.showSchemaExplorer || p.showAbout
+                || p.searchMethods.length || p.searchTags.length || p.searchSecured !== null);
+            if (!urlHasRoute) {
+                setShowWelcome(true);
+            }
+        }
+        tabsRestoreDoneRef.current = true;
+    }, [spec, selectedParsableKey, getEndpointLabel, withPreviewLast, orderTabs, applyTabViewState]);
+
 
     useEffect(() => {
         if (activeTabId && tabViewModes[activeTabId]) {
@@ -880,9 +1022,17 @@ export default function App() {
 
     // ---------- Hash sync ----------
     const syncHashToState = useCallback(() => {
-        // While the welcome page is showing, the URL may hold a stale ?search=
-        // from before the tabs were closed — ignore it entirely.
-        if (navStateRef.current.showWelcome) return;
+        // While the welcome page is showing, a plain home hash is stale (from
+        // before the tabs were closed) and must be ignored — but a REAL deep
+        // link (endpoint / search / schema / about) must still open normally.
+        const parsed0 = parseSmartRoute(window.location.hash);
+        if (navStateRef.current.showWelcome
+            && !parsed0.endpoint && !parsed0.legacyOperationId && !parsed0.searchQuery
+            && !parsed0.showSchemaExplorer && !parsed0.showAbout) return;
+        // On the very first load the persisted tab restore owns the state; the
+        // URL (which may be a stale deep link) must not recreate anything.
+        if (!tabsRestoreDoneRef.current) return;
+        if (!specLoadInitRef.current) return;
         const parsed: ParsedRoute = parseSmartRoute(window.location.hash);
 
         if (parsed.parsableKey && parsed.parsableKey !== selectedParsableKey && parsables[parsed.parsableKey]) {
@@ -920,23 +1070,37 @@ export default function App() {
             showSchemaExplorer: parsed.showSchemaExplorer,
             showAbout: parsed.showAbout,
             showHome: parsed.showHome,
+            searchMethods: parsed.searchMethods || [],
+            searchTags: parsed.searchTags || [],
+            searchSecured: parsed.searchSecured ?? null,
         });
     }, [parsables, selectedParsableKey, spec, openEndpointPreview, ensureViewTabFromState]);
 
     const updateHashFromState = useCallback(() => {
         if (isLoadingSpec || isUpdatingHash || !isInitialLoadComplete || !spec) return;
+        // Never write the URL until the boot-time URL processing (spec-load
+        // effect) has run — intermediate states would corrupt the deep link.
+        if (!specLoadInitRef.current) return;
         setIsUpdatingHash(true);
 
+        // Search + filter params only belong in the URL while the search tab is
+        // actually active — otherwise switching to an endpoint would carry
+        // orphan ?tags=&secured= params into that endpoint's link.
+        const searchInUrl = activeTabId === 'view:search';
         const h = generateSmartRoute({
             parsableKey: selectedParsableKey, showHome, showAbout, showSchemaExplorer,
             endpoint: selectedEndpoint, tab: selectedTab,
             schemaModals: modalsStack.map(n => ({ schemaName: n, schema: spec?.components?.schemas?.[n] || {} })),
-            responseCode: activeResponseCode, searchQuery, searchMethods: selectedMethods, searchTags: selectedTags, searchSecured: onlyProtected,
+            responseCode: activeResponseCode,
+            searchQuery: searchInUrl ? searchQuery : '',
+            searchMethods: searchInUrl ? selectedMethods : [],
+            searchTags: searchInUrl ? selectedTags : [],
+            searchSecured: searchInUrl ? onlyProtected : null,
             activeSpec: spec,
         });
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
-    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, showWelcome, selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, selectedMethods, selectedTags, onlyProtected]);
+    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, showWelcome, selectedParsableKey, showHome, showAbout, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, selectedMethods, selectedTags, onlyProtected, activeTabId]);
 
     useEffect(() => {
         if (!spec?.paths || isLoadingSpec) return;
@@ -952,7 +1116,32 @@ export default function App() {
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
         setActiveResponseCode(parsed.responseCode);
-        if (parsed.legacyOperationId) {
+        // During the very first load, the URL-driven state must defer to the
+        // persisted tab restore — otherwise the same tab is created twice, or a
+        // closed tab is resurrected from the stale URL. On later hash changes
+        // (real deep links) the URL is the source of truth.
+        // The URL is the source of truth on every load (fresh, reload or
+        // back/forward). Whatever route it describes is created as a PERMANENT
+        // tab and shown — persisted tabs never override the URL. This is what
+        // makes deep links to /about, /schema-explorer or ?search= work even
+        // when no saved tab for them exists.
+        if (!specLoadInitRef.current) {
+            specLoadInitRef.current = true;
+            // URL endpoints open as permanent tabs (they are "committed" by the
+            // URL itself, not transient previews). If the URL has no endpoint,
+            // clear any endpoint left by the tab restore — otherwise the URL
+            // writer would merge the restored endpoint into the search URL and
+            // corrupt it.
+            if (parsed.legacyOperationId) {
+                const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
+                if (r) { openEndpointPermanent(r.path, r.method); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
+                else setSelectedEndpoint(null);
+            } else if (parsed.endpoint) {
+                openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
+            } else {
+                setSelectedEndpoint(null);
+            }
+        } else if (parsed.legacyOperationId) {
             const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
             if (r) { openEndpointPreview(r.path, r.method); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false); }
             else setSelectedEndpoint(null);
@@ -968,6 +1157,9 @@ export default function App() {
             showSchemaExplorer: parsed.showSchemaExplorer,
             showAbout: parsed.showAbout,
             showHome: parsed.showHome,
+            searchMethods: parsed.searchMethods || [],
+            searchTags: parsed.searchTags || [],
+            searchSecured: parsed.searchSecured ?? null,
         });
     }, [spec, selectedParsableKey, isLoadingSpec, ensureViewTabFromState]);
 
@@ -1104,8 +1296,7 @@ export default function App() {
         if (searchRenderTimer.current) { clearTimeout(searchRenderTimer.current); searchRenderTimer.current = null; }
         searchRenderTimer.current = setTimeout(() => setResultsQuery(query), 250);
 
-        const hasFilters = selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-        if (query.trim().length || hasFilters) {
+        if (query.trim().length) {
             setShowWelcome(false);
             if (activeTabId === 'view:search' && query.trim().length) {
                 // Already on the search tab with a non-empty query: update only
@@ -1122,6 +1313,12 @@ export default function App() {
             setResultsQuery(query);
             openViewTab('search', query);
         } else {
+            // Clearing the search input ends the search session entirely —
+            // phrase AND filters. The URL must not keep stale ?tags=&secured=
+            // params pointing at a search that no longer exists.
+            setSelectedMethods([]);
+            setSelectedTags([]);
+            setOnlyProtected(null);
             const prevId = preSearchTabRef.current;
             preSearchTabRef.current = null;
             // The search tab has served its purpose; drop it and go back to
@@ -1136,6 +1333,7 @@ export default function App() {
             } else {
                 // Nothing else open -> welcome page, not the overview.
                 setSelectedEndpoint(null);
+                setActiveTabId(null);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowAbout(false);
@@ -1156,7 +1354,7 @@ export default function App() {
     const handleOpenHome = () => { setScrollIntent({ type: 'view', id: 'view:home' }); openViewTab('home'); if (!spec) window.location.hash = '#/'; closeMobileIfNeeded(); };
     const handleOpenAbout = () => { setScrollIntent({ type: 'view', id: 'view:about' }); openViewTab('about'); if (!spec) window.location.hash = '#/about'; closeMobileIfNeeded(); };
     const handleOpenSchemaExplorer = () => { setScrollIntent({ type: 'view', id: 'view:schemas' }); openViewTab('schemas'); closeMobileIfNeeded(); };
-    const handleOpenSearchNav = () => { setScrollIntent({ type: 'view', id: 'view:search' }); openViewTab('search', searchQuery); };
+
     const handleDownload = () => {
         if (!spec) return;
         const d = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(spec, null, 2));
@@ -1208,11 +1406,30 @@ export default function App() {
             );
         }
         const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
-        if (activeTabId === 'view:search' && (resultsQuery.trim().length || hasFilters)) {
-            return <SearchResultsView spec={spec} searchQuery={resultsQuery} onSelectEndpoint={handleSearchResult}
-                                      onMiddleClickEndpoint={openEndpointPermanent}
-                                      selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
-                                      selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
+        if (activeTabId === 'view:search') {
+            // The search tab is its own page: results when there's a query or
+            // filters, otherwise a neutral "start typing" empty state. It NEVER
+            // falls through to the overview.
+            if (resultsQuery.trim().length || hasFilters) {
+                return <SearchResultsView spec={spec} searchQuery={resultsQuery} onSelectEndpoint={handleSearchResult}
+                                          onMiddleClickEndpoint={openEndpointPermanent}
+                                          selectedServer={selectedServer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
+                                          selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} parsableKey={selectedParsableKey} />;
+            }
+            return (
+                <div className="flex-1 w-full h-full overflow-y-auto scrollbar-thin">
+                    <div className="min-h-full flex flex-col items-center justify-center px-6 text-center select-none">
+                        <span className="size-12 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-[var(--primary)]">
+                            <i className="ph-fill ph-magnifying-glass text-[20px]"></i>
+                        </span>
+                        <h2 className="mt-4 text-base font-extrabold text-[var(--text-heading)]">Search the specification</h2>
+                        <p className="mt-1 text-xs text-[var(--text-muted)] max-w-sm leading-relaxed">
+                            Type a path, summary, tag or schema name in the search field to find
+                            endpoints across this API.
+                        </p>
+                    </div>
+                </div>
+            );
         }
         if (selectedEndpoint) {
             const po = spec.paths[selectedEndpoint.path];
@@ -1333,12 +1550,25 @@ export default function App() {
         }
         if (showSchemaExplorer) return <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={handlePushSchema} parsableKey={selectedParsableKey} />;
         if (showAbout) return <AboutView specTitle={spec?.info?.title} parsableKey={selectedParsableKey} />;
-        return <HomeView spec={spec} selectedEndpoint={selectedEndpoint} onSelectEndpoint={handleSelectEndpoint}
-                         selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
-                         onDeepLinkResponse={(path, method, code) => {
-                             openEndpointPreview(path, method); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
-                             setSelectedTab('docs'); setActiveResponseCode(code);
-                         }} />;
+        // The overview is a page like any other: it renders ONLY when the user
+        // explicitly opened it (showHome). Nothing else ever falls through to it.
+        if (showHome) {
+            return <HomeView spec={spec} selectedEndpoint={selectedEndpoint} onSelectEndpoint={handleSelectEndpoint}
+                             selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
+                             onDeepLinkResponse={(path, method, code) => {
+                                 openEndpointPreview(path, method); setShowHome(false); setShowSchemaExplorer(false); setShowAbout(false);
+                                 setSelectedTab('docs'); setActiveResponseCode(code);
+                             }} />;
+        }
+        return <WelcomeView
+            specTitle={spec.info?.title || selectedParsableKey}
+            specKey={selectedParsableKey}
+            onSearchSubmit={handleSearchChange}
+            onOpenAbout={handleOpenAbout}
+            onOpenHome={handleOpenHome}
+            onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+            canOpenLocal={canOpenLocal}
+        />;
     };
 
     const isSidebarCollapsed = isMobile ? false : desktopCollapsed;
@@ -1364,7 +1594,6 @@ export default function App() {
                     parsables={parsables} selectedParsableKey={selectedParsableKey} onSelectParsable={handleSelectParsable}
                     activeAuth={activeAuth} onUpdateAuth={setActiveAuth} onOpenAuthModal={() => setShowAuthModal(true)}
                     searchQuery={searchQuery} onSearchChange={handleSearchChange}
-                    themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode} onToggleThemeMode={toggleThemeMode}
                     onDownloadSpec={handleDownload}
                     title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec}
                     showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
@@ -1409,8 +1638,6 @@ export default function App() {
                                 onSelectEndpoint={handleSelectEndpoint} onMiddleClickEndpoint={openEndpointPermanent}
                                 onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout}
                                 onOpenViewPermanent={openViewTabPermanent} onContextAction={handleContextAction}
-                                onOpenSearch={handleOpenSearchNav}
-                                isSearchActive={activeTabId === 'view:search'}
                                 scrollIntent={scrollIntent} setScrollIntent={setScrollIntent}
                                 showHome={showHome} showAbout={showAbout}
                                 themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode} onToggleThemeMode={toggleThemeMode}
@@ -1438,6 +1665,14 @@ export default function App() {
                                         onCloseAllRight={handleCloseAllRight}
                                         onCloseOthers={handleCloseOthers}
                                         onReorderTabs={handleReorderTabs}
+                                        onOpenSwitcher={() => {
+                                            const list = endpointTabsRef.current;
+                                            if (list.length < 2) return;
+                                            const cur = list.findIndex(t => t.id === activeTabId);
+                                            switcherPrevTabRef.current = activeTabId;
+                                            setSwitcherIndex(cur >= 0 ? cur : 0);
+                                            setSwitcherOpen(true);
+                                        }}
                                     />
                                 )}
                                 <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full min-h-0">{content()}</div>
@@ -1460,6 +1695,61 @@ export default function App() {
                                         activeAuth={activeAuth} />
                 )}
                 <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} spec={spec} activeAuth={activeAuth} onSave={setActiveAuth} />
+
+                {/* Ctrl+Tab tab switcher overlay */}
+                {switcherOpen && endpointTabs.length > 1 && (
+                    <div
+                        className="fixed inset-0 z-[6000] flex items-start justify-center pt-[16vh] bg-black/40 backdrop-blur-[2px] animate-fade-in"
+                        onMouseDown={(e) => { if (e.target === e.currentTarget) cancelSwitcher(); }}
+                    >
+                        <div className="w-[440px] max-w-[92vw] rounded-2xl border shadow-2xl overflow-hidden animate-zoom-in bg-[var(--surface)] border-[var(--border)]">
+                            <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--background)]">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                                    <i className="ph ph-tabs text-[13px] text-[var(--primary)]"></i>
+                                    Tab Switcher
+                                </span>
+                                <span className="text-[9.5px] text-[var(--text-muted)] flex items-center gap-1 select-none">
+                                    <kbd className="px-1 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)]">Ctrl</kbd>+
+                                    <kbd className="px-1 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)]">`</kbd>
+                                    <span className="mx-1 opacity-50">·</span> release to switch
+                                </span>
+                            </div>
+                            <div className="py-1.5 max-h-[52vh] overflow-y-auto scrollbar-thin">
+                                {endpointTabs.map((t, i) => {
+                                    const sel = i === Math.min(switcherIndex, endpointTabs.length - 1);
+                                    const current = t.id === activeTabId;
+                                    return (
+                                        <button key={t.id} type="button"
+                                            onClick={() => { handleSelectTabRef.current(t.id); setSwitcherOpen(false); }}
+                                            className={clsx('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer',
+                                                sel ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
+                                            {t.kind && t.kind !== 'endpoint' ? (
+                                                <span className="shrink-0 w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--primary)] bg-[var(--background)]">
+                                                    <i className={VIEW_TAB_META[t.kind].icon + ' text-[14px]'}></i>
+                                                </span>
+                                            ) : (
+                                                <MethodBadge method={t.method} size="xs" className="shrink-0 w-10 h-4" />
+                                            )}
+                                            <span className={clsx('flex-1 min-w-0 truncate text-xs font-semibold',
+                                                sel ? 'text-[var(--text-heading)]' : 'text-[var(--text)]')}>
+                                                {t.label}
+                                            </span>
+                                            {current && (
+                                                <span className="shrink-0 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-[var(--primary)]">
+                                                    <i className="ph-fill ph-dot-outline text-[10px]"></i>
+                                                    Current
+                                                </span>
+                                            )}
+                                            {t.isPreview && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">Preview</span>}
+                                            {sel && <i className="ph ph-caret-right text-[14px] text-[var(--primary)] shrink-0"></i>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {shareTarget && (
                     <ShareModal isOpen={!!shareTarget} onClose={() => setShareTarget(null)}
                                 url={shareTarget.url} title={shareTarget.title} description={shareTarget.description} />
