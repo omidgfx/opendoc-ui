@@ -9,7 +9,7 @@ import {
     serializeOpenApiParameter
 } from '../../../utils/openapi/serialization';
 import {applyAuthToRequest} from '../../../utils/auth';
-import {OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
+import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
 import PatternTesterModal from '../../modals/PatternTesterModal';
@@ -20,6 +20,10 @@ import {specStorage} from '../../../utils/storage';
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const bodyTypeSupportsForm = (type: string): boolean => {
+    const lower = type.toLowerCase();
+    return lower.includes('json') || lower.includes('yaml') || lower === 'application/x-www-form-urlencoded' || lower === 'multipart/form-data' || lower === 'application/octet-stream';
+};
 
 const readResponseBody = async (response: Response, maxBytes = MAX_RESPONSE_BYTES): Promise<{
     text: string;
@@ -107,6 +111,7 @@ export default function ExamineTab({
     const [bodyEditorMode, setBodyEditorMode] = useState<'form' | 'raw'>('form');
     const [bridgeActionRevision, setBridgeActionRevision] = useState(0);
     const bridgeRunPendingRef = useRef(false);
+    const bridgeRunActionIdRef = useRef<string | null>(null);
 
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
@@ -149,6 +154,9 @@ export default function ExamineTab({
     useEffect(() => {
         loadInputs();
     }, [loadInputs]);
+    useEffect(() => {
+        if (!bodyTypeSupportsForm(requestBodyType)) setBodyEditorMode('raw');
+    }, [requestBodyType, setBodyEditorMode]);
     useEffect(() => () => {
         abortControllerRef.current?.abort();
     }, []);
@@ -200,6 +208,13 @@ export default function ExamineTab({
             setRequestBodyText('');
         }
         setBodyFields({});
+    };
+
+    const publishBridgeResult = (result: ExamineResponse) => {
+        const actionId = bridgeRunActionIdRef.current;
+        if (!actionId) return;
+        bridgeRunActionIdRef.current = null;
+        dispatchOpenDocUIRunnerResult({actionId, specKey: parsableKey, path, method, result});
     };
 
     // ------- Execute -------
@@ -322,19 +337,38 @@ export default function ExamineTab({
             };
             setResponse(next);
             onResponseChange?.(next);
+            publishBridgeResult(next);
         } catch (error: any) {
-            if (controller.signal.aborted && !timedOutRef.current) return;
+            if (controller.signal.aborted && !timedOutRef.current) {
+                publishBridgeResult({
+                    status: 0,
+                    headers: {},
+                    body: 'Request cancelled by the user.',
+                    isJson: false,
+                    timestamp: Date.now(),
+                    requestUrl: requestUrlRef.current,
+                    durationMs: Date.now() - requestStartedAtRef.current,
+                    errorKind: 'cancelled',
+                    errorMessage: 'Request cancelled by the user.',
+                });
+                return;
+            }
+            const errorKind = timedOutRef.current ? 'timeout' : 'network';
+            const errorMessage = error?.message || 'The request failed.';
             const next: ExamineResponse = {
                 status: 0,
                 headers: {},
-                body: `${timedOutRef.current ? 'Request timed out after 30 seconds.' : 'Network Error or CORS Blocked:'}\n${error?.message || 'The request failed.'}\n\n${authWarningText}`,
+                body: `${timedOutRef.current ? 'Request timed out after 30 seconds.' : 'Network Error or CORS Blocked:'}\n${errorMessage}\n\n${authWarningText}`,
                 isJson: false,
                 timestamp: Date.now(),
                 requestUrl: requestUrlRef.current,
                 durationMs: Date.now() - requestStartedAtRef.current,
+                errorKind,
+                errorMessage,
             };
             setResponse(next);
             onResponseChange?.(next);
+            publishBridgeResult(next);
         } finally {
             window.clearTimeout(timeout);
             abortControllerRef.current = null;
@@ -361,7 +395,10 @@ export default function ExamineTab({
             if (action.headers) setHeaders(action.headers);
             if (action.body !== undefined) setRequestBodyText(action.body);
             if (action.bodyType) setRequestBodyType(action.bodyType);
-            if (action.action === 'run_api') bridgeRunPendingRef.current = true;
+            if (action.action === 'run_api') {
+                bridgeRunPendingRef.current = true;
+                bridgeRunActionIdRef.current = action.id || null;
+            }
             setBridgeActionRevision(value => value + 1);
         };
         window.addEventListener(OPENDOC_UI_ACTION_EVENT, handleBridgeAction);
@@ -444,6 +481,7 @@ export default function ExamineTab({
         e.preventDefault();
         if (!isRunning) executeRequest();
     };
+    const bodySupportsForm = bodyTypeSupportsForm(requestBodyType);
 
     return (
         <form
@@ -514,7 +552,7 @@ export default function ExamineTab({
                                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 text-xs border-b border-[var(--border)]">
                                 <span className="font-semibold text-[var(--text-heading)]">Payload Format</span>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    {(requestBodyType === 'application/x-www-form-urlencoded' || requestBodyType === 'multipart/form-data' || requestBodyType.toLowerCase().includes('json')) && (
+                                    {bodySupportsForm && (
                                         <div
                                             className={clsx('flex border rounded-lg overflow-hidden p-0.5 border-[var(--border)]')}>
                                             <button type="button" onClick={() => setBodyEditorMode('form')}
@@ -530,7 +568,7 @@ export default function ExamineTab({
                                         value={requestBodyType}
                                         onChange={(val) => {
                                             setRequestBodyType(val);
-                                            setBodyEditorMode('form');
+                                            setBodyEditorMode(bodyTypeSupportsForm(val) ? 'form' : 'raw');
                                         }}
                                         options={Object.keys(resolvedRequestBody.content || {}).map(mime => ({
                                             value: mime,

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {applyAuthToRequest} from '../src/utils/auth';
 import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/aiContext';
-import {parseOpenDocUIActions} from '../src/utils/aiBridge';
+import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
 import {trimAIConversation} from '../src/utils/aiStorage';
+import {formatBodyText, getBodyFormat, validateBodyText} from '../src/utils/bodyFormats';
+import {defaultBodyValue} from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
 import {
     getRefName,
     isJsonMediaType,
@@ -195,6 +197,33 @@ test('rejects unsafe gateway policy configuration', () => {
     assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: '', allowClientModel: true, allowedModels: 'model'}), /AI_MODEL is required/);
     assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: 'model', allowClientModel: true, allowedModels: '*'}), /wildcard/);
     assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: 'default', allowClientModel: true, allowedModels: 'other'}), /must include AI_MODEL/);
+});
+
+test('formats bounded Runner results for the conversation without exposing auth headers', () => {
+    const result = formatOpenDocUIRunnerResult({actionId: 'a1', specKey: 'fixture', path: '/users', method: 'get', result: {
+        status: 200, headers: {'authorization': 'Bearer secret'}, body: 'Authorization: Bearer secret\\n{"ok":true}', isJson: true, durationMs: 12,
+    }});
+    assert.match(result, /API Runner result/);
+    assert.match(result, /200/);
+    assert.match(result, /REDACTED/);
+    assert.doesNotMatch(result, /Bearer secret/);
+});
+
+test('selects raw-body formats without applying JSON validation to YAML or XML', () => {
+    assert.equal(getBodyFormat('application/json').language, 'json');
+    assert.equal(getBodyFormat('application/yaml').isYaml, true);
+    assert.equal(getBodyFormat('application/xml').isXml, true);
+    assert.equal(validateBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml'), null);
+    assert.equal(validateBodyText('<root><item /></root>', 'application/xml'), null);
+    assert.equal(validateBodyText('{"broken":', 'application/json') !== null, true);
+    assert.match(formatBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml').text, /name:/);
+});
+
+test('creates typed defaults for recursive object and array schemas', () => {
+    const schema = {type: 'object', properties: {name: {type: 'string', default: 'OpenDoc'}, items: {type: 'array', items: {type: 'object', properties: {id: {type: 'integer'}}}}}};
+    const value: any = defaultBodyValue(schema, baseSpec);
+    assert.equal(value.name, 'OpenDoc');
+    assert.deepEqual(value.items, []);
 });
 
 console.log('All OpenDoc UI unit tests passed.');

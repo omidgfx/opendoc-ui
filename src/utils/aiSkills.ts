@@ -25,8 +25,10 @@ export const AI_SKILL_PACK_CONTENT: Record<AISkillPack, string> = {
 - Prefer a minimal working request first, then optional body, error handling, and typing improvements.`,
     'api-testing': `API testing:
 - Turn the operation into a test matrix: happy path, missing required input, invalid enum/type, authentication, authorization, boundary values, malformed body, and representative error responses.
-- For runner preparation, describe the exact fields that will be set and wait for a user action.
-- A request may be opened, its runner fields populated, or it may be sent only through the OpenDoc UI action bridge described below; never imply an action happened merely because you proposed it.`,
+- For a request the user asks to inspect or prepare, use open_runner or set_runner_fields and do not send it.
+- When the user explicitly asks to execute, run, login, test, or fetch a result and supplies the needed values, use run_api directly after briefly describing the exact request. Do not stop at open_runner.
+- A request may be opened, its Runner fields populated, or it may be sent only through the OpenDoc UI action bridge described below; never imply an action happened merely because you proposed it.
+- Use the schema's exact body field names and media type. For arrays, send a real array value rather than a comma-joined guess.`,
 };
 
 export const renderAISkillPackContent = (skills: AISkillPack[]): string => {

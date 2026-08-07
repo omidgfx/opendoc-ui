@@ -12,6 +12,8 @@ export interface ExamineResponse {
     bodyBytes?: number;
     truncated?: boolean;
     isBinary?: boolean;
+    errorKind?: 'validation' | 'network' | 'cors' | 'timeout' | 'http' | 'cancelled';
+    errorMessage?: string;
 }
 
 export interface ExamineInputs {

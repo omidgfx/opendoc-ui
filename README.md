@@ -40,8 +40,9 @@ CORS-enabled providers directly or an optional gateway.
 - **Documentation browser** — tag folders with nested groups, endpoint list, parameter
   tables, request bodies, response examples and full schema inspection.
 - **Built-in API runner** — execute requests straight from the browser with bearer token,
-  API-key, basic auth and cookie support; view pretty-printed responses, status codes and
-  response headers. CORS permitting, no proxy is needed.
+  API-key, basic auth and cookie support; use recursive nested-object/array forms, edit JSON/YAML/XML
+  raw bodies with format-aware validation, and view bounded response details. CORS permitting, no
+  proxy is needed.
 - **Code & type generators** — fetch / axios / Angular snippets plus TypeScript models,
   generated from your schemas, downloadable as a zip.
 - **Global search** — `Ctrl/⌘ + K` searches paths, summaries, tags and schema definitions,
@@ -59,6 +60,7 @@ CORS-enabled providers directly or an optional gateway.
   device, with a persistent history of everything you opened.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; large raw documents use IndexedDB instead of consuming the localStorage quota.
+- **Crash recovery** — unexpected UI errors show refresh, full-reset, error details, and a GitHub issue-report link.
 
 ---
 
@@ -210,6 +212,7 @@ specific endpoint(s) or the entire API. It supports:
 - retrieved endpoint/schema context (rather than an unconditional full-spec prompt) with source-ID citations,
 - operational Swagger/OpenAPI, REST debugging, security, SDK generation, and API testing skill packs,
 - a validated OpenDoc UI action bridge for opening endpoints/schemas, searching, filling Runner fields, and proposing explicit API runs,
+- explicit Runner actions that return a bounded, redacted result card to the current conversation,
 - request preparation in the existing API Runner with a confirmation gate,
 - standard in-app endpoint links in AI answers, target indicators in the sidebar, and an unread dot when a background answer finishes,
 - fixed-height chat context header with up to five selected endpoints and Markdown conversation export,
@@ -235,13 +238,19 @@ or other provider models can be entered or selected without an app update.
 
 ## Runner safety and OpenAPI behavior
 
-The API Runner serializes query, path, header, and cookie parameters using OpenAPI styles
+The API Runner is manual-first and remains fully usable without an AI profile or gateway. The API Runner serializes query, path, header, and cookie parameters using OpenAPI styles
 including `form`, `simple`, `label`, `matrix`, `deepObject`, `spaceDelimited`, and
 `pipeDelimited`, with `explode` and `allowReserved` handling. Swagger 2 `collectionFormat`
 values are mapped during compatibility conversion. The response reader is bounded at 2 MiB,
 detects `application/*+json`, shows the substituted request URL, and supports a Cancel button
 plus a 30-second timeout. Binary bodies are represented as bounded metadata instead of being
 converted to an unbounded text string.
+
+Request bodies have two complementary paths: the manual recursive form handles nested objects,
+arrays of objects, arrays of arrays, enums, defaults, examples, and add/remove/reorder controls;
+Raw mode remains available for payloads that need exact text. The raw editor selects JSON, YAML, XML,
+JavaScript, HTML, or plain-text behavior from the media type and does not apply JSON diagnostics to
+non-JSON bodies.
 
 Authentication keeps actual OpenAPI security-scheme IDs and can apply composed requirements
 simultaneously. Browser mode deliberately cannot inject a `Cookie` header; it can send existing

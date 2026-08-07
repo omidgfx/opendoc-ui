@@ -8,9 +8,13 @@ import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTok
 import {streamAIResponse} from '../../utils/aiProviders';
 import {
     actionLabel,
-    type OpenDocUIAction,
+    createOpenDocUIActionId,
+    formatOpenDocUIRunnerResult,
+    OPENDOC_UI_RUNNER_RESULT_EVENT,
     parseOpenDocUIActions,
-    stripOpenDocUIActionBlocks
+    stripOpenDocUIActionBlocks,
+    type OpenDocUIAction,
+    type OpenDocUIRunnerResult
 } from '../../utils/aiBridge';
 import {
     newAIConversation,
@@ -98,6 +102,9 @@ export default function AIAssistantView({
     const streamContentRef = useRef('');
     const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingBridgeConversationsRef = useRef(new Map<string, string>());
+    const activeConversationIdRef = useRef(activeConversationId);
+    activeConversationIdRef.current = activeConversationId;
 
     useEffect(() => {
         let cancelled = false;
@@ -207,6 +214,24 @@ export default function AIAssistantView({
     const updateConversation = (id: string, updater: (conversation: AIConversation) => AIConversation) => {
         setConversations(current => current.map(conversation => conversation.id === id ? updater(conversation) : conversation));
     };
+
+    useEffect(() => {
+        const handleRunnerResult = (event: Event) => {
+            const payload = (event as CustomEvent<OpenDocUIRunnerResult>).detail;
+            if (!payload?.actionId || !payload.result || payload.specKey && payload.specKey !== parsableKey) return;
+            const conversationId = pendingBridgeConversationsRef.current.get(payload.actionId) || activeConversationIdRef.current;
+            pendingBridgeConversationsRef.current.delete(payload.actionId);
+            if (!conversationId) return;
+            const content = formatOpenDocUIRunnerResult(payload);
+            updateConversation(conversationId, conversation => ({
+                ...conversation,
+                messages: [...conversation.messages, newAIMessage('assistant', content, Boolean(payload.result.errorKind))],
+                updatedAt: Date.now(),
+            }));
+        };
+        window.addEventListener(OPENDOC_UI_RUNNER_RESULT_EVENT, handleRunnerResult);
+        return () => window.removeEventListener(OPENDOC_UI_RUNNER_RESULT_EVENT, handleRunnerResult);
+    }, [parsableKey]);
 
     const flushStreamContent = (conversationId: string, messageId: string) => {
         if (!streamContentRef.current) return;
@@ -423,6 +448,13 @@ export default function AIAssistantView({
         ? ['Explain this endpoint', 'List its parameters and examples', 'What responses and errors can it return?', 'Prepare a request for the API Runner']
         : ['Give me a tour of this API', 'How does authentication work?', 'Find the main resources and workflows', 'What common errors should I handle?'];
 
+    const executeBridgeAction = (action: OpenDocUIAction) => {
+        const actionId = action.id || createOpenDocUIActionId();
+        const prepared = {...action, id: actionId} as OpenDocUIAction;
+        if (activeConversation?.id) pendingBridgeConversationsRef.current.set(actionId, activeConversation.id);
+        onBridgeAction(prepared);
+    };
+
     const renderActions = (text: string) => {
         const actions = parseOpenDocUIActions(text);
         if (actions.length === 0) return null;
@@ -433,7 +465,7 @@ export default function AIAssistantView({
                     <i className="ph ph-lightning text-[12px] text-[var(--primary)]"/>OpenDoc UI actions
                 </div>
                 {actions.map((action, index) => (
-                    <button key={`${action.action}-${index}`} type="button" onClick={() => onBridgeAction(action)}
+                    <button key={`${action.action}-${index}`} type="button" onClick={() => executeBridgeAction(action)}
                             className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--primary)]/25 bg-[var(--primary)]/5 px-3 py-2 text-left text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer">
                         <span className="min-w-0 truncate">{actionLabel(action)}</span><i
                         className="ph ph-arrow-up-right shrink-0 text-[13px]"/>

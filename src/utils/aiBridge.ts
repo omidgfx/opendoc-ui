@@ -1,6 +1,7 @@
 export const OPENDOC_UI_ACTION_EVENT = 'opendoc-ui:action';
+export const OPENDOC_UI_RUNNER_RESULT_EVENT = 'opendoc-ui:runner-result';
 
-export type OpenDocUIAction =
+export type OpenDocUIAction = (
     | { action: 'open_endpoint'; path: string; method: string }
     | { action: 'open_runner'; path: string; method: string }
     | {
@@ -23,7 +24,32 @@ export type OpenDocUIAction =
 }
     | { action: 'open_schema'; schema: string }
     | { action: 'search_spec'; query: string }
-    | { action: 'select_server'; url: string };
+    | { action: 'select_server'; url: string }
+) & { id?: string };
+
+export interface OpenDocUIRunnerResult {
+    actionId: string;
+    specKey?: string;
+    path: string;
+    method: string;
+    result: {
+        requestUrl?: string;
+        status: number | null;
+        headers: Record<string, string>;
+        body: string;
+        isJson: boolean;
+        durationMs?: number;
+        bodyBytes?: number;
+        truncated?: boolean;
+        isBinary?: boolean;
+        errorKind?: 'validation' | 'network' | 'cors' | 'timeout' | 'http' | 'cancelled';
+        errorMessage?: string;
+    };
+}
+
+export const createOpenDocUIActionId = (): string => typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `action-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace']);
 const isRecord = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -114,6 +140,29 @@ export const dispatchOpenDocUIAction = (action: OpenDocUIAction) => {
     window.dispatchEvent(new CustomEvent(OPENDOC_UI_ACTION_EVENT, {detail: action}));
 };
 
+export const dispatchOpenDocUIRunnerResult = (result: OpenDocUIRunnerResult) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(OPENDOC_UI_RUNNER_RESULT_EVENT, {detail: result}));
+};
+
+const redactRunnerBody = (body: string): string => body
+    .replace(/((?:authorization|cookie|set-cookie|api[-_ ]?key|token|secret|password)\s*[:=]\s*)([^\s,;]+)/gi, '$1[REDACTED]')
+    .slice(0, 12_000);
+
+export const formatOpenDocUIRunnerResult = (payload: OpenDocUIRunnerResult): string => {
+    const result = payload.result;
+    const status = result.status === 0 ? 'Network error' : result.status === null ? 'No response' : String(result.status);
+    const details = [`### API Runner result`, `**${payload.method.toUpperCase()} ${payload.path}** — **${status}**${result.durationMs !== undefined ? ` in ${result.durationMs} ms` : ''}.`];
+    if (result.requestUrl) details.push(`Request URL: ${result.requestUrl}`);
+    const safeHeaders = Object.entries(result.headers || {}).filter(([name]) => !/authorization|cookie|token|secret|password|api[-_ ]?key/i.test(name));
+    if (safeHeaders.length > 0) details.push(`Response headers: ${safeHeaders.map(([name, value]) => `${name}: ${value}`).join('; ')}`);
+    if (result.errorMessage) details.push(`Error: ${result.errorMessage}`);
+    if (result.body) details.push('', '```' + (result.isJson ? 'json' : 'text'), redactRunnerBody(result.body), '```');
+    if (result.truncated) details.push('', '_The response preview was truncated by the Runner limit._');
+    if (result.isBinary) details.push('', '_The response is binary and was not rendered as text._');
+    return details.join('\n');
+};
+
 export const OPENDOC_UI_BRIDGE_INSTRUCTIONS = `OpenDoc UI action bridge:
 You may propose an action only in an explicit JSON block using this exact wrapper:
 <opendoc-ui-action>{"action":"...", ...}</opendoc-ui-action>
@@ -126,4 +175,4 @@ Allowed action schemas:
 - {"action":"open_schema","schema":"SchemaName"}
 - {"action":"search_spec","query":"text"}
 - {"action":"select_server","url":"https://server.example"}
-Use exact paths, methods, schema names, and server URLs from retrieved context. A user click is required. Filling fields is not sending. Running an API is a consequential action and must be clearly described before the action block.`;
+Use exact paths, methods, schema names, and server URLs from retrieved context. A user click is required. open_runner is for preparing/inspecting only; if the user explicitly asks to run, execute, login, test, or fetch a result, use run_api instead of stopping at open_runner. Filling fields is not sending. Running an API is a consequential action and must be clearly described before the action block. After a user-approved run, the bounded status, headers, and redacted response preview are returned to the current conversation.`;

@@ -2,19 +2,23 @@ import {useEffect, useRef, useState} from 'react';
 import Editor from '@monaco-editor/react';
 import clsx from 'clsx';
 import {Tip} from '../common/Tooltip';
+import {formatBodyText, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
 
 interface SchemaJsonEditorProps {
     value: string;
     onChange: (val: string) => void;
     schema: any;
     componentsSchemas: any;
+    mediaType?: string;
     themeMode?: 'light' | 'dark';
     onCtrlEnter?: () => void;
 }
 
 export default function SchemaJsonEditor({
-                                             value, onChange, schema, componentsSchemas, themeMode = 'dark', onCtrlEnter
+                                             value, onChange, schema, componentsSchemas, mediaType = 'application/json', themeMode = 'dark', onCtrlEnter
                                          }: SchemaJsonEditorProps) {
+    const format = getBodyFormat(mediaType);
+    const editorLanguage = format.language === 'yaml' ? 'plaintext' : format.language;
     const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<any>(null);
@@ -24,48 +28,33 @@ export default function SchemaJsonEditor({
 
     useEffect(() => {
         const monaco = monacoRef.current;
-        if (monaco && schema) {
-            try {
-                monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-                    validate: true,
-                    schemas: [{
-                        uri: 'schemas://openapi/schema.json',
-                        fileMatch: ['*'],
-                        schema: {...schema, definitions: componentsSchemas || {}}
-                    }],
-                });
-            } catch (err) {
-                console.warn('Error setting JSON schemas diagnostics:', err);
-            }
+        if (!monaco) return;
+        try {
+            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: format.isJson,
+                schemas: format.isJson && schema ? [{
+                    uri: 'schemas://openapi/schema.json',
+                    fileMatch: ['*'],
+                    schema: {...schema, definitions: componentsSchemas || {}}
+                }] : [],
+            });
+        } catch {
+            // Diagnostics are optional; syntax editing must continue if Monaco cannot configure them.
         }
-    }, [schema, componentsSchemas]);
+    }, [format.isJson, schema, componentsSchemas]);
 
     useEffect(() => {
-        if (!value.trim()) {
-            setErrorFeedback(null);
-            return;
-        }
-        try {
-            JSON.parse(value);
-            setErrorFeedback(null);
-        } catch (err: any) {
-            setErrorFeedback(err.message);
-        }
-    }, [value]);
+        setErrorFeedback(validateBodyText(value, mediaType));
+    }, [value, mediaType]);
 
     const handleFormat = () => {
-        if (editorRef.current) {
-            editorRef.current.focus();
-            editorRef.current.getAction('editor.action.formatDocument')?.run();
-        } else {
-            try {
-                const parsed = JSON.parse(value);
-                onChange(JSON.stringify(parsed, null, 2));
-                setErrorFeedback(null);
-            } catch (err: any) {
-                setErrorFeedback(`Cannot format: ${err.message}`);
-            }
+        const formatted = formatBodyText(value, mediaType);
+        if (formatted.error) {
+            setErrorFeedback(formatted.error);
+            return;
         }
+        onChange(formatted.text);
+        editorRef.current?.focus();
     };
 
     const handleEditorDidMount = (editor: any, monaco: any) => {
@@ -76,18 +65,14 @@ export default function SchemaJsonEditor({
         if (onCtrlEnter) {
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => onCtrlEnter());
         }
-        if (schema) {
+        if (format.isJson && schema) {
             try {
                 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                     validate: true,
-                    schemas: [{
-                        uri: 'schemas://openapi/schema.json',
-                        fileMatch: ['*'],
-                        schema: {...schema, definitions: componentsSchemas || {}}
-                    }],
+                    schemas: [{uri: 'schemas://openapi/schema.json', fileMatch: ['*'], schema: {...schema, definitions: componentsSchemas || {}}}],
                 });
-            } catch (err) {
-                console.warn('Error setting JSON schemas diagnostics:', err);
+            } catch {
+                // The editor remains usable without schema diagnostics.
             }
         }
     };
@@ -128,7 +113,7 @@ export default function SchemaJsonEditor({
                             {errorFeedback ? 'Error' : 'Valid'}
                         </span>
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">JSON Body</span>
+                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{format.language.toUpperCase()} Body</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                     <Tip content="Search (Ctrl+F)">
@@ -161,7 +146,7 @@ export default function SchemaJsonEditor({
                  style={{height: 380}}>
                 <Editor
                     height="100%"
-                    defaultLanguage="json"
+                    defaultLanguage={editorLanguage}
                     value={value}
                     onChange={(val) => onChange(val || '')}
                     theme={themeMode === 'dark' ? 'vs-dark' : 'light'}
