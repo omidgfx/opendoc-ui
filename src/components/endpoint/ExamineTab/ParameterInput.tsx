@@ -8,21 +8,26 @@ interface ParameterInputProps {
 
 export default function ParameterInput({param, value, onChange}: ParameterInputProps) {
     const [pendingItem, setPendingItem] = useState('');
-    const isArray = param.schema?.type === 'array' || param.type === 'array';
+    const schema = param.schema || param;
+    const itemSchema = schema.items || param.items || {};
+    const isArray = schema.type === 'array' || param.type === 'array';
     const selectedValues: string[] = Array.isArray(value)
         ? value.map(String)
         : value === undefined || value === null || value === ''
             ? []
             : String(value).split(',').map(item => item.trim()).filter(Boolean);
 
-    if (isArray && param.items?.enum) {
-        const enumValues = param.items.enum as string[];
-        const toggle = (item: string) => onChange(selectedValues.includes(item)
-            ? selectedValues.filter(valueItem => valueItem !== item)
-            : [...selectedValues, item]);
+    if (isArray && Array.isArray(itemSchema.enum)) {
+        const enumValues = itemSchema.enum as any[];
+        const toggle = (item: any) => {
+            const text = String(item);
+            onChange(selectedValues.includes(text)
+                ? selectedValues.filter(valueItem => valueItem !== text)
+                : [...selectedValues, text]);
+        };
         return (
             <div className="flex flex-wrap gap-2">
-                {enumValues.map((item: string) => <label key={item} className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs"><input type="checkbox" checked={selectedValues.includes(item)} onChange={() => toggle(item)} className="h-3.5 w-3.5 accent-[var(--primary)]"/><span className="font-mono">{item}</span></label>)}
+                {enumValues.map(item => <label key={String(item)} className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs"><input type="checkbox" checked={selectedValues.includes(String(item))} onChange={() => toggle(item)} className="h-3.5 w-3.5 accent-[var(--primary)]"/><span className="font-mono">{String(item)}</span></label>)}
             </div>
         );
     }
@@ -45,7 +50,15 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
         );
     }
 
-    const type = param.schema?.type || param.type;
-    const inputType = type === 'integer' || type === 'number' ? 'number' : type === 'boolean' ? 'text' : 'text';
-    return <input type={inputType} value={value === undefined || value === null ? '' : String(value)} onChange={event => onChange(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]" placeholder={type === 'object' ? 'JSON value' : param.description || 'value'}/>;
+    const enumValues = Array.isArray(schema.enum) ? schema.enum : null;
+    const type = schema.type || param.type;
+    const inputType = type === 'integer' || type === 'number' ? 'number' : type === 'boolean' ? 'text' : type === 'string' && (schema.format === 'date' || schema.format === 'date-time') ? 'datetime-local' : 'text';
+    const stringValue = value === undefined || value === null ? '' : String(value);
+    if (enumValues) {
+        return <select value={stringValue} onChange={event => onChange(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"><option value="">— Select —</option>{enumValues.map(item => <option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>;
+    }
+    if (type === 'boolean') {
+        return <select value={stringValue} onChange={event => onChange(event.target.value === '' ? '' : event.target.value === 'true')} className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"><option value="">— Select —</option><option value="true">true</option><option value="false">false</option></select>;
+    }
+    return <input type={inputType} value={stringValue} onChange={event => onChange(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]" placeholder={schema.example !== undefined ? String(schema.example) : schema.default !== undefined ? String(schema.default) : type === 'object' ? 'JSON value' : param.description || 'value'} min={schema.minimum} max={schema.maximum}/>;
 }

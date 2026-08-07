@@ -96,7 +96,7 @@ export default function BodyEditor(props: BodyEditorProps) {
     }
 
     if (bodyEditorMode === 'form') {
-        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange} setPatternToTest={setPatternToTest}/>;
+        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>;
     }
 
     return (

@@ -56,20 +56,29 @@ export interface SecurityScheme {
 
 export interface Parameter {
     name: string;
-    in: 'path' | 'query' | 'header' | 'cookie';
+    in: 'path' | 'query' | 'querystring' | 'header' | 'cookie';
     description?: string;
     required?: boolean;
     deprecated?: boolean;
+    allowEmptyValue?: boolean;
+    style?: string;
+    explode?: boolean;
+    allowReserved?: boolean;
     schema?: any;
+    content?: Record<string, any>;
     example?: any;
+    examples?: Record<string, any>;
 }
 
 export interface ResponseDefinition {
-    description: string;
+    description?: string;
     headers?: any;
     content?: {
         [contentType: string]: {
-            schema: any;
+            schema?: any;
+            example?: any;
+            examples?: any;
+            encoding?: any;
         };
     };
 }
@@ -79,9 +88,10 @@ export interface RequestBodyDefinition {
     required?: boolean;
     content: {
         [contentType: string]: {
-            schema: any;
+            schema?: any;
             example?: any;
             examples?: any;
+            encoding?: any;
         };
     };
 }

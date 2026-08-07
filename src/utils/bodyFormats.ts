@@ -58,8 +58,73 @@ export const parseStructuredBody = (text: string, mediaType: string): unknown =>
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     if (normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data') {
         try { return JSON.parse(text); } catch {
-            return Object.fromEntries(new URLSearchParams(text));
+            const parsed: Record<string, string | string[]> = {};
+            new URLSearchParams(text).forEach((item, key) => {
+                const previous = parsed[key];
+                parsed[key] = previous === undefined
+                    ? item
+                    : Array.isArray(previous) ? [...previous, item] : [previous, item];
+            });
+            return parsed;
         }
     }
     return undefined;
+};
+
+const formScalar = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch {
+            return String(value);
+        }
+    }
+    return String(value);
+};
+
+/** Serialize an object-shaped form request body using the default OpenAPI form
+ * convention: arrays repeat their property name and object values are JSON. */
+export const serializeUrlEncodedBody = (value: unknown): string => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return formScalar(value);
+    const encoded = new URLSearchParams();
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+        if (Array.isArray(item)) item.forEach(part => encoded.append(key, formScalar(part)));
+        else encoded.append(key, formScalar(item));
+    });
+    return encoded.toString();
+};
+
+/** Append a parsed request-body value to FormData. A selected file replaces the
+ * corresponding text/schema value; arrays repeat the field as multipart allows. */
+export const appendMultipartBody = (
+    form: FormData,
+    value: unknown,
+    selectedFiles: Record<string, File | null> = {},
+): void => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const consumedFiles = new Set<string>();
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+        const selected = selectedFiles[key];
+        if (selected) {
+            form.append(key, selected);
+            consumedFiles.add(key);
+            return;
+        }
+        if (Array.isArray(item)) {
+            item.forEach(part => form.append(key, formScalar(part)));
+        } else {
+            form.append(key, formScalar(item));
+        }
+    });
+    // Nested recursive fields use a dotted state key (for example
+    // `documents.0.file`). Multipart field naming is API-specific; using the
+    // final schema property is the most portable fallback while preserving
+    // the selected File rather than silently dropping it.
+    Object.entries(selectedFiles).forEach(([stateKey, file]) => {
+        if (!file || consumedFiles.has(stateKey)) return;
+        const fieldName = stateKey.split('.').pop() || stateKey;
+        form.append(fieldName, file);
+    });
 };

@@ -13,6 +13,7 @@ import {useEscClose} from '../../../hooks/useEscClose';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage';
+import {getMergedParameters, getRefName, resolveRequestBody} from '../../../utils/openapi';
 
 interface ViewTabProps {
     key: any;
@@ -39,12 +40,6 @@ interface FlatProperty {
     isRequired: boolean;
     rawProp?: any;
 }
-
-const getRefName = (refStr: string): string => {
-    if (!refStr) return '';
-    const parts = refStr.split('/');
-    return parts[parts.length - 1];
-};
 
 /** Human-readable type label for the value schema of a Map / dictionary
  *  (i.e. an `object` defined only through `additionalProperties`). */
@@ -76,41 +71,6 @@ const getPatternFromParam = (param: any, spec: OpenApiSpec | null): string | nul
         if (refSchema?.schema?.pattern) return refSchema.schema.pattern;
     }
     return null;
-};
-
-const resolveParameter = (param: any, spec: OpenApiSpec | null): any => {
-    if (!param) return param;
-    if (param.$ref) {
-        const refName = getRefName(param.$ref);
-        const resolved = spec?.components?.parameters?.[refName];
-        if (resolved) return resolveParameter(resolved, spec);
-    }
-    return param;
-};
-
-const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any => {
-    if (!body) return body;
-    if (body.$ref) {
-        const refName = getRefName(body.$ref);
-        const resolved = (spec?.components as any)?.requestBodies?.[refName];
-        if (resolved) return resolveRequestBody(resolved, spec);
-    }
-    return body;
-};
-
-const getMergedParameters = (pathItem: any, operation: any, spec: OpenApiSpec | null): any[] => {
-    const list: any[] = [];
-    const seen = new Set<string>();
-    const addParam = (p: any) => {
-        const resolved = resolveParameter(p, spec);
-        if (resolved && resolved.name && !seen.has(`${resolved.name}-${resolved.in}`)) {
-            seen.add(`${resolved.name}-${resolved.in}`);
-            list.push(resolved);
-        }
-    };
-    if (operation?.parameters) operation.parameters.forEach(addParam);
-    if (pathItem?.parameters) pathItem.parameters.forEach(addParam);
-    return list;
 };
 
 export default function ViewTab({

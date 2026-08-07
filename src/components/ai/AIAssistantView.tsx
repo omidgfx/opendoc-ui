@@ -58,6 +58,33 @@ const sourceFallback = (sources: AISourceRef[], selectedEndpoints: Array<{
     return [];
 };
 
+interface PermissionSwitchProps {
+    checked: boolean;
+    onChange: () => void;
+    label: string;
+    checkedClass: string;
+    uncheckedClass: string;
+}
+
+/** A switch with an explicit center line so the thumb cannot drift vertically
+ * when the surrounding permission row changes height. */
+const PermissionSwitch = ({checked, onChange, label, checkedClass, uncheckedClass}: PermissionSwitchProps) => (
+    <button
+        type="button"
+        role="switch"
+        aria-label={label}
+        aria-checked={checked}
+        onClick={onChange}
+        className={clsx('relative flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50', checked ? checkedClass : uncheckedClass)}
+    >
+        <span
+            aria-hidden="true"
+            className="absolute size-5 rounded-full bg-white shadow-md transition-transform"
+            style={{left: '4px', top: '50%', transform: `translate(${checked ? '20px' : '0px'}, -50%)`}}
+        />
+    </button>
+);
+
 const conversationTitle = (text: string) => {
     const clean = text.replace(/\s+/g, ' ').trim();
     return clean.length > 42 ? `${clean.slice(0, 42)}…` : clean || 'New conversation';
@@ -98,13 +125,13 @@ export default function AIAssistantView({
     const previousScrollTopRef = useRef(0);
     const [deleteConfirmation, setDeleteConfirmation] = useState<AIConversation | null>(null);
     const [runnerConfirmation, setRunnerConfirmation] = useState<{ path: string; method: string } | null>(null);
+    const [permissionsOpen, setPermissionsOpen] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
     const streamContentRef = useRef('');
     const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingBridgeConversationsRef = useRef(new Map<string, string>());
-    const activeConversationIdRef = useRef(activeConversationId);
-    activeConversationIdRef.current = activeConversationId;
+    const completedBridgeActionsRef = useRef(new Set<string>());
 
     useEffect(() => {
         let cancelled = false;
@@ -219,9 +246,18 @@ export default function AIAssistantView({
         const handleRunnerResult = (event: Event) => {
             const payload = (event as CustomEvent<OpenDocUIRunnerResult>).detail;
             if (!payload?.actionId || !payload.result || payload.specKey && payload.specKey !== parsableKey) return;
-            const conversationId = pendingBridgeConversationsRef.current.get(payload.actionId) || activeConversationIdRef.current;
-            pendingBridgeConversationsRef.current.delete(payload.actionId);
+            // A Runner can finish through more than one UI path (or a browser
+            // event can be replayed). Consume each action ID once and never
+            // fall back to whichever conversation happens to be active later.
+            if (completedBridgeActionsRef.current.has(payload.actionId)) return;
+            const conversationId = pendingBridgeConversationsRef.current.get(payload.actionId);
             if (!conversationId) return;
+            pendingBridgeConversationsRef.current.delete(payload.actionId);
+            completedBridgeActionsRef.current.add(payload.actionId);
+            if (completedBridgeActionsRef.current.size > 256) {
+                const oldest = completedBridgeActionsRef.current.values().next().value;
+                if (oldest) completedBridgeActionsRef.current.delete(oldest);
+            }
             const content = formatOpenDocUIRunnerResult(payload);
             updateConversation(conversationId, conversation => ({
                 ...conversation,
@@ -633,16 +669,17 @@ export default function AIAssistantView({
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                        {activeConversation && <>
-                            <button type="button" onClick={toggleAuthValues}
-                                    className={clsx('rounded-lg border px-2 py-1 text-[9px] font-bold cursor-pointer', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/40 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                                <i className="ph ph-lock-key me-1"/>{activeConversation.includeAuthValues ? 'Auth enabled' : 'Auth redacted'}
-                            </button>
-                            <button type="button" onClick={toggleTrustedRunner}
-                                    className={clsx('rounded-lg border px-2 py-1 text-[9px] font-bold cursor-pointer', activeConversation.trustedRunner ? 'border-[var(--method-put)]/40 bg-[var(--method-put)]/10 text-[var(--method-put)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                                <i className="ph ph-flask me-1"/>{activeConversation.trustedRunner ? 'Trusted' : 'Confirm'}
-                            </button>
-                        </>}
+                        {activeConversation && <button type="button" onClick={() => setPermissionsOpen(true)}
+                            className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer">
+                            <i className="ph ph-shield-check text-[12px]"/>Permissions
+                            <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>
+                                {activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}
+                            </span>
+                            <span className="text-[var(--text-muted)]">·</span>
+                            <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>
+                                {activeConversation.trustedRunner ? 'Trusted' : 'Review'}
+                            </span>
+                        </button>}
                     </div>
                 </div>
                 <div ref={chatScrollRef} onScroll={handleChatScroll}
@@ -725,6 +762,20 @@ export default function AIAssistantView({
                     </div>
                 </footer>
             </section>
+
+            {permissionsOpen && activeConversation && (
+                <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]" onMouseDown={event => {if (event.target === event.currentTarget) setPermissionsOpen(false);}}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="assistant-permissions-title" className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-4"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className="ph ph-shield-check text-[18px]"/></span><div><h2 id="assistant-permissions-title" className="text-sm font-extrabold text-[var(--text-heading)]">Assistant permissions</h2><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Controls for sensitive context and Runner preparation.</p></div></div><button type="button" onClick={() => setPermissionsOpen(false)} className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"><i className="ph ph-x"/></button></header>
+                        <div className="space-y-3 p-5">
+                            <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3"><span className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.includeAuthValues ? 'bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'bg-emerald-500/10 text-emerald-500')}><i className="ph ph-lock-key"/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Authentication values <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>{activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}</span></div><p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Protected keeps tokens, cookies, passwords, and API keys out of the Assistant context. Enabling Auth visible sends current authentication values to the selected provider and should only be used when you understand the risk.</p></div><PermissionSwitch checked={activeConversation.includeAuthValues} onChange={toggleAuthValues} label="Allow authentication values in Assistant context" checkedClass="border-[var(--method-delete)] bg-[var(--method-delete)]" uncheckedClass="border-emerald-500/40 bg-emerald-500/15"/></div>
+                            <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3"><span className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.trustedRunner ? 'bg-amber-500/10 text-amber-500' : 'bg-sky-500/10 text-sky-500')}><i className="ph ph-flask"/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Runner preparation <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>{activeConversation.trustedRunner ? 'Trusted' : 'Review'}</span></div><p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Review asks for confirmation before opening the Runner from a suggestion. Trusted skips that extra preparation prompt. Manual Runner sends are always controlled by the Runner; an AI Run action still requires your click.</p></div><PermissionSwitch checked={activeConversation.trustedRunner} onChange={toggleTrustedRunner} label="Trust Assistant Runner preparation" checkedClass="border-amber-500 bg-amber-500" uncheckedClass="border-sky-500/40 bg-sky-500/15"/></div>
+                            <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3 text-[10px] leading-relaxed text-[var(--text-muted)]"><i className="ph ph-info me-1 text-[var(--primary)]"/>The API Runner remains usable without a profile or Assistant. These permissions belong only to this conversation.</div>
+                        </div>
+                        <footer className="flex justify-end border-t border-[var(--border)] bg-[var(--background)] px-5 py-3"><button type="button" onClick={() => setPermissionsOpen(false)} className="rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Done</button></footer>
+                    </section>
+                </div>
+            )}
 
             {deleteConfirmation && (
                 <div

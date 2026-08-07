@@ -1,5 +1,6 @@
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
 import {applyAuthToRequest} from './auth';
+import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from './bodyFormats';
 import {isJsonMediaType, normalizeParameterValue, queryStringFromPairs, serializeOpenApiParameter} from './openapi/serialization';
 import {getMergedParameters, resolveRequestBody} from './openapi';
 
@@ -55,26 +56,28 @@ const readResponseBody = async (response: Response): Promise<{text: string; byte
     return {text: new TextDecoder().decode(merged), bytes, truncated};
 };
 
-const parseBodyObject = (body: string): Record<string, unknown> | null => {
-    try {
-        const value = JSON.parse(body);
-        return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
-    } catch {
-        return null;
-    }
-};
-
 const buildRequestBody = (body: string | undefined, bodyType: string, headers: Record<string, string>): BodyInit | null => {
     if (body === undefined || body === '') return null;
     const normalizedType = bodyType.toLowerCase().split(';', 1)[0];
     if (normalizedType === 'application/x-www-form-urlencoded') {
-        const object = parseBodyObject(body);
-        if (object) {
-            const encoded = new URLSearchParams();
-            Object.entries(object).forEach(([key, value]) => encoded.append(key, typeof value === 'string' ? value : JSON.stringify(value)));
+        try {
             headers['Content-Type'] = bodyType;
-            return encoded.toString();
+            return serializeUrlEncodedBody(parseStructuredBody(body, bodyType));
+        } catch {
+            // Keep raw text editable for malformed or non-object form bodies.
         }
+    }
+    if (normalizedType === 'multipart/form-data') {
+        const form = new FormData();
+        try {
+            appendMultipartBody(form, parseStructuredBody(body, bodyType));
+        } catch {
+            // An AI action cannot carry a File object. An empty FormData still
+            // gives the browser a correct multipart boundary when no file was
+            // supplied; malformed raw text is intentionally not sent as a
+            // misleading multipart payload.
+        }
+        return form;
     }
     headers['Content-Type'] = bodyType;
     return body;
@@ -100,7 +103,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
 
         mergedParameters.forEach((parameter: any) => {
             const value = params[parameter.name];
-            if (value === undefined || value === null || value === '') return;
+            if (value === undefined || value === null || value === '' && !parameter.allowEmptyValue) return;
             const serialized = serializeOpenApiParameter(parameter, normalizeParameterValue(parameter, value));
             if (parameter.in === 'path' && serialized.pathValue !== undefined) {
                 processedPath = processedPath.replace(`{${parameter.name}}`, serialized.pathValue);
@@ -114,12 +117,15 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
         const auth = applyAuthToRequest(input.spec, input.activeAuth, {headers: requestHeaders, query, cookies}, input.operation);
         const server = input.selectedServer.endsWith('/') ? input.selectedServer.slice(0, -1) : input.selectedServer;
         requestUrl = `${server}${processedPath}${queryStringFromPairs(auth.query)}`;
-        const bodyType = input.bodyType || resolveRequestBody(input.operation.requestBody, input.spec)?.content && Object.keys(resolveRequestBody(input.operation.requestBody, input.spec).content)[0] || 'application/json';
+        const resolvedBody = resolveRequestBody(input.operation.requestBody, input.spec);
+        const bodyType = input.bodyType || Object.keys(resolvedBody?.content || {})[0] || 'application/json';
         const requestBody = buildRequestBody(input.body, bodyType, auth.headers);
+        const normalizedMethod = input.method.toUpperCase();
+        const safeBody = requestBody !== null && !['GET', 'HEAD'].includes(normalizedMethod) ? requestBody : null;
         const response = await fetch(requestUrl, {
-            method: input.method.toUpperCase(),
+            method: normalizedMethod,
             headers: auth.headers,
-            body: requestBody,
+            body: safeBody,
             credentials: auth.credentials,
             signal: controller.signal,
         });

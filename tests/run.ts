@@ -4,14 +4,16 @@ import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/uti
 import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
 import {trimAIConversation} from '../src/utils/aiStorage';
-import {formatBodyText, getBodyFormat, validateBodyText} from '../src/utils/bodyFormats';
+import {formatBodyText, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText} from '../src/utils/bodyFormats';
 import {defaultBodyValue} from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
 import {
+    getMergedParameters,
     getRefName,
     isJsonMediaType,
     queryStringFromPairs,
     resolveJsonPointer,
     resolveReference,
+    resolveRequestBody,
     serializeOpenApiParameter,
     validateOpenApiDocument
 } from '@/src/utils/openapi';
@@ -67,6 +69,14 @@ test('serializes OpenAPI query arrays and objects', () => {
         schema: {type: 'string'}
     }, 'https://api.test/a?x=1');
     assert.equal(queryStringFromPairs(reserved.query), '?next=https://api.test/a?x=1');
+    const labelArray = serializeOpenApiParameter({
+        name: 'id', in: 'path', style: 'label', explode: true, schema: {type: 'array', items: {type: 'string'}}
+    }, ['a', 'b']);
+    assert.equal(labelArray.pathValue, '.a.b');
+    const matrixObject = serializeOpenApiParameter({
+        name: 'coords', in: 'path', style: 'matrix', explode: true, schema: {type: 'object'}
+    }, {x: 1, y: 2});
+    assert.equal(matrixObject.pathValue, ';x=1;y=2');
 });
 
 test('resolves JSON pointers, escaped names, and cyclic refs safely', () => {
@@ -106,6 +116,71 @@ test('preserves distinct auth scheme IDs and composed requirements', () => {
     assert.equal(auth.headers['X-Client-Id'], 'client-secret');
     assert.equal(auth.headers.Authorization, 'Bearer jwt-token');
     assert.equal(queryStringFromPairs(auth.query), '?tenant=acme');
+});
+
+test('merges path and operation parameters and resolves component query refs', () => {
+    const spec: any = {
+        ...baseSpec,
+        components: {
+            ...baseSpec.components,
+            parameters: {
+                PageParam: {
+                    name: 'page',
+                    in: 'query',
+                    description: 'Page number of pagination',
+                    required: false,
+                    schema: {type: 'integer'},
+                },
+            },
+        },
+        paths: {
+            '/v1/catalog/geography/cities': {
+                get: {
+                    parameters: [
+                        {name: 'province', in: 'query', schema: {type: 'string', format: 'uuid'}},
+                        {name: 'keyword', in: 'query', schema: {type: 'string', maxLength: 128}},
+                        {$ref: '#/components/parameters/PageParam'},
+                    ],
+                    responses: {'200': {description: 'ok'}},
+                },
+            },
+        },
+    };
+    const operation = spec.paths['/v1/catalog/geography/cities'].get;
+    const params = getMergedParameters(spec.paths['/v1/catalog/geography/cities'], operation, spec);
+    assert.deepEqual(params.map(param => param.name), ['province', 'keyword', 'page']);
+    assert.equal(params.find(param => param.name === 'page')?.schema.type, 'integer');
+
+    const overrideSpec: any = {
+        ...baseSpec,
+        components: {...baseSpec.components, parameters: {PageParam: {name: 'page', in: 'query', schema: {type: 'integer'}}}},
+    };
+    const merged = getMergedParameters(
+        {parameters: [{name: 'page', in: 'query', schema: {type: 'string'}}, {name: 'keep', in: 'query', schema: {type: 'string'}}]},
+        {parameters: [{$ref: '#/components/parameters/PageParam'}]},
+        overrideSpec,
+    );
+    assert.deepEqual(merged.map(param => param.name), ['page', 'keep']);
+    assert.equal(merged[0].schema.type, 'integer');
+});
+
+test('resolves referenced request bodies and their media entries', () => {
+    const spec: any = {
+        ...baseSpec,
+        components: {
+            ...baseSpec.components,
+            requestBodies: {
+                LoginBody: {
+                    required: true,
+                    content: {'application/json': {schema: {$ref: '#/components/schemas/Login'}}},
+                },
+            },
+            schemas: {Login: {type: 'object', properties: {mobile: {type: 'string'}}}},
+        },
+    };
+    const body = resolveRequestBody({$ref: '#/components/requestBodies/LoginBody'}, spec);
+    assert.equal(body.required, true);
+    assert.equal(body.content['application/json'].schema.$ref, '#/components/schemas/Login');
 });
 
 test('detects vendor JSON media types', () => {
@@ -168,6 +243,7 @@ test('exposes operational skills and validates the OpenDoc UI action bridge', ()
     assert.match(prompt, /API testing/);
     const actions = parseOpenDocUIActions('<opendoc-ui-action>{"action":"set_runner_fields","path":"/users/{id}","method":"get","params":{"id":"42"}}</opendoc-ui-action>');
     assert.equal(actions[0]?.action, 'set_runner_fields');
+    assert.equal(actions[0]?.clearExisting, true);
     assert.equal(parseOpenDocUIActions('<opendoc-ui-action>{"action":"run_api","path":"https://evil","method":"get"}</opendoc-ui-action>').length, 0);
 });
 
@@ -217,6 +293,12 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.equal(validateBodyText('<root><item /></root>', 'application/xml'), null);
     assert.equal(validateBodyText('{"broken":', 'application/json') !== null, true);
     assert.match(formatBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml').text, /name:/);
+    const encoded = serializeUrlEncodedBody({name: 'OpenDoc', tags: ['one', 'two'], nested: {enabled: true}});
+    assert.match(encoded, /name=OpenDoc/);
+    assert.match(encoded, /tags=one/);
+    assert.match(encoded, /tags=two/);
+    assert.match(encoded, /nested=%7B%22enabled%22%3Atrue%7D/);
+    assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {tags: ['one', 'two']});
 });
 
 test('creates typed defaults for recursive object and array schemas', () => {

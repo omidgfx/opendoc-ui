@@ -131,7 +131,7 @@ export default function SchemaJsonEditor({
                         <ToolBtn active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
                     </Tip>
                     <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
-                    <Tip content="Prettify JSON">
+                    <Tip content={`Format ${format.language.toUpperCase()}`}>
                         <button type="button" onClick={handleFormat}
                                 className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
                             <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>

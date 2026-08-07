@@ -108,38 +108,74 @@ const resolveComponentReference = (item: any, spec: OpenApiSpec | null, document
     if (!target) return item;
     const next = new Set(visited);
     next.add(item.$ref);
-    return resolveComponentReference(target, spec, documents, next);
+    const resolved = resolveComponentReference(target, spec, documents, next);
+    // OpenAPI 3.1+ permits siblings next to a Reference Object. Preserve them
+    // when resolving component parameters/request bodies so descriptions and
+    // examples are not lost.
+    const siblings = Object.fromEntries(Object.entries(item).filter(([key]) => key !== '$ref'));
+    return Object.keys(siblings).length > 0 && resolved && typeof resolved === 'object' && !Array.isArray(resolved)
+        ? {...resolved, ...siblings}
+        : resolved;
 };
 
-export const resolveParameter = (param: any, spec: OpenApiSpec | null): any =>
-    resolveComponentReference(param, spec, {}, new Set<string>());
+export const resolveParameter = (param: any, spec: OpenApiSpec | null): any => {
+    const resolved = resolveComponentReference(param, spec, {}, new Set<string>());
+    if (!resolved || typeof resolved !== 'object') return resolved;
 
-export const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any =>
-    resolveComponentReference(body, spec, {}, new Set<string>());
+    // Parameter Objects may use either `schema` or `content`. The UI and the
+    // serializer share a schema-shaped view so referenced parameter schemas
+    // behave exactly like inline schemas.
+    const contentMedia = Object.values(resolved.content || {})[0] as any;
+    const parameterSchema = resolved.schema || contentMedia?.schema;
+    if (parameterSchema?.$ref) {
+        return {...resolved, schema: resolveReference(parameterSchema, spec)};
+    }
+    return parameterSchema && !resolved.schema ? {...resolved, schema: parameterSchema} : resolved;
+};
 
-/** Merge path-level and operation-level parameters; operation entries win. */
+export const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any => {
+    const resolved = resolveComponentReference(body, spec, {}, new Set<string>());
+    if (!resolved || typeof resolved !== 'object' || !resolved.content) return resolved;
+
+    // Content entries can themselves be Reference Objects. Resolve those
+    // entries without fetching anything from the network.
+    const content = Object.fromEntries(Object.entries(resolved.content).map(([mediaType, media]: [string, any]) => [
+        mediaType,
+        media?.$ref ? resolveReference(media, spec) : media
+    ]));
+    return {...resolved, content};
+};
+
+const parameterKey = (param: any): string | null => {
+    if (!param?.name || !param?.in) return null;
+    return `${String(param.name)}\u0000${String(param.in)}`;
+};
+
+/**
+ * Merge path-level and operation-level parameters according to OpenAPI:
+ * operation entries override a path entry with the same name and location,
+ * but cannot remove it. References are resolved before the merge so a
+ * component parameter is a real parameter rather than an invisible `$ref`.
+ */
 export const getMergedParameters = (pathItem: any, operation: any, spec: OpenApiSpec | null): any[] => {
     const list: any[] = [];
-    const seen = new Set<string>();
-    const addParam = (param: any) => {
+    const indices = new Map<string, number>();
+    const addParam = (param: any, override = false) => {
         const resolved = resolveParameter(param, spec);
-        if (!resolved || !resolved.name) return;
-        const key = `${resolved.name}\u0000${resolved.in}`;
-        if (seen.has(key)) return;
-        seen.add(key);
+        const key = parameterKey(resolved);
+        if (!key) return;
+        const existingIndex = indices.get(key);
+        if (existingIndex !== undefined) {
+            if (override) list[existingIndex] = resolved;
+            return;
+        }
+        indices.set(key, list.length);
         list.push(resolved);
     };
-    // Add path-level first, then move operation overrides to the front while
-    // keeping a stable order for the UI.
+
     const pathParams = Array.isArray(pathItem?.parameters) ? pathItem.parameters : [];
     const operationParams = Array.isArray(operation?.parameters) ? operation.parameters : [];
-    pathParams.forEach(addParam);
-    const operationResolved = operationParams.map(resolveParameter).filter(Boolean);
-    operationResolved.forEach(param => {
-        const key = `${param.name}\u0000${param.in}`;
-        const index = list.findIndex(item => `${item.name}\u0000${item.in}` === key);
-        if (index >= 0) list.splice(index, 1);
-        list.push(param);
-    });
+    pathParams.forEach(param => addParam(param));
+    operationParams.forEach(param => addParam(param, true));
     return list;
 };

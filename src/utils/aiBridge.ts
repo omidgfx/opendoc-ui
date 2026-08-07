@@ -11,7 +11,8 @@ export type OpenDocUIAction = (
     params?: Record<string, string | string[]>;
     headers?: Record<string, string>;
     body?: string;
-    bodyType?: string
+    bodyType?: string;
+    clearExisting?: boolean
 }
     | {
     action: 'run_api';
@@ -20,7 +21,8 @@ export type OpenDocUIAction = (
     params?: Record<string, string | string[]>;
     headers?: Record<string, string>;
     body?: string;
-    bodyType?: string
+    bodyType?: string;
+    clearExisting?: boolean
 }
     | { action: 'open_schema'; schema: string }
     | { action: 'search_spec'; query: string }
@@ -70,10 +72,12 @@ const normalizeEndpoint = (value: Record<string, any>): OpenDocUIAction | null =
         if (value.headers !== undefined && !isHeaders(value.headers)) return null;
         if (value.body !== undefined && typeof value.body !== 'string') return null;
         if (value.bodyType !== undefined && typeof value.bodyType !== 'string') return null;
+        if (value.clearExisting !== undefined && typeof value.clearExisting !== 'boolean') return null;
         return {
             action: value.action,
             path: value.path,
-            method, ...(value.params ? {params: value.params} : {}), ...(value.headers ? {headers: value.headers} : {}), ...(value.body !== undefined ? {body: value.body} : {}), ...(value.bodyType ? {bodyType: value.bodyType} : {})
+            method, ...(value.params ? {params: value.params} : {}), ...(value.headers ? {headers: value.headers} : {}), ...(value.body !== undefined ? {body: value.body} : {}), ...(value.bodyType ? {bodyType: value.bodyType} : {}),
+            clearExisting: value.clearExisting !== false,
         };
     }
     return null;
@@ -170,9 +174,9 @@ The application shows the proposal as a button. It does not execute ordinary pro
 Allowed action schemas:
 - {"action":"open_endpoint","path":"/path","method":"get"}
 - {"action":"open_runner","path":"/path","method":"post"}
-- {"action":"set_runner_fields","path":"/path","method":"post","params":{},"headers":{},"body":"{...}","bodyType":"application/json"}
-- {"action":"run_api","path":"/path","method":"post","params":{},"headers":{},"body":"{...}","bodyType":"application/json"}
+- {"action":"set_runner_fields","path":"/path","method":"post","params":{},"headers":{},"body":"{...}","bodyType":"application/json","clearExisting":true}
+- {"action":"run_api","path":"/path","method":"post","params":{},"headers":{},"body":"{...}","bodyType":"application/json","clearExisting":true}
 - {"action":"open_schema","schema":"SchemaName"}
 - {"action":"search_spec","query":"text"}
 - {"action":"select_server","url":"https://server.example"}
-Use exact paths, methods, schema names, and server URLs from retrieved context. A user click is required. open_runner is for preparing/inspecting only; if the user explicitly asks to run, execute, login, test, or fetch a result, use run_api instead of stopping at open_runner. Filling fields is not sending. Running an API is a consequential action and must be clearly described before the action block. After a user-approved run, the bounded status, headers, and redacted response preview are returned to the current conversation.`;
+Use exact paths, methods, schema names, and server URLs from retrieved context. A user click is required. open_runner is for preparing/inspecting only; if the user explicitly asks to run, execute, login, test, or fetch a result, use run_api instead of stopping at open_runner. The default clearExisting=true replaces stale Runner fields before applying the action; set it to false only when merging is explicitly intended. Filling fields is not sending. Running an API is a consequential action and must be clearly described before the action block. After a user-approved run, the bounded status, headers, and redacted response preview are returned to the current conversation.`;

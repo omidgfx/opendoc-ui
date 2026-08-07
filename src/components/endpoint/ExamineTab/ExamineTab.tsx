@@ -9,6 +9,7 @@ import {
     serializeOpenApiParameter
 } from '../../../utils/openapi/serialization';
 import {applyAuthToRequest} from '../../../utils/auth';
+import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from '../../../utils/bodyFormats';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -157,6 +158,14 @@ export default function ExamineTab({
     useEffect(() => {
         if (!bodyTypeSupportsForm(requestBodyType)) setBodyEditorMode('raw');
     }, [requestBodyType, setBodyEditorMode]);
+    useEffect(() => {
+        const content = resolveRequestBody(operation.requestBody, spec)?.content || {};
+        const mediaTypes = Object.keys(content);
+        if (mediaTypes.length > 0 && !mediaTypes.includes(requestBodyType)) {
+            setRequestBodyType(mediaTypes[0]);
+            setBodyEditorMode(bodyTypeSupportsForm(mediaTypes[0]) ? 'form' : 'raw');
+        }
+    }, [operation.requestBody, requestBodyType, spec]);
     useEffect(() => () => {
         abortControllerRef.current?.abort();
     }, []);
@@ -182,13 +191,20 @@ export default function ExamineTab({
         const merged = getMergedParameters(pathItemObj, operation, spec);
         const defaultParams: Record<string, string | string[]> = {};
         merged.forEach((param: any) => {
-            if (param.type === 'array' && param.items?.enum) {
-                defaultParams[param.name] = [param.items.enum[0] || ''];
+            const schema = param.schema || param;
+            const isArray = schema.type === 'array' || param.type === 'array';
+            if (isArray && (schema.items?.enum || param.items?.enum)) {
+                const values = schema.items?.enum || param.items?.enum;
+                defaultParams[param.name] = [String(values[0] ?? '')];
+                return;
+            }
+            const example = param.example ?? schema.example ?? schema.default;
+            if (example === undefined) {
+                defaultParams[param.name] = '';
+            } else if (typeof example === 'object') {
+                defaultParams[param.name] = JSON.stringify(example);
             } else {
-                let val = '';
-                if (param.schema?.example !== undefined) val = String(param.schema.example);
-                else if (param.example !== undefined) val = String(param.example);
-                defaultParams[param.name] = val;
+                defaultParams[param.name] = String(example);
             }
         });
         setParams(defaultParams);
@@ -200,7 +216,9 @@ export default function ExamineTab({
             setRequestBodyType(firstType || 'application/json');
             const contentObj = resolvedBody.content[firstType];
             if (contentObj) {
-                if (contentObj.example !== undefined) setRequestBodyText(JSON.stringify(contentObj.example, null, 2));
+                const firstExample = Object.values(contentObj.examples || {})[0] as any;
+                const example = contentObj.example ?? firstExample?.value ?? firstExample?.dataValue;
+                if (example !== undefined) setRequestBodyText(typeof example === 'string' ? example : JSON.stringify(example, null, 2));
                 else if (contentObj.schema) setRequestBodyText(getMockSnippet(contentObj.schema, spec));
                 else setRequestBodyText('{\n \n}');
             }
@@ -208,6 +226,8 @@ export default function ExamineTab({
             setRequestBodyText('');
         }
         setBodyFields({});
+        setSelectedFile(null);
+        setSelectedFiles({});
     };
 
     const publishBridgeResult = (result: ExamineResponse) => {
@@ -239,7 +259,7 @@ export default function ExamineTab({
             const parameterHeaders: Record<string, string> = {};
             merged.forEach((param: any) => {
                 const rawValue = params[param.name];
-                if (rawValue === undefined || rawValue === null || rawValue === '') return;
+                if (rawValue === undefined || rawValue === null || rawValue === '' && !param.allowEmptyValue) return;
                 const serialized = serializeOpenApiParameter(param, normalizeParameterValue(param, rawValue));
                 if (param.in === 'path' && serialized.pathValue !== undefined) {
                     processedPath = processedPath.replace(`{${param.name}}`, serialized.pathValue);
@@ -262,11 +282,21 @@ export default function ExamineTab({
             const reqHeaders = auth.headers;
 
             let reqBody: any = null;
-            const needsBody = ['post', 'put', 'patch', 'delete'].includes(method.toLowerCase());
+            const normalizedMethod = method.toLowerCase();
+            const hasDescribedBody = !!resolveRequestBody(operation.requestBody, spec)?.content;
+            // Browser fetch forbids bodies on GET/HEAD. For every other method,
+            // honor the requestBody object when the description provides one.
+            const needsBody = hasDescribedBody && !['get', 'head'].includes(normalizedMethod);
             if (needsBody) {
                 let activeBody = requestBodyText;
                 if (bodyEditorMode === 'form' && (requestBodyType === 'application/x-www-form-urlencoded' || requestBodyType === 'multipart/form-data')) {
-                    const payload: any = {};
+                    const parsedBase = parseStructuredBody(requestBodyText, requestBodyType);
+                    const payload: Record<string, unknown> = parsedBase && typeof parsedBase === 'object' && !Array.isArray(parsedBase)
+                        ? {...parsedBase as Record<string, unknown>}
+                        : {};
+                    // Start from the complete form value, then overlay the
+                    // fields changed through the recursive editor. This keeps
+                    // untouched required fields in the outgoing request.
                     Object.entries(bodyFields).forEach(([key, value]) => {
                         try {
                             const text = typeof value === 'string' ? value : String(value || '');
@@ -277,29 +307,25 @@ export default function ExamineTab({
                     });
                     activeBody = JSON.stringify(payload);
                 }
-                if (requestBodyType === 'multipart/form-data') {
+                const normalizedBodyType = requestBodyType.toLowerCase().split(';', 1)[0];
+                if (normalizedBodyType === 'multipart/form-data') {
                     const form = new FormData();
-                    if (selectedFile && !selectedFiles.file) form.append('file', selectedFile);
-                    Object.entries(selectedFiles).forEach(([key, file]) => {
-                        if (file) form.append(key, file);
-                    });
+                    const selected = {...selectedFiles};
+                    if (selectedFile && !selected.file) selected.file = selectedFile;
                     try {
-                        const parsed = JSON.parse(activeBody);
-                        Object.entries(parsed).forEach(([key, value]: [string, any]) => {
-                            if (!selectedFiles[key]) form.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
-                        });
-                    } catch { /* raw multipart text is not JSON; files still send */
+                        appendMultipartBody(form, parseStructuredBody(activeBody, requestBodyType), selected);
+                    } catch {
+                        // Preserve the selected files even when raw multipart text
+                        // is not a JSON/YAML object.
+                        Object.entries(selected).forEach(([key, file]) => { if (file) form.append(key, file); });
                     }
                     reqBody = form;
-                } else if (selectedFile && requestBodyType === 'application/octet-stream') {
+                } else if (selectedFile && normalizedBodyType === 'application/octet-stream') {
                     reqBody = selectedFile;
-                } else if (requestBodyType === 'application/x-www-form-urlencoded') {
+                } else if (normalizedBodyType === 'application/x-www-form-urlencoded') {
                     reqHeaders['Content-Type'] = requestBodyType;
                     try {
-                        const parsed = JSON.parse(activeBody);
-                        const encoded = new URLSearchParams();
-                        Object.entries(parsed).forEach(([key, value]: [string, any]) => encoded.append(key, String(value)));
-                        reqBody = encoded.toString();
+                        reqBody = serializeUrlEncodedBody(parseStructuredBody(activeBody, requestBodyType));
                     } catch {
                         reqBody = activeBody;
                     }
@@ -391,9 +417,18 @@ export default function ExamineTab({
             const action = (event as CustomEvent<OpenDocUIAction>).detail;
             if (!action || (action.action !== 'set_runner_fields' && action.action !== 'run_api')) return;
             if (action.path !== path || action.method.toLowerCase() !== method.toLowerCase()) return;
-            if (action.params) setParams(action.params);
-            if (action.headers) setHeaders(action.headers);
-            if (action.body !== undefined) setRequestBodyText(action.body);
+            if (action.clearExisting !== false) {
+                setParams(action.params || {});
+                setHeaders(action.headers || {});
+                setRequestBodyText(action.body || '');
+                setBodyFields({});
+                setSelectedFile(null);
+                setSelectedFiles({});
+            } else {
+                if (action.params) setParams(action.params);
+                if (action.headers) setHeaders(action.headers);
+                if (action.body !== undefined) setRequestBodyText(action.body);
+            }
             if (action.bodyType) setRequestBodyType(action.bodyType);
             if (action.action === 'run_api') {
                 bridgeRunPendingRef.current = true;
@@ -435,7 +470,7 @@ export default function ExamineTab({
     const mergedParams = getMergedParameters(pathItemObj, operation, spec);
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
     const pathParams = mergedParams.filter((p: any) => p.in === 'path');
-    const queryParams = mergedParams.filter((p: any) => p.in === 'query');
+    const queryParams = mergedParams.filter((p: any) => p.in === 'query' || p.in === 'querystring');
     const headerParams = mergedParams.filter((p: any) => p.in === 'header');
 
     const renderParamBlock = (title: string, list: any[]) => {
