@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import Editor from '@monaco-editor/react';
 import clsx from 'clsx';
 import {Tip} from '../common/Tooltip';
-import {formatBodyText, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
+import {formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
 
 interface SchemaJsonEditorProps {
     value: string;
@@ -18,7 +18,10 @@ export default function SchemaJsonEditor({
                                              value, onChange, schema, componentsSchemas, mediaType = 'application/json', themeMode = 'dark', onCtrlEnter
                                          }: SchemaJsonEditorProps) {
     const format = getBodyFormat(mediaType);
-    const editorLanguage = format.language === 'yaml' ? 'plaintext' : format.language;
+    // `language` is intentionally controlled rather than only using
+    // `defaultLanguage`: Monaco keeps the original language when the selected
+    // media type changes while the raw editor remains mounted.
+    const editorLanguage = getBodyEditorLanguage(value, mediaType);
     const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<any>(null);
@@ -46,6 +49,16 @@ export default function SchemaJsonEditor({
     useEffect(() => {
         setErrorFeedback(validateBodyText(value, mediaType));
     }, [value, mediaType]);
+
+    // Keep the Monaco model language synchronized even when the same raw editor
+    // instance survives an encoding change.
+    useEffect(() => {
+        const editor = editorRef.current;
+        const monaco = monacoRef.current;
+        const model = editor?.getModel?.();
+        if (!editor || !monaco || !model || model.getLanguageId() === editorLanguage) return;
+        monaco.editor.setModelLanguage(model, editorLanguage);
+    }, [editorLanguage]);
 
     const handleFormat = () => {
         const formatted = formatBodyText(value, mediaType);
@@ -113,7 +126,7 @@ export default function SchemaJsonEditor({
                             {errorFeedback ? 'Error' : 'Valid'}
                         </span>
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{format.language.toUpperCase()} Body</span>
+                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{editorLanguage.toUpperCase()} Body</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                     <Tip content="Search (Ctrl+F)">
@@ -131,7 +144,7 @@ export default function SchemaJsonEditor({
                         <ToolBtn active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
                     </Tip>
                     <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
-                    <Tip content={`Format ${format.language.toUpperCase()}`}>
+                    <Tip content={`Format ${editorLanguage.toUpperCase()}`}>
                         <button type="button" onClick={handleFormat}
                                 className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
                             <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>
@@ -146,6 +159,7 @@ export default function SchemaJsonEditor({
                  style={{height: 380}}>
                 <Editor
                     height="100%"
+                    language={editorLanguage}
                     defaultLanguage={editorLanguage}
                     value={value}
                     onChange={(val) => onChange(val || '')}

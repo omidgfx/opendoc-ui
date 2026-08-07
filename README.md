@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.1-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-0.1.2-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 

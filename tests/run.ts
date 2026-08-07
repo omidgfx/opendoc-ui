@@ -4,7 +4,7 @@ import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/uti
 import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
 import {trimAIConversation} from '../src/utils/aiStorage';
-import {formatBodyText, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText} from '../src/utils/bodyFormats';
+import {bodyEditorModeForMediaType, bodyTypeSupportsForm, formatBodyText, getBodyEditorLanguage, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText} from '../src/utils/bodyFormats';
 import {defaultBodyValue} from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
 import {
     getMergedParameters,
@@ -288,7 +288,16 @@ test('formats bounded Runner results for the conversation without exposing auth 
 test('selects raw-body formats without applying JSON validation to YAML or XML', () => {
     assert.equal(getBodyFormat('application/json').language, 'json');
     assert.equal(getBodyFormat('application/yaml').isYaml, true);
+    assert.equal(getBodyFormat('application/yaml').language, 'yaml');
     assert.equal(getBodyFormat('application/xml').isXml, true);
+    assert.equal(getBodyEditorLanguage('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded'), 'json');
+    assert.equal(getBodyEditorLanguage('name=OpenDoc', 'application/x-www-form-urlencoded'), 'plaintext');
+    assert.equal(validateBodyText('{"broken":', 'application/x-www-form-urlencoded') !== null, true);
+    assert.match(formatBodyText('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded').text, /"name": "OpenDoc"/);
+    assert.equal(bodyTypeSupportsForm('application/json; charset=utf-8'), true);
+    assert.equal(bodyEditorModeForMediaType('raw', 'application/json'), 'raw');
+    assert.equal(bodyEditorModeForMediaType('raw', 'application/x-www-form-urlencoded'), 'raw');
+    assert.equal(bodyEditorModeForMediaType('form', 'application/xml'), 'raw');
     assert.equal(validateBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml'), null);
     assert.equal(validateBodyText('<root><item /></root>', 'application/xml'), null);
     assert.equal(validateBodyText('{"broken":', 'application/json') !== null, true);

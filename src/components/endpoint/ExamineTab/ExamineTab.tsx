@@ -9,7 +9,7 @@ import {
     serializeOpenApiParameter
 } from '../../../utils/openapi/serialization';
 import {applyAuthToRequest} from '../../../utils/auth';
-import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from '../../../utils/bodyFormats';
+import {appendMultipartBody, bodyEditorModeForMediaType, bodyTypeSupportsForm, parseStructuredBody, serializeUrlEncodedBody} from '../../../utils/bodyFormats';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -21,10 +21,6 @@ import {specStorage} from '../../../utils/storage';
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const bodyTypeSupportsForm = (type: string): boolean => {
-    const lower = type.toLowerCase();
-    return lower.includes('json') || lower.includes('yaml') || lower === 'application/x-www-form-urlencoded' || lower === 'multipart/form-data' || lower === 'application/octet-stream';
-};
 
 const readResponseBody = async (response: Response, maxBytes = MAX_RESPONSE_BYTES): Promise<{
     text: string;
@@ -135,6 +131,7 @@ export default function ExamineTab({
             setHeaders(parsed.headers || {});
             setRequestBodyText(parsed.bodyText || '');
             setRequestBodyType(parsed.bodyType || 'application/json');
+            if (parsed.bodyEditorMode === 'raw' || parsed.bodyEditorMode === 'form') setBodyEditorMode(parsed.bodyEditorMode);
             if (parsed.bodyText) {
                 try {
                     const json = JSON.parse(parsed.bodyText);
@@ -163,7 +160,7 @@ export default function ExamineTab({
         const mediaTypes = Object.keys(content);
         if (mediaTypes.length > 0 && !mediaTypes.includes(requestBodyType)) {
             setRequestBodyType(mediaTypes[0]);
-            setBodyEditorMode(bodyTypeSupportsForm(mediaTypes[0]) ? 'form' : 'raw');
+            setBodyEditorMode(current => bodyEditorModeForMediaType(current, mediaTypes[0]));
         }
     }, [operation.requestBody, requestBodyType, spec]);
     useEffect(() => () => {
@@ -171,7 +168,7 @@ export default function ExamineTab({
     }, []);
 
     const handleSave = () => {
-        const payload = {params, headers, bodyText: requestBodyText, bodyType: requestBodyType};
+        const payload = {params, headers, bodyText: requestBodyText, bodyType: requestBodyType, bodyEditorMode};
         specStorage.setJSON(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`, payload);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 1500);
@@ -603,7 +600,7 @@ export default function ExamineTab({
                                         value={requestBodyType}
                                         onChange={(val) => {
                                             setRequestBodyType(val);
-                                            setBodyEditorMode(bodyTypeSupportsForm(val) ? 'form' : 'raw');
+                                            setBodyEditorMode(current => bodyEditorModeForMediaType(current, val));
                                         }}
                                         options={Object.keys(resolvedRequestBody.content || {}).map(mime => ({
                                             value: mime,

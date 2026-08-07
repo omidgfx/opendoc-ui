@@ -1,20 +1,5 @@
-import React, {createContext, useCallback, useContext, useEffect, useRef, useState,} from 'react';
-import {
-    arrow,
-    autoUpdate,
-    flip,
-    FloatingArrow,
-    FloatingPortal,
-    offset,
-    shift,
-    useDismiss,
-    useFloating,
-    useFocus,
-    useHover,
-    useInteractions,
-    useRole,
-} from '@floating-ui/react';
-import clsx from 'clsx';
+import React, {createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 
 interface TooltipContextValue {
     delay: number;
@@ -30,9 +15,7 @@ export function TooltipProvider({
     children: React.ReactNode;
     delay?: number;
 }) {
-    return (
-        <TooltipContext.Provider value={{delay}}>{children}</TooltipContext.Provider>
-    );
+    return <TooltipContext.Provider value={{delay}}>{children}</TooltipContext.Provider>;
 }
 
 interface TipProps {
@@ -41,15 +24,83 @@ interface TipProps {
     placement?: 'top' | 'bottom' | 'left' | 'right';
     delay?: number;
     disabled?: boolean;
-    /** Hide on mobile/touch? Default false — still shows on focus for a11y. */
 }
 
+type TooltipPlacement = NonNullable<TipProps['placement']>;
+
+interface TooltipSize {
+    width: number;
+    height: number;
+}
+
+interface TooltipPosition {
+    top: number;
+    left: number;
+    transform: string;
+    placement: TooltipPlacement;
+}
+
+const blockElements = new Set(['article', 'div', 'form', 'li', 'ol', 'p', 'section', 'ul']);
+const TOOLTIP_GAP = 8;
+const TOOLTIP_EDGE = 8;
+const INITIAL_TOOLTIP_SIZE: TooltipSize = {width: 320, height: 48};
+
+const samePosition = (left: TooltipPosition, right: TooltipPosition): boolean =>
+    left.top === right.top
+    && left.left === right.left
+    && left.transform === right.transform
+    && left.placement === right.placement;
+
+const clampCenter = (value: number, size: number, viewport: number): number => {
+    const min = Math.min(TOOLTIP_EDGE + size / 2, viewport / 2);
+    const max = Math.max(viewport - TOOLTIP_EDGE - size / 2, viewport / 2);
+    return Math.min(Math.max(value, min), max);
+};
+
+/** Pick the requested side when it fits, otherwise flip to a visible side. */
+const positionFor = (
+    rect: DOMRect,
+    requested: TooltipPlacement,
+    size: TooltipSize,
+): TooltipPosition => {
+    const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
+    const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
+    const available: Record<TooltipPlacement, number> = {
+        top: rect.top,
+        bottom: viewportHeight - rect.bottom,
+        left: rect.left,
+        right: viewportWidth - rect.right,
+    };
+    const required: Record<TooltipPlacement, number> = {
+        top: size.height + TOOLTIP_GAP,
+        bottom: size.height + TOOLTIP_GAP,
+        left: size.width + TOOLTIP_GAP,
+        right: size.width + TOOLTIP_GAP,
+    };
+    const fallbackOrder: Record<TooltipPlacement, TooltipPlacement[]> = {
+        top: ['top', 'bottom', 'right', 'left'],
+        bottom: ['bottom', 'top', 'right', 'left'],
+        left: ['left', 'right', 'bottom', 'top'],
+        right: ['right', 'left', 'bottom', 'top'],
+    };
+    const resolved = fallbackOrder[requested].find(side => available[side] >= required[side])
+        || fallbackOrder[requested].slice().sort((a, b) => available[b] - available[a])[0];
+    const centerX = clampCenter(rect.left + rect.width / 2, size.width, viewportWidth);
+    const centerY = clampCenter(rect.top + rect.height / 2, size.height, viewportHeight);
+
+    if (resolved === 'bottom') return {top: rect.bottom + TOOLTIP_GAP, left: centerX, transform: 'translateX(-50%)', placement: resolved};
+    if (resolved === 'left') return {top: centerY, left: Math.max(TOOLTIP_EDGE, rect.left - TOOLTIP_GAP), transform: 'translate(-100%, -50%)', placement: resolved};
+    if (resolved === 'right') return {top: centerY, left: Math.min(viewportWidth - TOOLTIP_EDGE, rect.right + TOOLTIP_GAP), transform: 'translateY(-50%)', placement: resolved};
+    return {top: Math.max(TOOLTIP_EDGE, rect.top - TOOLTIP_GAP), left: centerX, transform: 'translate(-50%, -100%)', placement: resolved};
+};
+
 /**
- * Accessible, theme-aware tooltip powered by @floating-ui/react.
- * Auto-positions (flip, shift), theme-styled, renders via portal.
- *
- * Usage:
- *   <Tip content="Copy path"><button>...</button></Tip>
+ * A portal tooltip with fixed positioning and collision-aware side flipping.
+ * It intentionally avoids callback refs from positioning libraries: switching
+ * specifications can unmount many tooltips at once, and a stateful ref setter
+ * during that deletion can create a React maximum-update-depth loop. The object
+ * refs below never update React state and the portal keeps the tooltip above
+ * scroll containers and dialogs.
  */
 export function Tip({
                         content,
@@ -60,102 +111,108 @@ export function Tip({
                     }: TipProps) {
     const {delay: ctxDelay} = useContext(TooltipContext);
     const delay = delayProp ?? ctxDelay;
-
     const [open, setOpen] = useState(false);
-    const arrowRef = useRef<SVGSVGElement | null>(null);
+    const [position, setPosition] = useState<TooltipPosition | null>(null);
+    const timerRef = useRef<number | null>(null);
+    const wrapperRef = useRef<HTMLElement | null>(null);
+    const tooltipRef = useRef<HTMLSpanElement | null>(null);
+    const setWrapperRef = useCallback((node: HTMLElement | null) => {
+        wrapperRef.current = node;
+    }, []);
+    const tooltipId = `tooltip-${useId().replace(/:/g, '')}`;
 
-    const {refs, floatingStyles, context} = useFloating({
-        open,
-        onOpenChange: setOpen,
-        placement,
-        whileElementsMounted: autoUpdate,
-        middleware: [
-            offset(8),
-            flip({fallbackAxisSideDirection: 'start', padding: 8}),
-            shift({padding: 8}),
-            arrow({element: arrowRef, padding: 6}),
-        ],
-    });
+    const clearTimer = () => {
+        if (timerRef.current !== null) {
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+    const show = () => {
+        clearTimer();
+        if (delay <= 0) {
+            setOpen(true);
+            return;
+        }
+        timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            setOpen(true);
+        }, delay);
+    };
+    const hide = () => {
+        clearTimer();
+        setOpen(false);
+        setPosition(null);
+    };
 
-    const hover = useHover(context, {
-        move: false,
-        delay: {open: delay, close: 0},
-        enabled: !disabled,
-    });
-    const focus = useFocus(context, {enabled: !disabled});
-    const dismiss = useDismiss(context);
-    const role = useRole(context, {role: 'tooltip'});
+    useEffect(() => () => clearTimer(), []);
 
-    const {getReferenceProps, getFloatingProps} = useInteractions([
-        hover,
-        focus,
-        dismiss,
-        role,
-    ]);
+    const updatePosition = useCallback(() => {
+        const node = wrapperRef.current;
+        if (!node) return;
+        const tooltip = tooltipRef.current;
+        const size = tooltip
+            ? {width: tooltip.offsetWidth, height: tooltip.offsetHeight}
+            : INITIAL_TOOLTIP_SIZE;
+        const next = positionFor(node.getBoundingClientRect(), placement, size);
+        setPosition(current => current && samePosition(current, next) ? current : next);
+    }, [placement]);
 
-    // React 19: `ref` is a regular prop on the element (`children.props.ref`).
-    // Keep the merged callback stable. Passing a freshly-created ref array to
-    // `useMergeRefs` on every render can make Floating UI repeatedly detach and
-    // reattach its reference, eventually causing a maximum-update-depth crash.
-    const childrenRef = (children as any).props?.ref;
-    const childrenRefRef = useRef<any>(childrenRef);
-    childrenRefRef.current = childrenRef;
-    const mergedRef = useCallback((node: Element | null) => {
-        refs.setReference(node);
-        const childRef = childrenRefRef.current;
-        if (typeof childRef === 'function') childRef(node);
-        else if (childRef && typeof childRef === 'object') childRef.current = node;
-    }, [refs.setReference]);
+    // Measure while open and keep the fixed portal aligned with the trigger.
+    useLayoutEffect(() => {
+        if (!open) {
+            setPosition(null);
+            return;
+        }
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [open, updatePosition]);
 
-    // Hide the tooltip as soon as the page/sidebar scrolls — a tooltip that
-    // follows the scrolled element around looks broken.
-    useEffect(() => {
-        if (!open) return;
-        const hide = () => setOpen(false);
-        window.addEventListener('scroll', hide, true);
-        return () => window.removeEventListener('scroll', hide, true);
-    }, [open]);
+    // The first position uses a safe size estimate. Once the portal has mounted,
+    // measure its real dimensions and flip/clamp again without setting state if
+    // the position is unchanged.
+    useLayoutEffect(() => {
+        if (!open || !position) return;
+        const frame = window.requestAnimationFrame(updatePosition);
+        return () => window.cancelAnimationFrame(frame);
+    }, [open, position, updatePosition]);
 
-    if (disabled || !content) {
-        return children;
-    }
+    const childProps = children.props as Record<string, any>;
+    const existingDescribedBy = typeof childProps['aria-describedby'] === 'string' ? childProps['aria-describedby'] : '';
+    const describedBy = open ? [existingDescribedBy, tooltipId].filter(Boolean).join(' ') : existingDescribedBy || undefined;
+    const Wrapper = typeof children.type === 'string' && blockElements.has(children.type) ? 'div' : 'span';
+
+    if (disabled || !content) return children;
 
     return (
-        <>
+        <Wrapper
+            ref={setWrapperRef}
+            className="relative inline-flex max-w-full"
+            onMouseEnter={show}
+            onMouseLeave={hide}
+            onFocusCapture={show}
+            onBlurCapture={hide}
+        >
             {React.cloneElement(children as React.ReactElement<any>, {
-                ...getReferenceProps({
-                    ...(children.props as any),
-                    ref: mergedRef,
-                }),
-                // Remove native title so we don't get double tooltips.
                 title: undefined,
+                'aria-describedby': describedBy,
             })}
-            {open && (
-                <FloatingPortal>
-                    <div
-                        ref={refs.setFloating}
-                        style={floatingStyles}
-                        {...getFloatingProps()}
-                        className="z-[9999] pointer-events-none"
-                    >
-                        <div
-                            className={clsx(
-                                'px-2.5 py-1.5 rounded-md text-[11px] font-medium leading-snug shadow-lg max-w-[320px] sm:max-w-[380px] whitespace-normal break-words [overflow-wrap:anywhere]',
-                                'bg-[var(--text-heading)] text-[var(--background)]'
-                            )}
-                        >
-                            {content}
-                            <FloatingArrow
-                                ref={arrowRef}
-                                context={context}
-                                className="fill-[var(--text-heading)]"
-                                height={6}
-                                width={10}
-                            />
-                        </div>
-                    </div>
-                </FloatingPortal>
+            {open && position && typeof document !== 'undefined' && createPortal(
+                <span
+                    ref={tooltipRef}
+                    id={tooltipId}
+                    role="tooltip"
+                    style={{top: position.top, left: position.left, transform: position.transform}}
+                    className="pointer-events-none fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-md bg-[var(--text-heading)] px-2.5 py-1.5 text-[11px] font-medium leading-snug text-[var(--background)] shadow-2xl sm:max-w-[380px]"
+                >
+                    {content}
+                </span>,
+                document.body,
             )}
-        </>
+        </Wrapper>
     );
 }

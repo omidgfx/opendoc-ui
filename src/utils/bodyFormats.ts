@@ -11,6 +11,23 @@ export interface BodyFormat {
     supportsSchema: boolean;
 }
 
+export type BodyEditorMode = 'form' | 'raw';
+
+export const bodyTypeSupportsForm = (mediaType: string): boolean => {
+    const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
+    return normalized.includes('json')
+        || normalized.includes('yaml')
+        || normalized === 'application/x-www-form-urlencoded'
+        || normalized === 'multipart/form-data'
+        || normalized === 'application/octet-stream';
+};
+
+/** Changing the media type must not unexpectedly leave Raw mode. A form is
+ * only selected automatically when the user was already in Form mode and the
+ * new media type cannot be edited as a form. */
+export const bodyEditorModeForMediaType = (current: BodyEditorMode, mediaType: string): BodyEditorMode =>
+    current === 'raw' ? 'raw' : bodyTypeSupportsForm(mediaType) ? 'form' : 'raw';
+
 export const getBodyFormat = (mediaType: string): BodyFormat => {
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     const isJson = normalized === 'application/json' || normalized.endsWith('+json') || normalized === 'text/json';
@@ -20,11 +37,33 @@ export const getBodyFormat = (mediaType: string): BodyFormat => {
     return {mediaType: normalized || 'text/plain', language, isJson, isYaml, isXml, supportsSchema: isJson};
 };
 
+/**
+ * Form and multipart bodies are represented by the Runner as an object while
+ * the user edits them. If that raw value is JSON-shaped, keep JSON tokenization
+ * instead of showing an unhelpful all-plain-text editor. Actual key=value form
+ * text remains plaintext.
+ */
+export const getBodyEditorLanguage = (text: string, mediaType: string): BodyLanguage => {
+    const format = getBodyFormat(mediaType);
+    if (format.language !== 'plaintext') return format.language;
+    const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
+    if ((normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data')
+        && /^[\s]*[\[{]/.test(text)) return 'json';
+    return format.language;
+};
+
+const isFormLikeMediaType = (mediaType: string): boolean => {
+    const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
+    return normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data';
+};
+
+const looksLikeJsonBody = (text: string): boolean => /^[\s]*[\[{]/.test(text);
+
 export const validateBodyText = (text: string, mediaType: string): string | null => {
     if (!text.trim()) return null;
     const format = getBodyFormat(mediaType);
     try {
-        if (format.isJson) JSON.parse(text);
+        if (format.isJson || isFormLikeMediaType(mediaType) && looksLikeJsonBody(text)) JSON.parse(text);
         else if (format.isYaml) jsYaml.load(text);
         else if (format.isXml && typeof DOMParser !== 'undefined') {
             const document = new DOMParser().parseFromString(text, 'application/xml');
@@ -39,7 +78,7 @@ export const validateBodyText = (text: string, mediaType: string): string | null
 export const formatBodyText = (text: string, mediaType: string): {text: string; error?: string} => {
     const format = getBodyFormat(mediaType);
     try {
-        if (format.isJson) return {text: JSON.stringify(JSON.parse(text), null, 2)};
+        if (format.isJson || isFormLikeMediaType(mediaType) && looksLikeJsonBody(text)) return {text: JSON.stringify(JSON.parse(text), null, 2)};
         if (format.isYaml) return {text: jsYaml.dump(jsYaml.load(text), {noRefs: true, lineWidth: 120})};
         if (format.isXml) {
             const compact = text.replace(/>\s+</g, '><').trim();
