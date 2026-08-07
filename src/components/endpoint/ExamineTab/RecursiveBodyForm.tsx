@@ -85,7 +85,7 @@ const removeAtPath = (root: any[], index: number): any[] => root.filter((_, item
 function DescriptionTip({description}: {description?: string}) {
     if (!description?.trim()) return null;
     return (
-        <Tip interactive variant="surface" content={<div className="max-w-[300px]"><Markdown text={description} className="text-[11px] leading-relaxed"/></div>}>
+        <Tip interactive variant="surface" closable content={<div className="max-w-[300px]"><Markdown text={description} className="text-[11px] leading-relaxed"/></div>}>
             <button
                 type="button"
                 aria-label="Show field description"

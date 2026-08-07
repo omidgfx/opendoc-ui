@@ -30,6 +30,8 @@ interface TipProps {
     variant?: 'default' | 'surface';
     /** Preserve a full-width block trigger such as an endpoint row. */
     fullWidth?: boolean;
+    /** Render a close button inside the tooltip so users can dismiss it. */
+    closable?: boolean;
 }
 
 type TooltipPlacement = NonNullable<TipProps['placement']>;
@@ -117,6 +119,7 @@ export function Tip({
                         interactive = false,
                         variant = 'default',
                         fullWidth = false,
+                        closable = false,
                     }: TipProps) {
     const {delay: ctxDelay} = useContext(TooltipContext);
     const delay = delayProp ?? ctxDelay;
@@ -235,9 +238,24 @@ export function Tip({
                     onFocusCapture={interactive ? show : undefined}
                     onBlurCapture={interactive ? hide : undefined}
                     style={{top: position.top, left: position.left, transform: position.transform}}
-                    className={`fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl sm:max-w-[380px] ${interactive ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
+                    className={`fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl sm:max-w-[380px] ${interactive || closable ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
                 >
-                    {content}
+                    {closable ? (
+                        <span className="flex items-start gap-1.5">
+                            <span className="min-w-0 flex-1">{content}</span>
+                            <button
+                                type="button"
+                                aria-label="Close tooltip"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    close();
+                                }}
+                                className="flex size-4 shrink-0 items-center justify-center rounded-full text-inherit opacity-60 transition-opacity hover:bg-[var(--primary)]/15 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 cursor-pointer"
+                            >
+                                <i className="ph ph-x text-[11px]" aria-hidden="true"/>
+                            </button>
+                        </span>
+                    ) : content}
                 </span>,
                 document.body,
             )}
