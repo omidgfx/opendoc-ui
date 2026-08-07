@@ -24,6 +24,12 @@ interface TipProps {
     placement?: 'top' | 'bottom' | 'left' | 'right';
     delay?: number;
     disabled?: boolean;
+    /** Allow the pointer to travel into the tooltip content. */
+    interactive?: boolean;
+    /** Use the theme surface instead of the normal dark tooltip treatment. */
+    variant?: 'default' | 'surface';
+    /** Preserve a full-width block trigger such as an endpoint row. */
+    fullWidth?: boolean;
 }
 
 type TooltipPlacement = NonNullable<TipProps['placement']>;
@@ -108,6 +114,9 @@ export function Tip({
                         placement = 'top',
                         delay: delayProp,
                         disabled,
+                        interactive = false,
+                        variant = 'default',
+                        fullWidth = false,
                     }: TipProps) {
     const {delay: ctxDelay} = useContext(TooltipContext);
     const delay = delayProp ?? ctxDelay;
@@ -138,10 +147,21 @@ export function Tip({
             setOpen(true);
         }, delay);
     };
-    const hide = () => {
+    const close = () => {
         clearTimer();
         setOpen(false);
         setPosition(null);
+    };
+    const hide = () => {
+        clearTimer();
+        if (!interactive) {
+            close();
+            return;
+        }
+        timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            close();
+        }, 180);
     };
 
     useEffect(() => () => clearTimer(), []);
@@ -185,13 +205,17 @@ export function Tip({
     const existingDescribedBy = typeof childProps['aria-describedby'] === 'string' ? childProps['aria-describedby'] : '';
     const describedBy = open ? [existingDescribedBy, tooltipId].filter(Boolean).join(' ') : existingDescribedBy || undefined;
     const Wrapper = typeof children.type === 'string' && blockElements.has(children.type) ? 'div' : 'span';
+    const wrapperClassName = fullWidth ? 'relative block w-full' : 'relative inline-flex max-w-full';
+    const tooltipThemeClass = variant === 'surface'
+        ? 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]'
+        : 'bg-[var(--text-heading)] text-[var(--background)]';
 
     if (disabled || !content) return children;
 
     return (
         <Wrapper
             ref={setWrapperRef}
-            className="relative inline-flex max-w-full"
+            className={wrapperClassName}
             onMouseEnter={show}
             onMouseLeave={hide}
             onFocusCapture={show}
@@ -206,8 +230,12 @@ export function Tip({
                     ref={tooltipRef}
                     id={tooltipId}
                     role="tooltip"
+                    onMouseEnter={interactive ? show : undefined}
+                    onMouseLeave={interactive ? hide : undefined}
+                    onFocusCapture={interactive ? show : undefined}
+                    onBlurCapture={interactive ? hide : undefined}
                     style={{top: position.top, left: position.left, transform: position.transform}}
-                    className="pointer-events-none fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-md bg-[var(--text-heading)] px-2.5 py-1.5 text-[11px] font-medium leading-snug text-[var(--background)] shadow-2xl sm:max-w-[380px]"
+                    className={`fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl sm:max-w-[380px] ${interactive ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
                 >
                     {content}
                 </span>,

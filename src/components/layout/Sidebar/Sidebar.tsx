@@ -918,7 +918,7 @@ export default function Sidebar(props: SidebarProps) {
                             return (
                                 <div key={row.key} className="relative">
                                     {renderGuides(idx, row.onPath)}
-                                    <Tip content={summary} placement="right">
+                                    <Tip content={summary} placement="right" fullWidth>
                                         <a
                                             href={getEndpointHref?.(ep.path, ep.method) || `#${ep.method}:${ep.path}`}
                                             ref={el => {

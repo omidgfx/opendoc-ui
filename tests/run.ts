@@ -5,7 +5,7 @@ import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/a
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
 import {trimAIConversation} from '../src/utils/aiStorage';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm, formatBodyText, getBodyEditorLanguage, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText} from '../src/utils/bodyFormats';
-import {defaultBodyValue} from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
+import {DESCRIPTION_TOOLTIP_THRESHOLD, defaultBodyValue, usesDescriptionTooltip} from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
 import {
     getMergedParameters,
     getRefName,
@@ -308,6 +308,12 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.match(encoded, /tags=two/);
     assert.match(encoded, /nested=%7B%22enabled%22%3Atrue%7D/);
     assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {tags: ['one', 'two']});
+});
+
+test('uses inline descriptions until the tooltip threshold', () => {
+    assert.equal(usesDescriptionTooltip('Short field description'), false);
+    assert.equal(usesDescriptionTooltip('x'.repeat(DESCRIPTION_TOOLTIP_THRESHOLD)), false);
+    assert.equal(usesDescriptionTooltip('x'.repeat(DESCRIPTION_TOOLTIP_THRESHOLD + 1)), true);
 });
 
 test('creates typed defaults for recursive object and array schemas', () => {
