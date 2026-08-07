@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.idea
+.vite
+package-lock.json
+public/specs
+public/config.json

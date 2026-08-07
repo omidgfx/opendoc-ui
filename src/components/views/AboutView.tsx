@@ -1,0 +1,815 @@
+import {useEffect, useMemo, useRef, useState} from 'react';
+import clsx from 'clsx';
+import {motion} from 'motion/react';
+import pkg from '../../../package.json';
+import type {OpenApiSpec} from '../../types';
+
+interface AboutViewProps {
+    specTitle?: string;
+    parsableKey?: string;
+    spec?: OpenApiSpec | null;
+}
+
+const TOC_SECTIONS: Array<{ id: string; label: string; icon: string }> = [
+    {id: 'why', label: 'Why', icon: 'ph ph-lightbulb'},
+    {id: 'what', label: 'What it does', icon: 'ph ph-cube'},
+    {id: 'how', label: 'How it works', icon: 'ph ph-gear-six'},
+    {id: 'ai', label: 'AI assistant', icon: 'ph ph-sparkle'},
+    {id: 'keyboard', label: 'Keyboard', icon: 'ph ph-keyboard'},
+    {id: 'mouse', label: 'Mouse', icon: 'ph ph-cursor-click'},
+    {id: 'preview', label: 'Preview', icon: 'ph ph-eye'},
+    {id: 'reading', label: 'Reading', icon: 'ph ph-book-open'},
+    {id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush'},
+    {id: 'about', label: 'About', icon: 'ph ph-info'},
+    {id: 'license', label: 'License', icon: 'ph ph-scroll'},
+];
+
+const FEATURES: Array<{ icon: string; title: string; desc: string }> = [
+    {
+        icon: 'ph-fill ph-book-open-text',
+        title: 'Documentation Browser',
+        desc: 'Navigate tags, operations, parameters, request bodies and responses with live schema inspection.'
+    },
+    {
+        icon: 'ph-fill ph-flask',
+        title: 'Built-in API Runner',
+        desc: 'Execute requests directly from the browser with cookie, bearer, API-key and basic auth support.'
+    },
+    {
+        icon: 'ph-fill ph-code',
+        title: 'Code & TypeScript Generator',
+        desc: 'Export ready-to-run fetch / axios / Angular snippets and TypeScript models generated from your schemas.'
+    },
+    {
+        icon: 'ph-fill ph-sparkle',
+        title: 'OpenDoc UI Assistant',
+        desc: 'Ask grounded API questions with citations, endpoint context, model profiles, Markdown export, and safe Runner preparation.'
+    },
+    {
+        icon: 'ph-fill ph-paint-bucket',
+        title: 'Themes & Dark Mode',
+        desc: '15+ hand-picked editor themes with per-spec preferences and instant light/dark toggling.'
+    },
+    {
+        icon: 'ph-fill ph-magnifying-glass',
+        title: 'Global Search',
+        desc: 'Cmd/Ctrl+K to search paths, summaries, tags, and schema definitions with advanced filters.'
+    },
+    {
+        icon: 'ph-fill ph-plugs-connected',
+        title: 'Share Deep Links',
+        desc: 'Every endpoint, tab, response and schema modal lives in the URL hash for perfect link sharing.'
+    },
+];
+
+/* ------------------------------------------------------------------ *
+ *  Keyboard shortcuts — grouped by the surface they apply to.
+ *  `note` explains conditions and edge cases.
+ * ------------------------------------------------------------------ */
+type Shortcut = { k: string; d: string; note?: string };
+type ShortcutGroup = { group: string; icon: string; items: Shortcut[] };
+
+const SHORTCUT_GROUPS: ShortcutGroup[] = [
+    {
+        group: 'Global',
+        icon: 'ph-fill ph-globe-hemisphere-west',
+        items: [
+            {
+                k: 'Ctrl / ⌘ + K',
+                d: 'Focus the global search field',
+                note: 'Ignored while you are already typing in an input or textarea, so it never steals focus mid-edit. Inside the Schema Explorer the same combo focuses that page’s own schema filter instead.',
+            },
+            {
+                k: 'Esc',
+                d: 'Close the top-most modal',
+                note: 'Modals are a stack. If you have drilled into nested schemas, Esc pops one level at a time; pressing it on the last remaining level closes the stack completely. Help, pattern-tester and share dialogs always consume Esc first.',
+            },
+        ],
+    },
+    {
+        group: 'Endpoint tabs',
+        icon: 'ph-fill ph-browsers',
+        items: [
+            {
+                k: 'Alt + ←',
+                d: 'Switch to the previous tab',
+                note: 'Wraps around from the first tab to the last. Disabled while any modal is open, and when only one tab exists.',
+            },
+            {
+                k: 'Alt + →',
+                d: 'Switch to the next tab',
+                note: 'Wraps around from the last tab to the first. Disabled while any modal is open, and when only one tab exists.',
+            },
+            {
+                k: 'Ctrl + `',
+                d: 'Open the tab switcher and move to the next tab',
+                note: 'Windows Alt+Tab style: keep Ctrl held and press ` again to keep cycling; release Ctrl to switch, or Esc to cancel back to the previous tab. Ctrl+Tab also works where the browser allows it (Chrome/Edge reserve it for their own tab strip).',
+            },
+            {
+                k: 'Ctrl + Shift + `',
+                d: 'Open the tab switcher and move to the previous tab',
+                note: 'The backward twin of Ctrl+` — cycles in reverse, wraps around, and commits on release.',
+            },
+        ],
+    },
+    {
+        group: 'Documentation tab',
+        icon: 'ph-fill ph-book-open-text',
+        items: [
+            {
+                k: 'Ctrl / ⌘ + ↓',
+                d: 'Collapse current response, jump to the next one',
+                note: 'Cycles through the operation’s response codes and wraps at the end. Only active when the documentation pane is the focused pane, and ignored while typing in a textarea or rich-text field.',
+            },
+            {
+                k: 'Ctrl / ⌘ + ↑',
+                d: 'Collapse current response, jump to the previous one',
+                note: 'Same as above in the opposite direction, wrapping from the first response back to the last.',
+            },
+            {
+                k: 'Ctrl / ⌘ + Shift + ↓ / ↑',
+                d: 'Move between responses, leaving them open',
+                note: 'Identical navigation, except the response you are leaving stays expanded — handy for comparing two payloads side by side.',
+            },
+        ],
+    },
+    {
+        group: 'API Runner',
+        icon: 'ph-fill ph-flask',
+        items: [
+            {
+                k: 'Ctrl / ⌘ + Enter',
+                d: 'Send the request',
+                note: 'Works from anywhere inside the runner, including the body editor. Only active when the runner is the focused pane, and ignored while a request is already in flight.',
+            },
+        ],
+    },
+    {
+        group: 'Schema modals',
+        icon: 'ph-fill ph-tree-structure',
+        items: [
+            {
+                k: 'Ctrl / ⌘ + ←',
+                d: 'Go back one level in the schema breadcrumb',
+                note: 'Available once you have drilled into a nested schema. The breadcrumb is driven by the URL hash, so this maps onto real browser history — the browser’s own Back button does exactly the same thing.',
+            },
+        ],
+    },
+];
+
+/* ------------------------------------------------------------------ *
+ *  Mouse & pointer interactions
+ * ------------------------------------------------------------------ */
+type MouseRow = { icon: string; act: string; where: string; desc: string };
+
+const MOUSE_ACTIONS: MouseRow[] = [
+    {
+        icon: 'ph-fill ph-cursor-click',
+        act: 'Single click',
+        where: 'Sidebar tree · Search results',
+        desc: 'Opens the endpoint in a preview tab. Because there is only ever one preview slot, clicking a second endpoint reuses the same tab rather than piling up new ones.',
+    },
+    {
+        icon: 'ph-fill ph-cursor-click',
+        act: 'Double click',
+        where: 'Sidebar tree · Search results',
+        desc: 'Opens the endpoint directly as a permanent tab, skipping the preview stage entirely.',
+    },
+    {
+        icon: 'ph-fill ph-mouse-middle-click',
+        act: 'Middle click',
+        where: 'Sidebar tree · Search results',
+        desc: 'Same as double-click — opens a permanent tab immediately. Mirrors the middle-click-to-open-in-new-tab convention from browsers and editors.',
+    },
+    {
+        icon: 'ph-fill ph-mouse-middle-click',
+        act: 'Middle click',
+        where: 'A tab',
+        desc: 'Closes that tab, whether it is a preview tab or a permanent one.',
+    },
+    {
+        icon: 'ph-fill ph-cursor-click',
+        act: 'Double click',
+        where: 'A preview tab',
+        desc: 'Promotes the preview tab to a permanent tab in place. It keeps its current position and the preview slot becomes free again.',
+    },
+    {
+        icon: 'ph-fill ph-arrows-left-right',
+        act: 'Drag & drop',
+        where: 'Tab bar',
+        desc: 'Reorders tabs. Dragging a preview tab also promotes it to permanent, since deliberately positioning a tab implies you want to keep it. Any preview tab that remains is always kept as the right-most tab.',
+    },
+    {
+        icon: 'ph-fill ph-mouse-right-click',
+        act: 'Right click',
+        where: 'A tab',
+        desc: 'Opens the tab context menu: Close All to the Left, Close All to the Right, and Close Others. Entries grey out when they would do nothing — for instance “Close All to the Left” on the first tab.',
+    },
+    {
+        icon: 'ph-fill ph-mouse-scroll',
+        act: 'Scroll wheel',
+        where: 'Tab bar',
+        desc: 'Vertical wheel movement is translated into horizontal scrolling, so you can reach off-screen tabs without touching a scrollbar or holding Shift.',
+    },
+    {
+        icon: 'ph-fill ph-folder-open',
+        act: 'Click',
+        where: 'A folder in the tree',
+        desc: 'Expands or collapses that tag folder. The open/closed state of every folder is remembered between visits.',
+    },
+    {
+        icon: 'ph-fill ph-arrows-horizontal',
+        act: 'Drag edge',
+        where: 'Sidebar · Split view',
+        desc: 'Drag the sidebar’s right edge to resize it between 220px and 480px. In side-by-side mode, drag the divider between the two panes to rebalance them. Both widths are remembered.',
+    },
+    {
+        icon: 'ph-fill ph-hand-swipe-right',
+        act: 'Swipe from left edge',
+        where: 'Mobile & tablet',
+        desc: 'Opens the navigation drawer. The gesture must start within 28px of the screen edge and travel at least 50px horizontally, so it will not fire during ordinary vertical scrolling.',
+    },
+];
+
+/* ------------------------------------------------------------------ *
+ *  Preview-tab lifecycle rules
+ * ------------------------------------------------------------------ */
+const PREVIEW_RULES: Array<{ icon: string; title: string; desc: string }> = [
+    {
+        icon: 'ph-fill ph-eye',
+        title: 'One preview tab at a time',
+        desc: 'A preview tab is a temporary slot for something you are only glancing at. There is never more than one, and its label is shown in italics so you can tell it apart at a glance.',
+    },
+    {
+        icon: 'ph-fill ph-arrows-clockwise',
+        title: 'Previews are recycled, not stacked',
+        desc: 'Single-clicking another endpoint reuses the existing preview tab instead of opening a new one. Browsing twenty endpoints in a row therefore leaves you with exactly one tab, not twenty.',
+    },
+    {
+        icon: 'ph-fill ph-push-pin',
+        title: 'Three ways to make it permanent',
+        desc: 'Double-click the tab itself, drag it to a new position, or open the same endpoint again with a double-click or middle-click from the sidebar. Any of these converts the tab in place and frees the preview slot.',
+    },
+    {
+        icon: 'ph-fill ph-arrow-line-right',
+        title: 'The preview tab is always last',
+        desc: 'Opening a permanent tab while a preview is open inserts the new tab before it, pushing the preview to the far right. Your pinned work stays grouped together on the left and the throwaway tab never gets buried in the middle.',
+    },
+    {
+        icon: 'ph-fill ph-target',
+        title: 'Re-opening an endpoint focuses it',
+        desc: 'If an endpoint is already open in any tab, clicking it again simply activates that tab. You will never end up with the same endpoint open twice.',
+    },
+    {
+        icon: 'ph-fill ph-floppy-disk',
+        title: 'Tabs survive a reload',
+        desc: 'Your open tabs, which one is active, each tab’s view mode and its preview state are all saved per specification. Reload the page and you return to the same working set — with the preview tab still parked at the end.',
+    },
+];
+
+const stagger = {visible: {transition: {staggerChildren: 0.06}}};
+const fadeUp = {
+    hidden: {opacity: 0, y: 12},
+    visible: {opacity: 1, y: 0, transition: {duration: 0.4, ease: 'easeOut' as const}},
+};
+
+const MIT_LICENSE = `MIT License
+
+Copyright (c) ${new Date().getFullYear()} Pejman Chatrrouz (OpenDoc UI)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`;
+
+export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps) {
+    const methodCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        Object.values(spec?.paths || {}).forEach(pathItem => Object.entries(pathItem || {}).forEach(([method]) => {
+            if (/^(get|post|put|delete|patch|options|head|trace)$/i.test(method)) counts[method.toUpperCase()] = (counts[method.toUpperCase()] || 0) + 1;
+        }));
+        return counts;
+    }, [spec]);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const tocRailRef = useRef<HTMLDivElement | null>(null);
+    const [activeSection, setActiveSection] = useState('why');
+
+    // Keep the active dot centered in the rail (auto-scroll).
+    useEffect(() => {
+        const rail = tocRailRef.current;
+        const el = rail?.querySelector(`[data-toc-dot="${activeSection}"]`);
+        if (rail && el) {
+            const target = (el as HTMLElement).offsetTop - rail.clientHeight / 2 + (el as HTMLElement).clientHeight / 2;
+            rail.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
+        }
+    }, [activeSection]);
+
+    // Scroll-aware active section: an IntersectionObserver on the content's
+    // scroll container picks whichever section is currently in the reading
+    // zone (upper-middle), so the TOC highlight follows the page.
+    useEffect(() => {
+        const root = scrollRef.current;
+        if (!root) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries
+                    .filter(e => e.isIntersecting)
+                    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+                if (visible[0]) setActiveSection(visible[0].target.id);
+            },
+            {root, rootMargin: '-20% 0px -60% 0px', threshold: 0},
+        );
+        TOC_SECTIONS.forEach(sec => {
+            const el = root.querySelector(`#${sec.id}`);
+            if (el) observer.observe(el);
+        });
+        return () => observer.disconnect();
+    }, []);
+
+    const scrollToSection = (id: string) => {
+        const root = scrollRef.current;
+        const el = root?.querySelector(`#${id}`);
+        if (root && el) {
+            // The sections are nested inside relative wrappers, so offsetTop is
+            // unreliable — compute the scroll offset from bounding rects instead.
+            const top = (el as HTMLElement).getBoundingClientRect().top
+                - root.getBoundingClientRect().top + root.scrollTop - 16;
+            root.scrollTo({top, behavior: 'smooth'});
+        }
+        // Do NOT force the active state here — the IntersectionObserver will
+        // set it naturally once the section actually reaches the reading zone.
+        // Forcing it on click makes the highlight appear before the scroll
+        // arrives and then flicker back until the observer catches up.
+    };
+
+    return (
+        <div className="flex-1 h-full overflow-hidden relative">
+            <div ref={scrollRef} className="h-full w-full overflow-y-auto scrollbar-thin relative">
+                <div
+                    className="max-w-full mx-auto px-4 sm:px-8 py-6 sm:py-12 relative z-10 lg:flex lg:items-start lg:gap-4">
+                    {/* TOC dot-rail — in-flow on large screens: it sits beside the
+                    content (pushing it away, never overlapping it) and stays
+                    pinned to the top of the viewport while the page scrolls. */}
+                    <div className="hidden lg:flex flex-col w-36 shrink-0 relative lg:sticky lg:top-16 transition-all">
+                        <div ref={tocRailRef}
+                             className="relative w-full overflow-y-auto scrollbar-thin py-3 max-h-[calc(100vh-6rem)]">
+                            <nav className="flex flex-col items-center gap-2.5 px-2">
+                                {TOC_SECTIONS.map((sec) => {
+                                    const active = activeSection === sec.id;
+                                    return (
+                                        <button key={sec.id} type="button" data-toc-dot={sec.id}
+                                                onClick={() => scrollToSection(sec.id)}
+                                                className={clsx(
+                                                    'group flex items-center text-start gap-2 w-full transition-all duration-200 cursor-pointer',
+                                                    active ? 'opacity-100' : 'opacity-60 hover:opacity-100',
+                                                )}>
+                                            {/* little outline circle — filled when active */}
+                                            <span className={clsx(
+                                                'size-1.5 rounded-full shrink-0 border-1 transition-all duration-200',
+                                                active
+                                                    ? 'bg-[var(--primary)] border-[var(--primary)]'
+                                                    : 'border-[var(--text-muted)]/50 group-hover:border-[var(--text-heading)]',
+                                            )}/>
+                                            {/* section icon */}
+                                            <i className={clsx(sec.icon + ' text-[16px] shrink-0 transition-colors duration-200',
+                                                active ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-heading)]')}></i>
+                                            <span className={clsx(
+                                                'min-w-0 flex-1 text-[10px] font-semibold leading-tight truncate transition-colors duration-200',
+                                                active ? 'text-[var(--text-heading)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-heading)]',
+                                            )}>
+                                                {sec.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+
+                    </div>
+
+                    <motion.div
+                        initial="hidden"
+                        animate="visible"
+                        variants={stagger}
+                        className="min-w-0 flex-1 space-y-8 sm:space-y-10"
+                    >
+                        <motion.section variants={fadeUp} className="flex flex-col items-center gap-4 sm:gap-6">
+                            <motion.div
+                                initial={{scale: 0.92, opacity: 0}}
+                                animate={{scale: 1, opacity: 1}}
+                                transition={{duration: 0.6, ease: 'easeOut'}}
+                                className="w-full mx-auto flex items-center justify-center"
+                            >
+                                <div className="flex flex-col gap-2 md:gap-3 text-center">
+                                    <div className={'text-3xl md:text-6xl font-black font-sans'}>
+                                        OpenDoc UI
+                                    </div>
+                                    <div
+                                        className={'w-full mx-auto h-1 rounded-full bg-linear-210 from-[var(--primary)] to-[var(--method-get)]'}></div>
+                                    <div
+                                        className={'text-[11px] font-black opacity-40 tracking-widest uppercase'}>OpenAPI
+                                        Documentation Interface
+                                    </div>
+                                </div>
+                            </motion.div>
+                            <div className="text-center max-w-2xl">
+                                <motion.p variants={fadeUp}
+                                          className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--primary)] mb-2">About
+                                </motion.p>
+                                <motion.h1 variants={fadeUp}
+                                           className="text-xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-heading)]">
+                                    A clean, fast OpenAPI explorer
+                                </motion.h1>
+                                <motion.p variants={fadeUp}
+                                          className="mt-2 text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+                                    Browse, read, test and share OpenAPI / Swagger specifications in a modern
+                                    interface — zero build required, everything runs in your browser.
+                                </motion.p>
+                                <motion.div variants={fadeUp}
+                                            className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[10px] font-mono">
+                                    <span
+                                        className="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]">version {pkg.version}</span>
+                                    {specTitle && (
+                                        <span
+                                            className="px-2 py-0.5 rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)] truncate max-w-full">{specTitle}</span>
+                                    )}
+                                </motion.div>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="why">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Why
+                                OpenDoc UI?</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-3">
+                                <p>
+                                    OpenDoc UI turns an OpenAPI / Swagger description into a browsable,
+                                    testable workspace. The specification comes from where you deploy it:
+                                    from the bundled configuration (several APIs, switchable in two clicks
+                                    from the navbar) or, when no configuration is present, from a file you
+                                    open straight from your disk. Core documentation is rendered and processed
+                                    client-side — no backend or sign-up is required. If you choose to use the
+                                    AI assistant, only the context required by your selected provider is sent
+                                    to that provider, with secrets redacted by default.
+                                </p>
+                                <p>
+                                    The interface is built for day-to-day engineering work: navigation grouped
+                                    by tag, method badges with colour-coded semantics, one-click copy for
+                                    every path, schemas you can drill into modally without losing your place,
+                                    endpoint tabs so several pages stay open at once, a global search, and an
+                                    API runner that sends real HTTP requests from your browser so you can
+                                    probe an endpoint in seconds. Every view has a shareable deep link.
+                                </p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="what">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">What
+                                you can do</h2>
+                            <motion.div variants={stagger} initial="hidden" whileInView="visible"
+                                        viewport={{once: true, amount: 0.2}}
+                                        className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {FEATURES.map((f) => (
+                                    <motion.div key={f.title} variants={fadeUp}
+                                                whileHover={{y: -2}}
+                                                transition={{duration: 0.2}}
+                                                className="rounded-xl border p-3 sm:p-4 bg-[var(--surface)]/70 border-[var(--border)] hover:border-[var(--primary)]/30 transition-colors backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-1.5">
+                                            <motion.span
+                                                initial={{scale: 0.8}} whileInView={{scale: 1}} viewport={{once: true}}
+                                                className="inline-flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
+                                                <i className={`${f.icon} text-lg`}></i>
+                                            </motion.span>
+                                            <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)] truncate">{f.title}</h3>
+                                        </div>
+                                        <p className="text-[11px] sm:text-xs leading-relaxed text-[var(--text-muted)] pl-11">{f.desc}</p>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="how">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">How
+                                it works</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-3">
+                                <p>
+                                    When you load a specification, OpenDoc UI fetches the descriptor (JSON or YAML),
+                                    normalises it to OpenAPI 3, and builds an in-memory model of every path, operation,
+                                    parameter, schema, security scheme and server. The UI then renders three first-class
+                                    surfaces — a documentation tab with human-readable Markdown and schema tables,
+                                    an API runner that composes real <code className="font-mono">fetch</code> requests,
+                                    and a schema explorer that lets you browse every model in <code
+                                    className="font-mono">components/schemas</code>.
+                                </p>
+                                <p>
+                                    Because rendering happens entirely in the browser you can host OpenDoc UI on any
+                                    static host (GitHub Pages, Netlify, S3, an internal nginx box) and point it at any
+                                    CORS-enabled API. Authentication is stored in memory only — tokens never leave
+                                    your machine unless you explicitly send a request. AI can run directly against
+                                    a CORS-enabled provider or through the optional Express gateway when a provider
+                                    does not allow browser requests.
+                                </p>
+                                <p>
+                                    Theme preferences, collapsed tag folders, sidebar width, tabs, cache and chat
+                                    history
+                                    use browser <code className="font-mono">IndexedDB</code> first, with a localStorage
+                                    fallback,
+                                    so the UI returns to exactly how you left it on your next visit.
+                                </p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="ai">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">OpenDoc
+                                UI assistant</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-4">
+                                <p>
+                                    The sparkle button in the topbar opens a dedicated assistant workspace. It is
+                                    static-build safe: the documentation browser continues to work without an AI
+                                    provider, while the assistant can connect directly to a CORS-enabled provider or
+                                    through an optional same-origin/external gateway.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                        <h3 className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-2">
+                                            <i className="ph ph-crosshair text-[var(--primary)]"/>Contextual questions
+                                        </h3>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">Right-click
+                                            an endpoint and choose Ask AI, or open the assistant while viewing an
+                                            endpoint. Up to five endpoint contexts can be combined and are shown in the
+                                            fixed chat header.</p>
+                                    </div>
+                                    <div
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                        <h3 className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-2">
+                                            <i className="ph ph-quotes text-[var(--primary)]"/>Grounded answers</h3>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">The
+                                            assistant receives retrieved redacted endpoint/schema context, operational
+                                            API skills, and an explicit action bridge for opening endpoints, filling the
+                                            Runner, and proposing a request.</p>
+                                    </div>
+                                    <div
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                        <h3 className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-2">
+                                            <i className="ph ph-user-circle text-[var(--primary)]"/>Profiles and models
+                                        </h3>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">Global
+                                            profiles keep provider keys, models, gateway settings, temperatures, skills,
+                                            and custom instructions together. Refresh models to discover current
+                                            provider catalogs, or enter any model ID manually.</p>
+                                    </div>
+                                    <div
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                        <h3 className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-2">
+                                            <i className="ph ph-lock-key text-[var(--primary)]"/>Safety and Runner</h3>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">Secrets
+                                            are redacted by default. The existing API Runner remains the final request
+                                            gate; trusted Runner mode can skip the preparation confirmation for a
+                                            conversation, but it never silently sends a request.</p>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-[var(--text-muted)]">Conversations are stored per
+                                    specification in IndexedDB first, exportable as Markdown, and removable
+                                    individually. Provider settings and profiles are global to the browser. The free
+                                    online starting point is OpenRouter’s <code
+                                        className="font-mono">openrouter/free</code>; local Ollama and premium providers
+                                    are also supported.</p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="keyboard">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Keyboard
+                                Shortcuts</h2>
+                            <p className="text-[11px] sm:text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
+                                Every shortcut below works on both Windows/Linux (<kbd className="font-mono">Ctrl</kbd>)
+                                and
+                                macOS (<kbd className="font-mono">⌘</kbd>). Shortcuts that could interfere with typing
+                                are
+                                automatically suppressed while a text field has focus.
+                            </p>
+                            <div className="space-y-3">
+                                {SHORTCUT_GROUPS.map((g) => (
+                                    <motion.div key={g.group} variants={fadeUp}
+                                                className="rounded-xl border overflow-hidden bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm">
+                                        <div
+                                            className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--background)]/40">
+                                            <i className={`${g.icon} text-[13px] text-[var(--primary)]`}></i>
+                                            <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--text-heading)]">{g.group}</h3>
+                                        </div>
+                                        <div className="divide-y divide-[var(--border)]">
+                                            {g.items.map((r) => (
+                                                <div key={g.group + r.k + r.d} className="px-4 py-2.5 sm:py-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <span
+                                                            className="text-xs text-[var(--text)] font-medium">{r.d}</span>
+                                                        <kbd
+                                                            className="px-2 py-0.5 rounded font-mono text-[10px] bg-[var(--background)] border border-[var(--border)] text-[var(--text-heading)] shrink-0 whitespace-nowrap">{r.k}</kbd>
+                                                    </div>
+                                                    {r.note && (
+                                                        <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)] pe-2">{r.note}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="mouse">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Mouse
+                                &amp; Pointer</h2>
+                            <p className="text-[11px] sm:text-xs text-[var(--text-muted)] mb-3 leading-relaxed">
+                                Pointer behaviour follows the conventions you already know from code editors and
+                                browsers:
+                                a single click previews, a double or middle click commits, and a right click reveals the
+                                bulk actions.
+                            </p>
+                            <div
+                                className="rounded-xl border overflow-hidden bg-[var(--surface)]/70 border-[var(--border)] divide-y divide-[var(--border)] backdrop-blur-sm">
+                                {MOUSE_ACTIONS.map((m) => (
+                                    <motion.div key={m.act + m.where + m.desc} variants={fadeUp}
+                                                className="px-4 py-3 flex items-start gap-3">
+                                        <span
+                                            className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] mt-0.5">
+                                            <i className={`${m.icon} text-[14px]`}></i>
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                <span
+                                                    className="text-xs font-bold text-[var(--text-heading)]">{m.act}</span>
+                                                <span
+                                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--text-muted)]">{m.where}</span>
+                                            </div>
+                                            <p className="mt-1 text-[11px] sm:text-xs leading-relaxed text-[var(--text-muted)]">{m.desc}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="preview">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Preview
+                                Tabs Explained</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 mb-3 bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm text-xs sm:text-sm leading-relaxed text-[var(--text)]">
+                                <p>
+                                    Tabs come in two flavours. A <span className="font-bold text-[var(--text-heading)]">preview
+                                    tab</span> — shown in <em>italics</em> — is a scratch slot for an endpoint you are
+                                    just
+                                    skimming, and it gets reused the moment you look at something else. A <span
+                                    className="font-bold text-[var(--text-heading)]">permanent tab</span> stays until
+                                    you
+                                    close it yourself. This lets you explore a large specification freely without
+                                    drowning
+                                    in tabs, while still pinning the handful of endpoints you are actually working on.
+                                </p>
+                            </div>
+                            <motion.div variants={stagger} initial="hidden" whileInView="visible"
+                                        viewport={{once: true, amount: 0.15}}
+                                        className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {PREVIEW_RULES.map((r) => (
+                                    <motion.div key={r.title} variants={fadeUp}
+                                                whileHover={{y: -2}}
+                                                transition={{duration: 0.2}}
+                                                className="rounded-xl border p-3 sm:p-4 bg-[var(--surface)]/70 border-[var(--border)] hover:border-[var(--primary)]/30 transition-colors backdrop-blur-sm">
+                                        <div className="flex items-center gap-3 mb-1.5">
+                                            <span
+                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
+                                                <i className={`${r.icon} text-base`}></i>
+                                            </span>
+                                            <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)]">{r.title}</h3>
+                                        </div>
+                                        <p className="text-[11px] sm:text-xs leading-relaxed text-[var(--text-muted)] pl-11">{r.desc}</p>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="reading">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Reading
+                                the endpoint tree</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] backdrop-blur-sm text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-3">
+                                <p>
+                                    The sidebar groups every operation into folders derived from its tags — a tag
+                                    containing
+                                    slashes (<code className="font-mono">Billing/Invoices</code>) becomes a nested
+                                    folder, so
+                                    you can mirror your API’s real structure just by naming tags carefully.
+                                </p>
+                                <p>
+                                    When an endpoint is selected, the tree highlights the connector lines leading to it,
+                                    tracing a single path from the outermost folder down to that endpoint. Branches you
+                                    are
+                                    not inside stay neutral, so the highlight tells you exactly where you are even when
+                                    hundreds of operations are expanded. The <code
+                                    className="font-mono">+</code> / <code
+                                    className="font-mono">−</code> box of each folder on that path is tinted to match.
+                                </p>
+                                <p>
+                                    Searching or applying filters narrows the tree in place: folders whose contents no
+                                    longer
+                                    match disappear, and everything that remains is auto-expanded so results are visible
+                                    without any clicking. Clearing the search restores your previously expanded folders.
+                                </p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="theme-system">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">Theme
+                                system</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-2">
+                                <p>OpenDoc UI uses a semantic theme system. Each theme supplies coordinated light and
+                                    dark palettes for surfaces, text, borders, methods, selection, and search
+                                    highlighting.</p>
+                                <p>The active theme and mode are stored per specification, so switching documents
+                                    preserves the visual workspace you chose for each API. System mode follows your
+                                    operating system, while explicit light and dark modes override it.</p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="about">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">About
+                                the loaded specification</h2>
+                            <div
+                                className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-2 backdrop-blur-sm">
+                                <p><span
+                                    className="font-bold text-[var(--text-heading)]">Title:</span> {specTitle || 'No specification loaded'}
+                                </p>
+                                <p>
+                                    <span className="font-bold text-[var(--text-heading)]">Config key:</span>{' '}
+                                    <code
+                                        className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">{parsableKey || '—'}</code>
+                                </p>
+                                <div className="pt-3 mt-3 border-t border-[var(--border)]">
+                                    <p className="font-bold text-[var(--text-heading)] mb-2">Operations by method</p>
+                                    <div
+                                        className="space-y-1.5">{Object.entries(methodCounts).map(([method, count]) => {
+                                        const max = Math.max(...Object.values(methodCounts), 1);
+                                        return <div key={method} className="flex items-center gap-2 text-[10px]"><span
+                                            className="w-12 font-mono text-[var(--text-muted)]">{method}</span>
+                                            <div
+                                                className="h-2 flex-1 rounded-full bg-[var(--background)] overflow-hidden">
+                                                <div className="h-full rounded-full bg-[var(--primary)]"
+                                                     style={{width: `${(count / max) * 100}%`}}/>
+                                            </div>
+                                            <span className="w-5 text-right font-mono">{count}</span></div>;
+                                    })}</div>
+                                </div>
+                                <p className="text-[var(--text-muted)]">
+                                    Swagger 2.x and OpenAPI 3.x descriptors are accepted in JSON or YAML and
+                                    normalized before rendering, so every view works the same regardless of
+                                    the source format. Requests made through the API Runner go directly from
+                                    your browser to the API's servers, exactly as a client application would
+                                    send them.
+                                </p>
+                            </div>
+                        </motion.section>
+
+                        <motion.section variants={fadeUp} id="license">
+                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">License</h2>
+                            <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-3 leading-relaxed">
+                                OpenDoc UI is open-source software released under the MIT License. You are free to
+                                use, copy, modify, merge, publish, distribute, sublicense and/or sell copies of the
+                                software, subject to the terms below.
+                            </p>
+                            <pre
+                                className="rounded-xl border p-4 bg-[var(--background)] border-[var(--border)] text-[11px] leading-relaxed font-mono whitespace-pre overflow-x-auto text-[var(--text)] scrollbar-thin">
+{MIT_LICENSE}
+                    </pre>
+                        </motion.section>
+
+                        <motion.footer variants={fadeUp}
+                                       className="pt-4 border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] flex flex-wrap items-center justify-between gap-2">
+                            <span>Built with React, Vite, Tailwind, Monaco Editor, and Phosphor Icons.</span>
+                            <span className="flex items-center gap-2">
+                                <span>By <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer"
+                                            className="font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors">Pejman
+                                    Chatrrouz</a></span>
+                                <span className="font-mono">OpenDoc UI · {pkg.version}</span>
+                            </span>
+                        </motion.footer>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
+    );
+}

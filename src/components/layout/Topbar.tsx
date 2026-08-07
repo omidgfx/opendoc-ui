@@ -1,0 +1,398 @@
+import React, {useEffect, useRef, useState} from 'react';
+import clsx from 'clsx';
+import type {ActiveAuth, OpenApiSpec, ParsableConfig} from '../../types';
+import {useBreakpoint} from '../../hooks/useBreakpoint';
+import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
+import {Tip} from '../common/Tooltip';
+import type {LocalHistoryEntry} from '../../utils/localHistory';
+import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
+import {specStorage} from '../../utils/storage';
+// @ts-ignore
+import Logo from '../../logo.svg?react';
+
+interface TopbarProps {
+    parsables: ParsableConfig;
+    selectedParsableKey: string;
+    onSelectParsable: (key: string) => void;
+    activeAuth: ActiveAuth;
+    onUpdateAuth: (auth: ActiveAuth) => void;
+    onOpenAuthModal: () => void;
+    searchQuery: string;
+    onSearchChange: (query: string) => void;
+    onDownloadSpec: () => void;
+    title: string;
+    showSchemaExplorer: boolean;
+    spec: OpenApiSpec | null;
+    showHome: boolean;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+    onOpenMobileSidebar: () => void;
+    onOpenAssistant: () => void;
+    onOpenThemeModal: () => void;
+    isLocalMode: boolean;
+    canOpenLocal: boolean;
+    onOpenLocalFile: () => void;
+    onRefreshSpec: () => void;
+    onReloadSpecification: (key: string) => void | Promise<void>;
+    onResetSpecification: (key: string) => void;
+    onResetAllConfigurations: () => void;
+    isRefreshingSpec: boolean;
+    localHistory: LocalHistoryEntry[];
+    onSelectHistoryEntry: (entry: LocalHistoryEntry) => void;
+    onRemoveHistoryEntry: (key: string) => void;
+    onClearHistory: () => void;
+    localOpenError: string | null;
+    onDismissLocalError: () => void;
+    onSearchHasResults?: (q: string) => boolean;
+    /** Hide the navbar search (e.g. on the welcome page, which has its own). */
+    hideSearch?: boolean;
+}
+
+export default function Topbar({
+                                   parsables,
+                                   selectedParsableKey,
+                                   onSelectParsable,
+                                   activeAuth,
+                                   searchQuery,
+                                   onSearchChange,
+                                   onDownloadSpec,
+                                   title,
+                                   showSchemaExplorer,
+                                   spec,
+                                   selectedThemeName,
+                                   onSelectTheme,
+                                   isCollapsed,
+                                   onToggleCollapse,
+                                   onOpenMobileSidebar,
+                                   onOpenAssistant,
+                                   onOpenAuthModal,
+                                   onOpenThemeModal,
+                                   isLocalMode,
+                                   canOpenLocal,
+                                   onOpenLocalFile,
+                                   onRefreshSpec,
+                                   onReloadSpecification,
+                                   onResetSpecification,
+                                   onResetAllConfigurations,
+                                   isRefreshingSpec,
+                                   localHistory,
+                                   onSelectHistoryEntry,
+                                   onRemoveHistoryEntry,
+                                   onClearHistory,
+                                   localOpenError,
+                                   onDismissLocalError,
+                                   onSearchHasResults,
+                                   hideSearch,
+                               }: TopbarProps & { selectedThemeName: string; onSelectTheme: (n: string) => void }) {
+    const [showSpecificationModal, setShowSpecificationModal] = useState(false);
+    const [showMobileSearch, setShowMobileSearch] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
+    const searchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [searchHistoryVersion, setSearchHistoryVersion] = useState(0);
+
+    const saveSearchHistory = (q: string) => {
+        // Only deliberate, meaningful searches belong in history.
+        if (!selectedParsableKey || q.trim().length < 3) return;
+        const items = specStorage.getJSON<string[]>(selectedParsableKey, 'search_history', [], (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'));
+        const next = [q.trim(), ...items.filter((x) => x !== q.trim())].slice(0, 10);
+        specStorage.setJSON(selectedParsableKey, 'search_history', next);
+        setSearchHistoryVersion(v => v + 1);
+    };
+
+    // Save the query once typing has stayed still for 5 seconds — that way only
+    // deliberate searches land in history. Queries that matched nothing are not
+    // stored (we ask the app via onSearchHasResults).
+    const lastSavedSearchRef = useRef('');
+    useEffect(() => {
+        if (!selectedParsableKey) return;
+        const q = searchQuery.trim();
+        if (q.length < 3 || q === lastSavedSearchRef.current) return;
+        const t = setTimeout(() => {
+            lastSavedSearchRef.current = q;
+            if (!onSearchHasResults || onSearchHasResults(q)) {
+                saveSearchHistory(q);
+            }
+        }, 3000);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, selectedParsableKey]);
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            saveSearchHistory(searchQuery);
+            (e.target as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    const handleSearchFocus = () => {
+        if (searchBlurTimer.current) {
+            clearTimeout(searchBlurTimer.current);
+            searchBlurTimer.current = null;
+        }
+        setSearchFocused(true);
+    };
+    const handleSearchBlur = () => {
+        searchBlurTimer.current = setTimeout(() => setSearchFocused(false), 150);
+    };
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const bp = useBreakpoint();
+    const isMobile = bp === 'mobile' || bp === 'tablet';
+    const hasSpec = !!spec;
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                const ae = document.activeElement;
+                if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+                if (hideSearch) return;
+                e.preventDefault();
+                if (isMobile) setShowMobileSearch(true);
+                searchInputRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isMobile, hideSearch]);
+
+    const authConnected = activeAuth.activeScheme && activeAuth.activeScheme !== 'none';
+
+    const selectorButton = isLocalMode
+        ? canOpenLocal && (
+        <Tip content="Open a specification from your device">
+            <button type="button" onClick={() => setShowSpecificationModal(true)}
+                    className="flex h-8 w-40 xl:w-48 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]">
+                <i className="ph-fill ph-folder-open shrink-0 text-[14px] text-[var(--primary)]"/>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">Open specification</span>
+                <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]"/>
+            </button>
+        </Tip>
+    )
+        : (
+            <Tip content="Switch API specification">
+                <button type="button" onClick={() => setShowSpecificationModal(true)}
+                        className="flex h-8 w-44 xl:w-56 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]">
+                    <i className="ph-fill ph-files shrink-0 text-[14px] text-[var(--primary)]"/>
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                        {parsables[selectedParsableKey]?.title || selectedParsableKey || 'API Specifications'}
+                    </span>
+                    {hasSpec && (
+                        // No nested tooltip here — the outer Tip on the selector
+                        // button is enough; two tooltips stacked look broken.
+                        <span role="button" tabIndex={-1} aria-label="Reload specification"
+                              onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRefreshSpec();
+                              }}
+                              className="shrink-0 flex items-center justify-center size-5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer">
+                            <i className={`ph ph-arrows-clockwise text-[11px] inline-block ${isRefreshingSpec ? 'animate-spin' : ''}`}></i>
+                        </span>
+                    )}
+                    <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]"/>
+                </button>
+            </Tip>
+        );
+
+    return (
+        <>
+            <div
+                className="h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Tip content={isMobile ? 'Open menu' : (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+                         placement="bottom">
+                        <button
+                            onClick={isMobile ? onOpenMobileSidebar : onToggleCollapse}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0">
+                            <i className={`ph ${isMobile ? 'ph-list' : (isCollapsed ? 'ph-list' : 'ph-sidebar-simple')} text-[18px]`}></i>
+                        </button>
+                    </Tip>
+
+                    <div
+                        className="flex items-center gap-2 hover:opacity-80 transition-all cursor-pointer select-none shrink-0">
+                        <span className="size-8 sm:size-9 overflow-hidden"><Logo className="size-full"/></span>
+                        <span
+                            className="font-extrabold text-sm tracking-tight hidden sm:inline text-[var(--text-heading)]">OpenDoc
+                            UI</span>
+                    </div>
+
+                    {!isMobile && (
+                        <>
+                            <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>
+                            {selectorButton}
+                        </>
+                    )}
+                </div>
+
+                {isMobile && isLocalMode && canOpenLocal && (
+                    <Tip content="Open a specification from your device" placement="bottom">
+                        <button type="button" onClick={() => setShowSpecificationModal(true)}
+                                className="h-8 px-2.5 rounded-lg border flex items-center justify-center gap-1.5 cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] shrink-0">
+                            <i className="ph-fill ph-folder-open text-[14px] text-[var(--primary)]"></i>
+                            <span className="text-[10px] font-bold hidden sm:inline">Open</span>
+                        </button>
+                    </Tip>
+                )}
+
+                {/* Desktop search */}
+                {hasSpec && !showSchemaExplorer && !isMobile && !hideSearch && (
+                    <div className="hidden md:flex flex-1 items-center relative max-w-md min-w-0 select-none">
+                        <input ref={searchInputRef} type="text" placeholder="Global Search (Ctrl+K)..."
+                               value={searchQuery}
+                               onChange={(e) => onSearchChange(e.target.value)}
+                               onFocus={handleSearchFocus}
+                               onBlur={handleSearchBlur}
+                               onKeyDown={handleSearchKeyDown}
+                               className="w-full min-w-0 pl-9 pr-14 h-8 text-xs rounded-lg border outline-none focus:border-[var(--primary)] focus:bg-[var(--surface)] transition-all font-sans border-[var(--border)] text-[var(--text)] bg-[var(--background)]"/>
+                        {searchFocused && selectedParsableKey && (
+                            <SearchHistoryDropdown
+                                key={searchHistoryVersion}
+                                specKey={selectedParsableKey}
+                                query={searchQuery}
+                                onPick={(q) => onSearchChange(q)}
+                                onClose={() => setSearchFocused(false)}
+                            />
+                        )}
+                        <div
+                            className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
+                            <i className="ph ph-magnifying-glass text-[14px]"></i>
+                        </div>
+                        {searchQuery ? (
+                            <button onClick={() => onSearchChange('')}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-[var(--text-muted)]">
+                                <i className="ph ph-x text-[14px]"></i>
+                            </button>
+                        ) : (
+                            <div
+                                className="absolute inset-y-0 right-0 pr-1.5 flex items-center pointer-events-none select-none">
+                                <kbd
+                                    className="px-1.5 py-0.5 text-[9px] font-sans font-extrabold rounded border select-none bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)]">Ctrl+K</kbd>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Title (mobile center) */}
+                {isMobile && !showMobileSearch && (
+                    <div className="flex-1 min-w-0 px-2">
+                        <div className="text-[11px] text-[var(--text-muted)] font-medium truncate">{title}</div>
+                    </div>
+                )}
+
+                <div className="flex items-center gap-1 shrink-0">
+                    {hasSpec && (
+                        <Tip content="Open AI Assistant" placement="bottom">
+                            <button type="button" onClick={onOpenAssistant}
+                                    className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]">
+                                <i className="ph-fill ph-sparkle text-[15px]"/>
+                            </button>
+                        </Tip>
+                    )}
+                    {hasSpec && !showSchemaExplorer && isMobile && !hideSearch && (
+                        <Tip content="Search" placement="bottom">
+                            <button onClick={() => setShowMobileSearch(v => !v)}
+                                    className="size-8 rounded-lg flex items-center justify-center border cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                <i className="ph ph-magnifying-glass text-[16px]"></i>
+                            </button>
+                        </Tip>
+                    )}
+
+                    {!isMobile && hasSpec && (
+                        <>
+                            <Tip
+                                content={authConnected ? 'Authentication active — click to edit' : 'Configure authentication'}>
+                                <button onClick={onOpenAuthModal}
+                                        className="h-8 ps-2.5 pe-2 border cursor-pointer border-[var(--border)] text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all select-none hover:bg-[var(--surface-hover)]">
+                                    <i className={clsx('ph-fill ph-lock-key text-[14px]',
+                                        authConnected ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]')}></i>
+                                    <span
+                                        className="hidden lg:inline">{authConnected ? `${activeAuth.activeScheme.toUpperCase()}` : 'Authorize'}</span>
+                                    {authConnected && <span
+                                        className="w-1.5 h-1.5 rounded-full bg-[var(--method-get)] animate-pulse"></span>}
+                                </button>
+                            </Tip>
+
+                            <Tip content="Download raw specification">
+                                <button onClick={onDownloadSpec}
+                                        className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                    <i className="ph-fill ph-download-simple text-[14px] text-[var(--primary)]"></i>
+                                </button>
+                            </Tip>
+                        </>
+                    )}
+
+                    {hasSpec && (
+                        <Tip content="Choose theme">
+                            <button type="button" onClick={onOpenThemeModal}
+                                    className="flex size-8 xl:w-40 items-center gap-2 rounded-lg border px-2 xl:px-3 text-left transition-all cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                <i className="ph-fill ph-palette shrink-0 text-[14px] text-[var(--primary)]"></i>
+                                <span
+                                    className="hidden xl:block min-w-0 flex-1 truncate text-xs font-semibold">{selectedThemeName}</span>
+                                <i className="hidden xl:block ph ph-squares-four shrink-0 text-[12px] text-[var(--text-muted)]/60"></i>
+                            </button>
+                        </Tip>
+                    )}
+                </div>
+            </div>
+
+            {showMobileSearch && !showSchemaExplorer && isMobile && (
+                <div
+                    className="sm:hidden border-b px-3 py-2 flex items-center gap-2 bg-[var(--navbar)] border-[var(--border)]">
+                    <div className="relative flex-1 min-w-0">
+                        <input ref={searchInputRef} type="text" autoFocus placeholder="Search..." value={searchQuery}
+                               onChange={(e) => onSearchChange(e.target.value)}
+                               onFocus={handleSearchFocus}
+                               onBlur={handleSearchBlur}
+                               onKeyDown={handleSearchKeyDown}
+                               className="w-full pl-9 pr-8 h-9 text-xs rounded-lg border outline-none focus:border-[var(--primary)] focus:bg-[var(--surface)] bg-[var(--background)] border-[var(--border)] text-[var(--text)]"/>
+                        {searchFocused && selectedParsableKey && (
+                            <SearchHistoryDropdown
+                                key={searchHistoryVersion}
+                                specKey={selectedParsableKey}
+                                query={searchQuery}
+                                onPick={(q) => onSearchChange(q)}
+                                onClose={() => setSearchFocused(false)}
+                            />
+                        )}
+                        <div
+                            className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
+                            <i className="ph ph-magnifying-glass text-[14px]"></i>
+                        </div>
+                        {searchQuery && (
+                            <button onClick={() => onSearchChange('')}
+                                    className="absolute inset-y-0 right-0 pr-2 flex items-center cursor-pointer text-[var(--text-muted)]">
+                                <i className="ph ph-x text-[14px]"></i>
+                            </button>
+                        )}
+                    </div>
+                    <button onClick={() => setShowMobileSearch(false)}
+                            className="text-xs font-semibold text-[var(--text-muted)] px-2 py-1 cursor-pointer shrink-0">Cancel
+                    </button>
+                </div>
+            )}
+
+            <ApiSpecificationSelectorModal
+                isOpen={showSpecificationModal}
+                specifications={parsables}
+                selectedKey={selectedParsableKey}
+                activeSpecification={spec}
+                isLocalMode={isLocalMode}
+                canOpenLocal={canOpenLocal}
+                onOpenLocalFile={onOpenLocalFile}
+                onReloadSpecification={onReloadSpecification}
+                onResetSpecification={onResetSpecification}
+                onResetAllConfigurations={onResetAllConfigurations}
+                localHistory={localHistory}
+                onSelectHistoryEntry={onSelectHistoryEntry}
+                onRemoveHistoryEntry={onRemoveHistoryEntry}
+                onClearHistory={onClearHistory}
+                localOpenError={localOpenError}
+                onDismissLocalError={onDismissLocalError}
+                onSelect={(k) => {
+                    onSelectParsable(k);
+                    setShowSpecificationModal(false);
+                }}
+                onClose={() => setShowSpecificationModal(false)}/>
+        </>
+    );
+}
