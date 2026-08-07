@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {AIStreamError, fetchProviderModelCatalog, streamAIResponse} from '../src/utils/aiProviders';
+import {executeRunnerRequest} from '../src/utils/runnerExecution';
 import type {AISettings} from '../src/types';
 
 const originalFetch = globalThis.fetch;
@@ -60,6 +61,34 @@ try {
     assert.equal(catalog.gateway?.clientModelSelection, false);
     assert.deepEqual(catalog.models.map(model => model.id), ['approved/model']);
     console.log('✓ discovers gateway-owned provider and model policy without submitting a client provider');
+
+    const originalWindow = (globalThis as any).window;
+    let runnerUrl = '';
+    let runnerBody = '';
+    (globalThis as any).window = {setTimeout, clearTimeout};
+    globalThis.fetch = (async (input, init) => {
+        runnerUrl = String(input);
+        runnerBody = String(init?.body || '');
+        return new Response('{"success":true,"data":{"ok":true}}', {status: 200, headers: {'content-type': 'application/json'}});
+    }) as typeof fetch;
+    const runnerResult = await executeRunnerRequest({
+        spec: {
+            openapi: '3.0.3',
+            info: {title: 'Fixture', version: '1'},
+            paths: {'/login': {post: {requestBody: {content: {'application/x-www-form-urlencoded': {schema: {type: 'object'}}}}, responses: {'200': {description: 'ok'}}}}},
+        } as any,
+        path: '/login', method: 'post', operation: {requestBody: {content: {'application/x-www-form-urlencoded': {schema: {type: 'object'}}}}, responses: {'200': {description: 'ok'}}},
+        selectedServer: 'https://api.example.test',
+        activeAuth: {activeScheme: 'none', selectedSchemes: [], schemeValues: {}, cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: ''},
+        body: JSON.stringify({mobile: '09356413497', password: 'password'}),
+        bodyType: 'application/x-www-form-urlencoded',
+    });
+    assert.equal(runnerResult.status, 200);
+    assert.equal(runnerUrl, 'https://api.example.test/login');
+    assert.match(runnerBody, /mobile=09356413497/);
+    assert.match(runnerBody, /password=password/);
+    console.log('✓ executes a Runner action directly without navigating to the endpoint tab');
+    (globalThis as any).window = originalWindow;
 } finally {
     globalThis.fetch = originalFetch;
 }

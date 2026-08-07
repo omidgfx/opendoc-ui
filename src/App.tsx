@@ -59,7 +59,8 @@ import {
     readAISettings,
     writeAISettings
 } from './utils/aiStorage';
-import {dispatchOpenDocUIAction, type OpenDocUIAction} from './utils/aiBridge';
+import {createOpenDocUIActionId, dispatchOpenDocUIAction, dispatchOpenDocUIRunnerResult, type OpenDocUIAction} from './utils/aiBridge';
+import {executeRunnerRequest} from './utils/runnerExecution';
 
 declare global {
     interface Window {
@@ -164,6 +165,7 @@ export default function App() {
     const [hasAIProfile, setHasAIProfile] = useState(() => readAIProfiles().length > 0);
     const [aiSettingsReady, setAISettingsReady] = useState(false);
     const [showAISettings, setShowAISettings] = useState(false);
+    const assistantRunnerAbortRef = useRef<AbortController | null>(null);
     useEffect(() => {
         if (aiSettingsReady) writeAISettings(aiSettings);
     }, [aiSettings, aiSettingsReady]);
@@ -1779,11 +1781,47 @@ export default function App() {
             handleOpenRunner(action.path, action.method);
             return;
         }
-        handleOpenRunner(action.path, action.method);
-        // The Runner is endpoint-local state. Wait for the endpoint pane to mount,
-        // then deliver the validated action to that exact path/method.
-        window.setTimeout(() => dispatchOpenDocUIAction(action), 50);
-    }, [handleOpenRunner, handleSelectEndpoint, handleSearchChange, spec]);
+        if (action.action === 'set_runner_fields') {
+            handleOpenRunner(action.path, action.method);
+            window.setTimeout(() => dispatchOpenDocUIAction(action), 50);
+            return;
+        }
+
+        // A Run action is executed through the shared controller without
+        // navigating away from the Assistant tab. Manual Runner execution keeps
+        // its own endpoint-local UI path and is unaffected.
+        const operation = (spec?.paths?.[action.path] as any)?.[action.method];
+        const actionId = action.id || createOpenDocUIActionId();
+        if (!spec || !operation) return;
+        assistantRunnerAbortRef.current?.abort();
+        const controller = new AbortController();
+        assistantRunnerAbortRef.current = controller;
+        void executeRunnerRequest({
+            spec,
+            path: action.path,
+            method: action.method,
+            operation,
+            selectedServer,
+            activeAuth,
+            params: action.params,
+            headers: action.headers,
+            body: action.body,
+            bodyType: action.bodyType,
+            signal: controller.signal,
+        }).then(result => {
+            if (assistantRunnerAbortRef.current === controller) assistantRunnerAbortRef.current = null;
+            dispatchOpenDocUIRunnerResult({actionId, specKey: selectedParsableKey, path: action.path, method: action.method, result});
+        }).catch(error => {
+            if (assistantRunnerAbortRef.current === controller) assistantRunnerAbortRef.current = null;
+            dispatchOpenDocUIRunnerResult({
+                actionId,
+                specKey: selectedParsableKey,
+                path: action.path,
+                method: action.method,
+                result: {status: 0, headers: {}, body: error instanceof Error ? error.message : 'AI Runner action failed.', isJson: false, errorKind: 'network', errorMessage: error instanceof Error ? error.message : 'AI Runner action failed.'},
+            });
+        });
+    }, [activeAuth, handleOpenRunner, handleSelectEndpoint, handleSearchChange, selectedParsableKey, selectedServer, spec]);
     const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
     const handleSelectParsable = (k: string) => {
         if (k === selectedParsableKey) return;
