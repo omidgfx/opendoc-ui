@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {applyAuthToRequest} from '../src/utils/auth';
 import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/aiContext';
 import {parseOpenDocUIActions} from '../src/utils/aiBridge';
+import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
 import {trimAIConversation} from '../src/utils/aiStorage';
 import {
     getRefName,
@@ -150,7 +151,6 @@ test('keeps citations limited to IDs in the source catalog', () => {
 test('exposes operational skills and validates the OpenDoc UI action bridge', () => {
     const context = buildAIContext({spec: baseSpec, specKey: 'fixture'});
     const prompt = buildAISystemPrompt({
-        enabled: true,
         transport: 'direct',
         gatewayUrl: '',
         gatewayToken: '',
@@ -167,6 +167,34 @@ test('exposes operational skills and validates the OpenDoc UI action bridge', ()
     const actions = parseOpenDocUIActions('<opendoc-ui-action>{"action":"set_runner_fields","path":"/users/{id}","method":"get","params":{"id":"42"}}</opendoc-ui-action>');
     assert.equal(actions[0]?.action, 'set_runner_fields');
     assert.equal(parseOpenDocUIActions('<opendoc-ui-action>{"action":"run_api","path":"https://evil","method":"get"}</opendoc-ui-action>').length, 0);
+});
+
+test('keeps gateway providers server-controlled and models exactly allowlisted', () => {
+    const policy = createGatewayModelPolicy({
+        provider: 'openrouter', configuredModel: 'openai/gpt-4o-mini', allowClientModel: true,
+        allowedModels: 'openai/gpt-4o-mini,anthropic/claude-3.5-sonnet',
+    });
+    assert.deepEqual(resolveGatewaySelection(policy, {model: 'anthropic/claude-3.5-sonnet'}), {provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet'});
+    assert.match((resolveGatewaySelection(policy, {provider: 'anthropic', model: 'anthropic/claude-3.5-sonnet'}) as {error: string}).error, /controlled by the gateway/);
+    assert.match((resolveGatewaySelection(policy, {model: 'unapproved/model'}) as {error: string}).error, /not allowed/);
+});
+
+test('returns only gateway-allowlisted models from discovery', () => {
+    const policy = createGatewayModelPolicy({provider: 'ollama', configuredModel: 'llama3.2', allowClientModel: true, allowedModels: 'llama3.2,qwen2.5:7b'});
+    const models = allowedModelCatalog(policy, [
+        {id: 'qwen2.5:7b', label: 'Qwen 2.5 7B · Local', tier: 'local'},
+        {id: 'not-allowed', label: 'Not allowed', tier: 'local'},
+    ]);
+    assert.deepEqual(models.map(model => model.id), ['llama3.2', 'qwen2.5:7b']);
+    assert.match(models[0].label, /Gateway allowed/);
+    assert.equal(models[1].label, 'Qwen 2.5 7B · Local');
+});
+
+test('rejects unsafe gateway policy configuration', () => {
+    assert.throws(() => createGatewayModelPolicy({provider: 'unknown', configuredModel: 'model', allowClientModel: false}), /Unsupported AI_PROVIDER/);
+    assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: '', allowClientModel: true, allowedModels: 'model'}), /AI_MODEL is required/);
+    assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: 'model', allowClientModel: true, allowedModels: '*'}), /wildcard/);
+    assert.throws(() => createGatewayModelPolicy({provider: 'openrouter', configuredModel: 'default', allowClientModel: true, allowedModels: 'other'}), /must include AI_MODEL/);
 });
 
 console.log('All OpenDoc UI unit tests passed.');

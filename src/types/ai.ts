@@ -3,7 +3,6 @@ export type AITransport = 'direct' | 'gateway';
 export type AISkillPack = 'openapi' | 'rest-debugging' | 'security' | 'sdk-generation' | 'api-testing';
 
 export interface AISettings {
-    enabled: boolean;
     transport: AITransport;
     gatewayUrl: string;
     gatewayToken: string;

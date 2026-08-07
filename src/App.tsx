@@ -55,6 +55,7 @@ import {
     clearAIConversations,
     clearAISessionSecrets,
     clearAllAIConversations,
+    readAIProfiles,
     readAISettings,
     writeAISettings
 } from './utils/aiStorage';
@@ -160,11 +161,17 @@ export default function App() {
     showAssistantRef.current = showAssistant;
 
     const [aiSettings, setAISettings] = useState<AISettings>(() => readAISettings());
+    const [hasAIProfile, setHasAIProfile] = useState(() => readAIProfiles().length > 0);
     const [aiSettingsReady, setAISettingsReady] = useState(false);
     const [showAISettings, setShowAISettings] = useState(false);
     useEffect(() => {
         if (aiSettingsReady) writeAISettings(aiSettings);
     }, [aiSettings, aiSettingsReady]);
+
+    const handleAISettingsSave = useCallback((settings: AISettings) => {
+        setAISettings(settings);
+        setHasAIProfile(readAIProfiles().length > 0);
+    }, []);
 
     const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -399,8 +406,7 @@ export default function App() {
     const [switcherOpen, setSwitcherOpen] = useState(false);
     const [switcherIndex, setSwitcherIndex] = useState(0);
     const switcherPrevTabRef = useRef<string | null>(null);
-    // Kept current with the latest handleSelectTab (assigned after its
-    // definition below) so the switcher handlers never close over a stale one.
+    // The switcher always delegates to the current tab-selection handler.
     const handleSelectTabRef = useRef<(id: string) => void>(() => {
     });
 
@@ -1541,6 +1547,7 @@ export default function App() {
     ) => {
         if (target.type === 'endpoint') {
             const {path, method} = target;
+            if (action === 'ask-ai' && !hasAIProfile) return;
             if (action === 'ask-ai') {
                 askAIAboutEndpoint(path, method);
                 return;
@@ -1579,7 +1586,7 @@ export default function App() {
             return;
         }
         setShareTarget({url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}`});
-    }, [spec, openEndpointPermanent, openViewTabPermanent, openEndpointInBrowserTab, openViewInBrowserTab, endpointDeepLink, viewDeepLink, copyText, askAIAboutEndpoint]);
+    }, [spec, hasAIProfile, openEndpointPermanent, openViewTabPermanent, openEndpointInBrowserTab, openViewInBrowserTab, endpointDeepLink, viewDeepLink, copyText, askAIAboutEndpoint]);
 
     const handleSelectEndpoint = (path: string, method: string) => {
         if (activeTabId === 'view:search') stashSearchTab();
@@ -1736,9 +1743,7 @@ export default function App() {
     };
 
     const handleAssistantResponseFinished = useCallback(() => {
-        // Read the live navigation refs. The assistant remains mounted while
-        // hidden, so a callback captured before the user switched tabs must not
-        // mistake the old assistant state for the current one.
+        // The assistant remains mounted while hidden, so read current navigation state.
         if (!(showAssistantRef.current && activeTabIdForAssistantRef.current === 'view:assistant')) {
             setAssistantUnread(true);
         }
@@ -2132,6 +2137,7 @@ export default function App() {
                                     scrollIntent={scrollIntent} setScrollIntent={setScrollIntent}
                                     showHome={showHome} showAbout={showAbout}
                                     showAssistant={showAssistant} assistantContextEndpoints={assistantContextEndpoints}
+                                    hasAIProfile={hasAIProfile}
                                     themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode}
                                     onToggleThemeMode={toggleThemeMode}
                                     selectedThemeName={selectedThemeName}
@@ -2189,6 +2195,7 @@ export default function App() {
                                             activeTab={selectedTab}
                                             searchQuery={searchQuery}
                                             settings={aiSettings}
+                                            hasAIProfile={hasAIProfile}
                                             isVisible={assistantTabActive}
                                             onOpenSettings={() => setShowAISettings(true)}
                                             onClearEndpointContext={() => setAssistantContextEndpoints([])}
@@ -2310,7 +2317,7 @@ export default function App() {
                                         onSetThemeMode={(m) => setCurrentThemeMode(m)}
                                         onClose={() => setShowThemeModal(false)}/>
                     <AISettingsModal isOpen={showAISettings} settings={aiSettings}
-                                     onSave={setAISettings} onClose={() => setShowAISettings(false)}/>
+                                     onSave={handleAISettingsSave} onClose={() => setShowAISettings(false)}/>
                 </div>
             </OperationLinkProvider>
         </TooltipProvider>

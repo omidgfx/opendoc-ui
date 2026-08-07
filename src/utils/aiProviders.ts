@@ -1,5 +1,33 @@
 import type {AIProviderId, AIProviderPreset, AIRequestMessage, AISettings} from '../types';
 
+export interface GatewayModelPolicyInfo {
+    clientModelSelection: boolean;
+    provider: AIProviderId;
+    model: string;
+    models?: string[];
+}
+
+export interface AIModelCatalogResult {
+    models: AIProviderPreset['models'];
+    gateway?: GatewayModelPolicyInfo;
+}
+
+export class AIStreamError extends Error {
+    readonly status?: number;
+    readonly code?: string;
+    readonly provider?: string;
+    readonly model?: string;
+
+    constructor(message: string, details: {status?: number; code?: string; provider?: string; model?: string} = {}) {
+        super(message);
+        this.name = 'AIStreamError';
+        this.status = details.status;
+        this.code = details.code;
+        this.provider = details.provider;
+        this.model = details.model;
+    }
+}
+
 export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
     {
         id: 'openrouter',
@@ -116,9 +144,16 @@ const modelTier = (model: any): 'free' | 'premium' | 'local' => {
 };
 
 /** Discover the provider's current model catalog. Manual model entry remains available. */
-export const fetchProviderModels = async (settings: AISettings, options: {
-    signal?: AbortSignal
-} = {}): Promise<AIProviderPreset['models']> => {
+const isProviderId = (value: unknown): value is AIProviderId =>
+    typeof value === 'string' && AI_PROVIDER_PRESETS.some(provider => provider.id === value);
+
+const isModelOption = (value: any): value is AIProviderPreset['models'][number] =>
+    value && typeof value === 'object'
+    && typeof value.id === 'string'
+    && typeof value.label === 'string'
+    && (value.tier === 'free' || value.tier === 'premium' || value.tier === 'local');
+
+export const fetchProviderModelCatalog = async (settings: AISettings, options: {signal?: AbortSignal} = {}): Promise<AIModelCatalogResult> => {
     if (settings.transport === 'gateway') {
         const value = trimSlash(settings.gatewayUrl.trim());
         if (!value) throw new Error('Configure a gateway URL first.');
@@ -127,11 +162,24 @@ export const fetchProviderModels = async (settings: AISettings, options: {
             method: 'POST',
             signal: options.signal,
             headers: {'Content-Type': 'application/json', ...(settings.gatewayToken ? {Authorization: `Bearer ${settings.gatewayToken}`} : {})},
-            body: JSON.stringify({provider: settings.provider}),
+            body: JSON.stringify({}),
         });
         await ensureOk(response);
         const body = await response.json();
-        return Array.isArray(body.models) ? body.models : [];
+        const rawGateway = body?.gateway;
+        let gateway: GatewayModelPolicyInfo | undefined;
+        if (rawGateway !== undefined) {
+            if (!rawGateway || typeof rawGateway !== 'object' || !isProviderId(rawGateway.provider) || typeof rawGateway.model !== 'string') {
+                throw new Error('The AI gateway returned invalid model-policy metadata.');
+            }
+            gateway = {
+                clientModelSelection: rawGateway.clientModelSelection === true,
+                provider: rawGateway.provider,
+                model: rawGateway.model,
+                models: Array.isArray(rawGateway.models) ? rawGateway.models.filter((model: unknown): model is string => typeof model === 'string') : undefined,
+            };
+        }
+        return {models: Array.isArray(body.models) ? body.models.filter(isModelOption) : [], gateway};
     }
 
     const response = await fetch(modelListUrl(settings), {
@@ -150,12 +198,9 @@ export const fetchProviderModels = async (settings: AISettings, options: {
     const rawModels = settings.provider === 'ollama'
         ? (Array.isArray(body.models) ? body.models.map((item: any) => ({id: item.name, name: item.name})) : [])
         : settings.provider === 'gemini'
-            ? (Array.isArray(body.models) ? body.models.filter((item: any) => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent')).map((item: any) => ({
-                ...item,
-                id: String(item.name || '').replace(/^models\//, '')
-            })) : [])
+            ? (Array.isArray(body.models) ? body.models.filter((item: any) => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent')).map((item: any) => ({...item, id: String(item.name || '').replace(/^models\//, '')})) : [])
             : (Array.isArray(body.data) ? body.data : []);
-    return rawModels
+    const models = rawModels
         .filter((model: any) => typeof model.id === 'string' && model.id.trim())
         .map((model: any) => ({
             id: model.id,
@@ -163,20 +208,42 @@ export const fetchProviderModels = async (settings: AISettings, options: {
             tier: settings.provider === 'ollama' ? 'local' : modelTier(model),
         }))
         .sort((a, b) => (a.tier === b.tier ? a.label.localeCompare(b.label) : a.tier === 'free' ? -1 : b.tier === 'free' ? 1 : 0));
+    return {models};
 };
 
-const parseErrorMessage = async (response: Response): Promise<string> => {
+export const fetchProviderModels = async (
+    settings: AISettings,
+    options: {signal?: AbortSignal} = {},
+): Promise<AIProviderPreset['models']> => (await fetchProviderModelCatalog(settings, options)).models;
+
+const errorFromPayload = (payload: any, fallback: {status?: number; message?: string} = {}, allowTopLevelMessage = true): AIStreamError | null => {
+    const hasErrorObject = payload?.error && typeof payload.error === 'object';
+    const rawError = hasErrorObject ? payload.error : allowTopLevelMessage ? payload : null;
+    const message = typeof rawError?.message === 'string' && rawError.message.trim() ? rawError.message : fallback.message;
+    if (!message) return null;
+    const statusValue = rawError?.status ?? rawError?.statusCode ?? fallback.status;
+    const status = typeof statusValue === 'number' && Number.isFinite(statusValue) ? statusValue : fallback.status;
+    return new AIStreamError(message, {
+        status,
+        code: typeof rawError?.code === 'string' ? rawError.code : undefined,
+        provider: typeof rawError?.provider === 'string' ? rawError.provider : undefined,
+        model: typeof rawError?.model === 'string' ? rawError.model : undefined,
+    });
+};
+
+const errorFromResponse = async (response: Response): Promise<AIStreamError> => {
     const raw = await response.text();
     try {
-        const body = JSON.parse(raw);
-        return body?.error?.message || body?.message || `${response.status} ${response.statusText}`;
+        const parsed = JSON.parse(raw);
+        return errorFromPayload(parsed, {status: response.status, message: `${response.status} ${response.statusText}`})
+            || new AIStreamError(`${response.status} ${response.statusText}`, {status: response.status});
     } catch {
-        return raw || `${response.status} ${response.statusText}`;
+        return new AIStreamError(raw || `${response.status} ${response.statusText}`, {status: response.status});
     }
 };
 
 const ensureOk = async (response: Response) => {
-    if (!response.ok) throw new Error(await parseErrorMessage(response));
+    if (!response.ok) throw await errorFromResponse(response);
 };
 
 const contentFromPayload = (payload: any): string => {
@@ -230,7 +297,8 @@ const consumeEventStream = async (
             // malformed JSON, never provider errors contained in valid JSON.
             return;
         }
-        if (payload?.error?.message) throw new Error(String(payload.error.message));
+        const streamError = errorFromPayload(payload, {}, false);
+        if (streamError) throw streamError;
         const token = deltaFromPayload(payload) || (payload?.type === 'message_stop' ? '' : '');
         if (token) {
             full += token;
@@ -375,7 +443,6 @@ const requestGateway = async (
             ...(settings.gatewayToken ? {Authorization: `Bearer ${settings.gatewayToken}`} : {}),
         },
         body: JSON.stringify({
-            provider: settings.provider,
             model: settings.model,
             messages,
             temperature: settings.temperature,

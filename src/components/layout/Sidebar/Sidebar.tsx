@@ -199,10 +199,7 @@ function TreeExpander({collapsed, active}: { collapsed: boolean; active: boolean
     );
 }
 
-/**
- * The supplied expand glyph, recoloured with currentColor. Collapse is the
- * same glyph rotated 180 degrees so both actions keep the exact same style.
- */
+/** Folder expand/collapse action icon. */
 function FolderTreeActionIcon({
                                   direction,
                               }: {
@@ -277,6 +274,7 @@ interface SidebarProps {
     showAbout: boolean;
     showAssistant: boolean;
     assistantContextEndpoints: Array<{ path: string; method: string }>;
+    hasAIProfile: boolean;
     themeMode: ThemeMode;
     resolvedThemeMode: 'light' | 'dark';
     onToggleThemeMode: () => void;
@@ -361,6 +359,7 @@ export default function Sidebar(props: SidebarProps) {
         activeAuth,
         showAssistant,
         assistantContextEndpoints,
+        hasAIProfile,
         onDownloadSpec,
         isLocalMode,
         canOpenLocal,
@@ -1710,13 +1709,17 @@ export default function Sidebar(props: SidebarProps) {
                         </button>
                         {contextMenu.target.type === 'endpoint' && (
                             <button
-                                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                                type="button"
+                                disabled={!hasAIProfile}
+                                title={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'}
+                                className={clsx('w-full text-left px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-2', hasAIProfile ? 'cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)]' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50')}
                                 onClick={() => {
+                                    if (!hasAIProfile) return;
                                     onContextAction('ask-ai', contextMenu.target);
                                     setContextMenu(null);
                                 }}>
                                 <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]"/>
-                                Ask AI about this endpoint
+                                {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
                             </button>
                         )}
                         <div className="my-1 border-t border-[var(--border)]"/>
@@ -1792,13 +1795,17 @@ export default function Sidebar(props: SidebarProps) {
                     </button>
                     {contextMenu.target.type === 'endpoint' && (
                         <button
-                            className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            type="button"
+                            disabled={!hasAIProfile}
+                            title={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'}
+                            className={clsx('w-full text-left px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-2', hasAIProfile ? 'cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)]' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50')}
                             onClick={() => {
+                                if (!hasAIProfile) return;
                                 onContextAction('ask-ai', contextMenu.target);
                                 setContextMenu(null);
                             }}>
                             <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]"/>
-                            Ask AI about this endpoint
+                            {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
                         </button>
                     )}
                     <div className="my-1 border-t border-[var(--border)]"/>

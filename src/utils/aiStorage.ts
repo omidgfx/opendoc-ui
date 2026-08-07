@@ -16,6 +16,7 @@ const AI_SETTINGS_KEY = 'ai_settings';
 const AI_PROFILES_KEY = 'ai_profiles';
 const AI_ACTIVE_PROFILE_KEY = 'ai_active_profile';
 const AI_MODEL_CATALOGS_KEY = 'ai_model_catalogs';
+const AI_GATEWAY_MODEL_CATALOGS_KEY = 'ai_gateway_model_catalogs';
 const AI_CONVERSATIONS_KEY = 'ai_conversations';
 const AI_CONVERSATIONS_IDB_PREFIX = 'conversations:';
 const AI_SESSION_SECRETS_KEY = 'opendoc_ui_session_secrets';
@@ -25,7 +26,6 @@ const PROVIDERS: AIProviderId[] = ['openrouter', 'ollama', 'openai', 'anthropic'
 const SKILLS: AISkillPack[] = ['openapi', 'rest-debugging', 'security', 'sdk-generation', 'api-testing'];
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
-    enabled: true,
     transport: 'direct',
     gatewayUrl: '',
     gatewayToken: '',
@@ -53,7 +53,6 @@ const normalizeSettings = (value: Partial<AISettings> | null | undefined): AISet
         ? Math.max(0, Math.min(2, value.temperature))
         : DEFAULT_AI_SETTINGS.temperature;
     return {
-        enabled: typeof value?.enabled === 'boolean' ? value.enabled : DEFAULT_AI_SETTINGS.enabled,
         transport: value?.transport === 'gateway' || value?.transport === 'direct' ? value.transport : DEFAULT_AI_SETTINGS.transport,
         gatewayUrl: typeof value?.gatewayUrl === 'string' ? value.gatewayUrl : DEFAULT_AI_SETTINGS.gatewayUrl,
         gatewayToken: typeof value?.gatewayToken === 'string' ? value.gatewayToken : DEFAULT_AI_SETTINGS.gatewayToken,
@@ -161,6 +160,23 @@ export const writeAIModelCatalog = (provider: AIProviderId, models: AIModelOptio
     const catalogs = readAIModelCatalogs();
     catalogs[provider] = models.slice(0, 1000);
     uiStorage.setJSON(AI_MODEL_CATALOGS_KEY, catalogs);
+};
+
+const gatewayCatalogKey = (gatewayUrl: string, provider: AIProviderId): string => `${gatewayUrl.trim().replace(/\/+$/, '')}|${provider}`;
+
+export const readAIGatewayModelCatalog = (gatewayUrl: string, provider: AIProviderId): AIModelOption[] => {
+    const catalogs = uiStorage.getJSON<Record<string, AIModelOption[]>>(AI_GATEWAY_MODEL_CATALOGS_KEY, {}, value =>
+        isRecord(value) && Object.values(value).every(models => Array.isArray(models) && models.length <= 1000 && models.every(isModelOption)),
+    );
+    return catalogs[gatewayCatalogKey(gatewayUrl, provider)] || [];
+};
+
+export const writeAIGatewayModelCatalog = (gatewayUrl: string, provider: AIProviderId, models: AIModelOption[]) => {
+    const catalogs = uiStorage.getJSON<Record<string, AIModelOption[]>>(AI_GATEWAY_MODEL_CATALOGS_KEY, {}, value =>
+        isRecord(value) && Object.values(value).every(items => Array.isArray(items) && items.length <= 1000 && items.every(isModelOption)),
+    );
+    catalogs[gatewayCatalogKey(gatewayUrl, provider)] = models.slice(0, 1000);
+    uiStorage.setJSON(AI_GATEWAY_MODEL_CATALOGS_KEY, catalogs);
 };
 
 export const newAIProfile = (name: string, settings: AISettings): AIProfile => {

@@ -32,7 +32,6 @@ CORS-enabled providers directly or an optional gateway.
 - [Deployment notes](#deployment-notes)
 - [FAQ](#faq)
 - [License](#license)
-- [Audit remediation](#audit-remediation)
 
 ---
 
@@ -204,6 +203,7 @@ specific endpoint(s) or the entire API. It supports:
 - Markdown chat export from the assistant header,
 - up to five endpoint contexts per conversation, with per-endpoint removal and endpoint-context Ask AI actions,
 - global AI profiles containing provider/model settings, keys, gateway settings, and skill packs,
+- a clear profile-creation screen when no AI profile exists,
 - OpenRouter, Ollama, OpenAI, Anthropic, Gemini, and custom OpenAI-compatible endpoints,
 - direct browser calls for CORS-enabled providers,
 - optional same-origin or external gateway transport,
@@ -224,9 +224,10 @@ conversation/context request. API keys, tokens, passwords, cookies, and secret-l
 values are redacted by default. A conversation can explicitly enable authentication values,
 which displays a persistent warning.
 
-The assistant is static-build safe: without an AI provider or gateway, the documentation browser
-continues to work and the assistant shows setup guidance. Configure the assistant from its gear
-button, then select a provider, model, transport, gateway URL, skills, and optional instructions.
+The assistant is static-build safe: the documentation browser works without an AI gateway. Open
+AI settings to create a profile, then select a provider, model, transport, gateway URL, skills, and
+optional instructions. Direct browser transport remains available for providers that permit CORS;
+the optional gateway is only needed when server-side credentials or a provider proxy is required.
 The default online free choice is OpenRouter’s `openrouter/free` router; it still requires a free
 OpenRouter account/API key. The settings dialog presents models in a searchable, scrollable list;
 **Refresh models** fetches and globally caches the current provider catalog, so newly released GPT
@@ -281,13 +282,13 @@ In the assistant settings, choose **Gateway** transport. During development use 
 proxies that path to `http://127.0.0.1:8787`. For a separately deployed gateway, enter its full
 URL instead. The gateway never accepts a provider key or base URL from the browser.
 
-By default the gateway is locked to `AI_PROVIDER` and `AI_MODEL`; a browser request that submits a
-different selection receives a clear error rather than silently using a different model. If the UI
-should choose among approved models, explicitly configure an allowlist:
+The gateway always owns `AI_PROVIDER`, `AI_API_KEY`, and `AI_BASE_URL`. By default it is locked to
+`AI_MODEL`; a browser request that submits a different selection receives a clear error rather than
+silently using a different upstream model. If the UI should choose among approved models, enable
+client selection and provide a non-empty exact allowlist that includes `AI_MODEL`:
 
 ```bash
 AI_GATEWAY_ALLOW_CLIENT_MODEL=true \\
-AI_GATEWAY_ALLOWED_PROVIDERS=openrouter \\
 AI_GATEWAY_ALLOWED_MODELS=openrouter/free,openai/gpt-4o-mini \\
 AI_GATEWAY_TOKEN=replace-with-a-long-random-token \\
 AI_PROVIDER=openrouter AI_MODEL=openrouter/free \\
@@ -519,13 +520,6 @@ Yes. Files are normalized to OpenAPI 3 internally; both `swagger: "2.0"` and
 **Is anything sent to a server?**
 No. Specs are fetched by your browser, files opened locally never leave the device, and
 there is no analytics or telemetry code in the app.
-
----
-
-## Audit remediation
-
-The complete Ali-audit mapping, environment hardening variables, implemented protections, tests,
-and remaining intentional limitations are documented in [`AUDIT-REMEDIATION.md`](./AUDIT-REMEDIATION.md).
 
 ---
 

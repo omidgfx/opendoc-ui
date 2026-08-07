@@ -1,6 +1,7 @@
 import express from 'express';
-import {fetchProviderModels, streamAIResponse} from '../src/utils/aiProviders';
-import type {AIProviderId, AIRequestMessage, AISettings} from '../src/types';
+import {AIStreamError, fetchProviderModels, streamAIResponse} from '../src/utils/aiProviders';
+import type {AIRequestMessage, AISettings} from '../src/types';
+import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from './ai-gateway-policy';
 
 const app = express();
 const port = Number(process.env.AI_GATEWAY_PORT || 8787);
@@ -8,13 +9,14 @@ const isDevelopment = process.env.NODE_ENV === 'development' || process.env.AI_G
 const gatewayToken = process.env.AI_GATEWAY_TOKEN || '';
 const allowedOrigins = (process.env.AI_GATEWAY_ORIGIN || 'http://localhost:3000,http://127.0.0.1:3000')
     .split(',').map(value => value.trim()).filter(Boolean);
-const configuredProvider = (process.env.AI_PROVIDER || 'openrouter') as AIProviderId;
-const configuredModel = process.env.AI_MODEL || '';
+const modelPolicy = createGatewayModelPolicy({
+    provider: process.env.AI_PROVIDER || 'openrouter',
+    configuredModel: process.env.AI_MODEL || '',
+    allowClientModel: process.env.AI_GATEWAY_ALLOW_CLIENT_MODEL === 'true',
+    allowedModels: process.env.AI_GATEWAY_ALLOWED_MODELS,
+});
 const apiKey = process.env.AI_API_KEY || '';
 const baseUrl = process.env.AI_BASE_URL || '';
-const allowClientModel = process.env.AI_GATEWAY_ALLOW_CLIENT_MODEL === 'true';
-const allowedProviders = new Set((process.env.AI_GATEWAY_ALLOWED_PROVIDERS || configuredProvider).split(',').map(value => value.trim()).filter(Boolean));
-const allowedModels = new Set((process.env.AI_GATEWAY_ALLOWED_MODELS || configuredModel).split(',').map(value => value.trim()).filter(Boolean));
 const maxMessages = Math.max(1, Number(process.env.AI_GATEWAY_MAX_MESSAGES || 24));
 const maxMessageChars = Math.max(1_000, Number(process.env.AI_GATEWAY_MAX_MESSAGE_CHARS || 40_000));
 const maxContextChars = Math.max(10_000, Number(process.env.AI_GATEWAY_MAX_CONTEXT_CHARS || 250_000));
@@ -29,17 +31,8 @@ let activeRequests = 0;
 if (!gatewayToken && !isDevelopment) {
     throw new Error('AI_GATEWAY_TOKEN is required outside development. Set AI_GATEWAY_DEV_MODE=true only for a trusted local gateway.');
 }
-if (!configuredModel && !allowClientModel) {
-    throw new Error('AI_MODEL is required unless AI_GATEWAY_ALLOW_CLIENT_MODEL=true with an explicit allowlist.');
-}
-if (allowClientModel && allowedModels.size === 0) {
-    throw new Error('AI_GATEWAY_ALLOWED_MODELS must contain at least one model when client model selection is enabled.');
-}
 
-const originAllowed = (origin: string | undefined): boolean => {
-    if (!origin) return true;
-    return allowedOrigins.includes(origin) || allowedOrigins.includes('*');
-};
+const originAllowed = (origin: string | undefined): boolean => !origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*');
 
 app.disable('x-powered-by');
 app.set('trust proxy', false);
@@ -101,6 +94,9 @@ const acquireConcurrency = (res: express.Response): boolean => {
     return true;
 };
 
+const releaseRequest = () => { activeRequests = Math.max(0, activeRequests - 1); };
+const withRequestGuard = (req: express.Request, res: express.Response): boolean => authorize(req, res) && takeRateLimitSlot(req, res) && acquireConcurrency(res);
+
 const validateMessages = (messages: unknown): messages is AIRequestMessage[] => {
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > maxMessages) return false;
     let total = 0;
@@ -113,52 +109,47 @@ const validateMessages = (messages: unknown): messages is AIRequestMessage[] => 
     });
 };
 
-const resolveSelection = (body: any): {provider: AIProviderId; model: string} | {error: string} => {
-    const requestedProvider = typeof body?.provider === 'string' ? body.provider : configuredProvider;
-    const requestedModel = typeof body?.model === 'string' ? body.model : configuredModel;
-    if (!allowClientModel) {
-        if (requestedProvider !== configuredProvider || (requestedModel && requestedModel !== configuredModel)) {
-            return {error: `This gateway is locked to ${configuredProvider}/${configuredModel}. Enable AI_GATEWAY_ALLOW_CLIENT_MODEL and configure AI_GATEWAY_ALLOWED_MODELS to select models from the UI.`};
-        }
-        return {provider: configuredProvider, model: configuredModel};
-    }
-    if (!allowedProviders.has(requestedProvider)) return {error: `Provider '${requestedProvider}' is not allowed by this gateway.`};
-    if (!allowedModels.has(requestedModel)) return {error: `Model '${requestedModel}' is not allowed by this gateway.`};
-    return {provider: requestedProvider as AIProviderId, model: requestedModel};
-};
-
-const baseSettings = (provider: AIProviderId, model: string, temperature: unknown): AISettings => ({
-    enabled: true,
-    transport: 'direct',
-    gatewayUrl: '',
-    gatewayToken: '',
-    provider,
-    model,
-    apiKey,
-    baseUrl,
+const resolveSelection = (body: unknown) => resolveGatewaySelection(modelPolicy, body);
+const baseSettings = (model: string, temperature: unknown): AISettings => ({
+    transport: 'direct', gatewayUrl: '', gatewayToken: '', provider: modelPolicy.provider, model,
+    apiKey, baseUrl,
     temperature: typeof temperature === 'number' && Number.isFinite(temperature) ? Math.max(0, Math.min(2, temperature)) : 0.2,
     maxTokens: maxOutputTokens,
-    skillPacks: ['openapi', 'rest-debugging', 'security', 'api-testing'],
-    customInstructions: '',
+    skillPacks: ['openapi', 'rest-debugging', 'security', 'api-testing'], customInstructions: '',
 });
 
-const withRequestGuard = (req: express.Request, res: express.Response): boolean => authorize(req, res) && takeRateLimitSlot(req, res) && acquireConcurrency(res);
-const releaseRequest = () => { activeRequests = Math.max(0, activeRequests - 1); };
-
-app.get('/health', (_req, res) => res.json({ok: true, authenticated: Boolean(gatewayToken), provider: allowClientModel ? 'client-selectable' : configuredProvider, model: allowClientModel ? 'allowlisted' : configuredModel || null}));
+app.get('/health', (_req, res) => res.json({
+    ok: true,
+    authenticated: Boolean(gatewayToken),
+    provider: modelPolicy.provider,
+    model: modelPolicy.configuredModel,
+    clientModelSelection: modelPolicy.clientModelSelection,
+}));
 
 app.post('/api/ai/models', async (req, res) => {
     if (!withRequestGuard(req, res)) return;
     try {
         const selection = resolveSelection(req.body);
         if ('error' in selection) return res.status(400).json({error: {message: selection.error}});
-        if (!allowClientModel) return res.json({models: [{id: selection.model, label: `${selection.model} · Gateway configured`, tier: selection.provider === 'ollama' ? 'local' : 'premium'}], gateway: {clientModelSelection: false, provider: selection.provider, model: selection.model}});
-        const settings = baseSettings(selection.provider, selection.model, 0.2);
+        if (!modelPolicy.clientModelSelection) {
+            return res.json({
+                models: allowedModelCatalog(modelPolicy, []),
+                gateway: {clientModelSelection: false, provider: modelPolicy.provider, model: modelPolicy.configuredModel},
+            });
+        }
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), upstreamTimeoutMs);
         try {
-            const models = await fetchProviderModels(settings, {signal: controller.signal});
-            return res.json({models, gateway: {clientModelSelection: true, providers: Array.from(allowedProviders), models: Array.from(allowedModels)}});
+            const discovered = await fetchProviderModels(baseSettings(selection.model, 0.2), {signal: controller.signal});
+            return res.json({
+                models: allowedModelCatalog(modelPolicy, discovered),
+                gateway: {
+                    clientModelSelection: true,
+                    provider: modelPolicy.provider,
+                    model: modelPolicy.configuredModel,
+                    models: Array.from(modelPolicy.allowedModels),
+                },
+            });
         } finally { clearTimeout(timeout); }
     } catch (error) {
         return res.status(502).json({error: {message: error instanceof Error ? error.message : 'Unable to fetch provider models.'}});
@@ -196,15 +187,19 @@ app.post('/api/ai/chat', async (req, res) => {
     req.on('aborted', () => abortController.abort());
     res.on('close', () => { if (!res.writableEnded) abortController.abort(); });
     try {
-        await streamAIResponse(baseSettings(selection.provider, selection.model, req.body?.temperature), messages, {
+        await streamAIResponse(baseSettings(selection.model, req.body?.temperature), messages, {
             signal: abortController.signal,
             onToken: token => { if (!res.writableEnded) res.write(`data: ${JSON.stringify({choices: [{delta: {content: token}}]})}\n\n`); },
         });
         if (!res.writableEnded) { res.write('data: [DONE]\n\n'); res.end(); }
     } catch (error) {
         if (!res.writableEnded) {
-            const message = abortController.signal.aborted ? `AI upstream timed out or was cancelled after ${upstreamTimeoutMs} ms.` : error instanceof Error ? error.message : 'AI gateway request failed.';
-            res.write(`data: ${JSON.stringify({error: {message}})}\n\n`);
+            const errorPayload = abortController.signal.aborted
+                ? {message: `AI upstream timed out or was cancelled after ${upstreamTimeoutMs} ms.`, code: 'upstream_timeout'}
+                : error instanceof AIStreamError
+                    ? {message: error.message, code: error.code, status: error.status, provider: error.provider, model: error.model}
+                    : {message: error instanceof Error ? error.message : 'AI gateway request failed.'};
+            res.write(`data: ${JSON.stringify({error: errorPayload})}\n\n`);
             res.end();
         }
     } finally {
@@ -214,8 +209,8 @@ app.post('/api/ai/chat', async (req, res) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`OpenDoc UI gateway listening on http://0.0.0.0:${port}`);
-    console.log(`Provider: ${allowClientModel ? 'client-selectable' : configuredProvider} · Model: ${allowClientModel ? `${allowedModels.size} allowlisted` : configuredModel || '(not configured)'}`);
+    console.log(`OpenDoc UI AI gateway listening on http://0.0.0.0:${port}`);
+    console.log(`Provider: ${modelPolicy.provider} · Model: ${modelPolicy.clientModelSelection ? `${modelPolicy.allowedModels.size} allowlisted` : modelPolicy.configuredModel}`);
     console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
     console.log(`Limits: ${maxRequestsPerWindow} req/min/IP · ${maxConcurrent} concurrent · ${upstreamTimeoutMs} ms upstream timeout`);
 });

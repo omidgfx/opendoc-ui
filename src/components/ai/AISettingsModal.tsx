@@ -1,14 +1,17 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../types';
-import {AI_PROVIDER_PRESETS, fetchProviderModels, getProviderPreset} from '../../utils/aiProviders';
+import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/aiProviders';
+import type {GatewayModelPolicyInfo} from '../../utils/aiProviders';
 import {
     DEFAULT_AI_SETTINGS,
     newAIProfile,
     readActiveAIProfileId,
+    readAIGatewayModelCatalog,
     readAIModelCatalogs,
     readAIProfiles,
     writeActiveAIProfileId,
+    writeAIGatewayModelCatalog,
     writeAIModelCatalog,
     writeAIProfiles,
 } from '../../utils/aiStorage';
@@ -43,6 +46,9 @@ const SKILL_OPTIONS: Array<{ id: AISkillPack; label: string; description: string
 ];
 
 const profileName = (index: number) => `Assistant profile ${index}`;
+const cachedModelsForSettings = (settings: AISettings): AIModelOption[] => settings.transport === 'gateway'
+    ? readAIGatewayModelCatalog(settings.gatewayUrl, settings.provider)
+    : (readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models);
 
 function ModelSearchHighlight({text, query}: { text: string; query: string }) {
     const terms = query.trim().split(/\s+/).filter(Boolean).map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -114,6 +120,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const [activeProfileId, setActiveProfileId] = useState('');
     const [draft, setDraft] = useState(settings);
     const [availableModels, setAvailableModels] = useState<AIModelOption[]>([]);
+    const [gatewayPolicy, setGatewayPolicy] = useState<GatewayModelPolicyInfo | null>(null);
     const [isRefreshingModels, setIsRefreshingModels] = useState(false);
     const [modelError, setModelError] = useState('');
     const [modelPickerOpen, setModelPickerOpen] = useState(false);
@@ -148,7 +155,8 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setActiveProfileId(selected?.id || '');
         setDraft(selected?.settings || settings);
         if (selected) onSave(selected.settings);
-        setAvailableModels(readAIModelCatalogs()[selected?.settings.provider || settings.provider] || getProviderPreset(selected?.settings.provider || settings.provider).models);
+        setAvailableModels(cachedModelsForSettings(selected?.settings || settings));
+        setGatewayPolicy(null);
         setModelError('');
         setProfileMenuOpen(false);
         setRenamingProfileId('');
@@ -197,11 +205,23 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setIsRefreshingModels(true);
         setModelError('');
         try {
-            const models = await fetchProviderModels(draft);
+            const catalog = await fetchProviderModelCatalog(draft);
+            const {models, gateway} = catalog;
             if (models.length === 0) throw new Error('No models were returned. You can still enter a model ID manually.');
             setAvailableModels(models);
-            writeAIModelCatalog(draft.provider, models);
-            if (!draft.model.trim()) setDraft(current => ({...current, model: models[0].id}));
+            setGatewayPolicy(gateway || null);
+            const catalogProvider = gateway?.provider || draft.provider;
+            if (draft.transport === 'gateway') writeAIGatewayModelCatalog(draft.gatewayUrl, catalogProvider, models);
+            else writeAIModelCatalog(catalogProvider, models);
+            setDraft(current => {
+                const provider = gateway?.provider || current.provider;
+                const model = gateway
+                    ? (gateway.clientModelSelection && models.some(item => item.id === current.model)
+                        ? current.model
+                        : gateway.model || models[0].id)
+                    : (current.model.trim() ? current.model : models[0].id);
+                return {...current, provider, model};
+            });
         } catch (error) {
             setModelError(error instanceof Error ? error.message : 'Unable to refresh this provider catalog.');
         } finally {
@@ -234,7 +254,8 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setActiveProfileId(profile.id);
         writeActiveAIProfileId(profile.id);
         setDraft(profile.settings);
-        setAvailableModels(readAIModelCatalogs()[profile.settings.provider] || getProviderPreset(profile.settings.provider).models);
+        setAvailableModels(cachedModelsForSettings(profile.settings));
+        setGatewayPolicy(null);
         setModelError('');
         setProfileMenuOpen(false);
         setRenamingProfileId('');
@@ -296,7 +317,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             writeActiveAIProfileId(nextProfile.id);
             setActiveProfileId(nextProfile.id);
             setDraft(nextProfile.settings);
-            setAvailableModels(readAIModelCatalogs()[nextProfile.settings.provider] || getProviderPreset(nextProfile.settings.provider).models);
+            setAvailableModels(cachedModelsForSettings(nextProfile.settings));
             onSave(nextProfile.settings);
         } else {
             writeActiveAIProfileId('');
@@ -415,33 +436,10 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                     </div> : <>
                         <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
                             <div className="space-y-5">
-                                <div
-                                    className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5">
-                                    <div>
-                                        <div className="text-xs font-bold text-[var(--text-heading)]">Enable AI
-                                            assistant
-                                        </div>
-                                        <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">Static
-                                            documentation remains available when this is off.
-                                        </div>
-                                    </div>
-                                    <button type="button" role="switch" aria-checked={draft.enabled}
-                                            aria-label="Enable AI assistant"
-                                            onClick={() => setDraft({...draft, enabled: !draft.enabled})}
-                                            className={clsx('relative inline-flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-full border transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/35', draft.enabled ? 'border-[var(--primary)] bg-[var(--primary)]' : 'border-[var(--border)] bg-[var(--text-muted)]/25')}>
-                                        <span
-                                            className="pointer-events-none block size-4 rounded-full bg-white shadow-md transition-transform duration-200"
-                                            style={{transform: `translateX(${draft.enabled ? '20px' : '2px'})`}}/>
-                                    </button>
-                                </div>
-
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <label className="space-y-1.5"><span
                                         className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Transport</span><select
-                                        value={draft.transport} onChange={event => setDraft({
-                                        ...draft,
-                                        transport: event.target.value as AISettings['transport']
-                                    })}
+                                        value={draft.transport} onChange={event => {setGatewayPolicy(null); setDraft({...draft, transport: event.target.value as AISettings['transport']});}}
                                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]">
                                         <option value="direct">Direct browser request</option>
                                         <option value="gateway">AI gateway / proxy</option>
@@ -449,9 +447,10 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                     <label className="space-y-1.5"><span
                                         className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Provider</span><select
                                         value={draft.provider}
+                                        disabled={draft.transport === 'gateway'}
                                         onChange={event => updateProvider(event.target.value as AIProviderId)}
-                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]">{AI_PROVIDER_PRESETS.map(item =>
-                                        <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60">{AI_PROVIDER_PRESETS.map(item =>
+                                        <option key={item.id} value={item.id}>{item.label}</option>)}</select><span className="block text-[10px] text-[var(--text-muted)]">{draft.transport === 'gateway' ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.` : 'Selected by this browser profile.'}</span></label>
                                 </div>
 
                                 {draft.transport === 'gateway' && <label className="block space-y-1.5"><span
@@ -475,15 +474,16 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                     className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Model</span>
                                     <div className="flex gap-2">
                                         <input value={draft.model}
+                                               disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false}
                                                onChange={event => setDraft({...draft, model: event.target.value})}
                                                placeholder={availableModels[0]?.id || 'model-id'}
-                                               className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/>
-                                        <button type="button" onClick={() => {
+                                               className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"/>
+                                        <button type="button" disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false} onClick={() => {
                                             setModelSearch('');
                                             setModelTierFilter('all');
                                             setModelPickerOpen(true);
                                         }}
-                                                className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer">
+                                                className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
                                             <i className="ph ph-list me-1"/>Browse
                                         </button>
                                     </div>
@@ -491,6 +491,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                         className="block text-[10px] text-[var(--text-muted)]">{availableModels.length} catalog
                                         model{availableModels.length === 1 ? '' : 's'} · selected: <code
                                             className="font-mono text-[var(--text-heading)]">{draft.model || 'none'}</code></span>
+                                    {draft.transport === 'gateway' && <span className="block text-[10px] text-[var(--text-muted)]">{gatewayPolicy ? (gatewayPolicy.clientModelSelection ? 'Gateway allowlist synchronized.' : 'Gateway fixed model; model editing is locked.') : 'Refresh models to read the gateway policy.'}</span>}
                                     {modelError && <span
                                         className="mt-1 block text-[10px] text-[var(--method-put)]">{modelError}</span>}
                                 </label>
@@ -583,14 +584,14 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                     className="block text-[10px] text-[var(--text-muted)]">Bounds the response budget
                                     and helps prevent unexpectedly expensive requests.</span></label>
 
-                                <label className="block space-y-1.5"><span
+                                {draft.transport === 'direct' && <label className="block space-y-1.5"><span
                                     className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Base
                                     URL</span><input value={draft.baseUrl} onChange={event => setDraft({
                                     ...draft,
                                     baseUrl: event.target.value
                                 })}
                                                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/><span
-                                    className="block text-[10px] text-[var(--text-muted)]">{preset.description}</span></label>
+                                    className="block text-[10px] text-[var(--text-muted)]">{preset.description}</span></label>}
 
                                 {preset.requiresApiKey && draft.transport === 'direct' &&
                                     <label className="block space-y-1.5"><span

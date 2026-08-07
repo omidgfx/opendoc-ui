@@ -29,6 +29,7 @@ interface AIAssistantViewProps {
     activeTab: string;
     searchQuery: string;
     settings: AISettings;
+    hasAIProfile: boolean;
     isVisible: boolean;
     onOpenSettings: () => void;
     onClearEndpointContext: () => void;
@@ -67,6 +68,7 @@ export default function AIAssistantView({
                                             activeTab,
                                             searchQuery,
                                             settings,
+                                            hasAIProfile,
                                             isVisible,
                                             onOpenSettings,
                                             onClearEndpointContext,
@@ -297,6 +299,10 @@ export default function AIAssistantView({
     };
 
     const sendMessage = async (text = input) => {
+        if (!hasAIProfile) {
+            onOpenSettings();
+            return;
+        }
         const question = text.trim();
         if (!question || isSending) return;
         const conversation = activeConversation || newAIConversation(parsableKey);
@@ -304,15 +310,6 @@ export default function AIAssistantView({
             setConversations(current => current.some(item => item.id === conversation.id) ? current : [conversation, ...current]);
             setActiveConversationId(conversation.id);
         }
-        if (!settings.enabled) {
-            updateConversation(conversation.id, current => ({
-                ...current,
-                messages: [...current.messages, newAIMessage('assistant', 'The AI assistant is disabled. Open AI settings to enable it.', true)],
-                updatedAt: Date.now(),
-            }));
-            return;
-        }
-
         const userMessage = newAIMessage('user', question);
         const assistantMessage = newAIMessage('assistant', '');
         const history = [...conversation.messages, userMessage];
@@ -399,6 +396,21 @@ export default function AIAssistantView({
         abortRef.current = null;
         setIsSending(false);
     };
+
+    if (!hasAIProfile) {
+        return (
+            <div className="flex h-full min-h-0 w-full items-center justify-center overflow-y-auto bg-[var(--surface)] p-6">
+                <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-7 text-center shadow-sm">
+                    <span className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <i className="ph-fill ph-sparkle text-[26px]"/>
+                    </span>
+                    <h1 className="mt-5 text-lg font-extrabold text-[var(--text-heading)]">Create an AI profile</h1>
+                    <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">The AI Assistant needs a provider profile before it can answer questions. Choose a provider, model, and transport to get started.</p>
+                    <button type="button" onClick={onOpenSettings} className="mt-5 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"><i className="ph ph-plus me-1.5"/>Create profile</button>
+                </div>
+            </div>
+        );
+    }
 
     const configured = settings.transport === 'gateway'
         ? Boolean(settings.gatewayUrl.trim() && settings.model.trim())
@@ -495,7 +507,7 @@ export default function AIAssistantView({
                     ))}
                 </div>
                 <div
-                    className="h-[76px] min-h-[76px] box-border flex flex-col justify-center gap-1 border-t border-[var(--border)] bg-[var(--surface)] px-3">
+                    className="h-[76px] min-h-[76px] box-border flex flex-col justify-center gap-1 border-t border-[var(--border)] bg-[var(--background)] px-3">
                     <div className="flex h-6 min-h-6 items-center justify-between gap-2 leading-[12px]">
                         <span
                             className="truncate text-[9px] font-black uppercase leading-[12px] tracking-wider text-[var(--text-muted)]">Assistant
@@ -540,12 +552,12 @@ export default function AIAssistantView({
                             </Tip>}
                         <Tip content="AI settings">
                             <button type="button" onClick={onOpenSettings}
-                                    className="flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer md:hidden">
+                                    className={clsx('flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer', conversationsOpen ? 'md:hidden' : 'md:flex')}>
                                 <i className="ph ph-gear-six text-[14px]"/></button>
                         </Tip>
                         <Tip content="New conversation">
                             <button type="button" onClick={createConversation}
-                                    className="flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer">
+                                    className={clsx('flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer', conversationsOpen ? 'md:hidden' : 'md:flex')}>
                                 <i className="ph ph-plus text-[14px]"/></button>
                         </Tip>
                     </div>
