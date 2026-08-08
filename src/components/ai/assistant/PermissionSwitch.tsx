@@ -11,12 +11,12 @@ interface PermissionSwitchProps {
 /** A switch with an explicit center line so the thumb cannot drift vertically
  * when the surrounding permission row changes height. */
 export default function PermissionSwitch({
-    checked,
-    onChange,
-    label,
-    checkedClass,
-    uncheckedClass,
-}: PermissionSwitchProps) {
+                                             checked,
+                                             onChange,
+                                             label,
+                                             checkedClass,
+                                             uncheckedClass,
+                                         }: PermissionSwitchProps) {
     return (
         <button
             type="button"

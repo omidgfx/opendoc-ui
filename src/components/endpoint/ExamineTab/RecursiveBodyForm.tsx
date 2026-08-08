@@ -6,7 +6,15 @@ import {setAtPath} from './recursive/utils';
 export type {BodyValue} from './recursive/types';
 export {DESCRIPTION_TOOLTIP_THRESHOLD, defaultBodyValue, usesDescriptionTooltip} from './recursive/utils';
 
-export default function RecursiveBodyForm({schema, spec, value, onChange, setPatternToTest, selectedFiles, setSelectedFiles}: RecursiveBodyFormProps) {
+export default function RecursiveBodyForm({
+                                              schema,
+                                              spec,
+                                              value,
+                                              onChange,
+                                              setPatternToTest,
+                                              selectedFiles,
+                                              setSelectedFiles
+                                          }: RecursiveBodyFormProps) {
     const [focusedPath, setFocusedPath] = useState<PathPart[] | null>(null);
     const update = (path: PathPart[], nextValue: unknown) => onChange(setAtPath(value, path, nextValue));
     return (
@@ -18,7 +26,9 @@ export default function RecursiveBodyForm({schema, spec, value, onChange, setPat
             }}
         >
             <div className="min-w-[640px] space-y-0 animate-in fade-in">
-                <Field schema={schema} spec={spec} value={value} label="Request body" path={[]} depth={0} onChange={update} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
+                <Field schema={schema} spec={spec} value={value} label="Request body" path={[]} depth={0}
+                       onChange={update} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
+                       setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
             </div>
         </div>
     );

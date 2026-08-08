@@ -9,7 +9,22 @@ import {defaultBodyValue, removeAtPath, resolved} from './utils';
 const fieldClass = 'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]';
 const mutedLineClass = 'text-[var(--text-muted)]';
 
-export default function Field({schema, spec, value, label, required, path, depth, onChange, setPatternToTest, selectedFiles, setSelectedFiles, focusedPath, setFocusedPath, actions}: FieldProps) {
+export default function Field({
+                                  schema,
+                                  spec,
+                                  value,
+                                  label,
+                                  required,
+                                  path,
+                                  depth,
+                                  onChange,
+                                  setPatternToTest,
+                                  selectedFiles,
+                                  setSelectedFiles,
+                                  focusedPath,
+                                  setFocusedPath,
+                                  actions
+                              }: FieldProps) {
     const current = resolved(schema, spec);
     const [variantIndex, setVariantIndex] = useState(0);
     const [pendingKey, setPendingKey] = useState('');
@@ -24,12 +39,21 @@ export default function Field({schema, spec, value, label, required, path, depth
         const selectedVariant = Math.min(variantIndex, variants.length - 1);
         return (
             <div className={fieldFrame}>
-                <FieldHeader label={label} required={required} description={current.description} typeLabel="variant" actions={actions}/>
-                <select value={selectedVariant} onFocus={() => setFocusedPath(path)} onChange={event => {const nextIndex = Number(event.target.value); setVariantIndex(nextIndex); onChange(path, defaultBodyValue(variants[nextIndex], spec));}} className={clsx(fieldClass, 'mt-1')}>
-                    {variants.map((variant: any, index: number) => <option key={index} value={index}>{resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`}</option>)}
+                <FieldHeader label={label} required={required} description={current.description} typeLabel="variant"
+                             actions={actions}/>
+                <select value={selectedVariant} onFocus={() => setFocusedPath(path)} onChange={event => {
+                    const nextIndex = Number(event.target.value);
+                    setVariantIndex(nextIndex);
+                    onChange(path, defaultBodyValue(variants[nextIndex], spec));
+                }} className={clsx(fieldClass, 'mt-1')}>
+                    {variants.map((variant: any, index: number) => <option key={index}
+                                                                           value={index}>{resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`}</option>)}
                 </select>
                 <GuideBranch focusedPath={focusedPath}>
-                    <Field schema={variants[selectedVariant]} spec={spec} value={value} label="Value" path={path} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
+                    <Field schema={variants[selectedVariant]} spec={spec} value={value} label="Value" path={path}
+                           depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest}
+                           selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath}
+                           setFocusedPath={setFocusedPath}/>
                 </GuideBranch>
             </div>
         );
@@ -40,13 +64,21 @@ export default function Field({schema, spec, value, label, required, path, depth
         const selectedFile = selectedFiles[fileKey] || null;
         return (
             <div className={fieldFrame}>
-                <FieldHeader label={label} required={required} description={current.description} typeLabel="file" actions={actions}/>
-                <label className="mt-1 flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs hover:border-[var(--primary)]">
-                    <span className="min-w-0 truncate text-[var(--text-heading)]">{selectedFile ? selectedFile.name : 'Choose a file'}</span>
+                <FieldHeader label={label} required={required} description={current.description} typeLabel="file"
+                             actions={actions}/>
+                <label
+                    className="mt-1 flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs hover:border-[var(--primary)]">
+                    <span
+                        className="min-w-0 truncate text-[var(--text-heading)]">{selectedFile ? selectedFile.name : 'Choose a file'}</span>
                     <span className="shrink-0 text-[10px] font-bold text-[var(--primary)]">Browse</span>
-                    <input type="file" className="hidden" onFocus={() => setFocusedPath(path)} onChange={event => setSelectedFiles({...selectedFiles, [fileKey]: event.target.files?.[0] || null})}/>
+                    <input type="file" className="hidden" onFocus={() => setFocusedPath(path)}
+                           onChange={event => setSelectedFiles({
+                               ...selectedFiles,
+                               [fileKey]: event.target.files?.[0] || null
+                           })}/>
                 </label>
-                {selectedFile && <span className={clsx('mt-1 block text-[9px]', mutedLineClass)}>{Math.max(1, Math.round(selectedFile.size / 1024))} KB</span>}
+                {selectedFile && <span
+                    className={clsx('mt-1 block text-[9px]', mutedLineClass)}>{Math.max(1, Math.round(selectedFile.size / 1024))} KB</span>}
             </div>
         );
     }
@@ -66,37 +98,60 @@ export default function Field({schema, spec, value, label, required, path, depth
         };
         return (
             <div className={fieldFrame}>
-                <FieldHeader label={label} required={required} description={current.description} typeLabel={additionalSchema ? 'object / map' : 'object'} actions={actions}/>
+                <FieldHeader label={label} required={required} description={current.description}
+                             typeLabel={additionalSchema ? 'object / map' : 'object'} actions={actions}/>
                 <GuideBranch focusedPath={focusedPath}>
 
-                        {Object.entries(properties).map(([key, childSchema]: [string, any]) => (
-                            <Field key={key} schema={childSchema} spec={spec} value={objectValue[key]} label={key} required={Array.isArray(current.required) && current.required.includes(key)} path={[...path, key]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
-                        ))}
-                        {extraKeys.map(key => (
-                            <Field
-                                key={key}
-                                schema={additionalSchema || {}}
-                                spec={spec}
-                                value={objectValue[key]}
-                                label={key}
-                                path={[...path, key]}
-                                depth={depth + 1}
-                                onChange={onChange}
-                                setPatternToTest={setPatternToTest}
-                                selectedFiles={selectedFiles}
-                                setSelectedFiles={setSelectedFiles}
-                                focusedPath={focusedPath}
-                                setFocusedPath={setFocusedPath}
-                                actions={<button type="button" onClick={() => {const next = {...objectValue}; delete next[key]; onChange(path, next);}} className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer" aria-label={`Remove ${key}`}><i className="ph ph-trash text-[12px]"/></button>}
-                            />
-                        ))}
-                        {additionalSchema && (
-                            <div className="flex gap-2 py-2">
-                                <input type="text" value={pendingKey} onFocus={() => setFocusedPath(path)} onChange={event => setPendingKey(event.target.value)} onKeyDown={event => {if (event.key === 'Enter') {event.preventDefault(); addMapEntry();}}} placeholder="Add map key" className={clsx(fieldClass, 'min-w-0 flex-1')}/>
-                                <button type="button" onClick={addMapEntry} className="shrink-0 rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer"><i className="ph ph-plus me-1"/>Add key</button>
-                            </div>
-                        )}
-                        {Object.keys(properties).length === 0 && !additionalSchema && <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No defined properties.</p>}
+                    {Object.entries(properties).map(([key, childSchema]: [string, any]) => (
+                        <Field key={key} schema={childSchema} spec={spec} value={objectValue[key]} label={key}
+                               required={Array.isArray(current.required) && current.required.includes(key)}
+                               path={[...path, key]} depth={depth + 1} onChange={onChange}
+                               setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
+                               setSelectedFiles={setSelectedFiles} focusedPath={focusedPath}
+                               setFocusedPath={setFocusedPath}/>
+                    ))}
+                    {extraKeys.map(key => (
+                        <Field
+                            key={key}
+                            schema={additionalSchema || {}}
+                            spec={spec}
+                            value={objectValue[key]}
+                            label={key}
+                            path={[...path, key]}
+                            depth={depth + 1}
+                            onChange={onChange}
+                            setPatternToTest={setPatternToTest}
+                            selectedFiles={selectedFiles}
+                            setSelectedFiles={setSelectedFiles}
+                            focusedPath={focusedPath}
+                            setFocusedPath={setFocusedPath}
+                            actions={<button type="button" onClick={() => {
+                                const next = {...objectValue};
+                                delete next[key];
+                                onChange(path, next);
+                            }}
+                                             className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
+                                             aria-label={`Remove ${key}`}><i className="ph ph-trash text-[12px]"/>
+                            </button>}
+                        />
+                    ))}
+                    {additionalSchema && (
+                        <div className="flex gap-2 py-2">
+                            <input type="text" value={pendingKey} onFocus={() => setFocusedPath(path)}
+                                   onChange={event => setPendingKey(event.target.value)} onKeyDown={event => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    addMapEntry();
+                                }
+                            }} placeholder="Add map key" className={clsx(fieldClass, 'min-w-0 flex-1')}/>
+                            <button type="button" onClick={addMapEntry}
+                                    className="shrink-0 rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer">
+                                <i className="ph ph-plus me-1"/>Add key
+                            </button>
+                        </div>
+                    )}
+                    {Object.keys(properties).length === 0 && !additionalSchema &&
+                        <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No defined properties.</p>}
                 </GuideBranch>
             </div>
         );
@@ -108,23 +163,47 @@ export default function Field({schema, spec, value, label, required, path, depth
         const maxItems = typeof current.maxItems === 'number' ? current.maxItems : Infinity;
         const itemActions = (index: number) => (
             <>
-                <button type="button" disabled={index === 0} onClick={() => {const next = [...items]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; onChange(path, next);}} className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer" aria-label="Move item up"><i className="ph ph-arrow-up text-[12px]"/></button>
-                <button type="button" disabled={index === items.length - 1} onClick={() => {const next = [...items]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; onChange(path, next);}} className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer" aria-label="Move item down"><i className="ph ph-arrow-down text-[12px]"/></button>
-                <button type="button" onClick={() => onChange(path, removeAtPath(items, index))} className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer" aria-label="Remove item"><i className="ph ph-trash text-[12px]"/></button>
+                <button type="button" disabled={index === 0} onClick={() => {
+                    const next = [...items];
+                    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                    onChange(path, next);
+                }}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
+                        aria-label="Move item up"><i className="ph ph-arrow-up text-[12px]"/></button>
+                <button type="button" disabled={index === items.length - 1} onClick={() => {
+                    const next = [...items];
+                    [next[index + 1], next[index]] = [next[index], next[index + 1]];
+                    onChange(path, next);
+                }}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
+                        aria-label="Move item down"><i className="ph ph-arrow-down text-[12px]"/></button>
+                <button type="button" onClick={() => onChange(path, removeAtPath(items, index))}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                        aria-label="Remove item"><i className="ph ph-trash text-[12px]"/></button>
             </>
         );
         return (
             <div className={fieldFrame}>
-                <FieldHeader label={label} required={required} description={current.description} typeLabel={`array${itemSchema.type ? `<${itemSchema.type}>` : ''}`} actions={actions}/>
+                <FieldHeader label={label} required={required} description={current.description}
+                             typeLabel={`array${itemSchema.type ? `<${itemSchema.type}>` : ''}`} actions={actions}/>
                 <GuideBranch focusedPath={focusedPath}>
 
-                        {items.length === 0 && <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No items. Add one to begin.</p>}
-                        {items.map((item, index) => (
-                            <Field key={index} schema={itemSchema} spec={spec} value={item} label={`Item ${index + 1}`} path={[...path, index]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath} actions={itemActions(index)}/>
-                        ))}
-                        <div className="py-2">
-                            <button type="button" disabled={items.length >= maxItems} onClick={() => onChange(path, [...items, defaultBodyValue(itemSchema, spec)])} className="rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"><i className="ph ph-plus me-1"/>Add item</button>
-                        </div>
+                    {items.length === 0 &&
+                        <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No items. Add one to begin.</p>}
+                    {items.map((item, index) => (
+                        <Field key={index} schema={itemSchema} spec={spec} value={item} label={`Item ${index + 1}`}
+                               path={[...path, index]} depth={depth + 1} onChange={onChange}
+                               setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
+                               setSelectedFiles={setSelectedFiles} focusedPath={focusedPath}
+                               setFocusedPath={setFocusedPath} actions={itemActions(index)}/>
+                    ))}
+                    <div className="py-2">
+                        <button type="button" disabled={items.length >= maxItems}
+                                onClick={() => onChange(path, [...items, defaultBodyValue(itemSchema, spec)])}
+                                className="rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">
+                            <i className="ph ph-plus me-1"/>Add item
+                        </button>
+                    </div>
                 </GuideBranch>
             </div>
         );
@@ -132,19 +211,42 @@ export default function Field({schema, spec, value, label, required, path, depth
 
     const stringValue = value === null || value === undefined ? '' : String(value);
     const pattern = typeof current.pattern === 'string' ? current.pattern : '';
-    const patternValid = !pattern || !stringValue || (() => { try { return new RegExp(pattern).test(stringValue); } catch { return true; } })();
+    const patternValid = !pattern || !stringValue || (() => {
+        try {
+            return new RegExp(pattern).test(stringValue);
+        } catch {
+            return true;
+        }
+    })();
     const inputType = type === 'integer' || type === 'number' ? 'number' : current.format === 'date' || current.format === 'date-time' ? 'datetime-local' : 'text';
     return (
         <div className={fieldFrame}>
-            <FieldHeader label={label} required={required} description={current.description} typeLabel={current.format || type || 'any'} actions={actions}/>
+            <FieldHeader label={label} required={required} description={current.description}
+                         typeLabel={current.format || type || 'any'} actions={actions}/>
             {enumValues
-                ? <select value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, event.target.value)} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option>{enumValues.map((item: any) => <option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>
+                ? <select value={stringValue} onFocus={() => setFocusedPath(path)}
+                          onChange={event => onChange(path, event.target.value)} className={clsx(fieldClass, 'mt-1')}>
+                    <option value="">— Select —</option>
+                    {enumValues.map((item: any) => <option key={String(item)}
+                                                           value={String(item)}>{String(item)}</option>)}</select>
                 : type === 'boolean'
-                    ? <select value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, event.target.value === '' ? '' : event.target.value === 'true')} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option><option value="true">true</option><option value="false">false</option></select>
-                    : <input type={inputType} value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, type === 'number' || type === 'integer' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)} placeholder={current.example !== undefined ? String(current.example) : current.default !== undefined ? String(current.default) : type === 'object' ? 'JSON value' : ''} min={current.minimum} max={current.maximum} className={clsx(fieldClass, 'mt-1', !patternValid && 'border-[var(--method-delete)]')}/>
+                    ? <select value={stringValue} onFocus={() => setFocusedPath(path)}
+                              onChange={event => onChange(path, event.target.value === '' ? '' : event.target.value === 'true')}
+                              className={clsx(fieldClass, 'mt-1')}>
+                        <option value="">— Select —</option>
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                    </select>
+                    : <input type={inputType} value={stringValue} onFocus={() => setFocusedPath(path)}
+                             onChange={event => onChange(path, type === 'number' || type === 'integer' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)}
+                             placeholder={current.example !== undefined ? String(current.example) : current.default !== undefined ? String(current.default) : type === 'object' ? 'JSON value' : ''}
+                             min={current.minimum} max={current.maximum}
+                             className={clsx(fieldClass, 'mt-1', !patternValid && 'border-[var(--method-delete)]')}/>
             }
             {pattern && <PatternPreview pattern={pattern} onTest={() => setPatternToTest(pattern)}/>}
-            {nullable && <button type="button" onClick={() => onChange(path, null)} className="py-1 text-[9px] text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer">Set null</button>}
+            {nullable && <button type="button" onClick={() => onChange(path, null)}
+                                 className="py-1 text-[9px] text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer">Set
+                null</button>}
         </div>
     );
 }

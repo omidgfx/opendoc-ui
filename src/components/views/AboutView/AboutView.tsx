@@ -4,14 +4,14 @@ import {motion} from 'motion/react';
 import pkg from '../../../../package.json';
 import type {OpenApiSpec} from '../../../types';
 import {
+    fadeUp,
     FEATURES,
     MIT_LICENSE,
     MOUSE_ACTIONS,
     PREVIEW_RULES,
     SHORTCUT_GROUPS,
-    TOC_SECTIONS,
-    fadeUp,
     stagger,
+    TOC_SECTIONS,
 } from './aboutData';
 
 interface AboutViewProps {

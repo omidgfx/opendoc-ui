@@ -12,15 +12,17 @@ interface CollapsedSidebarRailProps {
 }
 
 export default function CollapsedSidebarRail({
-    isOverview,
-    showSchemaExplorer,
-    showAbout,
-    onOpenHome,
-    onOpenSchemaExplorer,
-    onOpenAbout,
-}: CollapsedSidebarRailProps) {
+                                                 isOverview,
+                                                 showSchemaExplorer,
+                                                 showAbout,
+                                                 onOpenHome,
+                                                 onOpenSchemaExplorer,
+                                                 onOpenAbout,
+                                             }: CollapsedSidebarRailProps) {
     return (
-        <div className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]" style={{width: 56}}>
+        <div
+            className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
+            style={{width: 56}}>
             <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
                 <Tip content="Overview">
                     <button onClick={onOpenHome}

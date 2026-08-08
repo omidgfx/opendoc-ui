@@ -8,6 +8,7 @@ import clsx from "clsx";
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import FiltersPanel from './FiltersPanel';
+import {useModalTransition} from '../../../hooks/useModalTransition';
 
 interface SearchResultsViewProps {
     spec: OpenApiSpec | null;
@@ -42,6 +43,7 @@ export default function SearchResultsView({
                                           }: SearchResultsViewProps) {
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
     const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+    const filterTransition = useModalTransition(filtersModalOpen, () => setFiltersModalOpen(false));
     useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
@@ -316,14 +318,14 @@ export default function SearchResultsView({
                                        title={shareModal.title} description={shareModal.description}/>}
 
             {/* Mobile filters modal */}
-            {filtersModalOpen && isMobile && (
+            {filterTransition.shouldRender && isMobile && (
                 <div
-                    className="fixed inset-0 z-[2500] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[3px] animate-fade-in"
+                    className={`${filterTransition.backdropClassName} fixed inset-0 z-[2500] bg-black/50 backdrop-blur-[3px]`}
                     onClick={(e) => {
-                        if (e.target === e.currentTarget) setFiltersModalOpen(false);
+                        if (e.target === e.currentTarget) filterTransition.requestClose();
                     }}>
                     <div
-                        className="w-full sm:max-w-md max-h-[85vh] rounded-t-2xl sm:rounded-2xl border shadow-2xl overflow-hidden flex flex-col bg-[var(--surface)] border-[var(--border)] animate-zoom-in">
+                        className="modal-surface w-full sm:max-w-md max-h-[85vh] rounded-t-2xl sm:rounded-2xl border shadow-2xl overflow-hidden flex flex-col bg-[var(--surface)] border-[var(--border)] animate-zoom-in">
                         <div
                             className="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-[var(--background)] border-[var(--border)] modal-header-mobile-pad">
                             <h3 className="font-bold text-sm flex items-center gap-2 text-[var(--text-heading)]">
@@ -331,12 +333,12 @@ export default function SearchResultsView({
                                 {hasActiveFilters &&
                                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]"></span>}
                             </h3>
-                            <button onClick={() => setFiltersModalOpen(false)}
+                            <button onClick={filterTransition.requestClose}
                                     className="size-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] text-[var(--text-muted)]">
                                 <i className="ph ph-x"></i>
                             </button>
                         </div>
-                        <div className="overflow-y-auto scrollbar-thin p-4">
+                        <div className="modal-scroll-region overflow-y-auto scrollbar-thin p-4">
                             <FiltersPanel
                                 allMethods={allMethods} allTags={allTags}
                                 selectedMethods={selectedMethods} selectedTags={selectedTags}
@@ -353,7 +355,7 @@ export default function SearchResultsView({
                                     Reset All
                                 </button>
                             )}
-                            <button onClick={() => setFiltersModalOpen(false)}
+                            <button onClick={filterTransition.requestClose}
                                     className="flex-1 py-2 rounded-lg text-xs font-bold cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90">
                                 Apply
                             </button>

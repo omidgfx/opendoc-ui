@@ -1,9 +1,11 @@
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
 import {applyAuthToRequest} from '../../utils/auth';
 import {queryStringFromPairs} from '../../utils/openapi/serialization';
+import {useEscClose} from '../../hooks/useEscClose';
+import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface CodeGeneratorModalProps {
     isOpen: boolean;
@@ -25,20 +27,10 @@ export default function CodeGeneratorModal({
                                                activeAuth
                                            }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState('curl');
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+    useEscClose(isOpen, requestClose);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     // Generate code snippet targets
     const generateSnippet = (lang: string) => {
@@ -252,9 +244,12 @@ export class ApiService {
 
     return (
         <div
-            className="fixed inset-0 z-[2500] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-150">
+            className={`${backdropClassName} fixed inset-0 z-[2500] bg-black/40 backdrop-blur-[2px]`}
+            onMouseDown={event => {
+                if (event.target === event.currentTarget) requestClose();
+            }}>
             <div
-                className="w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)]">
+                className="modal-surface max-h-[90vh] w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)]">
 
 
                 {/* Modal Header */}
@@ -279,7 +274,7 @@ export class ApiService {
 
                     <Tip content="Close">
                         <button
-                            onClick={onClose}
+                            onClick={requestClose}
                             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] transition-all cursor-pointer text-[var(--text-muted)]">
                             <i className="ph ph-x"></i>
                         </button>
@@ -287,7 +282,7 @@ export class ApiService {
                 </div>
 
                 {/* Modal Body */}
-                <div className="p-6 space-y-4">
+                <div className="modal-scroll-region min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
                     <div
                         className="rounded-2xl border overflow-hidden shadow-sm bg-[var(--surface)] border-[var(--border)]">
 
@@ -339,7 +334,7 @@ export class ApiService {
                         Authentication parameters fully bound inside code outputs
                     </span>
                     <button
-                        onClick={onClose}
+                        onClick={requestClose}
                         className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm active:scale-[0.98] bg-[var(--primary)]">
 
 

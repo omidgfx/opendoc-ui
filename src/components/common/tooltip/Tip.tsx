@@ -1,13 +1,7 @@
 import React, {useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {TooltipContext} from './TooltipContext';
-import {
-    INITIAL_TOOLTIP_SIZE,
-    positionFor,
-    samePosition,
-    type TooltipPlacement,
-    type TooltipPosition,
-} from './tooltipPosition';
+import {INITIAL_TOOLTIP_SIZE, positionFor, samePosition, type TooltipPosition,} from './tooltipPosition';
 
 interface TipProps {
     content: React.ReactNode;
@@ -39,17 +33,17 @@ const blockElements = new Set(['article', 'div', 'form', 'li', 'ol', 'p', 'secti
  * scroll containers and dialogs.
  */
 export default function Tip({
-                        content,
-                        children,
-                        placement = 'top',
-                        delay: delayProp,
-                        disabled,
-                        interactive = false,
-                        variant = 'default',
-                        fullWidth = false,
-                        wrapperClassName = '',
-                        closable = false,
-                    }: TipProps) {
+                                content,
+                                children,
+                                placement = 'top',
+                                delay: delayProp,
+                                disabled,
+                                interactive = false,
+                                variant = 'default',
+                                fullWidth = false,
+                                wrapperClassName = '',
+                                closable = false,
+                            }: TipProps) {
     const {delay: ctxDelay} = useContext(TooltipContext);
     const delay = delayProp ?? ctxDelay;
     const [open, setOpen] = useState(false);

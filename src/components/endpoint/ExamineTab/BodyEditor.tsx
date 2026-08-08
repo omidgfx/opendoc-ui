@@ -3,7 +3,7 @@ import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
 import SchemaJsonEditor from '../../schema/SchemaJsonEditor';
-import RecursiveBodyForm, {defaultBodyValue, type BodyValue} from './RecursiveBodyForm';
+import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
 
 interface BodyEditorProps {
     spec: OpenApiSpec;
@@ -74,7 +74,8 @@ export default function BodyEditor(props: BodyEditorProps) {
 
     const isTopLevelBinary = resolvedSchema?.type === 'string' && resolvedSchema?.format === 'binary';
     if (bodyEditorMode === 'form' && !resolvedSchema) {
-        return <p className="py-2 text-xs italic text-[var(--text-muted)]">No body schema defined for this media type. Switch to Raw to edit the payload directly.</p>;
+        return <p className="py-2 text-xs italic text-[var(--text-muted)]">No body schema defined for this media type.
+            Switch to Raw to edit the payload directly.</p>;
     }
 
     if (bodyEditorMode === 'form' && isTopLevelBinary) {
@@ -86,7 +87,8 @@ export default function BodyEditor(props: BodyEditorProps) {
                         setSelectedFile(file);
                         setSelectedFiles({...selectedFiles, file});
                     }} className="hidden"/>
-                    <label htmlFor="examine-file-uploader" className="cursor-pointer select-none text-xs font-semibold text-[var(--primary)] hover:underline">
+                    <label htmlFor="examine-file-uploader"
+                           className="cursor-pointer select-none text-xs font-semibold text-[var(--primary)] hover:underline">
                         {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to select upload file'}
                     </label>
                     <p className="mt-1 text-[10px] text-[var(--text-muted)]">{selectedFile ? `${Math.round(selectedFile.size / 1024)} KB` : 'Supports drag & drop or manual upload'}</p>
@@ -96,7 +98,9 @@ export default function BodyEditor(props: BodyEditorProps) {
     }
 
     if (bodyEditorMode === 'form') {
-        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>;
+        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange}
+                                  setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
+                                  setSelectedFiles={setSelectedFiles}/>;
     }
 
     return (

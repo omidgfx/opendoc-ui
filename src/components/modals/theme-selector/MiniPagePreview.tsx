@@ -1,5 +1,6 @@
 import type {ThemeItem} from '../../../types';
 import {alpha} from './themeSelectorUtils';
+
 export default function MiniPagePreview({palette, mode, roomy = false}: {
     palette: ThemeItem;
     mode: 'light' | 'dark';

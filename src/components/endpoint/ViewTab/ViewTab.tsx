@@ -11,6 +11,7 @@ import CustomDropdown from '../../common/CustomDropdown';
 import clsx from "clsx";
 import ShareModal from '../../modals/ShareModal';
 import {useEscClose} from '../../../hooks/useEscClose';
+import {useModalTransition} from '../../../hooks/useModalTransition';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage';
@@ -81,6 +82,8 @@ export default function ViewTab({
     const [copiedPath, setCopiedPath] = useState(false);
     const [helpModalContent, setHelpModalContent] = useState<{ title: string; content: string } | null>(null);
     const [exampleModalContent, setExampleModalContent] = useState<{ title: string; content: string } | null>(null);
+    const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
+    const exampleTransition = useModalTransition(!!exampleModalContent, () => setExampleModalContent(null));
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
     const [responseActiveTab, setResponseActiveTab] = useState<{ [code: string]: 'example' | 'schema' | 'enum' }>({});
@@ -211,8 +214,8 @@ export default function ViewTab({
         return () => window.removeEventListener('keydown', handler);
     }, [isActive, operation.responses, activeResponseCode, onSelectResponseCode]);
 
-    useEscClose(!!helpModalContent, () => setHelpModalContent(null), !!helpModalContent);
-    useEscClose(!!exampleModalContent, () => setExampleModalContent(null), !!exampleModalContent);
+    useEscClose(!!helpModalContent, helpTransition.requestClose, !!helpModalContent);
+    useEscClose(!!exampleModalContent, exampleTransition.requestClose, !!exampleModalContent);
     useEscClose(!!patternToTest, () => setPatternToTest(null), !!patternToTest);
     useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
 
@@ -944,7 +947,8 @@ export default function ViewTab({
                                                 <td className="px-4 py-3 text-xs">
                                                     <div className="flex flex-col gap-1">
                                                         <div>{renderSchemaButton(param.schema)}</div>
-                                                        {pattern && <PatternPreview pattern={pattern} showLabel onTest={() => setPatternToTest(pattern)}/>}
+                                                        {pattern && <PatternPreview pattern={pattern} showLabel
+                                                                                    onTest={() => setPatternToTest(pattern)}/>}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs">
@@ -1269,33 +1273,33 @@ export default function ViewTab({
                 </div>
             </div>
 
-            {helpModalContent && (
+            {helpTransition.shouldRender && helpModalContent && (
                 <div
-                    className="fixed inset-0 flex items-center justify-center p-4 z-[2000] backdrop-blur-[2px] animate-in fade-in duration-150"
+                    className={`${helpTransition.backdropClassName} fixed inset-0 z-[2000] backdrop-blur-[2px]`}
                     style={{backgroundColor: 'rgba(0, 0, 0, 0.4)'}} onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) setHelpModalContent(null);
+                    if (e.target === e.currentTarget) helpTransition.requestClose();
                 }}>
                     <div
-                        className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
                         <div
                             className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">
                                 <i className="ph ph-info mr-1.5 text-[var(--primary)]"></i>{helpModalContent.title}
                             </span>
                             <Tip content="Close">
-                                <button onClick={() => setHelpModalContent(null)}
+                                <button onClick={helpTransition.requestClose}
                                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)]">
                                     <i className="ph ph-x"></i>
                                 </button>
                             </Tip>
                         </div>
                         <div
-                            className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
+                            className="modal-scroll-region p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
                             <div className="text-xs leading-relaxed opacity-95">{helpModalContent.content}</div>
                         </div>
                         <div
                             className="px-4 sm:px-5 py-3 border-t text-right border-[var(--border)] bg-[var(--background)] shrink-0">
-                            <button onClick={() => setHelpModalContent(null)}
+                            <button onClick={helpTransition.requestClose}
                                     className="px-4 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer transition-colors shadow-sm select-none">Close
                                 Help
                             </button>
@@ -1304,33 +1308,33 @@ export default function ViewTab({
                 </div>
             )}
 
-            {exampleModalContent && (
+            {exampleTransition.shouldRender && exampleModalContent && (
                 <div
-                    className="fixed inset-0 flex items-center justify-center p-4 z-[3000] backdrop-blur-[2px] animate-in fade-in duration-150"
+                    className={`${exampleTransition.backdropClassName} fixed inset-0 z-[3000] backdrop-blur-[2px]`}
                     style={{backgroundColor: 'rgba(0, 0, 0, 0.4)'}} onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) setExampleModalContent(null);
+                    if (e.target === e.currentTarget) exampleTransition.requestClose();
                 }}>
                     <div
-                        className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
                         <div
                             className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">
                                 <i className="ph ph-eye mr-1.5 text-[var(--primary)]"></i>{exampleModalContent.title}
                             </span>
                             <Tip content="Close">
-                                <button onClick={() => setExampleModalContent(null)}
+                                <button onClick={exampleTransition.requestClose}
                                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)]">
                                     <i className="ph ph-x"></i>
                                 </button>
                             </Tip>
                         </div>
                         <div
-                            className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
+                            className="modal-scroll-region p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
                             <CodeViewer code={exampleModalContent.content} language="json" maxHeight="none"/>
                         </div>
                         <div
                             className="px-4 sm:px-5 py-3 border-t text-right border-[var(--border)] bg-[var(--background)] shrink-0">
-                            <button onClick={() => setExampleModalContent(null)}
+                            <button onClick={exampleTransition.requestClose}
                                     className="px-4 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer transition-colors shadow-sm select-none">Close
                                 Example
                             </button>

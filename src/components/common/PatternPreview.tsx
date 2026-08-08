@@ -17,7 +17,8 @@ export default function PatternPreview({pattern, onTest, showLabel = false, clas
                 wrapperClassName="min-w-0 w-full max-w-[min(100%,420px)]"
                 content={<code className="font-mono text-[10px]">/{pattern}/</code>}
             >
-                <code className="block min-w-0 max-w-full truncate overflow-hidden whitespace-nowrap text-ellipsis text-[var(--method-put)]">/{pattern}/</code>
+                <code
+                    className="block min-w-0 max-w-full truncate overflow-hidden whitespace-nowrap text-ellipsis text-[var(--method-put)]">/{pattern}/</code>
             </Tip>
             {onTest && (
                 <Tip content="Test this regex pattern">

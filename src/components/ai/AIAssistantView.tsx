@@ -8,15 +8,16 @@ import PermissionSwitch from './assistant/PermissionSwitch';
 import AssistantActions from './assistant/AssistantActions';
 import AssistantCitations from './assistant/AssistantCitations';
 import AIProfileRequiredState from './assistant/AIProfileRequiredState';
+import {useModalTransition} from '../../hooks/useModalTransition';
 import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens,} from '../../utils/aiContext';
 import {streamAIResponse} from '../../utils/aiProviders';
 import {
     createOpenDocUIActionId,
     formatOpenDocUIRunnerResult,
     OPENDOC_UI_RUNNER_RESULT_EVENT,
-    stripOpenDocUIActionBlocks,
     type OpenDocUIAction,
-    type OpenDocUIRunnerResult
+    type OpenDocUIRunnerResult,
+    stripOpenDocUIActionBlocks
 } from '../../utils/aiBridge';
 import {
     newAIConversation,
@@ -101,6 +102,9 @@ export default function AIAssistantView({
     const [deleteConfirmation, setDeleteConfirmation] = useState<AIConversation | null>(null);
     const [runnerConfirmation, setRunnerConfirmation] = useState<{ path: string; method: string } | null>(null);
     const [permissionsOpen, setPermissionsOpen] = useState(false);
+    const permissionsTransition = useModalTransition(permissionsOpen, () => setPermissionsOpen(false));
+    const deleteTransition = useModalTransition(!!deleteConfirmation, () => setDeleteConfirmation(null));
+    const runnerTransition = useModalTransition(!!runnerConfirmation, () => setRunnerConfirmation(null));
     const abortRef = useRef<AbortController | null>(null);
     const streamContentRef = useRef('');
     const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -622,13 +626,15 @@ export default function AIAssistantView({
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                         {activeConversation && <button type="button" onClick={() => setPermissionsOpen(true)}
-                            className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer">
+                                                       className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer">
                             <i className="ph ph-shield-check text-[12px]"/>Permissions
-                            <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>
+                            <span
+                                className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>
                                 {activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}
                             </span>
                             <span className="text-[var(--text-muted)]">·</span>
-                            <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>
+                            <span
+                                className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>
                                 {activeConversation.trustedRunner ? 'Trusted' : 'Review'}
                             </span>
                         </button>}
@@ -684,8 +690,11 @@ export default function AIAssistantView({
                                                         content.</span>
                                             :
                                             <p className="whitespace-pre-wrap text-xs leading-relaxed">{message.content}</p>}
-                                        {message.role === 'assistant' && <AssistantCitations citations={message.citations} onOpenEndpoint={onOpenEndpoint}/>}
-                                        {message.role === 'assistant' && <AssistantActions text={message.content} onExecute={executeBridgeAction}/>}
+                                        {message.role === 'assistant' &&
+                                            <AssistantCitations citations={message.citations}
+                                                                onOpenEndpoint={onOpenEndpoint}/>}
+                                        {message.role === 'assistant' &&
+                                            <AssistantActions text={message.content} onExecute={executeBridgeAction}/>}
                                     </div>
                                 </div>
                             ))}
@@ -715,28 +724,93 @@ export default function AIAssistantView({
                 </footer>
             </section>
 
-            {permissionsOpen && activeConversation && (
-                <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]" onMouseDown={event => {if (event.target === event.currentTarget) setPermissionsOpen(false);}}>
-                    <section role="dialog" aria-modal="true" aria-labelledby="assistant-permissions-title" className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
-                        <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-4"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className="ph ph-shield-check text-[18px]"/></span><div><h2 id="assistant-permissions-title" className="text-sm font-extrabold text-[var(--text-heading)]">Assistant permissions</h2><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Controls for sensitive context and Runner preparation.</p></div></div><button type="button" onClick={() => setPermissionsOpen(false)} className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"><i className="ph ph-x"/></button></header>
+            {permissionsTransition.shouldRender && activeConversation && (
+                <div
+                    className={`${permissionsTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
+                    onMouseDown={event => {
+                        if (event.target === event.currentTarget) permissionsTransition.requestClose();
+                    }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="assistant-permissions-title"
+                             className="modal-surface w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header
+                            className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                            <div className="flex items-center gap-3"><span
+                                className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i
+                                className="ph ph-shield-check text-[18px]"/></span>
+                                <div><h2 id="assistant-permissions-title"
+                                         className="text-sm font-extrabold text-[var(--text-heading)]">Assistant
+                                    permissions</h2><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Controls
+                                    for sensitive context and Runner preparation.</p></div>
+                            </div>
+                            <button type="button" onClick={permissionsTransition.requestClose}
+                                    className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
+                                <i className="ph ph-x"/></button>
+                        </header>
                         <div className="space-y-3 p-5">
-                            <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3"><span className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.includeAuthValues ? 'bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'bg-emerald-500/10 text-emerald-500')}><i className="ph ph-lock-key"/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Authentication values <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>{activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}</span></div><p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Protected keeps tokens, cookies, passwords, and API keys out of the Assistant context. Enabling Auth visible sends current authentication values to the selected provider and should only be used when you understand the risk.</p></div><PermissionSwitch checked={activeConversation.includeAuthValues} onChange={toggleAuthValues} label="Allow authentication values in Assistant context" checkedClass="border-[var(--method-delete)] bg-[var(--method-delete)]" uncheckedClass="border-emerald-500/40 bg-emerald-500/15"/></div>
-                            <div className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3"><span className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.trustedRunner ? 'bg-amber-500/10 text-amber-500' : 'bg-sky-500/10 text-sky-500')}><i className="ph ph-flask"/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Runner preparation <span className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>{activeConversation.trustedRunner ? 'Trusted' : 'Review'}</span></div><p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Review asks for confirmation before opening the Runner from a suggestion. Trusted skips that extra preparation prompt. Manual Runner sends are always controlled by the Runner; an AI Run action still requires your click.</p></div><PermissionSwitch checked={activeConversation.trustedRunner} onChange={toggleTrustedRunner} label="Trust Assistant Runner preparation" checkedClass="border-amber-500 bg-amber-500" uncheckedClass="border-sky-500/40 bg-sky-500/15"/></div>
-                            <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3 text-[10px] leading-relaxed text-[var(--text-muted)]"><i className="ph ph-info me-1 text-[var(--primary)]"/>The API Runner remains usable without a profile or Assistant. These permissions belong only to this conversation.</div>
+                            <div
+                                className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                                <span
+                                    className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.includeAuthValues ? 'bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'bg-emerald-500/10 text-emerald-500')}><i
+                                    className="ph ph-lock-key"/></span>
+                                <div className="min-w-0 flex-1">
+                                    <div
+                                        className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Authentication
+                                        values <span
+                                            className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>{activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}</span>
+                                    </div>
+                                    <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Protected
+                                        keeps tokens, cookies, passwords, and API keys out of the Assistant context.
+                                        Enabling Auth visible sends current authentication values to the selected
+                                        provider and should only be used when you understand the risk.</p></div>
+                                <PermissionSwitch checked={activeConversation.includeAuthValues}
+                                                  onChange={toggleAuthValues}
+                                                  label="Allow authentication values in Assistant context"
+                                                  checkedClass="border-[var(--method-delete)] bg-[var(--method-delete)]"
+                                                  uncheckedClass="border-emerald-500/40 bg-emerald-500/15"/></div>
+                            <div
+                                className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                                <span
+                                    className={clsx('flex size-8 shrink-0 items-center justify-center rounded-lg', activeConversation.trustedRunner ? 'bg-amber-500/10 text-amber-500' : 'bg-sky-500/10 text-sky-500')}><i
+                                    className="ph ph-flask"/></span>
+                                <div className="min-w-0 flex-1">
+                                    <div
+                                        className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--text-heading)]">Runner
+                                        preparation <span
+                                            className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>{activeConversation.trustedRunner ? 'Trusted' : 'Review'}</span>
+                                    </div>
+                                    <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">Review asks
+                                        for confirmation before opening the Runner from a suggestion. Trusted skips that
+                                        extra preparation prompt. Manual Runner sends are always controlled by the
+                                        Runner; an AI Run action still requires your click.</p></div>
+                                <PermissionSwitch checked={activeConversation.trustedRunner}
+                                                  onChange={toggleTrustedRunner}
+                                                  label="Trust Assistant Runner preparation"
+                                                  checkedClass="border-amber-500 bg-amber-500"
+                                                  uncheckedClass="border-sky-500/40 bg-sky-500/15"/></div>
+                            <div
+                                className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                <i className="ph ph-info me-1 text-[var(--primary)]"/>The API Runner remains usable
+                                without a profile or Assistant. These permissions belong only to this conversation.
+                            </div>
                         </div>
-                        <footer className="flex justify-end border-t border-[var(--border)] bg-[var(--background)] px-5 py-3"><button type="button" onClick={() => setPermissionsOpen(false)} className="rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Done</button></footer>
+                        <footer
+                            className="flex justify-end border-t border-[var(--border)] bg-[var(--background)] px-5 py-3">
+                            <button type="button" onClick={permissionsTransition.requestClose}
+                                    className="rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Done
+                            </button>
+                        </footer>
                     </section>
                 </div>
             )}
 
-            {deleteConfirmation && (
+            {deleteTransition.shouldRender && deleteConfirmation && (
                 <div
-                    className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+                    className={`${deleteTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
                     onMouseDown={event => {
-                        if (event.target === event.currentTarget) setDeleteConfirmation(null);
+                        if (event.target === event.currentTarget) deleteTransition.requestClose();
                     }}>
                     <div
-                        className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
+                        className="modal-surface w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
                         <div className="flex gap-3"><span
                             className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-delete)]/10 text-[var(--method-delete)]"><i
                             className="ph ph-trash text-[18px]"/></span>
@@ -746,12 +820,12 @@ export default function AIAssistantView({
                                 and all of its saved messages will be removed from this specification.</p></div>
                         </div>
                         <div className="mt-5 flex justify-end gap-2">
-                            <button type="button" onClick={() => setDeleteConfirmation(null)}
+                            <button type="button" onClick={deleteTransition.requestClose}
                                     className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
                             </button>
                             <button type="button" onClick={() => {
                                 deleteConversation(deleteConfirmation.id);
-                                setDeleteConfirmation(null);
+                                deleteTransition.requestClose();
                             }}
                                     className="rounded-xl bg-[var(--method-delete)] px-3 py-2 text-[11px] font-bold text-[var(--method-delete-contrast)] hover:brightness-110 cursor-pointer">Delete
                             </button>
@@ -760,14 +834,14 @@ export default function AIAssistantView({
                 </div>
             )}
 
-            {runnerConfirmation && (
+            {runnerTransition.shouldRender && runnerConfirmation && (
                 <div
-                    className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+                    className={`${runnerTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
                     onMouseDown={event => {
-                        if (event.target === event.currentTarget) setRunnerConfirmation(null);
+                        if (event.target === event.currentTarget) runnerTransition.requestClose();
                     }}>
                     <div
-                        className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
+                        className="modal-surface w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
                         <div className="flex gap-3"><span
                             className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-put)]/10 text-[var(--method-put)]"><i
                             className="ph ph-flask text-[18px]"/></span>
@@ -779,12 +853,12 @@ export default function AIAssistantView({
                                 No request will be sent until you press Run.</p></div>
                         </div>
                         <div className="mt-5 flex justify-end gap-2">
-                            <button type="button" onClick={() => setRunnerConfirmation(null)}
+                            <button type="button" onClick={runnerTransition.requestClose}
                                     className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
                             </button>
                             <button type="button" onClick={() => {
                                 onOpenRunner(runnerConfirmation.path, runnerConfirmation.method);
-                                setRunnerConfirmation(null);
+                                runnerTransition.requestClose();
                             }}
                                     className="rounded-xl bg-[var(--primary)] px-3 py-2 text-[11px] font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Open
                                 Runner

@@ -9,7 +9,13 @@ import {
     serializeOpenApiParameter
 } from '../../../utils/openapi/serialization';
 import {applyAuthToRequest} from '../../../utils/auth';
-import {appendMultipartBody, bodyEditorModeForMediaType, bodyTypeSupportsForm, parseStructuredBody, serializeUrlEncodedBody} from '../../../utils/bodyFormats';
+import {
+    appendMultipartBody,
+    bodyEditorModeForMediaType,
+    bodyTypeSupportsForm,
+    parseStructuredBody,
+    serializeUrlEncodedBody
+} from '../../../utils/bodyFormats';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -315,7 +321,9 @@ export default function ExamineTab({
                     } catch {
                         // Preserve the selected files even when raw multipart text
                         // is not a JSON/YAML object.
-                        Object.entries(selected).forEach(([key, file]) => { if (file) form.append(key, file); });
+                        Object.entries(selected).forEach(([key, file]) => {
+                            if (file) form.append(key, file);
+                        });
                     }
                     reqBody = form;
                 } else if (selectedFile && normalizedBodyType === 'application/octet-stream') {
@@ -502,7 +510,10 @@ export default function ExamineTab({
                                             className="text-[var(--accent)] font-semibold">{param.schema?.format || param.format}</span></span>
                                     )}
                                 </div>
-                                {(param.pattern || param.schema?.pattern) && <PatternPreview pattern={param.pattern || param.schema.pattern} onTest={() => setPatternToTest(param.pattern || param.schema.pattern)} className="px-1"/>}
+                                {(param.pattern || param.schema?.pattern) &&
+                                    <PatternPreview pattern={param.pattern || param.schema.pattern}
+                                                    onTest={() => setPatternToTest(param.pattern || param.schema.pattern)}
+                                                    className="px-1"/>}
                             </div>
                         </div>
                     ))}

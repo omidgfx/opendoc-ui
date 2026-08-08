@@ -27,11 +27,13 @@ export default function FieldHeader({label, required, description, typeLabel, ac
                         {label}{required && <b className="ms-1 text-[var(--method-delete)]">*</b>}
                     </span>
                     {longDescription && <DescriptionTip description={description}/>}
-                    {typeLabel && <span className={clsx('shrink-0 font-mono text-[9px]', mutedLineClass)}>{typeLabel}</span>}
+                    {typeLabel &&
+                        <span className={clsx('shrink-0 font-mono text-[9px]', mutedLineClass)}>{typeLabel}</span>}
                 </div>
                 {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
             </div>
-            {preview && <Markdown text={preview} className="mt-0.5 max-w-3xl text-[10px] leading-relaxed text-[var(--text-muted)]"/>}
+            {preview && <Markdown text={preview}
+                                  className="mt-0.5 max-w-3xl text-[10px] leading-relaxed text-[var(--text-muted)]"/>}
         </>
     );
 }

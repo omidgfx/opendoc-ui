@@ -1,5 +1,6 @@
 import type {ThemeItem} from '../../../types';
 import {alpha, METHOD_ITEMS} from './themeSelectorUtils';
+
 export default function MethodColorsPreview({palette, roomy = false}: { palette: ThemeItem; roomy?: boolean }) {
     return (
         <div className="h-full overflow-hidden rounded-lg border"

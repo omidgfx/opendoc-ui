@@ -197,7 +197,7 @@ export default function Topbar({
     return (
         <>
             <div
-                className="h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
+                className="app-topbar h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <Tip content={isMobile ? 'Open menu' : (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
                          placement="bottom">

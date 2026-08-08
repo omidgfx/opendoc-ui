@@ -75,7 +75,7 @@ export const validateBodyText = (text: string, mediaType: string): string | null
     }
 };
 
-export const formatBodyText = (text: string, mediaType: string): {text: string; error?: string} => {
+export const formatBodyText = (text: string, mediaType: string): { text: string; error?: string } => {
     const format = getBodyFormat(mediaType);
     try {
         if (format.isJson || isFormLikeMediaType(mediaType) && looksLikeJsonBody(text)) return {text: JSON.stringify(JSON.parse(text), null, 2)};
@@ -96,7 +96,9 @@ export const parseStructuredBody = (text: string, mediaType: string): unknown =>
     if (format.isYaml) return jsYaml.load(text);
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     if (normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data') {
-        try { return JSON.parse(text); } catch {
+        try {
+            return JSON.parse(text);
+        } catch {
             const parsed: Record<string, string | string[]> = {};
             new URLSearchParams(text).forEach((item, key) => {
                 const previous = parsed[key];

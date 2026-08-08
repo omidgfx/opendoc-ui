@@ -4,6 +4,13 @@ import {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
 import {clearCachedSpec} from '../../utils/specCache';
 import {Tip} from '../common/Tooltip';
 import type {LocalHistoryEntry} from '../../utils/localHistory';
+import {useModalTransition} from '../../hooks/useModalTransition';
+import {
+    formatRelativeTime,
+    loadSpecification,
+    summarizeSpecification,
+    type SummaryState,
+} from './apiSpecificationSelectorUtils';
 
 type ApiSpecificationSelectorModalProps = {
     isOpen: boolean;
@@ -25,13 +32,6 @@ type ApiSpecificationSelectorModalProps = {
     onResetAllConfigurations?: () => void;
     onClose: () => void;
 };
-
-import {
-    formatRelativeTime,
-    loadSpecification,
-    summarizeSpecification,
-    type SummaryState,
-} from './apiSpecificationSelectorUtils';
 
 export default function ApiSpecificationSelectorModal({
                                                           isOpen,
@@ -57,6 +57,8 @@ export default function ApiSpecificationSelectorModal({
     const [reloadingKeys, setReloadingKeys] = useState<Record<string, boolean>>({});
     const [confirmAction, setConfirmAction] = useState<{ kind: 'spec' | 'all'; key?: string } | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+    const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
     const entries = useMemo(() => Object.entries(specifications), [specifications]);
 
     const prevActiveSpecRef = useRef<OpenApiSpec | null>(null);
@@ -67,11 +69,11 @@ export default function ApiSpecificationSelectorModal({
         if (!isOpen) return;
         if (isLocalMode) {
             if (prevActiveSpecRef.current && prevActiveSpecRef.current !== activeSpecification) {
-                onClose();
+                requestClose();
             }
             prevActiveSpecRef.current = activeSpecification;
         }
-    }, [isOpen, isLocalMode, activeSpecification, onClose]);
+    }, [isOpen, isLocalMode, activeSpecification, requestClose]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -121,11 +123,11 @@ export default function ApiSpecificationSelectorModal({
                 setConfirmAction(null);
                 return;
             }
-            onClose();
+            requestClose();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose, confirmAction]);
+    }, [isOpen, requestClose, confirmAction]);
 
     const reloadSpecification = async (key: string, item: Parsable) => {
         if (reloadingKeys[key]) return;
@@ -160,26 +162,26 @@ export default function ApiSpecificationSelectorModal({
             if (confirmAction.kind === 'all') onResetAllConfigurations?.();
             else if (confirmAction.key) onResetSpecification?.(confirmAction.key);
             setConfirmAction(null);
-            onClose();
+            requestClose();
         } finally {
             setIsConfirming(false);
         }
     };
 
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
         <div
-            className="fixed inset-0 z-[2500] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px] animate-fade-in"
+            className={`${backdropClassName} fixed inset-0 z-[2500] bg-black/60 backdrop-blur-[2px]`}
             onMouseDown={(event) => {
-                if (event.target === event.currentTarget) onClose();
+                if (event.target === event.currentTarget) requestClose();
             }}
         >
             <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="api-specification-selector-title"
-                className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in"
+                className="modal-surface flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in"
             >
                 <header
                     className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 sm:px-5 py-2.5 sm:py-4 shrink-0 modal-header-mobile-pad">
@@ -227,7 +229,7 @@ export default function ApiSpecificationSelectorModal({
                         <Tip content="Close">
                             <button
                                 type="button"
-                                onClick={onClose}
+                                onClick={requestClose}
                                 autoFocus
                                 className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
                                 aria-label="Close API specification selector"
@@ -239,7 +241,7 @@ export default function ApiSpecificationSelectorModal({
                 </header>
 
                 {isLocalMode ? (
-                    <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                    <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
                         {localOpenError && (
                             <div
                                 className="mb-4 flex items-center gap-2 rounded-xl border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/5 px-3.5 py-2.5 text-[11px] text-[var(--method-delete)]">
@@ -347,7 +349,7 @@ export default function ApiSpecificationSelectorModal({
                     </div>
                 ) : (
                     <>
-                        <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                        <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
                             <div className="space-y-3">
                                 {entries.map(([key, item]) => {
                                     const state = summaries[key] || {status: 'loading'};
@@ -361,13 +363,13 @@ export default function ApiSpecificationSelectorModal({
                                             key={key}
                                             onClick={() => {
                                                 onSelect(key);
-                                                onClose();
+                                                requestClose();
                                             }}
                                             onKeyDown={(event) => {
                                                 if (event.key === 'Enter' || event.key === ' ') {
                                                     event.preventDefault();
                                                     onSelect(key);
-                                                    onClose();
+                                                    requestClose();
                                                 }
                                             }}
                                             className={clsx(
@@ -516,16 +518,16 @@ export default function ApiSpecificationSelectorModal({
                     ) : (
                         <span>{entries.length} API specification{entries.length === 1 ? '' : 's'} available</span>
                     )}
-                    <button type="button" onClick={onClose}
+                    <button type="button" onClick={requestClose}
                             className="rounded-xl border border-[var(--border)] px-4 py-2 font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer">
                         Cancel
                     </button>
                 </footer>
             </section>
 
-            {confirmAction && (
+            {confirmTransition.shouldRender && confirmAction && (
                 <div
-                    className="fixed inset-0 z-[2600] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] animate-fade-in"
+                    className={`${confirmTransition.backdropClassName} fixed inset-0 z-[2600] bg-black/55 backdrop-blur-[2px]`}
                     role="presentation"
                     onMouseDown={(event) => {
                         if (event.target === event.currentTarget && !isConfirming) setConfirmAction(null);
@@ -559,7 +561,7 @@ export default function ApiSpecificationSelectorModal({
                             <button
                                 type="button"
                                 disabled={isConfirming}
-                                onClick={() => setConfirmAction(null)}
+                                onClick={confirmTransition.requestClose}
                                 className="rounded-xl border border-[var(--border)] px-3.5 py-2 text-[11px] font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                             >
                                 Cancel

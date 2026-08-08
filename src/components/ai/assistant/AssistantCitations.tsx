@@ -10,7 +10,8 @@ export default function AssistantCitations({citations, onOpenEndpoint}: Assistan
     if (!citations || citations.length === 0) return null;
     return (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--border)]/70 pt-2.5">
-            <span className="me-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+            <span
+                className="me-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                 <i className="ph ph-quotes text-[12px]"/>Sources
             </span>
             {citations.map(source => {

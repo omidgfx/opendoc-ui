@@ -20,7 +20,7 @@ const DEFAULT_STYLE: Record<string, string> = {
     cookie: 'form',
 };
 
-const firstContentEntry = (parameter: any): {mediaType: string; media: any} | null => {
+const firstContentEntry = (parameter: any): { mediaType: string; media: any } | null => {
     const entry = Object.entries(parameter?.content || {})[0] as [string, any] | undefined;
     return entry ? {mediaType: entry[0], media: entry[1]} : null;
 };
@@ -139,7 +139,11 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
         const serialized = contentValue(parameter, value);
         if (location === 'querystring') {
             if (contentMediaTypeOf(parameter) === 'application/x-www-form-urlencoded' && value && typeof value === 'object' && !Array.isArray(value)) {
-                valueEntries(value).forEach(([key, item]) => result.query.push({name: key, value: item, allowReserved}));
+                valueEntries(value).forEach(([key, item]) => result.query.push({
+                    name: key,
+                    value: item,
+                    allowReserved
+                }));
             } else {
                 result.query.push({name: '', value: serialized, allowReserved});
             }
@@ -157,7 +161,11 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
 
     if (location === 'querystring') {
         if (type === 'object') {
-            valueEntries(objectValue(value)).forEach(([key, item]) => result.query.push({name: key, value: item, allowReserved}));
+            valueEntries(objectValue(value)).forEach(([key, item]) => result.query.push({
+                name: key,
+                value: item,
+                allowReserved
+            }));
         } else {
             result.query.push({name: '', value: scalar(value), allowReserved});
         }
@@ -188,7 +196,11 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
             if (style === 'deepObject') {
                 // OpenAPI leaves deepObject arrays undefined; indexed keys are
                 // the least surprising interoperable representation.
-                values.forEach((item, index) => result.query.push({name: `${name}[${index}]`, value: item, allowReserved: allowReservedForLocation}));
+                values.forEach((item, index) => result.query.push({
+                    name: `${name}[${index}]`,
+                    value: item,
+                    allowReserved: allowReservedForLocation
+                }));
             } else if (explode && style === 'form') {
                 values.forEach(item => result.query.push({name, value: item, allowReserved: allowReservedForLocation}));
             } else {
@@ -213,18 +225,33 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     const entries = valueEntries(objectValue(value));
     if (location === 'query') {
         if (style === 'deepObject') {
-            entries.forEach(([key, item]) => result.query.push({name: `${name}[${key}]`, value: item, allowReserved: allowReservedForLocation}));
+            entries.forEach(([key, item]) => result.query.push({
+                name: `${name}[${key}]`,
+                value: item,
+                allowReserved: allowReservedForLocation
+            }));
         } else if (explode && style === 'form') {
-            entries.forEach(([key, item]) => result.query.push({name: key, value: item, allowReserved: allowReservedForLocation}));
+            entries.forEach(([key, item]) => result.query.push({
+                name: key,
+                value: item,
+                allowReserved: allowReservedForLocation
+            }));
         } else if (style === 'spaceDelimited' || style === 'pipeDelimited') {
             const delimiter = style === 'spaceDelimited' ? ' ' : '|';
-            result.query.push({name, value: delimited(entries.flatMap(([key, item]) => [key, item]), delimiter), allowReserved: allowReservedForLocation});
+            result.query.push({
+                name,
+                value: delimited(entries.flatMap(([key, item]) => [key, item]), delimiter),
+                allowReserved: allowReservedForLocation
+            });
         } else {
             const flattened = entries.flatMap(([key, item]) => [key, item]);
             result.query.push({name, value: delimited(flattened, ','), allowReserved: allowReservedForLocation});
         }
     } else if (location === 'cookie') {
-        if (explode && style === 'form') entries.forEach(([key, item]) => result.cookies.push({name: key, value: item}));
+        if (explode && style === 'form') entries.forEach(([key, item]) => result.cookies.push({
+            name: key,
+            value: item
+        }));
         else result.cookies.push({name, value: delimited(entries.flatMap(([key, item]) => [key, item]), ',')});
     } else if (location === 'header') {
         result.headers[name] = explode

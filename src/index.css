@@ -615,3 +615,189 @@ body {
 .endpoint-tab-close {
     margin-left: auto;
 }
+
+/* --------------------------------------------------------------------------
+ * Mobile viewport and modal surfaces
+ * -------------------------------------------------------------------------- */
+.app-viewport {
+    height: 100vh;
+    max-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+    html,
+    body,
+    #root,
+    .app-viewport {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+}
+
+.app-topbar {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+.modal-backdrop {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 1rem;
+    animation: modal-backdrop-in 160ms ease-out both;
+}
+
+.modal-surface {
+    min-height: 0;
+    animation: modal-surface-in 180ms cubic-bezier(.2, .8, .2, 1) backwards;
+}
+
+.modal-backdrop.modal-closing {
+    animation: modal-backdrop-out 160ms ease-in both;
+}
+
+.modal-backdrop.modal-closing .modal-surface {
+    animation: modal-surface-out 160ms ease-in forwards;
+}
+
+@keyframes modal-backdrop-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modal-backdrop-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes modal-surface-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes modal-surface-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-8px) scale(.985);
+    }
+}
+
+@media (max-width: 767px) {
+    .modal-backdrop {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    .modal-surface {
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: min(80vh, 80dvh) !important;
+        margin: 0 !important;
+        border-radius: 1rem 1rem 0 0 !important;
+        border-bottom-width: 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        animation-name: mobile-sheet-in;
+        animation-duration: 220ms;
+        animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .modal-backdrop.modal-closing .modal-surface {
+        animation-name: mobile-sheet-out;
+        animation-duration: 180ms;
+        animation-timing-function: ease-in;
+    }
+
+    .modal-scroll-region {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@keyframes mobile-sheet-in {
+    from {
+        opacity: .7;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes mobile-sheet-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: .7;
+        transform: translateY(100%);
+    }
+}
+
+@media (max-width: 1023px) {
+    html,
+    body,
+    #root {
+        min-height: 0;
+        max-width: 100%;
+        overscroll-behavior: none;
+    }
+
+    body {
+        position: fixed;
+        inset: 0;
+        touch-action: manipulation;
+    }
+
+    .app-topbar {
+        height: calc(3.5rem + env(safe-area-inset-top, 0px)) !important;
+        min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+    }
+}
+
+@media (max-width: 767px) {
+    .modal-surface {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-backdrop,
+    .modal-surface,
+    .modal-backdrop.modal-closing,
+    .modal-backdrop.modal-closing .modal-surface {
+        animation-duration: 1ms !important;
+    }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .app-topbar {
+        height: calc(4rem + env(safe-area-inset-top, 0px)) !important;
+        min-height: calc(4rem + env(safe-area-inset-top, 0px));
+    }
+}

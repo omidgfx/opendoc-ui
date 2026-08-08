@@ -10,7 +10,7 @@ const childPath = (child: ReactNode): PathPart[] | null => {
     return Array.isArray(props.path) ? props.path : null;
 };
 
-export default function GuideBranch({children, focusedPath}: {children: ReactNode; focusedPath: PathPart[] | null}) {
+export default function GuideBranch({children, focusedPath}: { children: ReactNode; focusedPath: PathPart[] | null }) {
     const rows = Children.toArray(children);
     const activeRowIndex = rows.findIndex(child => {
         const path = childPath(child);
@@ -23,7 +23,8 @@ export default function GuideBranch({children, focusedPath}: {children: ReactNod
                 const accent = activeRowIndex >= 0 && index <= activeRowIndex;
                 const accentThroughRow = activeRowIndex >= 0 && index < activeRowIndex;
                 return (
-                    <div key={isValidElement(child) && child.key != null ? String(child.key) : index} className="relative min-w-0">
+                    <div key={isValidElement(child) && child.key != null ? String(child.key) : index}
+                         className="relative min-w-0">
                         <span
                             aria-hidden="true"
                             className="pointer-events-none absolute -start-4 top-0 w-px bg-[var(--text)]/25"

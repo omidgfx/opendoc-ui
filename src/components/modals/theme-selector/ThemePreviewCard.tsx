@@ -3,6 +3,7 @@ import MiniPagePreview from './MiniPagePreview';
 import MethodColorsPreview from './MethodColorsPreview';
 import ThemeNamePreview from './ThemeNamePreview';
 import {alpha} from './themeSelectorUtils';
+
 export default function ThemePreviewCard({theme, selected, resolvedThemeMode, onSelect}: {
     theme: AppTheme;
     selected: boolean;

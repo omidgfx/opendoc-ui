@@ -6,14 +6,15 @@ import MethodColorsPreview from './MethodColorsPreview';
 import MiniPagePreview from './MiniPagePreview';
 import ThemeIdentityPanel from './ThemeIdentityPanel';
 import {alpha} from './themeSelectorUtils';
+
 export default function DetailedThemeView({
-                               selectedTheme,
-                               selectedThemeName,
-                               currentThemeMode,
-                               resolvedThemeMode,
-                               onSelectTheme,
-                               onClose
-                           }: {
+                                              selectedTheme,
+                                              selectedThemeName,
+                                              currentThemeMode,
+                                              resolvedThemeMode,
+                                              onSelectTheme,
+                                              onClose
+                                          }: {
     selectedTheme: AppTheme;
     selectedThemeName: string;
     currentThemeMode: ThemeMode;
@@ -117,7 +118,7 @@ export default function DetailedThemeView({
                 </div>
             </aside>
 
-            <main className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4 md:p-5 scrollbar-thin">
+            <main className="modal-scroll-region min-w-0 flex-1 overflow-y-auto p-3 sm:p-4 md:p-5 scrollbar-thin">
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                         <button onClick={() => setShowMobileSidebar(true)}

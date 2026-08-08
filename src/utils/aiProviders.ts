@@ -18,7 +18,7 @@ export class AIStreamError extends Error {
     readonly provider?: string;
     readonly model?: string;
 
-    constructor(message: string, details: {status?: number; code?: string; provider?: string; model?: string} = {}) {
+    constructor(message: string, details: { status?: number; code?: string; provider?: string; model?: string } = {}) {
         super(message);
         this.name = 'AIStreamError';
         this.status = details.status;
@@ -153,7 +153,9 @@ const isModelOption = (value: any): value is AIProviderPreset['models'][number] 
     && typeof value.label === 'string'
     && (value.tier === 'free' || value.tier === 'premium' || value.tier === 'local');
 
-export const fetchProviderModelCatalog = async (settings: AISettings, options: {signal?: AbortSignal} = {}): Promise<AIModelCatalogResult> => {
+export const fetchProviderModelCatalog = async (settings: AISettings, options: {
+    signal?: AbortSignal
+} = {}): Promise<AIModelCatalogResult> => {
     if (settings.transport === 'gateway') {
         const value = trimSlash(settings.gatewayUrl.trim());
         if (!value) throw new Error('Configure a gateway URL first.');
@@ -198,7 +200,10 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
     const rawModels = settings.provider === 'ollama'
         ? (Array.isArray(body.models) ? body.models.map((item: any) => ({id: item.name, name: item.name})) : [])
         : settings.provider === 'gemini'
-            ? (Array.isArray(body.models) ? body.models.filter((item: any) => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent')).map((item: any) => ({...item, id: String(item.name || '').replace(/^models\//, '')})) : [])
+            ? (Array.isArray(body.models) ? body.models.filter((item: any) => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent')).map((item: any) => ({
+                ...item,
+                id: String(item.name || '').replace(/^models\//, '')
+            })) : [])
             : (Array.isArray(body.data) ? body.data : []);
     const models = rawModels
         .filter((model: any) => typeof model.id === 'string' && model.id.trim())
@@ -213,10 +218,13 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
 
 export const fetchProviderModels = async (
     settings: AISettings,
-    options: {signal?: AbortSignal} = {},
+    options: { signal?: AbortSignal } = {},
 ): Promise<AIProviderPreset['models']> => (await fetchProviderModelCatalog(settings, options)).models;
 
-const errorFromPayload = (payload: any, fallback: {status?: number; message?: string} = {}, allowTopLevelMessage = true): AIStreamError | null => {
+const errorFromPayload = (payload: any, fallback: {
+    status?: number;
+    message?: string
+} = {}, allowTopLevelMessage = true): AIStreamError | null => {
     const hasErrorObject = payload?.error && typeof payload.error === 'object';
     const rawError = hasErrorObject ? payload.error : allowTopLevelMessage ? payload : null;
     const message = typeof rawError?.message === 'string' && rawError.message.trim() ? rawError.message : fallback.message;

@@ -2,6 +2,8 @@ import {useEffect, useMemo, useState} from 'react';
 import type {ActiveAuth, AuthCredential, OpenApiSpec} from '../../types';
 import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
+import {useModalTransition} from '../../hooks/useModalTransition';
+import {useEscClose} from '../../hooks/useEscClose';
 import {getAuthSchemeLabel, getSecurityRequirementOptions, normalizeActiveAuth} from '../../utils/auth';
 
 interface AuthModalProps {
@@ -28,6 +30,8 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
         : legacyOptions, [spec]);
     const [selectedRequirement, setSelectedRequirement] = useState('none');
     const [credentials, setCredentials] = useState<Record<string, AuthCredential>>({});
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+    useEscClose(isOpen, requestClose);
 
     const currentOption = options.find(option => option.id === selectedRequirement) || options[0] || legacyOptions[0];
     const schemeIds = currentOption.schemeIds;
@@ -43,18 +47,6 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
         setSelectedRequirement(requirement?.id || 'none');
         setCredentials({...normalized.schemeValues});
     }, [isOpen, activeAuth, options]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const handler = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
-    }, [isOpen, onClose]);
 
     const updateCredential = (id: string, patch: Partial<AuthCredential>) => {
         setCredentials(current => ({
@@ -120,18 +112,18 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
             basicPassword: first?.type === 'basic' ? first.password || '' : activeAuth.basicPassword,
         };
         onSave(next);
-        onClose();
+        requestClose();
     };
 
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
-        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4 backdrop-blur-[2px]"
+        <div className={`${backdropClassName} fixed inset-0 z-[1500] bg-black/45 backdrop-blur-[2px]`}
              style={{backgroundColor: 'rgba(0,0,0,.45)'}} onMouseDown={event => {
-            if (event.target === event.currentTarget) onClose();
+            if (event.target === event.currentTarget) requestClose();
         }}>
             <div
-                className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-xl">
+                className="modal-surface flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-xl">
                 <header
                     className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-4">
                     <div className="flex min-w-0 items-center gap-3"><span
@@ -144,13 +136,14 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
                             composed requirements are preserved.</p></div>
                     </div>
                     <Tip content="Close">
-                        <button type="button" onClick={onClose}
+                        <button type="button" onClick={requestClose}
                                 className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
                             <i className="ph ph-x text-lg"/></button>
                     </Tip>
                 </header>
 
-                <div className="space-y-4 overflow-y-auto px-5 py-5 scrollbar-thin">
+                <div
+                    className="modal-scroll-region min-h-0 space-y-4 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 scrollbar-thin">
                     <div>
                         <label
                             className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Security
@@ -228,7 +221,7 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
 
                 <footer
                     className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-5 py-3">
-                    <button type="button" onClick={onClose}
+                    <button type="button" onClick={requestClose}
                             className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
                     </button>
                     <button type="button" onClick={save}

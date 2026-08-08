@@ -3,7 +3,8 @@ import clsx from 'clsx';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
 
-import {VIEW_TAB_META, isViewTab, type TabItem, type ViewTabKind} from './EndpointTabs/tabModel';
+import {isViewTab, type TabItem, VIEW_TAB_META, type ViewTabKind} from './EndpointTabs/tabModel';
+
 export {VIEW_TAB_META, isViewTab, type TabItem, type ViewTabKind} from './EndpointTabs/tabModel';
 
 interface EndpointTabsProps {

@@ -1,5 +1,7 @@
 import {useEffect, useState} from 'react';
 import {Tip} from '../common/Tooltip';
+import {useEscClose} from '../../hooks/useEscClose';
+import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface PatternTesterModalProps {
     pattern: string;
@@ -10,6 +12,8 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
     const [testValue, setTestValue] = useState('');
     const [isValid, setIsValid] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const {requestClose, backdropClassName} = useModalTransition(true, onClose);
+    useEscClose(true, requestClose);
 
     useEffect(() => {
         if (!pattern) {
@@ -27,25 +31,14 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
         }
     }, [testValue, pattern]);
 
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
-    }, [onClose]);
-
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center p-4 z-[9999] backdrop-blur-[2px] animate-in fade-in duration-150"
+            className={`${backdropClassName} fixed inset-0 z-[9999] backdrop-blur-[2px]`}
             style={{backgroundColor: 'rgba(0,0,0,0.5)'}}
-            onClick={onClose}>
+            onClick={requestClose}>
 
             <div
-                className="w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] animate-in zoom-in-95 duration-200"
+                className="modal-surface w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] animate-in zoom-in-95 duration-200"
 
                 onClick={(e) => e.stopPropagation()}>
 
@@ -58,7 +51,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                     </span>
                     <Tip content="Close">
                         <button type="button"
-                                onClick={onClose}
+                                onClick={requestClose}
                                 className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors text-[var(--text-muted)]">
                             <i className="ph ph-x"></i>
                         </button>
@@ -130,7 +123,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
 
 
                     <button type="button"
-                            onClick={onClose}
+                            onClick={requestClose}
                             className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm select-none bg-[var(--primary)]">
 
 

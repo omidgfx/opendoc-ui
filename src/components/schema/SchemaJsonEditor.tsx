@@ -15,7 +15,13 @@ interface SchemaJsonEditorProps {
 }
 
 export default function SchemaJsonEditor({
-                                             value, onChange, schema, componentsSchemas, mediaType = 'application/json', themeMode = 'dark', onCtrlEnter
+                                             value,
+                                             onChange,
+                                             schema,
+                                             componentsSchemas,
+                                             mediaType = 'application/json',
+                                             themeMode = 'dark',
+                                             onCtrlEnter
                                          }: SchemaJsonEditorProps) {
     const format = getBodyFormat(mediaType);
     // `language` is intentionally controlled rather than only using
@@ -82,7 +88,11 @@ export default function SchemaJsonEditor({
             try {
                 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                     validate: true,
-                    schemas: [{uri: 'schemas://openapi/schema.json', fileMatch: ['*'], schema: {...schema, definitions: componentsSchemas || {}}}],
+                    schemas: [{
+                        uri: 'schemas://openapi/schema.json',
+                        fileMatch: ['*'],
+                        schema: {...schema, definitions: componentsSchemas || {}}
+                    }],
                 });
             } catch {
                 // The editor remains usable without schema diagnostics.
@@ -126,22 +136,26 @@ export default function SchemaJsonEditor({
                             {errorFeedback ? 'Error' : 'Valid'}
                         </span>
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{editorLanguage.toUpperCase()} Body</span>
+                    <span
+                        className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{editorLanguage.toUpperCase()} Body</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                     <Tip content="Search (Ctrl+F)">
                         <SchemaEditorToolButton active onClick={triggerFind} icon="ph-magnifying-glass" label="Find"
-                                 iconColor="text-sky-500"/>
+                                                iconColor="text-sky-500"/>
                     </Tip>
                     <Tip content="Toggle line wrapping">
-                        <SchemaEditorToolButton active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap"/>
+                        <SchemaEditorToolButton active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t"
+                                                label="Wrap"/>
                     </Tip>
                     <Tip content="Toggle line numbers">
-                        <SchemaEditorToolButton active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers"
-                                 label="Numbers"/>
+                        <SchemaEditorToolButton active={lineNumbersEnabled} onClick={toggleLineNumbers}
+                                                icon="ph-list-numbers"
+                                                label="Numbers"/>
                     </Tip>
                     <Tip content="Toggle code minimap">
-                        <SchemaEditorToolButton active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
+                        <SchemaEditorToolButton active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold"
+                                                label="Minimap"/>
                     </Tip>
                     <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
                     <Tip content={`Format ${editorLanguage.toUpperCase()}`}>

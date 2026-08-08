@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import clsx from 'clsx';
-import type {OpenApiSpec, ParsableConfig, ThemeMode} from '../../../types';
 import type {ViewTabKind} from '../../endpoint/EndpointTabs';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {useSwipeEdgeOpen} from '../../../hooks/useSwipeOpen';
@@ -9,7 +8,6 @@ import CustomDropdown from '../../common/CustomDropdown';
 import MethodBadge from '../../common/MethodBadge';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
-import type {LocalHistoryEntry} from '../../../utils/localHistory';
 import {specStorage, uiStorage} from '../../../utils/storage';
 import pkg from '../../../../package.json';
 import TreeExpander from './TreeExpander';
@@ -638,7 +636,8 @@ export default function Sidebar(props: SidebarProps) {
                                         content={(
                                             <span className="flex flex-col gap-0.5">
                                                 <span className="leading-snug">{summary}</span>
-                                                <span className="font-mono text-[10px] leading-snug opacity-80">{ep.path}</span>
+                                                <span
+                                                    className="font-mono text-[10px] leading-snug opacity-80">{ep.path}</span>
                                             </span>
                                         )}
                                     >

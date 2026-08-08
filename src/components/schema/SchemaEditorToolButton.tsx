@@ -9,12 +9,12 @@ interface SchemaEditorToolButtonProps {
 }
 
 export default function SchemaEditorToolButton({
-    active,
-    onClick,
-    icon,
-    label,
-    iconColor,
-}: SchemaEditorToolButtonProps) {
+                                                   active,
+                                                   onClick,
+                                                   icon,
+                                                   label,
+                                                   iconColor,
+                                               }: SchemaEditorToolButtonProps) {
     return (
         <button type="button" onClick={onClick}
                 className={clsx(

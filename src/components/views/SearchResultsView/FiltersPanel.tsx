@@ -15,17 +15,17 @@ interface FiltersPanelProps {
 }
 
 export default function FiltersPanel({
-    allMethods,
-    allTags,
-    selectedMethods,
-    selectedTags,
-    onlyProtected,
-    handleToggleMethod,
-    handleToggleTag,
-    setOnlyProtected,
-    handleClearFilters,
-    hasActiveFilters,
-}: FiltersPanelProps) {
+                                         allMethods,
+                                         allTags,
+                                         selectedMethods,
+                                         selectedTags,
+                                         onlyProtected,
+                                         handleToggleMethod,
+                                         handleToggleTag,
+                                         setOnlyProtected,
+                                         handleClearFilters,
+                                         hasActiveFilters,
+                                     }: FiltersPanelProps) {
     return (
         <div className="p-4 rounded-xl border space-y-5 border-[var(--border)] bg-[var(--surface)]">
             <div className="flex h-4 items-center justify-between">

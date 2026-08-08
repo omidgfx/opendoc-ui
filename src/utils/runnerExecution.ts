@@ -1,7 +1,12 @@
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
 import {applyAuthToRequest} from './auth';
 import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from './bodyFormats';
-import {isJsonMediaType, normalizeParameterValue, queryStringFromPairs, serializeOpenApiParameter} from './openapi/serialization';
+import {
+    isJsonMediaType,
+    normalizeParameterValue,
+    queryStringFromPairs,
+    serializeOpenApiParameter
+} from './openapi/serialization';
 import {getMergedParameters, resolveRequestBody} from './openapi';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -21,11 +26,15 @@ export interface RunnerExecutionInput {
     signal?: AbortSignal;
 }
 
-const readResponseBody = async (response: Response): Promise<{text: string; bytes: number; truncated: boolean}> => {
+const readResponseBody = async (response: Response): Promise<{ text: string; bytes: number; truncated: boolean }> => {
     if (!response.body) {
         const text = await response.text();
         const encoded = new TextEncoder().encode(text);
-        return {text: new TextDecoder().decode(encoded.slice(0, MAX_RESPONSE_BYTES)), bytes: encoded.byteLength, truncated: encoded.byteLength > MAX_RESPONSE_BYTES};
+        return {
+            text: new TextDecoder().decode(encoded.slice(0, MAX_RESPONSE_BYTES)),
+            bytes: encoded.byteLength,
+            truncated: encoded.byteLength > MAX_RESPONSE_BYTES
+        };
     }
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];
@@ -52,7 +61,10 @@ const readResponseBody = async (response: Response): Promise<{text: string; byte
     }
     const merged = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0));
     let offset = 0;
-    chunks.forEach(chunk => { merged.set(chunk, offset); offset += chunk.byteLength; });
+    chunks.forEach(chunk => {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+    });
     return {text: new TextDecoder().decode(merged), bytes, truncated};
 };
 
@@ -89,15 +101,18 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
     const forwardAbort = () => controller.abort();
     input.signal?.addEventListener('abort', forwardAbort, {once: true});
     let timedOut = false;
-    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
+    const timeout = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, REQUEST_TIMEOUT_MS);
     let requestUrl = `${input.selectedServer}${input.path}`;
 
     try {
         const pathItem = (input.spec.paths as any)[input.path] || {};
         const mergedParameters = getMergedParameters(pathItem, input.operation, input.spec);
         let processedPath = input.path;
-        const query: Array<{name: string; value: string; allowReserved?: boolean}> = [];
-        const cookies: Array<{name: string; value: string}> = [];
+        const query: Array<{ name: string; value: string; allowReserved?: boolean }> = [];
+        const cookies: Array<{ name: string; value: string }> = [];
         const parameterHeaders: Record<string, string> = {};
         const params = input.params || {};
 
@@ -114,7 +129,11 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
         });
 
         const requestHeaders: Record<string, string> = {Accept: 'application/json', ...parameterHeaders, ...(input.headers || {})};
-        const auth = applyAuthToRequest(input.spec, input.activeAuth, {headers: requestHeaders, query, cookies}, input.operation);
+        const auth = applyAuthToRequest(input.spec, input.activeAuth, {
+            headers: requestHeaders,
+            query,
+            cookies
+        }, input.operation);
         const server = input.selectedServer.endsWith('/') ? input.selectedServer.slice(0, -1) : input.selectedServer;
         requestUrl = `${server}${processedPath}${queryStringFromPairs(auth.query)}`;
         const resolvedBody = resolveRequestBody(input.operation.requestBody, input.spec);
@@ -130,7 +149,9 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             signal: controller.signal,
         });
         const responseHeaders: Record<string, string> = {};
-        response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+        response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+        });
         const contentType = response.headers.get('Content-Type') || '';
         const binary = !isJsonMediaType(contentType) && !/^text\//i.test(contentType) && !/javascript|xml|event-stream|graphql/i.test(contentType);
         const body = await readResponseBody(response);

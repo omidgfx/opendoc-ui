@@ -1,8 +1,8 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../types';
-import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/aiProviders';
 import type {GatewayModelPolicyInfo} from '../../utils/aiProviders';
+import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/aiProviders';
 import {
     DEFAULT_AI_SETTINGS,
     newAIProfile,
@@ -16,6 +16,8 @@ import {
     writeAIProfiles,
 } from '../../utils/aiStorage';
 import {Tip} from '../common/Tooltip';
+import {useEscClose} from '../../hooks/useEscClose';
+import {useModalTransition} from '../../hooks/useModalTransition';
 import ModelSearchHighlight from './settings/ModelSearchHighlight';
 import TemperatureSlider from './settings/TemperatureSlider';
 
@@ -53,6 +55,7 @@ const cachedModelsForSettings = (settings: AISettings): AIModelOption[] => setti
     : (readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models);
 
 export default function AISettingsModal({isOpen, settings, onSave, onClose}: AISettingsModalProps) {
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     const [profiles, setProfiles] = useState<AIProfile[]>([]);
     const [activeProfileId, setActiveProfileId] = useState('');
     const [draft, setDraft] = useState(settings);
@@ -68,8 +71,11 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const [profileNameDraft, setProfileNameDraft] = useState('');
     const [renamingProfileId, setRenamingProfileId] = useState('');
     const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+    const modelPickerTransition = useModalTransition(modelPickerOpen, () => setModelPickerOpen(false));
+    const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
     const profileMenuRef = useRef<HTMLDivElement | null>(null);
     const profileButtonRef = useRef<HTMLButtonElement | null>(null);
+    useEscClose(isOpen, requestClose, !confirmAction && !modelPickerOpen);
 
     const preset = useMemo(() => getProviderPreset(draft.provider), [draft.provider]);
     const hasProfiles = profiles.length > 0;
@@ -232,7 +238,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             setDraft(DEFAULT_AI_SETTINGS);
             setAvailableModels(getProviderPreset(DEFAULT_AI_SETTINGS.provider).models);
             onSave(DEFAULT_AI_SETTINGS);
-            setConfirmAction(null);
+            confirmTransition.requestClose();
             return;
         }
         if (confirmAction.kind === 'save') {
@@ -244,7 +250,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             setProfiles(next);
             onSave(draft);
             setConfirmAction(null);
-            onClose();
+            requestClose();
             return;
         }
         const remaining = profiles.filter(profile => profile.id !== confirmAction.profileId);
@@ -265,19 +271,19 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         }
         setProfiles(remaining);
         setProfileMenuOpen(false);
-        setConfirmAction(null);
+        confirmTransition.requestClose();
     };
 
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
         <div
-            className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px] animate-fade-in"
+            className={`${backdropClassName} fixed inset-0 z-[5000] bg-black/60 backdrop-blur-[2px]`}
             onMouseDown={event => {
-                if (event.target === event.currentTarget && !confirmAction) onClose();
+                if (event.target === event.currentTarget && !confirmAction) requestClose();
             }}>
             <section role="dialog" aria-modal="true" aria-labelledby="ai-settings-title"
-                     className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in">
+                     className="modal-surface flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in">
                 <header
                     className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -350,7 +356,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                     className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
                                     aria-label="Create new AI profile"><i className="ph ph-plus text-[14px]"/></button>
                         </Tip>
-                        <button type="button" onClick={onClose}
+                        <button type="button" onClick={requestClose}
                                 className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
                                 aria-label="Close AI settings"><i className="ph ph-x"/></button>
                     </div>
@@ -371,12 +377,15 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             <i className="ph ph-plus me-1.5"/>Create first profile
                         </button>
                     </div> : <>
-                        <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
+                        <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <label className="space-y-1.5"><span
                                         className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Transport</span><select
-                                        value={draft.transport} onChange={event => {setGatewayPolicy(null); setDraft({...draft, transport: event.target.value as AISettings['transport']});}}
+                                        value={draft.transport} onChange={event => {
+                                        setGatewayPolicy(null);
+                                        setDraft({...draft, transport: event.target.value as AISettings['transport']});
+                                    }}
                                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]">
                                         <option value="direct">Direct browser request</option>
                                         <option value="gateway">AI gateway / proxy</option>
@@ -387,7 +396,8 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                         disabled={draft.transport === 'gateway'}
                                         onChange={event => updateProvider(event.target.value as AIProviderId)}
                                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60">{AI_PROVIDER_PRESETS.map(item =>
-                                        <option key={item.id} value={item.id}>{item.label}</option>)}</select><span className="block text-[10px] text-[var(--text-muted)]">{draft.transport === 'gateway' ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.` : 'Selected by this browser profile.'}</span></label>
+                                        <option key={item.id} value={item.id}>{item.label}</option>)}</select><span
+                                        className="block text-[10px] text-[var(--text-muted)]">{draft.transport === 'gateway' ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.` : 'Selected by this browser profile.'}</span></label>
                                 </div>
 
                                 {draft.transport === 'gateway' && <label className="block space-y-1.5"><span
@@ -415,11 +425,13 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                                onChange={event => setDraft({...draft, model: event.target.value})}
                                                placeholder={availableModels[0]?.id || 'model-id'}
                                                className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"/>
-                                        <button type="button" disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false} onClick={() => {
-                                            setModelSearch('');
-                                            setModelTierFilter('all');
-                                            setModelPickerOpen(true);
-                                        }}
+                                        <button type="button"
+                                                disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false}
+                                                onClick={() => {
+                                                    setModelSearch('');
+                                                    setModelTierFilter('all');
+                                                    setModelPickerOpen(true);
+                                                }}
                                                 className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
                                             <i className="ph ph-list me-1"/>Browse
                                         </button>
@@ -428,18 +440,20 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                         className="block text-[10px] text-[var(--text-muted)]">{availableModels.length} catalog
                                         model{availableModels.length === 1 ? '' : 's'} · selected: <code
                                             className="font-mono text-[var(--text-heading)]">{draft.model || 'none'}</code></span>
-                                    {draft.transport === 'gateway' && <span className="block text-[10px] text-[var(--text-muted)]">{gatewayPolicy ? (gatewayPolicy.clientModelSelection ? 'Gateway allowlist synchronized.' : 'Gateway fixed model; model editing is locked.') : 'Refresh models to read the gateway policy.'}</span>}
+                                    {draft.transport === 'gateway' && <span
+                                        className="block text-[10px] text-[var(--text-muted)]">{gatewayPolicy ? (gatewayPolicy.clientModelSelection ? 'Gateway allowlist synchronized.' : 'Gateway fixed model; model editing is locked.') : 'Refresh models to read the gateway policy.'}</span>}
                                     {modelError && <span
                                         className="mt-1 block text-[10px] text-[var(--method-put)]">{modelError}</span>}
                                 </label>
 
-                                {modelPickerOpen &&
-                                    <div className="fixed inset-0 z-[6100] flex items-center justify-center p-4"
-                                         style={{backgroundColor: 'rgba(8, 10, 16, 0.48)'}} onMouseDown={event => {
-                                        if (event.target === event.currentTarget) setModelPickerOpen(false);
+                                {modelPickerTransition.shouldRender &&
+                                    <div
+                                        className={`${modelPickerTransition.backdropClassName} fixed inset-0 z-[6100] bg-black/45`}
+                                        style={{backgroundColor: 'rgba(8, 10, 16, 0.48)'}} onMouseDown={event => {
+                                        if (event.target === event.currentTarget) modelPickerTransition.requestClose();
                                     }}>
                                         <div role="dialog" aria-modal="true" aria-labelledby="ai-model-picker-title"
-                                             className="flex max-h-[76vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                                             className="modal-surface flex max-h-[76vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                                             <header
                                                 className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
                                                 <div className="min-w-0"><h3 id="ai-model-picker-title"
@@ -455,7 +469,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                                             className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] disabled:cursor-wait disabled:opacity-50 cursor-pointer">
                                                         <i className={clsx('ph ph-arrows-clockwise text-[13px]', isRefreshingModels && 'animate-spin')}/>{isRefreshingModels ? 'Refreshing…' : 'Refresh models'}
                                                     </button>
-                                                    <button type="button" onClick={() => setModelPickerOpen(false)}
+                                                    <button type="button" onClick={modelPickerTransition.requestClose}
                                                             className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
                                                         <i className="ph ph-x"/></button>
                                                 </div>
@@ -478,13 +492,13 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                                 </div>
                                             </div>
                                             <div
-                                                className="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-thin">{filteredModels.length === 0 ?
+                                                className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-2 scrollbar-thin">{filteredModels.length === 0 ?
                                                 <p className="px-3 py-10 text-center text-xs text-[var(--text-muted)]">No
                                                     models match this filter.</p> : filteredModels.map(model => {
                                                     const selected = model.id === draft.model;
                                                     return <button key={model.id} type="button" onClick={() => {
                                                         setDraft(current => ({...current, model: model.id}));
-                                                        setModelPickerOpen(false);
+                                                        modelPickerTransition.requestClose();
                                                     }}
                                                                    className={clsx('flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer', selected ? 'border-[var(--primary)]/50 bg-[var(--primary)]/10' : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--surface-hover)]')}>
                                                         <span
@@ -593,7 +607,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             <span className="text-[10px] text-[var(--text-muted)]">Changes are saved to the selected
                                 profile only after confirmation.</span>
                             <div className="flex gap-2">
-                                <button type="button" onClick={onClose}
+                                <button type="button" onClick={requestClose}
                                         className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer">Close
                                 </button>
                                 <button type="button" onClick={requestSave}
@@ -606,9 +620,9 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             </section>
 
             {confirmAction && <div
-                className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+                className={`${confirmTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
                 onMouseDown={event => {
-                    if (event.target === event.currentTarget) setConfirmAction(null);
+                    if (event.target === event.currentTarget) confirmTransition.requestClose();
                 }}>
                 <div
                     className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
@@ -621,7 +635,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-2">
-                        <button type="button" onClick={() => setConfirmAction(null)}
+                        <button type="button" onClick={confirmTransition.requestClose}
                                 className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
                         </button>
                         <button type="button" onClick={confirmChanges}

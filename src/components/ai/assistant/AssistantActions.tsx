@@ -1,4 +1,4 @@
-import {actionLabel, parseOpenDocUIActions, type OpenDocUIAction} from '../../../utils/aiBridge';
+import {actionLabel, type OpenDocUIAction, parseOpenDocUIActions} from '../../../utils/aiBridge';
 
 interface AssistantActionsProps {
     text: string;
@@ -10,7 +10,8 @@ export default function AssistantActions({text, onExecute}: AssistantActionsProp
     if (actions.length === 0) return null;
     return (
         <div className="mt-3 space-y-2 border-t border-[var(--border)]/70 pt-2.5">
-            <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+            <div
+                className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                 <i className="ph ph-lightning text-[12px] text-[var(--primary)]"/>OpenDoc UI actions
             </div>
             {actions.map((action, index) => (

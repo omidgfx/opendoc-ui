@@ -9,6 +9,7 @@ import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
 import {Tip} from '../../common/Tooltip';
 import {generateSingleSchemaFile} from '../../../utils/schemaExport';
+import {useModalTransition} from '../../../hooks/useModalTransition';
 
 interface ModalsStackProps {
     modals: Array<{ schemaName: string; schema: any; }>;
@@ -36,6 +37,7 @@ export default function ModalsStack({
     const [exampleEncodings, setExampleEncodings] = useState<Record<number, string>>({});
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
+    const {requestClose, backdropClassName} = useModalTransition(true, onCloseAll);
 
     // ESC handling for stack: pop one by one, then close
     useEffect(() => {
@@ -47,12 +49,12 @@ export default function ModalsStack({
             if (modals.length > 1) {
                 onPopSchema();
             } else {
-                onCloseAll();
+                requestClose();
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [modals.length, helpModalContent, patternToTest, shareModal, onPopSchema, onCloseAll]);
+    }, [modals.length, helpModalContent, patternToTest, shareModal, onPopSchema, requestClose]);
 
     // Ctrl+Left: when the schema breadcrumb has more than one entry (i.e. we've drilled
     // into a nested schema), hit the browser's back button — since the breadcrumb stack
@@ -607,13 +609,13 @@ export default function ModalsStack({
     return (
         <>
             <div
-                className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[1px] animate-in fade-in duration-150"
+                className={`${backdropClassName} fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px]`}
                 onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) onCloseAll();
+                    if (e.target === e.currentTarget) requestClose();
                 }}
             >
                 <div
-                    className="w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-200 bg-[var(--surface)] border-[var(--border)]">
+                    className="modal-surface w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-200 bg-[var(--surface)] border-[var(--border)]">
 
                     <div
                         className="px-4 sm:px-6 py-2.5 sm:py-4 flex flex-col gap-2 sm:gap-3 border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
@@ -662,7 +664,7 @@ export default function ModalsStack({
                                 </Tip>
                                 <Tip content="Close schema viewer">
                                     <button
-                                        onClick={onCloseAll}
+                                        onClick={requestClose}
                                         className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer select-none text-[var(--text-muted)]">
                                         <i className="ph ph-x"></i>
                                     </button>
@@ -717,7 +719,7 @@ export default function ModalsStack({
                         </div>
                     </div>
 
-                    <div className="p-6 overflow-y-auto flex-1 font-sans scrollbar-thin">
+                    <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto flex-1 font-sans scrollbar-thin">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div
                                 className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
@@ -885,7 +887,7 @@ export default function ModalsStack({
             </div>
 
             {helpModalContent &&
-                <div className="fixed inset-0 flex items-center justify-center p-4 z-[3000] backdrop-blur-[2px]"
+                <div className="modal-backdrop fixed inset-0 z-[3000] backdrop-blur-[2px]"
                      style={{backgroundColor: 'rgba(0, 0, 0, 0.4)'}}
                      onMouseDown={(e) => {
                          if (e.target === e.currentTarget) setHelpModalContent(null);
@@ -907,7 +909,7 @@ export default function ModalsStack({
                             </button>
                         </div>
                         <div
-                            className="p-6 overflow-y-auto space-y-4 text-xs leading-relaxed max-w-none text-inherit scrollbar-thin text-[var(--text)]">
+                            className="modal-scroll-region p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed max-w-none text-inherit scrollbar-thin text-[var(--text)]">
 
                             {helpModalContent.isJson ?
                                 <CodeViewer code={helpModalContent.content} language="json" maxHeight="none"/> :

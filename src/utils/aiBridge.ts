@@ -27,7 +27,7 @@ export type OpenDocUIAction = (
     | { action: 'open_schema'; schema: string }
     | { action: 'search_spec'; query: string }
     | { action: 'select_server'; url: string }
-) & { id?: string };
+    ) & { id?: string };
 
 export interface OpenDocUIRunnerResult {
     actionId: string;

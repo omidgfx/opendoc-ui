@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useEscClose} from '../../hooks/useEscClose';
+import {useModalTransition} from '../../hooks/useModalTransition';
 import {Tip} from '../common/Tooltip';
 import clsx from 'clsx';
 
@@ -16,6 +17,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
     const [copiedChat, setCopiedChat] = useState<'slack' | 'mattermost' | null>(null);
     const [originUrl, setOriginUrl] = useState(url);
     const inputRef = useRef<HTMLInputElement>(null);
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
 
     useEffect(() => {
         setOriginUrl(url);
@@ -35,7 +37,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
         return () => clearTimeout(t);
     }, [isOpen, originUrl]);
 
-    useEscClose(isOpen, onClose, isOpen);
+    useEscClose(isOpen, requestClose, isOpen);
 
     const shareText = title || 'Check out this API documentation';
     const shareDesc = description || shareText;
@@ -136,17 +138,17 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
         },
     ];
 
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
         <div
-            className="fixed inset-0 z-[4000] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-[3px] animate-in fade-in duration-150"
+            className={`${backdropClassName} fixed inset-0 z-[4000] bg-black/50 backdrop-blur-[3px]`}
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget) onClose();
+                if (e.target === e.currentTarget) requestClose();
             }}
         >
             <div
-                className="w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
+                className="modal-surface w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
                 <div
                     className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -160,14 +162,14 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
                         </div>
                     </div>
                     <Tip content="Close">
-                        <button onClick={onClose}
+                        <button onClick={requestClose}
                                 className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-muted)] shrink-0">
                             <i className="ph ph-x"></i>
                         </button>
                     </Tip>
                 </div>
 
-                <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto scrollbar-thin">
+                <div className="modal-scroll-region p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto scrollbar-thin">
                     <div className="space-y-2">
                         <label
                             className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Link</label>
@@ -267,7 +269,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
 
                 <div
                     className="px-4 sm:px-6 py-3 border-t flex justify-end gap-2 shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
-                    <button onClick={onClose}
+                    <button onClick={requestClose}
                             className="px-4 py-1.5 text-xs font-semibold rounded-lg border hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-heading)] border-[var(--border)]">
                         Close
                     </button>

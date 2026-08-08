@@ -59,8 +59,28 @@ export const positionFor = (
     const centerX = clampCenter(rect.left + rect.width / 2, size.width, viewportWidth);
     const centerY = clampCenter(rect.top + rect.height / 2, size.height, viewportHeight);
 
-    if (resolved === 'bottom') return {top: rect.bottom + TOOLTIP_GAP, left: centerX, transform: 'translateX(-50%)', placement: resolved};
-    if (resolved === 'left') return {top: centerY, left: Math.max(TOOLTIP_EDGE, rect.left - TOOLTIP_GAP), transform: 'translate(-100%, -50%)', placement: resolved};
-    if (resolved === 'right') return {top: centerY, left: Math.min(viewportWidth - TOOLTIP_EDGE, rect.right + TOOLTIP_GAP), transform: 'translateY(-50%)', placement: resolved};
-    return {top: Math.max(TOOLTIP_EDGE, rect.top - TOOLTIP_GAP), left: centerX, transform: 'translate(-50%, -100%)', placement: resolved};
+    if (resolved === 'bottom') return {
+        top: rect.bottom + TOOLTIP_GAP,
+        left: centerX,
+        transform: 'translateX(-50%)',
+        placement: resolved
+    };
+    if (resolved === 'left') return {
+        top: centerY,
+        left: Math.max(TOOLTIP_EDGE, rect.left - TOOLTIP_GAP),
+        transform: 'translate(-100%, -50%)',
+        placement: resolved
+    };
+    if (resolved === 'right') return {
+        top: centerY,
+        left: Math.min(viewportWidth - TOOLTIP_EDGE, rect.right + TOOLTIP_GAP),
+        transform: 'translateY(-50%)',
+        placement: resolved
+    };
+    return {
+        top: Math.max(TOOLTIP_EDGE, rect.top - TOOLTIP_GAP),
+        left: centerX,
+        transform: 'translate(-50%, -100%)',
+        placement: resolved
+    };
 };

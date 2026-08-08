@@ -1,8 +1,13 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {AppTheme, ThemeItem, ThemeMode} from '../../types';
+import React, {useMemo, useState} from 'react';
+import {ThemeMode} from '../../types';
 import {THEME_LIST} from '../../data/themes';
 import clsx from 'clsx';
 import {Tip} from '../common/Tooltip';
+import {useEscClose} from '../../hooks/useEscClose';
+import {useModalTransition} from '../../hooks/useModalTransition';
+import DetailedThemeView from './theme-selector/DetailedThemeView';
+import ThemePreviewCard from './theme-selector/ThemePreviewCard';
+import {alpha} from './theme-selector/themeSelectorUtils';
 
 type ThemeSelectorView = 'gallery' | 'detail';
 
@@ -17,10 +22,6 @@ type ThemeSelectorModalProps = {
     onClose: () => void;
 };
 
-import DetailedThemeView from './theme-selector/DetailedThemeView';
-import ThemePreviewCard from './theme-selector/ThemePreviewCard';
-import {alpha} from './theme-selector/themeSelectorUtils';
-
 export default function ThemeSelectorModal({
                                                isOpen,
                                                selectedThemeName,
@@ -32,29 +33,22 @@ export default function ThemeSelectorModal({
                                                onSetThemeMode
                                            }: ThemeSelectorModalProps) {
     const [view, setView] = useState<ThemeSelectorView>('gallery');
+    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+    useEscClose(isOpen, requestClose);
 
     const selectedTheme = useMemo(() => THEME_LIST.find((theme) => theme.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
-        <div className="fixed inset-0 z-[2500] flex items-center justify-center p-2 sm:p-3 md:p-6 animate-fade-in"
+        <div className={`${backdropClassName} fixed inset-0 z-[2500]`}
              style={{backgroundColor: 'rgba(7, 10, 18, .64)', backdropFilter: 'blur(6px)'}}
              onMouseDown={(event) => {
-                 if (event.target === event.currentTarget) onClose();
+                 if (event.target === event.currentTarget) requestClose();
              }}>
 
             <section role="dialog" aria-modal="true" aria-labelledby="theme-selector-title"
-                     className="flex h-[92vh] sm:h-[86vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border shadow-2xl animate-zoom-in bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
+                     className="modal-surface flex h-[92vh] sm:h-[86vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border shadow-2xl animate-zoom-in bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
 
                 <header
                     className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 modal-header-mobile-pad bg-[var(--background)] border-[var(--border)]">
@@ -113,7 +107,7 @@ export default function ThemeSelectorModal({
                         </div>
 
                         <Tip content="Close">
-                            <button type="button" onClick={onClose} autoFocus
+                            <button type="button" onClick={requestClose} autoFocus
                                     className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border text-[14px] transition-all cursor-pointer hover:bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)]"
                                     aria-label="Close theme selector">
                                 <i className="ph ph-x"/>
@@ -124,7 +118,7 @@ export default function ThemeSelectorModal({
 
                 <div className="min-h-0 flex-1">
                     {view === 'gallery' ? (
-                        <div className="h-full overflow-y-auto p-3 sm:p-4 md:p-5 scrollbar-thin">
+                        <div className="modal-scroll-region h-full overflow-y-auto p-3 sm:p-4 md:p-5 scrollbar-thin">
                             <div className="mb-4 flex items-end justify-between gap-3">
                                 <div>
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Theme
@@ -146,7 +140,7 @@ export default function ThemeSelectorModal({
                     ) : (
                         <DetailedThemeView selectedTheme={selectedTheme} selectedThemeName={selectedThemeName}
                                            currentThemeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode}
-                                           onSelectTheme={onSelectTheme} onClose={onClose}/>
+                                           onSelectTheme={onSelectTheme} onClose={requestClose}/>
                     )}
                 </div>
 
@@ -157,7 +151,7 @@ export default function ThemeSelectorModal({
                            style={{color: selectedTheme[resolvedThemeMode].primary}}/>
                         <span className="truncate"><strong>{selectedTheme.name}</strong> is selected</span>
                     </div>
-                    <button type="button" onClick={onClose}
+                    <button type="button" onClick={requestClose}
                             className="rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-[var(--primary-contrast)] shadow-sm transition-all cursor-pointer hover:opacity-90 active:scale-[0.98]"
                             style={{backgroundColor: selectedTheme[resolvedThemeMode].primary}}>
                         Done
