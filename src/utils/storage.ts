@@ -3,9 +3,14 @@ import {idbClearPrefix, idbDelete, idbGetAll, idbSet} from './indexedDb';
 /**
  * IndexedDB-first synchronous facade. Existing callers can keep their simple
  * get/set API while browser persistence is moved to IndexedDB after the boot
- * hydration step; localStorage remains a compatibility fallback.
+ * hydration step; localStorage is a compatibility fallback and synchronous
+ * safety mirror for refresh/page-close boundaries.
  */
 const IDB_STORAGE_PREFIX = 'storage:';
+// Small state is synchronously mirrored so a refresh/page close cannot happen
+// between an in-memory update and its asynchronous IndexedDB transaction.
+// Tombstones provide the same guarantee for removals.
+const LOCAL_DELETE_MARKER = '__opendoc_ui_deleted_v1__';
 const memoryStore = new Map<string, string>();
 let storageHydrated = false;
 let indexedDbEnabled = false;
@@ -20,29 +25,26 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
     }
     indexedDbEnabled = true;
     records.forEach(record => memoryStore.set(String(record.key).slice(IDB_STORAGE_PREFIX.length), record.value));
-    // Migrate existing synchronous data once. IndexedDB wins when both stores
-    // contain a key, and the local copy is removed only after it is represented
-    // in the in-memory/IndexedDB store.
+    // The synchronous mirror wins when both stores contain a key: it may be the
+    // final write made immediately before the previous page was refreshed or
+    // closed. Reconcile it back into IndexedDB but keep the mirror for the next
+    // close/reload boundary.
     try {
         const localKeys = Object.keys(window.localStorage);
         for (const key of localKeys) {
-            if (key === '__opendoc_storage_test__' || memoryStore.has(key)) {
-                try {
-                    window.localStorage.removeItem(key);
-                } catch { /* fallback */
-                }
+            if (key === '__opendoc_storage_test__') {
+                window.localStorage.removeItem(key);
                 continue;
             }
             const value = window.localStorage.getItem(key);
             if (value === null) continue;
-            memoryStore.set(key, value);
-            const written = await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
-            if (written) {
-                try {
-                    window.localStorage.removeItem(key);
-                } catch { /* fallback */
-                }
+            if (value === LOCAL_DELETE_MARKER) {
+                memoryStore.delete(key);
+                await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
+                continue;
             }
+            memoryStore.set(key, value);
+            await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
         }
     } catch {
         // A blocked localStorage should not prevent the IndexedDB-backed app
@@ -56,7 +58,7 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
  * Safe browser persistence wrapper.
  *
  * Every read/write in the app goes through this module. After boot hydration,
- * IndexedDB is primary and localStorage is only a compatibility fallback. The
+ * IndexedDB is primary and localStorage mirrors small writes synchronously. The
  * facade guarantees that storage failures do not crash the app, corrupt JSON is
  * self-repaired, and global/per-spec state remains namespaced.
  */
@@ -78,7 +80,8 @@ const byteLength = (value: string): number => {
 const readRaw = (key: string): string | null => {
     if (memoryStore.has(key)) return memoryStore.get(key) || '';
     try {
-        return window.localStorage.getItem(key);
+        const value = window.localStorage.getItem(key);
+        return value === LOCAL_DELETE_MARKER ? null : value;
     } catch {
         return null;
     }
@@ -124,6 +127,14 @@ const deleteRaw = (key: string) => {
     }
 };
 
+const markRawDeleted = (key: string) => {
+    try {
+        window.localStorage.setItem(key, LOCAL_DELETE_MARKER);
+    } catch {
+        // The in-memory and IndexedDB deletion paths still remain available.
+    }
+};
+
 export const storage = {
     /** True when IndexedDB or the localStorage fallback is usable. */
     available(): boolean {
@@ -150,12 +161,16 @@ export const storage = {
         const normalized = String(value);
         if (indexedDbEnabled) {
             memoryStore.set(key, normalized);
+            // Write the small synchronous mirror first. If it does not fit,
+            // remove any older mirror so it cannot override the newer IDB value
+            // during the next hydration.
+            const mirrored = writeRaw(key, normalized);
+            if (!mirrored) deleteRaw(key);
             void idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized).then(written => {
                 if (!written) {
-                    lastWriteError = 'IndexedDB write failed; using the localStorage fallback.';
-                    writeRaw(key, normalized);
-                } else {
-                    deleteRaw(key);
+                    lastWriteError = mirrored
+                        ? 'IndexedDB write failed; the synchronous mirror is being used.'
+                        : 'IndexedDB write failed and the synchronous mirror was unavailable.';
                 }
             });
             return true;
@@ -169,8 +184,14 @@ export const storage = {
 
     async removeAsync(key: string): Promise<void> {
         memoryStore.delete(key);
-        deleteRaw(key);
-        if (indexedDbEnabled) await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
+        if (indexedDbEnabled) {
+            // Keep a synchronous tombstone until a future write replaces it.
+            // This prevents an interrupted IDB delete from resurrecting state.
+            markRawDeleted(key);
+            await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
+        } else {
+            deleteRaw(key);
+        }
     },
 
     usageBytes(): number {
@@ -222,7 +243,7 @@ export const storage = {
         } catch {
             // IndexedDB-backed sessions can work without localStorage.
         }
-        return Array.from(keys).filter(key => key.startsWith(prefix));
+        return Array.from(keys).filter(key => key.startsWith(prefix) && readRaw(key) !== null);
     },
 
     async clearPrefix(prefix: string): Promise<void> {
@@ -388,8 +409,8 @@ const moveKey = (from: string, to: string) => {
     if (storage.get(to) !== '') return;
     const value = readRaw(from);
     if (value === null) return;
-    writeRaw(to, value);
-    deleteRaw(from);
+    storage.set(to, value);
+    storage.remove(from);
 };
 
 const migrateSpecKeys = () => {
@@ -408,9 +429,9 @@ const migrateSpecKeys = () => {
             const target = specStorage.key(specKey, name);
             if (storage.get(target) === '') {
                 const value = readRaw(legacyKey);
-                if (value !== null) writeRaw(target, value);
+                if (value !== null) storage.set(target, value);
             }
-            deleteRaw(legacyKey);
+            storage.remove(legacyKey);
             break;
         }
     });

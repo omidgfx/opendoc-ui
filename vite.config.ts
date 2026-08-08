@@ -27,6 +27,7 @@ export default defineConfig(() => {
             },
         },
         build: {
+            sourcemap: true,
             rollupOptions: {
                 output: {
                     entryFileNames: 'index.js',
@@ -34,6 +35,9 @@ export default defineConfig(() => {
                     assetFileNames: '[name].[ext]',
                 }
             },
+        },
+        css: {
+            devSourcemap: true
         }
     };
 });

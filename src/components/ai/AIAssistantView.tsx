@@ -130,6 +130,18 @@ export default function AIAssistantView({
     const streamContentRef = useRef('');
     const streamFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const renderedSpecKeyRef = useRef(parsableKey);
+    renderedSpecKeyRef.current = parsableKey;
+    const latestPersistenceRef = useRef({
+        specKey: parsableKey,
+        conversations,
+        ready: conversationsLoaded && loadedConversationSpecKey === parsableKey,
+    });
+    latestPersistenceRef.current = {
+        specKey: parsableKey,
+        conversations,
+        ready: conversationsLoaded && loadedConversationSpecKey === parsableKey,
+    };
     const pendingBridgeConversationsRef = useRef(new Map<string, string>());
     const completedBridgeActionsRef = useRef(new Set<string>());
 
@@ -165,8 +177,27 @@ export default function AIAssistantView({
         return () => {
             if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
             persistTimerRef.current = null;
+            // A spec switch can unmount/cancel the 250 ms checkpoint. Flush the
+            // captured outgoing snapshot instead of silently losing its tail.
+            if (renderedSpecKeyRef.current !== parsableKey) {
+                writeAIConversations(parsableKey, conversations);
+            }
         };
     }, [parsableKey, conversations, conversationsLoaded, loadedConversationSpecKey]);
+
+    useEffect(() => {
+        const flushLatest = () => {
+            const latest = latestPersistenceRef.current;
+            if (latest.ready) writeAIConversations(latest.specKey, latest.conversations);
+        };
+        window.addEventListener('pagehide', flushLatest);
+        return () => {
+            window.removeEventListener('pagehide', flushLatest);
+            if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+            persistTimerRef.current = null;
+            flushLatest();
+        };
+    }, []);
 
     const activeConversation = useMemo(
         () => conversations.find(conversation => conversation.id === activeConversationId) || conversations[0] || null,

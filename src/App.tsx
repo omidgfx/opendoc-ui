@@ -113,6 +113,15 @@ const isValidTabPersistence = (value: any): boolean => {
     return true;
 };
 
+/** A plain `#/parsable/:key` route is only a spec selection and must not
+ * overwrite that spec's restored session. Everything below is an intentional
+ * deep link and is allowed to override the restored active tab. */
+const hasExplicitSpecRoute = (route: ParsedRoute, hash: string): boolean =>
+    !!(route.endpoint || route.legacyOperationId || route.showSchemaExplorer || route.showAbout
+        || route.showAssistant || route.searchQuery || route.searchMethods.length || route.searchTags.length
+        || route.searchSecured !== null || route.schemas.length || route.responseCode
+        || /[?&]search(?:=|&|$)/.test(hash));
+
 const parseSpecDraft = (text: string): OpenApiSpec => {
     const t = text.trim();
     const parsed = (t.startsWith('{') || t.startsWith('[')) ? JSON.parse(text) : jsYaml.load(text);
@@ -141,6 +150,10 @@ export default function App() {
     const [configSource, setConfigSource] = useState<ConfigSource>('none');
     const [selectedParsableKey, setSelectedParsableKey] = useState<string>('');
     const [spec, setSpec] = useState<OpenApiSpec | null>(null);
+    // `spec` and the selected key are updated independently. Keep the key that
+    // actually produced the current document so restore effects can never
+    // validate one specification's tabs against the previous specification.
+    const [loadedSpecKey, setLoadedSpecKey] = useState<string>('');
     const [isLoadingSpec, setIsLoadingSpec] = useState(false);
     const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
     const [isRefreshingSpec, setIsRefreshingSpec] = useState(false);
@@ -618,7 +631,16 @@ export default function App() {
             setShowSchemaExplorer(tab.kind === 'schemas');
             setShowAbout(tab.kind === 'about');
             setShowAssistant(tab.kind === 'assistant');
-            setSearchQuery(tab.kind === 'search' ? (tab.query || '') : '');
+            if (tab.kind === 'search') {
+                setSearchQuery(tab.query || '');
+                setResultsQuery(tab.query || '');
+                setSelectedMethods(tab.filters?.methods || []);
+                setSelectedTags(tab.filters?.tags || []);
+                setOnlyProtected(tab.filters?.onlyProtected ?? null);
+            } else {
+                setSearchQuery('');
+                setResultsQuery('');
+            }
             // Make the sidebar scroll to the activated page (like endpoints do).
             setScrollIntent({type: 'view', id: tab.id});
             return;
@@ -818,47 +840,39 @@ export default function App() {
         ));
     }, [spec, getEndpointLabel]);
 
-    // ---------- Tab persistence (localStorage) ----------
-    const tabsRestoredRef = useRef<Set<string>>(new Set());
-    // True once the per-spec tab restore has run. Before that, the URL sync
-    // must not create/activate tabs — otherwise a stored tab gets duplicated
-    // (once by restore, once by the deep-link handler).
-    const tabsRestoreDoneRef = useRef(false);
-    // True once the spec-load effect has run once after mount. On that first
-    // run the URL is a stale deep link from the previous session — it must not
-    // recreate tabs (previews or home); only persisted tabs may be restored.
-    const specLoadInitRef = useRef(false);
+    // ---------- Per-spec tab persistence ----------
+    // The key in this state is also the write barrier. On a spec transition the
+    // selected key changes first while tab state still belongs to the outgoing
+    // spec. Nothing may write (or delete) the incoming namespace until its
+    // document has loaded and its saved session has been applied.
+    const [tabsRestoredForKey, setTabsRestoredForKey] = useState('');
+    const tabsRestoreDoneRef = useRef('');
+    // Hash generation/processing has a separate per-spec barrier. This prevents
+    // the outgoing UI from rewriting the newly selected spec's plain URL while
+    // its document and tabs are still being restored.
+    const specRouteReadyRef = useRef('');
 
     useEffect(() => {
-        if (!selectedParsableKey) return;
-        // Persist only "committed" tabs: permanents (including pinned view tabs,
-        // e.g. a pinned search tab keeps its query). Preview tabs are transient
-        // by definition and must never survive a refresh — restoring them is
-        // what made closed tabs come back. The persisted active id is the last
-        // committed tab. When nothing is committed (all tabs closed) the stored
-        // session must be REMOVED, or a reload would resurrect a closed tab.
+        if (!selectedParsableKey || loadedSpecKey !== selectedParsableKey
+            || tabsRestoredForKey !== selectedParsableKey) return;
+        // Persist only "committed" tabs: permanent endpoint/view tabs. Preview
+        // tabs are transient and intentionally do not survive a spec switch or
+        // page reload.
         const persistable = endpointTabs.filter(t => !t.isPreview);
         const activeId = activeTabId && endpointTabs.some(t => t.id === activeTabId && !t.isPreview)
             ? activeTabId
             : (persistable[persistable.length - 1]?.id || '');
         if (persistable.length === 0) {
-            // Only remove the stored session once the boot-time restore has
-            // finished — before that, an empty tab bar is just the initial
-            // state and wiping storage would destroy the session we're about
-            // to restore.
-            if (tabsRestoreDoneRef.current) {
-                specStorage.remove(selectedParsableKey, 'tabs');
-            }
+            void specStorage.remove(selectedParsableKey, 'tabs');
             return;
         }
         const data = {tabs: orderTabs(persistable), activeTabId: activeId, viewModes: tabViewModes};
         specStorage.setJSON(selectedParsableKey, 'tabs', data);
-    }, [endpointTabs, activeTabId, tabViewModes, selectedParsableKey]);
+    }, [endpointTabs, activeTabId, tabViewModes, selectedParsableKey, loadedSpecKey, tabsRestoredForKey, orderTabs]);
 
     useEffect(() => {
-        if (!spec || !selectedParsableKey) return;
-        if (tabsRestoredRef.current.has(selectedParsableKey)) return;
-        tabsRestoredRef.current.add(selectedParsableKey);
+        if (!spec || !selectedParsableKey || loadedSpecKey !== selectedParsableKey) return;
+        if (tabsRestoredForKey === selectedParsableKey) return;
 
         const data = specStorage.getJSON<{
             tabs: TabItem[];
@@ -868,77 +882,73 @@ export default function App() {
             selectedParsableKey, 'tabs', null,
             isValidTabPersistence,
         );
-        if (data?.tabs && data.tabs.length > 0) {
-            // Drop any stray preview tabs / search previews from older saves and
-            // drop endpoint tabs that no longer exist in this spec.
-            const filtered = orderTabs(data.tabs.filter((t: TabItem) =>
-                // Keep committed tabs only: permanents (endpoints have no kind;
-                // view tabs have kind set). Drop anything still marked preview.
-                !t.isPreview,
-            )).filter((t: TabItem) =>
-                t.kind && t.kind !== 'endpoint' ? true : !!spec?.paths?.[t.path]?.[t.method],
-            );
-            if (filtered.length === 0) {
-                // Nothing committed survived. If the URL is a plain home (no
-                // deep link) show the welcome page; otherwise let the URL
-                // handler open the deep link.
-                const p2 = parseSmartRoute(window.location.hash);
-                tabsRestoreDoneRef.current = true;
-                if (!p2.endpoint && !p2.legacyOperationId && !p2.searchQuery && !p2.showSchemaExplorer && !p2.showAbout && !p2.showAssistant) {
-                    setShowWelcome(true);
-                }
-                return;
-            }
-            const updatedTabs = filtered.map((t: TabItem) =>
-                t.kind && t.kind !== 'endpoint'
-                    ? t
-                    : {...t, label: getEndpointLabel(t.path, t.method)},
-            );
-            setEndpointTabs(updatedTabs);
-            if (data.activeTabId) {
-                const activeTab = updatedTabs.find((t: TabItem) => t.id === data.activeTabId);
-                if (activeTab) {
-                    setActiveTabId(activeTab.id);
-                    applyTabViewState(activeTab);
-                } else {
-                    setActiveTabId(updatedTabs[updatedTabs.length - 1]?.id || null);
-                    applyTabViewState(updatedTabs[updatedTabs.length - 1] || null);
-                }
-            }
-            if (data.viewModes) {
-                const restoredModes = Object.fromEntries(
-                    Object.entries(data.viewModes).filter(([id]) => updatedTabs.some(tab => tab.id === id)),
-                ) as Record<string, StoredTabViewMode>;
-                setTabViewModes(restoredModes);
-            }
-        }
-        if (!data?.tabs || data.tabs.length === 0) {
-            // No persisted tabs: with no deep link in the URL this is a plain
-            // boot — show the welcome page (all tabs closed). Any URL route
-            // (endpoint / about / schema-explorer / search / filters) is handled
-            // by the URL processing in the spec-load effect, not welcome.
-            const p = parseSmartRoute(window.location.hash);
-            const urlHasRoute = !!(p.endpoint || p.legacyOperationId || p.searchQuery
-                || p.showSchemaExplorer || p.showAbout || p.showAssistant
-                || p.searchMethods.length || p.searchTags.length || p.searchSecured !== null);
-            if (!urlHasRoute) {
-                setShowWelcome(true);
-            }
-        }
-        tabsRestoreDoneRef.current = true;
-    }, [spec, selectedParsableKey, getEndpointLabel, withPreviewLast, orderTabs, applyTabViewState]);
+        const filtered = data?.tabs?.length
+            ? orderTabs(data.tabs.filter((tab: TabItem) => !tab.isPreview)).filter((tab: TabItem) =>
+                tab.kind && tab.kind !== 'endpoint' ? true : !!spec.paths?.[tab.path]?.[tab.method],
+            )
+            : [];
+        const restoredTabs = filtered.map((tab: TabItem) =>
+            tab.kind && tab.kind !== 'endpoint'
+                ? tab
+                : {...tab, label: getEndpointLabel(tab.path, tab.method)},
+        );
+        const restoredModes = data?.viewModes
+            ? Object.fromEntries(
+                Object.entries(data.viewModes).filter(([id]) => restoredTabs.some(tab => tab.id === id)),
+            ) as Record<string, StoredTabViewMode>
+            : {};
+        const restoredActiveTab = restoredTabs.find(tab => tab.id === data?.activeTabId)
+            || restoredTabs[restoredTabs.length - 1]
+            || null;
 
+        setEndpointTabs(restoredTabs);
+        setTabViewModes(restoredModes);
+        setActiveTabId(restoredActiveTab?.id || null);
+        applyTabViewState(restoredActiveTab);
+        const restoredMode = restoredActiveTab ? restoredModes[restoredActiveTab.id] : undefined;
+        if (restoredMode) setSelectedTab(restoredMode);
+
+        // An explicit deep link is applied after this restore and becomes the
+        // active tab. A plain spec route means "resume this spec"; with no saved
+        // committed tabs it correctly lands on the welcome page.
+        const route = parseSmartRoute(window.location.hash);
+        if (hasExplicitSpecRoute(route, window.location.hash)) setShowWelcome(false);
+
+        tabsRestoreDoneRef.current = selectedParsableKey;
+        setTabsRestoredForKey(selectedParsableKey);
+    }, [spec, selectedParsableKey, loadedSpecKey, tabsRestoredForKey, getEndpointLabel, orderTabs, applyTabViewState]);
+
+    // Restore a saved mode only when tab identity changes. Mode changes made by
+    // the user then flow in one direction (selectedTab -> tabViewModes), avoiding
+    // the old pair of competing effects that could alternate docs/split forever.
+    const restoringTabModeRef = useRef<{ tabId: string; mode: StoredTabViewMode } | null>(null);
+    useEffect(() => {
+        if (!activeTabId) {
+            restoringTabModeRef.current = null;
+            return;
+        }
+        const mode = tabViewModes[activeTabId];
+        if (mode && mode !== selectedTab) {
+            restoringTabModeRef.current = {tabId: activeTabId, mode};
+            setSelectedTab(mode);
+        } else {
+            restoringTabModeRef.current = null;
+        }
+        // Deliberately keyed by tab identity. Watching tabViewModes here creates
+        // a bidirectional feedback loop with the persistence effect below.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTabId]);
 
     useEffect(() => {
-        if (activeTabId && tabViewModes[activeTabId]) {
-            setSelectedTab(tabViewModes[activeTabId]);
+        if (!activeTabId) return;
+        const restoring = restoringTabModeRef.current;
+        if (restoring?.tabId === activeTabId) {
+            if (restoring.mode === selectedTab) restoringTabModeRef.current = null;
+            return;
         }
-    }, [activeTabId, tabViewModes]);
-
-    useEffect(() => {
-        if (activeTabId) {
-            setTabViewModes(vm => ({...vm, [activeTabId]: selectedTab}));
-        }
+        setTabViewModes(current => current[activeTabId] === selectedTab
+            ? current
+            : {...current, [activeTabId]: selectedTab});
     }, [selectedTab, activeTabId]);
 
     // ---------- Alt+Left/Right tab switching ----------
@@ -980,19 +990,28 @@ export default function App() {
     }, [spec, selectedParsableKey]);
 
     // ---------- Theme (per spec) ----------
+    // As with tabs, restoration and persistence need a render boundary between
+    // them. Otherwise the outgoing theme is written under the incoming key in
+    // the same effect flush, before the restored state has rendered.
+    const [themeRestoredForKey, setThemeRestoredForKey] = useState('');
     useEffect(() => {
         if (!selectedParsableKey) return;
         const t = specStorage.get(selectedParsableKey, 'theme');
         setSelectedThemeName(t && THEME_LIST.some(x => x.name === t) ? t : 'Default Slate');
         const m = specStorage.get(selectedParsableKey, 'theme_mode');
         setCurrentThemeMode(m === 'light' || m === 'dark' || m === 'system' ? m : 'system');
+        setThemeRestoredForKey(selectedParsableKey);
     }, [selectedParsableKey]);
     useEffect(() => {
-        if (selectedParsableKey) specStorage.set(selectedParsableKey, 'theme', selectedThemeName);
-    }, [selectedThemeName, selectedParsableKey]);
+        if (selectedParsableKey && themeRestoredForKey === selectedParsableKey) {
+            specStorage.set(selectedParsableKey, 'theme', selectedThemeName);
+        }
+    }, [selectedThemeName, selectedParsableKey, themeRestoredForKey]);
     useEffect(() => {
-        if (selectedParsableKey) specStorage.set(selectedParsableKey, 'theme_mode', currentThemeMode);
-    }, [currentThemeMode, selectedParsableKey]);
+        if (selectedParsableKey && themeRestoredForKey === selectedParsableKey) {
+            specStorage.set(selectedParsableKey, 'theme_mode', currentThemeMode);
+        }
+    }, [currentThemeMode, selectedParsableKey, themeRestoredForKey]);
     useEffect(() => {
         if (selectedParsableKey && parsables[selectedParsableKey]) uiStorage.set('last_parsable', selectedParsableKey);
     }, [selectedParsableKey, parsables]);
@@ -1061,6 +1080,7 @@ export default function App() {
     const loadSpec = async (parsableKey: string, parsable: Parsable, forceRefresh = false) => {
         const seq = ++loadSpecSeq.current;
         setIsLoadingSpec(true);
+        setLoadedSpecKey('');
         setSpec(null);
 
         try {
@@ -1073,10 +1093,12 @@ export default function App() {
             }
             if (seq !== loadSpecSeq.current) return;
             setSpec(obj);
+            setLoadedSpecKey(obj ? parsableKey : '');
             if (obj) setSelectedServer(obj.servers?.[0]?.url || 'https://api.example.com');
         } catch (e) {
             if (seq !== loadSpecSeq.current) return;
             console.error(`Failed to load spec '${parsableKey}'`, e);
+            setLoadedSpecKey('');
             setSpec(null);
         } finally {
             if (seq === loadSpecSeq.current) setIsLoadingSpec(false);
@@ -1103,27 +1125,39 @@ export default function App() {
         setLocalSpec({key, title, fileName, raw, file});
         upsertLocalHistory(entry);
         setLocalHistory(readLocalHistory());
+        const switchingSpec = key !== selectedParsableKey;
         setSelectedParsableKey(key);
         setSpec(obj);
+        setLoadedSpecKey(key);
         setIsLoadingSpec(false);
         if (obj) setSelectedServer(obj.servers?.[0]?.url || 'https://api.example.com');
-        setActiveResponseCode(null);
-        setModalsStack([]);
-        setSelectedTab('docs');
-        setSelectedMethods([]);
-        setSelectedTags([]);
-        setOnlyProtected(null);
-        setEndpointTabs([]);
-        setActiveTabId(null);
-        setTabViewModes({});
-        setExamineResponses({});
-        setIsUpdatingHash(true);
-        const h = `#/parsable/${encodeURIComponent(key)}`;
-        if (window.location.hash !== h) window.location.hash = h;
-        setIsUpdatingHash(false);
-        openViewTab('home');
+        if (switchingSpec) {
+            setSelectedEndpoint(null);
+            setShowWelcome(false);
+            setShowHome(false);
+            setShowSchemaExplorer(false);
+            setShowAbout(false);
+            setShowAssistant(false);
+            setAssistantContextEndpoints([]);
+            setSearchQuery('');
+            setResultsQuery('');
+            setActiveResponseCode(null);
+            setModalsStack([]);
+            setSelectedTab('docs');
+            setSelectedMethods([]);
+            setSelectedTags([]);
+            setOnlyProtected(null);
+            setEndpointTabs([]);
+            setActiveTabId(null);
+            setTabViewModes({});
+            setExamineResponses({});
+            setIsUpdatingHash(true);
+            const h = `#/parsable/${encodeURIComponent(key)}`;
+            if (window.location.hash !== h) window.location.hash = h;
+            setIsUpdatingHash(false);
+        }
         return obj;
-    }, [openViewTab]);
+    }, [selectedParsableKey]);
 
     const handleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1175,6 +1209,7 @@ export default function App() {
                     applyLocalSpec(raw, localSpec.fileName, localSpec.file);
                 } else {
                     setSpec(parseSpecDraft(localSpec.raw));
+                    setLoadedSpecKey(localSpec.key);
                 }
             }
         } catch (e) {
@@ -1297,22 +1332,44 @@ export default function App() {
 
     // ---------- Hash sync ----------
     const syncHashToState = useCallback(() => {
-        // While the welcome page is showing, a plain home hash is stale (from
-        // before the tabs were closed) and must be ignored — but a REAL deep
-        // link (endpoint / search / schema / about) must still open normally.
-        const parsed0 = parseSmartRoute(window.location.hash);
-        if (navStateRef.current.showWelcome
-            && !parsed0.endpoint && !parsed0.legacyOperationId && !parsed0.searchQuery
-            && !parsed0.showSchemaExplorer && !parsed0.showAbout && !parsed0.showAssistant) return;
-        // On the very first load the persisted tab restore owns the state; the
-        // URL (which may be a stale deep link) must not recreate anything.
-        if (!tabsRestoreDoneRef.current) return;
-        if (!specLoadInitRef.current) return;
         const parsed: ParsedRoute = parseSmartRoute(window.location.hash);
 
+        // A hash can select another specification. Stop immediately after the
+        // key transition: applying its route against the currently loaded spec
+        // was a major source of cross-spec tabs and invalid endpoints.
         if (parsed.parsableKey && parsed.parsableKey !== selectedParsableKey && parsables[parsed.parsableKey]) {
+            setSpec(null);
+            setLoadedSpecKey('');
+            setSelectedEndpoint(null);
+            setShowWelcome(false);
+            setShowHome(false);
+            setShowSchemaExplorer(false);
+            setShowAbout(false);
+            setShowAssistant(false);
+            setAssistantContextEndpoints([]);
+            setSearchQuery('');
+            setResultsQuery('');
+            setSelectedMethods([]);
+            setSelectedTags([]);
+            setOnlyProtected(null);
+            setEndpointTabs([]);
+            setActiveTabId(null);
+            setTabViewModes({});
+            setExamineResponses({});
             setSelectedParsableKey(parsed.parsableKey);
+            return;
         }
+
+        if (loadedSpecKey !== selectedParsableKey
+            || tabsRestoreDoneRef.current !== selectedParsableKey
+            || specRouteReadyRef.current !== selectedParsableKey) return;
+
+        const explicitRoute = hasExplicitSpecRoute(parsed, window.location.hash);
+        // A plain spec hash represents session resume. It must not turn a
+        // restored endpoint back into the overview (or resurrect a closed tab).
+        if (!explicitRoute) return;
+        if (navStateRef.current.showWelcome) setShowWelcome(false);
+
         setSearchQuery(parsed.searchQuery || '');
         setResultsQuery(parsed.searchQuery || '');
         setSelectedMethods(parsed.searchMethods || []);
@@ -1323,9 +1380,9 @@ export default function App() {
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
         if (parsed.legacyOperationId && spec) {
-            const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
-            if (r) {
-                openEndpointPreview(r.path, r.method);
+            const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
+            if (resolved) {
+                openEndpointPreview(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowAbout(false);
@@ -1334,16 +1391,20 @@ export default function App() {
         } else if (parsed.endpoint) {
             openEndpointPreview(parsed.endpoint.path, parsed.endpoint.method);
         } else {
-            setSelectedEndpoint(parsed.endpoint);
+            setSelectedEndpoint(null);
         }
         if (hashHasExplicitTab()) setSelectedTab(mapRouteTabToState(getTabFromHash()));
         setActiveResponseCode(parsed.responseCode);
 
         if (spec?.components?.schemas) {
-            const valid = parsed.schemas.filter(n => spec.components!.schemas![n]);
+            const valid = parsed.schemas.filter(name => spec.components!.schemas![name]);
             setModalsStack(valid.length ? valid : []);
         }
-        ensureViewTabFromState({
+        const hasEmptySearchRoute = /[?&]search(?:=|&|$)/.test(window.location.hash)
+            && !parsed.searchQuery && parsed.searchMethods.length === 0
+            && parsed.searchTags.length === 0 && parsed.searchSecured === null;
+        if (hasEmptySearchRoute) openViewTab('search');
+        else ensureViewTabFromState({
             searchQuery: parsed.searchQuery || '',
             showSchemaExplorer: parsed.showSchemaExplorer,
             showAbout: parsed.showAbout,
@@ -1353,13 +1414,13 @@ export default function App() {
             searchTags: parsed.searchTags || [],
             searchSecured: parsed.searchSecured ?? null,
         });
-    }, [parsables, selectedParsableKey, spec, openEndpointPreview, ensureViewTabFromState]);
+    }, [parsables, selectedParsableKey, loadedSpecKey, spec, openEndpointPreview, openViewTab, ensureViewTabFromState]);
 
     const updateHashFromState = useCallback(() => {
-        if (isLoadingSpec || isUpdatingHash || !isInitialLoadComplete || !spec) return;
-        // Never write the URL until the boot-time URL processing (spec-load
-        // effect) has run — intermediate states would corrupt the deep link.
-        if (!specLoadInitRef.current) return;
+        if (isLoadingSpec || isUpdatingHash || !isInitialLoadComplete || !spec
+            || loadedSpecKey !== selectedParsableKey
+            || tabsRestoredForKey !== selectedParsableKey
+            || specRouteReadyRef.current !== selectedParsableKey) return;
         setIsUpdatingHash(true);
 
         // Search + filter params only belong in the URL while the search tab is
@@ -1379,14 +1440,23 @@ export default function App() {
         });
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
-    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, showWelcome, selectedParsableKey, showHome, showAbout, showAssistant, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, selectedMethods, selectedTags, onlyProtected, activeTabId]);
+    }, [isLoadingSpec, isUpdatingHash, isInitialLoadComplete, spec, loadedSpecKey, tabsRestoredForKey, showWelcome, selectedParsableKey, showHome, showAbout, showAssistant, showSchemaExplorer, selectedEndpoint, selectedTab, modalsStack, activeResponseCode, searchQuery, selectedMethods, selectedTags, onlyProtected, activeTabId]);
 
     useEffect(() => {
-        if (!spec?.paths || isLoadingSpec) return;
+        if (!spec?.paths || isLoadingSpec || loadedSpecKey !== selectedParsableKey
+            || tabsRestoredForKey !== selectedParsableKey) return;
         const parsed = parseSmartRoute(window.location.hash);
+        if (parsed.parsableKey && parsed.parsableKey !== selectedParsableKey) return;
+
+        // Selecting a spec deliberately writes only #/parsable/:key. That route
+        // means "resume" and therefore leaves the freshly restored tab, search,
+        // and split-mode state untouched.
+        if (!hasExplicitSpecRoute(parsed, window.location.hash)) {
+            specRouteReadyRef.current = selectedParsableKey;
+            return;
+        }
+
         setSearchQuery(parsed.searchQuery || '');
-        // Results must render immediately on a deep-linked search URL — without
-        // this, the search tab opens but shows the overview until re-clicked.
         setResultsQuery(parsed.searchQuery || '');
         setSelectedMethods(parsed.searchMethods || []);
         setSelectedTags(parsed.searchTags || []);
@@ -1395,54 +1465,32 @@ export default function App() {
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
+        setShowWelcome(false);
         setActiveResponseCode(parsed.responseCode);
-        // During the very first load, the URL-driven state must defer to the
-        // persisted tab restore — otherwise the same tab is created twice, or a
-        // closed tab is resurrected from the stale URL. On later hash changes
-        // (real deep links) the URL is the source of truth.
-        // The URL is the source of truth on every load (fresh, reload or
-        // back/forward). Whatever route it describes is created as a PERMANENT
-        // tab and shown — persisted tabs never override the URL. This is what
-        // makes deep links to /about, /schema-explorer or ?search= work even
-        // when no saved tab for them exists.
-        if (!specLoadInitRef.current) {
-            specLoadInitRef.current = true;
-            // URL endpoints open as permanent tabs (they are "committed" by the
-            // URL itself, not transient previews). If the URL has no endpoint,
-            // clear any endpoint left by the tab restore — otherwise the URL
-            // writer would merge the restored endpoint into the search URL and
-            // corrupt it.
-            if (parsed.legacyOperationId) {
-                const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
-                if (r) {
-                    openEndpointPermanent(r.path, r.method);
-                    setShowHome(false);
-                    setShowSchemaExplorer(false);
-                    setShowAbout(false);
-                    setShowAssistant(false);
-                } else setSelectedEndpoint(null);
-            } else if (parsed.endpoint) {
-                openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
-            } else {
-                setSelectedEndpoint(null);
-            }
-        } else if (parsed.legacyOperationId) {
-            const r = resolveEndpointFromId(parsed.legacyOperationId, spec);
-            if (r) {
-                openEndpointPreview(r.path, r.method);
+
+        // The route that initially loads a spec is committed as a permanent tab;
+        // later same-spec hash changes use preview semantics in syncHashToState.
+        if (parsed.legacyOperationId) {
+            const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
+            if (resolved) {
+                openEndpointPermanent(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             } else setSelectedEndpoint(null);
         } else if (parsed.endpoint) {
-            openEndpointPreview(parsed.endpoint.path, parsed.endpoint.method);
+            openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
         } else {
             setSelectedEndpoint(null);
         }
-        setModalsStack(parsed.schemas.filter(n => spec.components?.schemas?.[n]));
-        if (window.location.hash.includes('?tab=')) setSelectedTab(mapRouteTabToState(parsed.tab));
-        ensureViewTabFromState({
+        setModalsStack(parsed.schemas.filter(name => spec.components?.schemas?.[name]));
+        if (hashHasExplicitTab()) setSelectedTab(mapRouteTabToState(parsed.tab));
+        const hasEmptySearchRoute = /[?&]search(?:=|&|$)/.test(window.location.hash)
+            && !parsed.searchQuery && parsed.searchMethods.length === 0
+            && parsed.searchTags.length === 0 && parsed.searchSecured === null;
+        if (hasEmptySearchRoute) openViewTabPermanent('search');
+        else ensureViewTabFromState({
             searchQuery: parsed.searchQuery || '',
             showSchemaExplorer: parsed.showSchemaExplorer,
             showAbout: parsed.showAbout,
@@ -1452,24 +1500,29 @@ export default function App() {
             searchTags: parsed.searchTags || [],
             searchSecured: parsed.searchSecured ?? null,
         });
-    }, [spec, selectedParsableKey, isLoadingSpec, ensureViewTabFromState]);
+        specRouteReadyRef.current = selectedParsableKey;
+    }, [spec, selectedParsableKey, loadedSpecKey, tabsRestoredForKey, isLoadingSpec, openEndpointPermanent, openViewTabPermanent, ensureViewTabFromState]);
 
     const getTabFromHash = () => parseSmartRoute(window.location.hash).tab;
     const hashHasExplicitTab = () => window.location.hash.includes('?tab=') || window.location.hash.includes('&tab=');
     const mapRouteTabToState = (t: 'view' | 'examine' | 'both'): 'docs' | 'examine' | 'both' => (t === 'examine' ? 'examine' : t === 'both' ? 'both' : 'docs');
     const mapStateTabToStorage = (t: 'docs' | 'examine' | 'both'): string => (t === 'examine' ? 'examine' : t === 'both' ? 'both' : 'view');
+    const [tabModeRestoredForKey, setTabModeRestoredForKey] = useState('');
     useEffect(() => {
         if (!selectedParsableKey) return;
         if (hashHasExplicitTab()) {
             setSelectedTab(mapRouteTabToState(getTabFromHash()));
-            return;
+        } else {
+            const stored = specStorage.get(selectedParsableKey, 'tab_mode');
+            setSelectedTab(stored === 'examine' ? 'examine' : stored === 'both' ? 'both' : 'docs');
         }
-        const t = specStorage.get(selectedParsableKey, 'tab_mode');
-        setSelectedTab(t === 'examine' ? 'examine' : t === 'both' ? 'both' : 'docs');
+        setTabModeRestoredForKey(selectedParsableKey);
     }, [selectedParsableKey]);
     useEffect(() => {
-        if (selectedParsableKey) specStorage.set(selectedParsableKey, 'tab_mode', mapStateTabToStorage(selectedTab));
-    }, [selectedTab, selectedParsableKey]);
+        if (selectedParsableKey && tabModeRestoredForKey === selectedParsableKey) {
+            specStorage.set(selectedParsableKey, 'tab_mode', mapStateTabToStorage(selectedTab));
+        }
+    }, [selectedTab, selectedParsableKey, tabModeRestoredForKey]);
 
     const [hashTimer, setHashTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
@@ -1825,8 +1878,19 @@ export default function App() {
     const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
     const handleSelectParsable = (k: string) => {
         if (k === selectedParsableKey) return;
+        // Detach the outgoing document immediately. The loaded-spec key and tab
+        // restore barriers ensure no outgoing state can be written under `k`.
+        setSpec(null);
+        setLoadedSpecKey('');
         setSelectedEndpoint(null);
+        setShowWelcome(false);
+        setShowHome(false);
+        setShowSchemaExplorer(false);
+        setShowAbout(false);
+        setShowAssistant(false);
+        setAssistantContextEndpoints([]);
         setSearchQuery('');
+        setResultsQuery('');
         setActiveResponseCode(null);
         setModalsStack([]);
         setSelectedTab('docs');
@@ -1842,7 +1906,6 @@ export default function App() {
         const h = `#/parsable/${encodeURIComponent(k)}`;
         if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
-        openViewTab('home');
         closeMobileIfNeeded();
     };
 

@@ -254,9 +254,19 @@ const normalizedConversations = (specKey: string, conversations: AIConversation[
 
 export const readAIConversationsAsync = async (specKey: string): Promise<AIConversation[]> => {
     if (!specKey) return [];
+    const fallback = readAIConversations(specKey);
     const indexed = await idbGet<AIConversation[]>(`${AI_CONVERSATIONS_IDB_PREFIX}${specKey}`);
-    if (Array.isArray(indexed) && indexed.every(isConversation)) return normalizedConversations(specKey, indexed);
-    return readAIConversations(specKey);
+    if (!Array.isArray(indexed) || !indexed.every(isConversation)) return fallback;
+    const normalizedIndexed = normalizedConversations(specKey, indexed);
+    const newest = (items: AIConversation[]) => items.reduce((latest, item) => Math.max(latest, item.updatedAt), 0);
+    // The synchronous storage mirror may contain the final checkpoint written
+    // during pagehide while the dedicated IDB transaction was interrupted. Do
+    // not let an older async result replace the newer conversation shown first.
+    if (newest(fallback) > newest(normalizedIndexed)) {
+        void idbSet(`${AI_CONVERSATIONS_IDB_PREFIX}${specKey}`, fallback);
+        return fallback;
+    }
+    return normalizedIndexed;
 };
 
 export const clearAIConversations = async (specKey: string): Promise<void> => {
