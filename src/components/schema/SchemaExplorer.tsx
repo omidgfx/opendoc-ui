@@ -125,7 +125,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
             className="flex-1 h-full flex flex-col p-4 md:p-8 w-full space-y-3 animate-in fade-in duration-200 select-text font-sans overflow-hidden min-w-0">
             {/* Search and Header - Sticky / Static at the top */}
             <div
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 shrink-0 border-[var(--border)]">
+                className="flex flex-col min-[1320px]:flex-row min-[1320px]:items-center justify-between gap-4 border-b pb-6 shrink-0 border-[var(--border)]">
 
                 <div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text-heading)]">
@@ -136,8 +136,8 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     </p>
                 </div>
 
-                <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:w-auto md:grid-cols-[auto_20rem]">
-                    <Tip content="Export all schemas as a zip of TypeScript models" wrapperClassName="order-2 md:order-1 shrink-0">
+                <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 min-[1320px]:w-auto min-[1320px]:grid-cols-[auto_20rem]">
+                    <Tip content="Export all schemas as a zip of TypeScript models" wrapperClassName="shrink-0">
                         <button
                             onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
                             className="h-8 px-3 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
@@ -148,7 +148,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     </Tip>
 
                     {/* Search */}
-                    <div className="relative order-1 min-w-0 w-full md:order-2 md:w-80">
+                    <div className="relative min-w-0 w-full min-[1320px]:w-80">
                         <input
                             ref={searchInputRef}
                             type="text"

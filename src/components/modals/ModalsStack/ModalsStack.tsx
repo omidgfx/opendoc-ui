@@ -896,7 +896,7 @@ export default function ModalsStack({
                      }}
                 >
                     <div
-                        className="modal-surface modal-surface-stable w-full max-w-lg rounded-2xl border flex flex-col h-[80vh] max-h-[80vh] overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface modal-surface-no-safe-gap w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
 
                         <div
                             className="px-4 sm:px-5 py-2.5 sm:py-4 border-b shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">

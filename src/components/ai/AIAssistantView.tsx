@@ -660,34 +660,31 @@ export default function AIAssistantView({
                             )}
                         </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                        <Tip content="Conversations">
-                            <button type="button" onClick={() => setMobileConversationsOpen(true)}
-                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer md:hidden"
-                                    aria-label="Open conversations">
-                                <i className="ph ph-chats-circle"/>
+                    <div className="ms-auto flex shrink-0 items-center gap-1.5">
+                        {activeConversation && (
+                            <button type="button" onClick={() => setPermissionsOpen(true)}
+                                    className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-1.5 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer sm:px-2">
+                                <i className="ph ph-shield-check text-[13px]"/>
+                                <span className="hidden sm:inline">Permissions</span>
+                                <span className={clsx('flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}
+                                      title={activeConversation.includeAuthValues ? 'Authentication values visible' : 'Authentication values protected'}>
+                                    <i className={activeConversation.includeAuthValues ? 'ph ph-lock-key-open sm:hidden' : 'ph ph-lock-key sm:hidden'}/>
+                                    <span className="hidden sm:inline">{activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}</span>
+                                </span>
+                                <span className={clsx('flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}
+                                      title={activeConversation.trustedRunner ? 'Runner preparation trusted' : 'Runner preparation requires review'}>
+                                    <i className={activeConversation.trustedRunner ? 'ph ph-check-circle sm:hidden' : 'ph ph-eye sm:hidden'}/>
+                                    <span className="hidden sm:inline">{activeConversation.trustedRunner ? 'Trusted' : 'Review'}</span>
+                                </span>
                             </button>
-                        </Tip>
+                        )}
                         <Tip content={chatChromeCompact ? 'Expand chat headers' : 'Compact chat headers'}>
                             <button type="button" onClick={() => setChatChromeMode(!chatChromeCompact)}
-                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
                                     aria-label={chatChromeCompact ? 'Expand chat headers' : 'Compact chat headers'}>
                                 <i className={chatChromeCompact ? 'ph ph-caret-down' : 'ph ph-caret-up'}/>
                             </button>
                         </Tip>
-                        {activeConversation && <button type="button" onClick={() => setPermissionsOpen(true)}
-                                                       className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer">
-                            <i className="ph ph-shield-check text-[12px]"/>Permissions
-                            <span
-                                className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.includeAuthValues ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500')}>
-                                {activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}
-                            </span>
-                            <span className="text-[var(--text-muted)]">·</span>
-                            <span
-                                className={clsx('rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider', activeConversation.trustedRunner ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : 'border-sky-500/30 bg-sky-500/10 text-sky-500')}>
-                                {activeConversation.trustedRunner ? 'Trusted' : 'Review'}
-                            </span>
-                        </button>}
                     </div>
                 </div>
                 <div ref={chatScrollRef} onScroll={handleChatScroll}

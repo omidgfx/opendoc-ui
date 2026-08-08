@@ -68,8 +68,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const [modelTierFilter, setModelTierFilter] = useState<'all' | 'free' | 'premium'>('all');
     const [showKey, setShowKey] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-    const [profileNameDraft, setProfileNameDraft] = useState('');
-    const [renamingProfileId, setRenamingProfileId] = useState('');
+    const [profileNameTargetId, setProfileNameTargetId] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
     const [newProfileDialogOpen, setNewProfileDialogOpen] = useState(false);
     const [newProfileName, setNewProfileName] = useState('');
@@ -108,7 +107,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setGatewayPolicy(null);
         setModelError('');
         setProfileMenuOpen(false);
-        setRenamingProfileId('');
         setShowKey(false);
         setModelPickerOpen(false);
         setModelSearch('');
@@ -121,13 +119,11 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             const target = event.target as Node;
             if (profileMenuRef.current?.contains(target) || profileButtonRef.current?.contains(target)) return;
             setProfileMenuOpen(false);
-            setRenamingProfileId('');
-        };
+            };
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 setProfileMenuOpen(false);
-                setRenamingProfileId('');
-            }
+                    }
         };
         document.addEventListener('mousedown', closeOutside);
         document.addEventListener('keydown', onKeyDown);
@@ -189,6 +185,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
 
     const requestCreateProfile = () => {
         setProfileMenuOpen(false);
+        setProfileNameTargetId(null);
         setNewProfileName(profileName(profiles.length + 1));
         setNewProfileDialogOpen(true);
     };
@@ -196,6 +193,11 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const createProfile = () => {
         const name = newProfileName.trim();
         if (!name) return;
+        if (profileNameTargetId) {
+            commitRename(profileNameTargetId, name);
+            newProfileTransition.requestClose();
+            return;
+        }
         const profile = newAIProfile(name, draft);
         const next = [profile, ...profiles];
         writeAIProfiles(next);
@@ -215,13 +217,14 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setGatewayPolicy(null);
         setModelError('');
         setProfileMenuOpen(false);
-        setRenamingProfileId('');
         onSave(profile.settings);
     };
 
     const requestRename = (profile: AIProfile) => {
-        setRenamingProfileId(profile.id);
-        setProfileNameDraft(profile.name);
+        setProfileMenuOpen(false);
+        setProfileNameTargetId(profile.id);
+        setNewProfileName(profile.name);
+        setNewProfileDialogOpen(true);
     };
 
     const commitRename = (profileId: string, value: string) => {
@@ -233,7 +236,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         } : profile);
         writeAIProfiles(next);
         setProfiles(next);
-        setRenamingProfileId('');
         setProfileMenuOpen(false);
     };
 
@@ -338,23 +340,13 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                 </div>
                                 {profiles.map(profile => <div key={profile.id}
                                                               className={clsx('mb-1 flex items-center gap-1 rounded-lg px-2 py-1.5 last:mb-0', profile.id === activeProfileId ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
-                                    {renamingProfileId === profile.id ? <input autoFocus value={profileNameDraft}
-                                                                               onChange={event => setProfileNameDraft(event.target.value)}
-                                                                               onKeyDown={event => {
-                                                                                   if (event.key === 'Enter') commitRename(profile.id, profileNameDraft);
-                                                                               }}
-                                                                               className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-[10px] outline-none focus:border-[var(--primary)]"/> :
-                                        <button type="button" onClick={() => selectProfile(profile)}
-                                                className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold text-[var(--text)] cursor-pointer">{profile.name}<span
-                                            className="ms-1 text-[8px] text-[var(--text-muted)]">{profile.settings.provider}</span>
-                                        </button>}
-                                    {renamingProfileId === profile.id ?
-                                        <button type="button" onClick={() => commitRename(profile.id, profileNameDraft)}
-                                                className="flex size-6 items-center justify-center rounded text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer">
-                                            <i className="ph ph-check text-[11px]"/></button> :
-                                        <button type="button" onClick={() => requestRename(profile)}
-                                                className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
-                                            <i className="ph ph-pencil-simple text-[11px]"/></button>}
+                                    <button type="button" onClick={() => selectProfile(profile)}
+                                            className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold text-[var(--text)] cursor-pointer">{profile.name}<span
+                                        className="ms-1 text-[8px] text-[var(--text-muted)]">{profile.settings.provider}</span>
+                                    </button>
+                                    <button type="button" onClick={() => requestRename(profile)}
+                                            className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
+                                        <i className="ph ph-pencil-simple text-[11px]"/></button>
                                     <button type="button"
                                             onClick={() => setConfirmAction({kind: 'delete', profileId: profile.id})}
                                             className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer">
@@ -651,8 +643,8 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                           }}>
                         <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
                             <div className="flex items-center gap-2.5">
-                                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className="ph ph-user-plus text-[17px]"/></span>
-                                <div><h3 className="text-sm font-extrabold text-[var(--text-heading)]">Create assistant profile</h3><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Choose a name before creating it.</p></div>
+                                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className={profileNameTargetId ? "ph ph-pencil-simple text-[17px]" : "ph ph-user-plus text-[17px]"}/></span>
+                                <div><h3 className="text-sm font-extrabold text-[var(--text-heading)]">{profileNameTargetId ? 'Rename assistant profile' : 'Create assistant profile'}</h3><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">{profileNameTargetId ? 'Update the saved profile name.' : 'Choose a name before creating it.'}</p></div>
                             </div>
                             <button type="button" onClick={newProfileTransition.requestClose}
                                     className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"><i className="ph ph-x"/></button>
@@ -668,7 +660,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             <button type="button" onClick={newProfileTransition.requestClose}
                                     className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel</button>
                             <button type="submit" disabled={!newProfileName.trim()}
-                                    className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">Create profile</button>
+                                    className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">{profileNameTargetId ? 'Save name' : 'Create profile'}</button>
                         </footer>
                     </form>
                 </div>

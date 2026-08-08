@@ -853,3 +853,9 @@ body {
     overscroll-behavior-inline: contain;
     scrollbar-gutter: stable;
 }
+
+@media (max-width: 767px) {
+    .modal-surface-no-safe-gap {
+        padding-bottom: 0 !important;
+    }
+}

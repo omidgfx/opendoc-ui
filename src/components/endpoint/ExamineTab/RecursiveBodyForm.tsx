@@ -25,7 +25,7 @@ export default function RecursiveBodyForm({
                 if (!next || typeof Node === 'undefined' || !(next instanceof Node) || !event.currentTarget.contains(next)) setFocusedPath(null);
             }}
         >
-            <div className="min-w-[640px] space-y-0 animate-in fade-in">
+            <div className="min-w-0 space-y-0 animate-in fade-in">
                 <Field schema={schema} spec={spec} value={value} label="Request body" path={[]} depth={0}
                        onChange={update} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
                        setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
