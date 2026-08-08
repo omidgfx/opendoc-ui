@@ -12,224 +12,23 @@ import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelector
 import type {LocalHistoryEntry} from '../../../utils/localHistory';
 import {specStorage, uiStorage} from '../../../utils/storage';
 import pkg from '../../../../package.json';
-
-interface TreeNode {
-    name: string;
-    children: Record<string, TreeNode>;
-    endpoints: Array<{ path: string; method: string; operation: any; isProtected: boolean }>;
-}
-
-type SidebarSortBy = 'name' | 'method' | 'route';
-type SidebarSortDirection = 'asc' | 'desc';
-type SidebarFolderBehavior = 'multiple' | 'single';
-
-interface SidebarConfig {
-    displayRoutes: boolean;
-    flattenTags: boolean;
-    sortBy: SidebarSortBy;
-    sortDirection: SidebarSortDirection;
-    folderBehavior: SidebarFolderBehavior;
-    pagesFirst: boolean;
-    compactMethodNames: boolean;
-    hideEndpointCount: boolean;
-    hideProtectedIcon: boolean;
-    hideDeprecatedEndpoints: boolean;
-}
-
-const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
-    displayRoutes: true,
-    flattenTags: false,
-    sortBy: 'name',
-    sortDirection: 'asc',
-    folderBehavior: 'multiple',
-    pagesFirst: true,
-    compactMethodNames: false,
-    hideEndpointCount: false,
-    hideProtectedIcon: false,
-    hideDeprecatedEndpoints: false,
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    !!value && typeof value === 'object' && !Array.isArray(value);
-
-const compactMethodLabel = (method: string): string => {
-    const labels: Record<string, string> = {
-        delete: 'DEL',
-        options: 'OPT',
-        connect: 'CON',
-        trace: 'TRA',
-    };
-    const normalized = method.toLowerCase();
-    return (labels[normalized] || normalized.slice(0, 3)).toUpperCase();
-};
-
-function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | undefined): SidebarConfig {
-    const displayRoutes = typeof value?.displayRoutes === 'boolean'
-        ? value.displayRoutes
-        : DEFAULT_SIDEBAR_CONFIG.displayRoutes;
-    const requestedSortBy = value?.sortBy === 'method' || value?.sortBy === 'route' || value?.sortBy === 'name'
-        ? value.sortBy
-        : DEFAULT_SIDEBAR_CONFIG.sortBy;
-    return {
-        displayRoutes,
-        flattenTags: typeof value?.flattenTags === 'boolean' ? value.flattenTags : DEFAULT_SIDEBAR_CONFIG.flattenTags,
-        // Only route sorting has no useful meaning while route labels are hidden;
-        // method sorting remains available independently of the route display.
-        sortBy: !displayRoutes && requestedSortBy === 'route' ? 'name' : requestedSortBy,
-        sortDirection: value?.sortDirection === 'desc' || value?.sortDirection === 'asc'
-            ? value.sortDirection
-            : DEFAULT_SIDEBAR_CONFIG.sortDirection,
-        folderBehavior: value?.folderBehavior === 'single' || value?.folderBehavior === 'multiple'
-            ? value.folderBehavior
-            : DEFAULT_SIDEBAR_CONFIG.folderBehavior,
-        pagesFirst: typeof value?.pagesFirst === 'boolean'
-            ? value.pagesFirst
-            : DEFAULT_SIDEBAR_CONFIG.pagesFirst,
-        compactMethodNames: typeof value?.compactMethodNames === 'boolean'
-            ? value.compactMethodNames
-            : DEFAULT_SIDEBAR_CONFIG.compactMethodNames,
-        hideEndpointCount: typeof value?.hideEndpointCount === 'boolean'
-            ? value.hideEndpointCount
-            : DEFAULT_SIDEBAR_CONFIG.hideEndpointCount,
-        hideProtectedIcon: typeof value?.hideProtectedIcon === 'boolean'
-            ? value.hideProtectedIcon
-            : DEFAULT_SIDEBAR_CONFIG.hideProtectedIcon,
-        hideDeprecatedEndpoints: typeof value?.hideDeprecatedEndpoints === 'boolean'
-            ? value.hideDeprecatedEndpoints
-            : DEFAULT_SIDEBAR_CONFIG.hideDeprecatedEndpoints,
-    };
-}
-
-function readSidebarConfig(specKey: string): SidebarConfig {
-    if (!specKey) return DEFAULT_SIDEBAR_CONFIG;
-    const stored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);
-    return normalizeSidebarConfig(stored);
-}
-
-function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): TreeNode {
-    const root: TreeNode = {name: '', children: {}, endpoints: []};
-    if (!spec?.paths) return root;
-    const byTag: Record<string, typeof root.endpoints> = {};
-    Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
-        if (!pathItem) return;
-        Object.entries(pathItem).forEach(([methodStr, operation]) => {
-            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(methodStr)) return;
-            const op = operation as any;
-            if (!op) return;
-            const tags = op.tags?.length ? op.tags : ['General'];
-            const isProtected = !!(op.security?.length || spec.security?.length);
-            tags.forEach((tag: string) => {
-                if (!byTag[tag]) byTag[tag] = [];
-                byTag[tag].push({path: pathStr, method: methodStr, operation: op, isProtected});
-            });
-        });
-    });
-    Object.entries(byTag).forEach(([tag, endpoints]) => {
-        // In flattened mode the complete tag is one folder label. Otherwise
-        // slash-separated tags keep their existing nested folder structure.
-        const parts = config.flattenTags ? [tag] : tag.split('/').filter(Boolean);
-        let node = root;
-        for (const part of (parts.length ? parts : ['General'])) {
-            if (!node.children[part]) node.children[part] = {name: part, children: {}, endpoints: []};
-            node = node.children[part];
-        }
-        node.endpoints.push(...endpoints);
-    });
-
-    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {sensitivity: 'base'});
-    const direction = config.sortDirection === 'desc' ? -1 : 1;
-    const endpointName = (endpoint: TreeNode['endpoints'][number]) => endpoint.operation?.summary || endpoint.path;
-    const compareEndpoints = (a: TreeNode['endpoints'][number], b: TreeNode['endpoints'][number]) => {
-        const primary = config.sortBy === 'method'
-            ? compareText(a.method, b.method)
-            : config.sortBy === 'route'
-                ? compareText(a.path, b.path)
-                : compareText(endpointName(a), endpointName(b));
-        if (primary !== 0) return primary * direction;
-
-        // Stable, predictable tie-breakers keep the list deterministic when
-        // several operations share a summary or HTTP method.
-        const byRoute = compareText(a.path, b.path);
-        if (byRoute !== 0) return byRoute * direction;
-        return compareText(a.method, b.method) * direction;
-    };
-
-    const sort = (n: TreeNode): TreeNode => {
-        const sorted: Record<string, TreeNode> = {};
-        Object.entries(n.children)
-            .sort(([a], [b]) => compareText(a, b) * direction)
-            .forEach(([key, child]) => {
-                sorted[key] = sort(child);
-            });
-        n.children = sorted;
-        n.endpoints = [...n.endpoints].sort(compareEndpoints);
-        return n;
-    };
-    return sort(root);
-}
-
-// Keep only tree branches that still contain endpoints matching the predicate.
-function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoints'][number]) => boolean): TreeNode {
-    const newChildren: Record<string, TreeNode> = {};
-    Object.entries(node.children).forEach(([k, child]) => {
-        const filteredChild = filterTagTree(child, predicate);
-        if (filteredChild.endpoints.length > 0 || Object.keys(filteredChild.children).length > 0) {
-            newChildren[k] = filteredChild;
-        }
-    });
-    return {
-        ...node,
-        children: newChildren,
-        endpoints: node.endpoints.filter(predicate),
-    };
-}
-
-
-/** Minimal chevron used as the folder expand/collapse indicator. */
-function TreeExpander({collapsed, active}: { collapsed: boolean; active: boolean }) {
-    return (
-        <i
-            className={clsx(
-                'ph ph-caret-right text-[12px] shrink-0 transition-transform duration-150',
-                !collapsed && 'rotate-90',
-                active ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]',
-            )}
-            aria-hidden="true"
-        />
-    );
-}
-
-/** Folder expand/collapse action icon. */
-function FolderTreeActionIcon({
-                                  direction,
-                              }: {
-    direction: 'expand' | 'collapse';
-}) {
-    const swap = direction === 'collapse';
-
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            fill="currentColor"
-            viewBox="0 0 256 256"
-            aria-hidden="true"
-            focusable="false"
-        >
-            {/* Top chevron */}
-            <path
-                transform={swap ? 'translate(0 128)' : undefined}
-                d="M85.66,85.66L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z"
-            />
-            {/* Bottom chevron */}
-            <path
-                transform={swap ? 'translate(0 -128)' : undefined}
-                d="M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Z"
-            />
-        </svg>
-    );
-}
+import TreeExpander from './TreeExpander';
+import FolderTreeActionIcon from './FolderTreeActionIcon';
+import SearchHighlightedText from './SearchHighlightedText';
+import CollapsedSidebarRail from './CollapsedSidebarRail';
+import type {SidebarProps} from './sidebarTypes';
+import {
+    buildTagTree,
+    compactMethodLabel,
+    filterTagTree,
+    normalizeSidebarConfig,
+    readSidebarConfig,
+    type SidebarConfig,
+    type SidebarFolderBehavior,
+    type SidebarSortBy,
+    type SidebarSortDirection,
+    type TreeNode,
+} from './sidebarModel';
 
 /** Height (px) of a single tree row, and the connector geometry that lines up with it. */
 // Endpoint rows contain a second, muted line for the concrete route path.
@@ -237,91 +36,6 @@ const ROW_HEIGHT = 40;
 const ROW_ELBOW_Y = ROW_HEIGHT / 2;
 const GUIDE_X = 13;
 const ELBOW_W = 11;
-
-interface SidebarProps {
-    spec: OpenApiSpec | null;
-    parsables?: ParsableConfig;
-    selectedParsableKey?: string;
-    onSelectParsable?: (key: string) => void;
-    selectedServer: string;
-    onSelectServer: (server: string) => void;
-    isCollapsed: boolean;
-    onToggleCollapse: () => void;
-    onOpenSchemaExplorer: () => void;
-    showSchemaExplorer: boolean;
-    selectedMethods: string[];
-    setSelectedMethods: React.Dispatch<React.SetStateAction<string[]>>;
-    selectedTags: string[];
-    setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
-    onlyProtected: boolean | null;
-    setOnlyProtected: React.Dispatch<React.SetStateAction<boolean | null>>;
-    searchQuery: string;
-    selectedEndpoint: { path: string; method: string } | null;
-    onSelectEndpoint: (path: string, method: string) => void;
-    getEndpointHref?: (path: string, method: string) => string;
-    onMiddleClickEndpoint?: (path: string, method: string) => void;
-    onOpenHome: () => void;
-    onOpenAbout: () => void;
-    scrollIntent: { type: 'endpoint' | 'view'; id: string } | null;
-    setScrollIntent: (v: { type: 'endpoint' | 'view'; id: string } | null) => void;
-    onOpenViewPermanent: (view: ViewTabKind) => void;
-    onContextAction: (action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai',
-                      target: { type: 'endpoint'; path: string; method: string } | {
-                          type: 'view';
-                          view: ViewTabKind
-                      }) => void;
-    showHome: boolean;
-    showAbout: boolean;
-    showAssistant: boolean;
-    assistantContextEndpoints: Array<{ path: string; method: string }>;
-    hasAIProfile: boolean;
-    themeMode: ThemeMode;
-    resolvedThemeMode: 'light' | 'dark';
-    onToggleThemeMode: () => void;
-    selectedThemeName: string;
-    onOpenThemeModal: () => void;
-    onOpenAuthModal: () => void;
-    activeAuth: any;
-    onDownloadSpec: () => void;
-    isLocalMode: boolean;
-    canOpenLocal: boolean;
-    onOpenLocalFile: () => void;
-    onDisplayRoutesChange?: (displayRoutes: boolean) => void;
-    onReloadSpecification: (key: string) => void | Promise<void>;
-    onResetSpecification: (key: string) => void;
-    onResetAllConfigurations: () => void;
-    onRefreshSpec: () => void;
-    isRefreshingSpec: boolean;
-    localHistory: LocalHistoryEntry[];
-    onSelectHistoryEntry: (entry: LocalHistoryEntry) => void;
-    onRemoveHistoryEntry: (key: string) => void;
-    onClearHistory: () => void;
-    localOpenError: string | null;
-    onDismissLocalError: () => void;
-    mobileOpen: boolean;
-    onCloseMobile: () => void;
-    onOpenMobile: () => void;
-}
-
-function SearchHighlightedText({text, query, deprecated = false}: {
-    text: string;
-    query: string;
-    deprecated?: boolean
-}) {
-    const terms = query.trim().split(/[\s._-]+/).filter(Boolean).map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    if (terms.length === 0) return <span
-        className={clsx('truncate', deprecated && 'opacity-70 line-through')}>{text}</span>;
-    const regex = new RegExp(`(${terms.join('|')})`, 'iu');
-    const splitRegex = new RegExp(`(${terms.join('|')})`, 'giu');
-    const parts = text.split(splitRegex);
-    return (
-        <span className={clsx('truncate', deprecated && 'opacity-70 line-through')}>
-            {parts.map((part, index) => regex.test(part) ?
-                <mark key={`${part}-${index}`} className="rounded-sm bg-[var(--highlight)] text-inherit">{part}</mark> :
-                <span key={`${part}-${index}`}>{part}</span>)}
-        </span>
-    );
-}
 
 export default function Sidebar(props: SidebarProps) {
     const {
@@ -1021,51 +735,14 @@ export default function Sidebar(props: SidebarProps) {
     // ---------- Collapsed icon rail (desktop only) ----------
     if (!isMobile && isCollapsed) {
         return (
-            <div
-                className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
-                style={{width: 56}}>
-                <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
-                    <Tip content="Overview">
-                        <button onClick={onOpenHome}
-                                className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                                    isOverview ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                            <i className="ph-fill ph-house text-[16px]"></i>
-                        </button>
-                    </Tip>
-                    <Tip content="Schema Explorer">
-                        <button onClick={onOpenSchemaExplorer}
-                                className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                                    showSchemaExplorer ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                            <i className="ph-fill ph-diamonds-four text-[16px]"></i>
-                        </button>
-                    </Tip>
-                    <Tip content="About">
-                        <button onClick={onOpenAbout}
-                                className={clsx('w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                                    showAbout ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                            <i className="ph-fill ph-info text-[18px]"></i>
-                        </button>
-                    </Tip>
-                </div>
-                <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer"
-                   className="text-[10px] text-[var(--text-muted)] flex flex-col items-center hover:text-[var(--primary)] transition-colors pointer-events-auto"
-                   style={{textDecoration: 'none'}}>
-                    <div className="flex flex-col items-start gap-0.125 select-none pointer-events-none"
-                         style={{writingMode: 'vertical-rl', transform: 'rotate(180deg)'}}>
-
-                        <div>Pejman Chatrrouz</div>
-                        <span className="text-[7px] text-[var(--text-muted)]/70 font-mono">{pkg.version}</span>
-                    </div>
-                    <div className="mb-2 mt-2 flex flex-col items-center gap-0.5">
-                        <Tip content="By Pejman Chatrrouz on GitHub">
-                            <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer"
-                               className="rounded-xl flex items-center justify-center transition-colors text-inherit">
-                                <i className="ph-fill ph-github-logo text-[32px]"></i>
-                            </a>
-                        </Tip>
-                    </div>
-                </a>
-            </div>
+            <CollapsedSidebarRail
+                isOverview={isOverview}
+                showSchemaExplorer={showSchemaExplorer}
+                showAbout={showAbout}
+                onOpenHome={onOpenHome}
+                onOpenSchemaExplorer={onOpenSchemaExplorer}
+                onOpenAbout={onOpenAbout}
+            />
         );
     }
 

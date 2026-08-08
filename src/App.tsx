@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
 
 import type {
@@ -13,8 +12,6 @@ import type {
     ThemeMode
 } from './types';
 import {THEME_LIST} from './data/themes';
-import {assertValidOpenApiDocument, normalizeOpenApiSpec} from './utils/openapi';
-import {getContrastColor} from './utils/color';
 import {generateSmartRoute, getEndpointId, parseSmartRoute, resolveEndpointFromId} from './utils/routing';
 import {useBreakpoint} from './hooks/useBreakpoint';
 import {clearAllCachedSpecs, clearCachedSpec, fetchSpecText} from './utils/specCache';
@@ -32,21 +29,17 @@ import Topbar from './components/layout/Topbar';
 import Sidebar from './components/layout/Sidebar/Sidebar';
 import HomeView from './components/views/HomeView/HomeView';
 import SearchResultsView from './components/views/SearchResultsView/SearchResultsView';
-import AboutView from './components/views/AboutView';
+import AboutView from './components/views/AboutView/AboutView';
 import NoSpecView from './components/views/NoSpecView';
 import WelcomeView from './components/views/WelcomeView';
 import SchemaExplorer from './components/schema/SchemaExplorer';
-import ViewTab from './components/endpoint/ViewTab/ViewTab';
-import ExamineTab from './components/endpoint/ExamineTab/ExamineTab';
 import ModalsStack from './components/modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from './components/modals/CodeGeneratorModal';
 import ThemeSelectorModal from './components/modals/ThemeSelectorModal';
 import ShareModal from './components/modals/ShareModal';
 import AuthModal from './components/modals/AuthModal';
-import MethodBadge from './components/common/MethodBadge';
-import {Tip, TooltipProvider} from './components/common/Tooltip';
+import {TooltipProvider} from './components/common/Tooltip';
 import {OperationLinkProvider} from './contexts/OperationLinkContext';
-import FocusPane from './components/common/FocusPane';
 import {useResizableSplit} from './hooks/useResizableSplit';
 import EndpointTabs, {type TabItem, VIEW_TAB_META, type ViewTabKind} from './components/endpoint/EndpointTabs';
 import AIAssistantView from './components/ai/AIAssistantView';
@@ -68,79 +61,13 @@ declare global {
     }
 }
 
-const VALID_VIEW_TAB_KINDS: ViewTabKind[] = ['home', 'search', 'schemas', 'about', 'assistant'];
-const VALID_TAB_VIEW_MODES = ['docs', 'examine', 'both'] as const;
-type StoredTabViewMode = typeof VALID_TAB_VIEW_MODES[number];
-
-const isValidTabViewMode = (value: unknown): value is StoredTabViewMode =>
-    VALID_TAB_VIEW_MODES.includes(value as StoredTabViewMode);
-
-const isValidTabFilters = (filters: any): boolean =>
-    !!filters
-    && typeof filters === 'object'
-    && !Array.isArray(filters)
-    && Array.isArray(filters.methods)
-    && filters.methods.every((value: unknown) => typeof value === 'string')
-    && Array.isArray(filters.tags)
-    && filters.tags.every((value: unknown) => typeof value === 'string')
-    && (filters.onlyProtected === null || typeof filters.onlyProtected === 'boolean');
-
-const isValidTabItem = (t: any): t is TabItem => {
-    if (!t || typeof t !== 'object' || Array.isArray(t)) return false;
-    const validKind = t.kind === undefined || t.kind === 'endpoint' || VALID_VIEW_TAB_KINDS.includes(t.kind);
-    return (
-        validKind
-        && typeof t.id === 'string'
-        && t.id.length > 0
-        && typeof t.isPreview === 'boolean'
-        && typeof t.label === 'string'
-        && typeof t.path === 'string'
-        && typeof t.method === 'string'
-        && (t.query === undefined || typeof t.query === 'string')
-        && (t.filters === undefined || isValidTabFilters(t.filters))
-    );
-};
-
-const isValidTabPersistence = (value: any): boolean => {
-    if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.tabs)) return false;
-    const ids = value.tabs.map((tab: any) => tab?.id).filter((id: unknown): id is string => typeof id === 'string');
-    if (ids.length !== value.tabs.length || new Set(ids).size !== ids.length || !value.tabs.every(isValidTabItem)) return false;
-    if (value.activeTabId !== undefined && typeof value.activeTabId !== 'string') return false;
-    if (value.viewModes !== undefined) {
-        if (!value.viewModes || typeof value.viewModes !== 'object' || Array.isArray(value.viewModes)) return false;
-        if (!Object.values(value.viewModes).every(isValidTabViewMode)) return false;
-    }
-    return true;
-};
-
-/** A plain `#/parsable/:key` route is only a spec selection and must not
- * overwrite that spec's restored session. Everything below is an intentional
- * deep link and is allowed to override the restored active tab. */
-const hasExplicitSpecRoute = (route: ParsedRoute, hash: string): boolean =>
-    !!(route.endpoint || route.legacyOperationId || route.showSchemaExplorer || route.showAbout
-        || route.showAssistant || route.searchQuery || route.searchMethods.length || route.searchTags.length
-        || route.searchSecured !== null || route.schemas.length || route.responseCode
-        || /[?&]search(?:=|&|$)/.test(hash));
-
-const parseSpecDraft = (text: string): OpenApiSpec => {
-    const t = text.trim();
-    const parsed = (t.startsWith('{') || t.startsWith('[')) ? JSON.parse(text) : jsYaml.load(text);
-    assertValidOpenApiDocument(parsed);
-    return normalizeOpenApiSpec(parsed);
-};
-
-type EndpointKey = string;
-const endpointKey = (p: string, m: string): EndpointKey => `${m.toLowerCase()}:${p}`;
-
-type ConfigSource = 'initial' | 'file' | 'none';
-
-type LocalSpec = {
-    key: string;
-    title: string;
-    fileName: string;
-    raw: string;
-    file: File | null;
-};
+import {endpointKey, parseSpecDraft, type ConfigSource, type EndpointKey, type LocalSpec} from './app/spec';
+import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from './app/tabPersistence';
+import EmptySearchState from './app/components/EmptySearchState';
+import EndpointWorkspace from './app/components/EndpointWorkspace';
+import SpecLoadingState from './app/components/SpecLoadingState';
+import TabSwitcherOverlay from './app/components/TabSwitcherOverlay';
+import {applyThemeCssVariables, createThemeCssVariables} from './app/themeCss';
 
 export default function App() {
     const bp = useBreakpoint();
@@ -1016,65 +943,15 @@ export default function App() {
         if (selectedParsableKey && parsables[selectedParsableKey]) uiStorage.set('last_parsable', selectedParsableKey);
     }, [selectedParsableKey, parsables]);
 
-    const activeTheme = useMemo(() => THEME_LIST.find(t => t.name === selectedThemeName) || THEME_LIST[0], [selectedThemeName]);
+    const activeTheme = useMemo(
+        () => THEME_LIST.find(theme => theme.name === selectedThemeName) || THEME_LIST[0],
+        [selectedThemeName],
+    );
+    const activePalette = resolvedThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
 
     // Apply theme CSS variables on documentElement so portaled elements pick them up.
-    useEffect(() => {
-        const v = resolvedThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
-        const root = document.documentElement;
-        root.style.setProperty('--background', v.background);
-        root.style.setProperty('--surface', v.surface);
-        root.style.setProperty('--surface-hover', v.surfaceHover);
-        root.style.setProperty('--border', v.border);
-        root.style.setProperty('--text', v.text);
-        root.style.setProperty('--text-contrast', getContrastColor(v.text));
-        root.style.setProperty('--text-heading', v.textHeading);
-        root.style.setProperty('--text-muted', v.textMuted);
-        root.style.setProperty('--primary', v.primary);
-        root.style.setProperty('--primary-hover', v.primaryHover);
-        root.style.setProperty('--highlight', v.highlight);
-        root.style.setProperty('--select', v.select);
-        root.style.setProperty('--select-contrast', getContrastColor(v.select));
-        root.style.setProperty('--primary-contrast', getContrastColor(v.primary));
-        root.style.setProperty('--accent', v.accent);
-        root.style.setProperty('--sidebar', v.sidebar);
-        root.style.setProperty('--sidebar-text', v.sidebarText);
-        root.style.setProperty('--navbar', v.navbar);
-        (['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const).forEach(k => {
-            const c = (v as any)[`method${k.charAt(0).toUpperCase()}${k.slice(1)}`];
-            root.style.setProperty(`--method-${k}`, c);
-            root.style.setProperty(`--method-${k}-contrast`, getContrastColor(c));
-        });
-    }, [activeTheme, resolvedThemeMode]);
-
-    const styleVars = useMemo(() => {
-        const v = resolvedThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
-        const out: Record<string, string> = {
-            '--background': v.background,
-            '--surface': v.surface,
-            '--surface-hover': v.surfaceHover,
-            '--border': v.border,
-            '--text': v.text,
-            '--text-heading': v.textHeading,
-            '--text-muted': v.textMuted,
-            '--primary': v.primary,
-            '--primary-hover': v.primaryHover,
-            '--highlight': v.highlight,
-            '--select': v.select,
-            '--select-contrast': getContrastColor(v.select),
-            '--primary-contrast': getContrastColor(v.primary),
-            '--accent': v.accent,
-            '--sidebar': v.sidebar,
-            '--sidebar-text': v.sidebarText,
-            '--navbar': v.navbar,
-        };
-        (['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const).forEach(k => {
-            const c = (v as any)[`method${k.charAt(0).toUpperCase()}${k.slice(1)}`];
-            out[`--method-${k}`] = c;
-            out[`--method-${k}-contrast`] = getContrastColor(c);
-        });
-        return out as React.CSSProperties;
-    }, [activeTheme, resolvedThemeMode]);
+    useEffect(() => applyThemeCssVariables(activePalette), [activePalette]);
+    const styleVars = useMemo(() => createThemeCssVariables(activePalette), [activePalette]);
 
     // ---------- Spec loading ----------
     const loadSpec = async (parsableKey: string, parsable: Parsable, forceRefresh = false) => {
@@ -1955,161 +1832,42 @@ export default function App() {
                                           onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected}
                                           displayRoutes={sidebarDisplayRoutes} parsableKey={selectedParsableKey}/>;
             }
-            return (
-                <div className="flex-1 w-full h-full overflow-y-auto scrollbar-thin">
-                    <div className="min-h-full flex flex-col items-center justify-center px-6 text-center select-none">
-                        <span
-                            className="size-12 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center text-[var(--primary)]">
-                            <i className="ph-fill ph-magnifying-glass text-[20px]"></i>
-                        </span>
-                        <h2 className="mt-4 text-base font-extrabold text-[var(--text-heading)]">Search the
-                            specification</h2>
-                        <p className="mt-1 text-xs text-[var(--text-muted)] max-w-sm leading-relaxed">
-                            Type a path, summary, tag or schema name in the search field to find
-                            endpoints across this API.
-                        </p>
-                    </div>
-                </div>
-            );
+            return <EmptySearchState/>;
         }
         if (selectedEndpoint) {
-            const po = spec.paths[selectedEndpoint.path];
-            if (po) {
-                const op = (po as any)[selectedEndpoint.method];
-                if (op) {
-                    const key = endpointKey(selectedEndpoint.path, selectedEndpoint.method);
-                    const current = examineResponses[key] || null;
-
-                    const setViewDocs = () => setSelectedTab('docs');
-                    const setViewExamine = () => setSelectedTab('examine');
-                    const setViewSplit = () => setSelectedTab('both');
-
-                    const docActive = selectedTab !== 'both' || activeSplitPane === 'docs';
-                    const examineActive = selectedTab !== 'both' || activeSplitPane === 'examine';
-
-                    const viewTabEl = (
-                        <ViewTab key={`${selectedEndpoint.path}-${selectedEndpoint.method}`} spec={spec}
-                                 path={selectedEndpoint.path} method={selectedEndpoint.method} operation={op}
-                                 onOpenSchemaModal={handlePushSchema} activeAuth={activeAuth}
-                                 activeResponseCode={activeResponseCode} onSelectResponseCode={setActiveResponseCode}
-                                 parsableKey={selectedParsableKey} isActive={docActive}/>
-                    );
-                    const examineTabEl = (
-                        <ExamineTab spec={spec} path={selectedEndpoint.path} method={selectedEndpoint.method}
-                                    operation={op} activeAuth={activeAuth} selectedServer={selectedServer}
-                                    parsableKey={selectedParsableKey} themeMode={resolvedThemeMode}
-                                    initialResponse={current} isActive={examineActive}
-                                    onResponseChange={(r) => setExamineResponses(prev => ({...prev, [key]: r}))}
-                                    onClearResponse={() => setExamineResponses(prev => {
-                                        const n = {...prev};
-                                        delete n[key];
-                                        return n;
-                                    })}/>
-                    );
-
-                    return (
-                        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-                            <div
-                                className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
-                                <div className="flex items-center gap-1.5 text-[10.5px] min-w-0 overflow-hidden">
-                                    <span
-                                        className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden sm:inline">Endpoint:</span>
-                                    <MethodBadge method={selectedEndpoint.method} size="xs"
-                                                 className="rounded-full shrink-0 w-9"/>
-                                    <span
-                                        className="font-mono font-bold select-all truncate">{selectedEndpoint.path}</span>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <div
-                                        className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">
-                                        <Tip content="View Documentation">
-                                            <button onClick={setViewDocs} aria-pressed={selectedTab === 'docs'}
-                                                    className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                        selectedTab === 'docs' ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                                                <i className="ph ph-book-open-text text-[16px]"></i>
-                                                <span className="hidden sm:inline">View Documentation</span><span
-                                                className="sm:hidden">Docs</span>
-                                            </button>
-                                        </Tip>
-                                        <Tip content="API Runner">
-                                            <button onClick={setViewExamine} aria-pressed={selectedTab === 'examine'}
-                                                    className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                        selectedTab === 'examine' ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                                                <i className="ph ph-flask text-[16px]"></i>
-                                                <span className="hidden sm:inline">API Runner</span><span
-                                                className="sm:hidden">Run</span>
-                                            </button>
-                                        </Tip>
-                                        <Tip content="Split View (Side-by-Side)">
-                                            <button onClick={setViewSplit} aria-pressed={selectedTab === 'both'}
-                                                    className={clsx('px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                                        selectedTab === 'both' ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>
-                                                <i className="ph ph-split-horizontal text-[16px]"></i>
-                                                <span className="hidden sm:inline">Split View</span><span
-                                                className="sm:hidden">Split</span>
-                                            </button>
-                                        </Tip>
-                                    </div>
-                                    <div className="h-5 w-[1px] bg-[var(--border)] hidden sm:block"></div>
-                                    <Tip content="Generate Fetch/Axios snippets and TypeScript models">
-                                        <button onClick={() => setCodeGenEndpoint(selectedEndpoint)}
-                                                className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0">
-                                            <i className="ph ph-code text-[16px]"></i>
-                                        </button>
-                                    </Tip>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-hidden h-full min-h-0">
-                                {selectedTab === 'both' ? (
-                                        isMobile
-                                            ? (
-                                                <div ref={splitContainerRef}
-                                                     className="flex flex-col h-full w-full min-h-0 min-w-0 gap-1.5 p-1.5 overflow-y-auto scrollbar-thin">
-                                                    <div className="shrink-0" style={{height: '70vh'}}>
-                                                        <FocusPane active={activeSplitPane === 'docs'}
-                                                                   onActivate={() => setActiveSplitPane('docs')}
-                                                                   fillHeight={false} className="h-full">
-                                                            {viewTabEl}
-                                                        </FocusPane>
-                                                    </div>
-                                                    <div className="shrink-0" style={{height: '70vh'}}>
-                                                        <FocusPane active={activeSplitPane === 'examine'}
-                                                                   onActivate={() => setActiveSplitPane('examine')}
-                                                                   fillHeight={false} className="h-full">
-                                                            {examineTabEl}
-                                                        </FocusPane>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div ref={splitContainerRef}
-                                                     className="flex h-full w-full min-h-0 min-w-0 gap-0.5 p-1.5">
-                                                    <div className="h-full min-w-0 overflow-hidden" style={{
-                                                        width: docsPaneWidth >= 0 ? docsPaneWidth : '50%',
-                                                        flex: docsPaneWidth >= 0 ? '0 0 auto' : '1 1 0%'
-                                                    }}>
-                                                        <FocusPane active={activeSplitPane === 'docs'}
-                                                                   onActivate={() => setActiveSplitPane('docs')}>
-                                                            {viewTabEl}
-                                                        </FocusPane>
-                                                    </div>
-                                                    <div onMouseDown={onSplitResizeMouseDown}
-                                                         className={clsx('w-1.5 shrink-0 h-full rounded-full cursor-col-resize transition-colors select-none',
-                                                             isSplitDragging ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]/60')}/>
-                                                    <div className="h-full min-w-0 flex-1 overflow-hidden">
-                                                        <FocusPane active={activeSplitPane === 'examine'}
-                                                                   onActivate={() => setActiveSplitPane('examine')}>
-                                                            {examineTabEl}
-                                                        </FocusPane>
-                                                    </div>
-                                                </div>
-                                            )
-                                    )
-                                    : selectedTab === 'docs' ? viewTabEl : examineTabEl
-                                }
-                            </div>
-                        </div>
-                    );
-                }
+            const operation = (spec.paths[selectedEndpoint.path] as any)?.[selectedEndpoint.method];
+            if (operation) {
+                const key = endpointKey(selectedEndpoint.path, selectedEndpoint.method);
+                return (
+                    <EndpointWorkspace
+                        spec={spec}
+                        endpoint={selectedEndpoint}
+                        parsableKey={selectedParsableKey}
+                        selectedTab={selectedTab}
+                        setSelectedTab={setSelectedTab}
+                        activeSplitPane={activeSplitPane}
+                        setActiveSplitPane={setActiveSplitPane}
+                        splitContainerRef={splitContainerRef}
+                        docsPaneWidth={docsPaneWidth}
+                        isSplitDragging={isSplitDragging}
+                        onSplitResizeMouseDown={onSplitResizeMouseDown}
+                        isMobile={isMobile}
+                        activeAuth={activeAuth}
+                        selectedServer={selectedServer}
+                        resolvedThemeMode={resolvedThemeMode}
+                        activeResponseCode={activeResponseCode}
+                        setActiveResponseCode={setActiveResponseCode}
+                        currentResponse={examineResponses[key] || null}
+                        onResponseChange={response => setExamineResponses(current => ({...current, [key]: response}))}
+                        onClearResponse={() => setExamineResponses(current => {
+                            const next = {...current};
+                            delete next[key];
+                            return next;
+                        })}
+                        onOpenSchema={handlePushSchema}
+                        onGenerateCode={() => setCodeGenEndpoint(selectedEndpoint)}
+                    />
+                );
             }
         }
         if (showSchemaExplorer) return <SchemaExplorer schemas={spec.components?.schemas}
@@ -2191,13 +1949,7 @@ export default function App() {
 
                     <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
                         {isLoadingSpec ? (
-                            <div className="m-auto flex flex-col items-center gap-1 text-[10px] font-bold">
-                                <div className="size-8 relative">
-                                    <i className="block animate-spin size-full border-4 border-[var(--text-muted)]/30 rounded-full absolute"></i>
-                                    <i className="block animate-spin size-full border-4 border-r-[var(--primary)] border-transparent rounded-full absolute"></i>
-                                </div>
-                                Please wait&hellip;
-                            </div>
+                            <SpecLoadingState/>
                         ) : !spec ? (
                             content()
                         ) : (
@@ -2331,78 +2083,17 @@ export default function App() {
                     <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} spec={spec}
                                activeAuth={activeAuth} onSave={setActiveAuth}/>
 
-                    {/* Ctrl+Tab tab switcher overlay */}
-                    {switcherOpen && endpointTabs.length > 1 && (
-                        <div
-                            className="fixed inset-0 z-[6000] flex items-start justify-center pt-[16vh] bg-black/40 backdrop-blur-[2px] animate-fade-in"
-                            onMouseDown={(e) => {
-                                if (e.target === e.currentTarget) cancelSwitcher();
-                            }}
-                        >
-                            <div
-                                className="w-[440px] max-w-[92vw] rounded-2xl border shadow-2xl overflow-hidden animate-zoom-in bg-[var(--surface)] border-[var(--border)]">
-                                <div
-                                    className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--background)]">
-                                    <span
-                                        className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                                        <i className="ph ph-tabs text-[13px] text-[var(--primary)]"></i>
-                                        Tab Switcher
-                                    </span>
-                                    <span
-                                        className="text-[9.5px] text-[var(--text-muted)] flex items-center gap-1 select-none">
-                                        <kbd
-                                            className="px-1 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)]">Ctrl</kbd>+
-                                        <kbd
-                                            className="px-1 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)]">`</kbd>
-                                        <span className="mx-1 opacity-50">·</span> release to switch
-                                    </span>
-                                </div>
-                                <div className="py-1.5 max-h-[52vh] overflow-y-auto scrollbar-thin">
-                                    {endpointTabs.map((t, i) => {
-                                        const sel = i === Math.min(switcherIndex, endpointTabs.length - 1);
-                                        const current = t.id === activeTabId;
-                                        const viewTabMeta = t.kind && t.kind !== 'endpoint'
-                                            ? VIEW_TAB_META[t.kind as ViewTabKind]
-                                            : null;
-                                        return (
-                                            <button key={t.id} type="button"
-                                                    onClick={() => {
-                                                        handleSelectTabRef.current(t.id);
-                                                        setSwitcherOpen(false);
-                                                    }}
-                                                    className={clsx('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer',
-                                                        sel ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
-                                                {viewTabMeta ? (
-                                                    <span
-                                                        className="shrink-0 w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--primary)] bg-[var(--background)]">
-                                                        <i className={viewTabMeta.icon + ' text-[14px]'}></i>
-                                                    </span>
-                                                ) : (
-                                                    <MethodBadge method={t.method} size="xs"
-                                                                 className="shrink-0 w-10 h-4"/>
-                                                )}
-                                                <span className={clsx('flex-1 min-w-0 truncate text-xs font-semibold',
-                                                    sel ? 'text-[var(--text-heading)]' : 'text-[var(--text)]')}>
-                                                    {t.label}
-                                                </span>
-                                                {current && (
-                                                    <span
-                                                        className="shrink-0 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-[var(--primary)]">
-                                                        <i className="ph-fill ph-dot-outline text-[10px]"></i>
-                                                        Current
-                                                    </span>
-                                                )}
-                                                {t.isPreview && <span
-                                                    className="shrink-0 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">Preview</span>}
-                                                {sel &&
-                                                    <i className="ph ph-caret-right text-[14px] text-[var(--primary)] shrink-0"></i>}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <TabSwitcherOverlay
+                        open={switcherOpen}
+                        tabs={endpointTabs}
+                        activeTabId={activeTabId}
+                        selectedIndex={switcherIndex}
+                        onCancel={cancelSwitcher}
+                        onSelect={id => {
+                            handleSelectTabRef.current(id);
+                            setSwitcherOpen(false);
+                        }}
+                    />
 
                     {shareTarget && (
                         <ShareModal isOpen={!!shareTarget} onClose={() => setShareTarget(null)}

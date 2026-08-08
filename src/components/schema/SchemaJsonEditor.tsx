@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import Editor from '@monaco-editor/react';
-import clsx from 'clsx';
+import SchemaEditorToolButton from './SchemaEditorToolButton';
 import {Tip} from '../common/Tooltip';
 import {formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
 
@@ -130,18 +130,18 @@ export default function SchemaJsonEditor({
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                     <Tip content="Search (Ctrl+F)">
-                        <ToolBtn active onClick={triggerFind} icon="ph-magnifying-glass" label="Find"
+                        <SchemaEditorToolButton active onClick={triggerFind} icon="ph-magnifying-glass" label="Find"
                                  iconColor="text-sky-500"/>
                     </Tip>
                     <Tip content="Toggle line wrapping">
-                        <ToolBtn active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap"/>
+                        <SchemaEditorToolButton active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap"/>
                     </Tip>
                     <Tip content="Toggle line numbers">
-                        <ToolBtn active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers"
+                        <SchemaEditorToolButton active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers"
                                  label="Numbers"/>
                     </Tip>
                     <Tip content="Toggle code minimap">
-                        <ToolBtn active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
+                        <SchemaEditorToolButton active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
                     </Tip>
                     <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
                     <Tip content={`Format ${editorLanguage.toUpperCase()}`}>
@@ -206,20 +206,5 @@ export default function SchemaJsonEditor({
                 </div>
             )}
         </div>
-    );
-}
-
-function ToolBtn({active, onClick, icon, label, iconColor}: {
-    active?: boolean; onClick: () => void; icon: string; label: string; iconColor?: string;
-}) {
-    return (
-        <button type="button" onClick={onClick}
-                className={clsx(
-                    'p-1.5 rounded-md bg-[var(--background)] border text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 hover:bg-[var(--surface-hover)]',
-                    active ? 'text-[var(--primary)] border-[var(--primary)]/30' : 'text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-heading)]',
-                )}>
-            <i className={clsx(`ph ${icon} text-[12px]`, iconColor)}></i>
-            <span className="hidden sm:inline">{label}</span>
-        </button>
     );
 }

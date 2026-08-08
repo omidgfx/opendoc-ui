@@ -4,14 +4,16 @@ import type {ActiveAuth, AIConversation, AISettings, AISourceRef, OpenApiSpec} f
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
+import PermissionSwitch from './assistant/PermissionSwitch';
+import AssistantActions from './assistant/AssistantActions';
+import AssistantCitations from './assistant/AssistantCitations';
+import AIProfileRequiredState from './assistant/AIProfileRequiredState';
 import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens,} from '../../utils/aiContext';
 import {streamAIResponse} from '../../utils/aiProviders';
 import {
-    actionLabel,
     createOpenDocUIActionId,
     formatOpenDocUIRunnerResult,
     OPENDOC_UI_RUNNER_RESULT_EVENT,
-    parseOpenDocUIActions,
     stripOpenDocUIActionBlocks,
     type OpenDocUIAction,
     type OpenDocUIRunnerResult
@@ -57,33 +59,6 @@ const sourceFallback = (sources: AISourceRef[], selectedEndpoints: Array<{
     // fallback sources are worse than a response with no Sources section.
     return [];
 };
-
-interface PermissionSwitchProps {
-    checked: boolean;
-    onChange: () => void;
-    label: string;
-    checkedClass: string;
-    uncheckedClass: string;
-}
-
-/** A switch with an explicit center line so the thumb cannot drift vertically
- * when the surrounding permission row changes height. */
-const PermissionSwitch = ({checked, onChange, label, checkedClass, uncheckedClass}: PermissionSwitchProps) => (
-    <button
-        type="button"
-        role="switch"
-        aria-label={label}
-        aria-checked={checked}
-        onClick={onChange}
-        className={clsx('relative flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50', checked ? checkedClass : uncheckedClass)}
-    >
-        <span
-            aria-hidden="true"
-            className="absolute size-5 rounded-full bg-white shadow-md transition-transform"
-            style={{left: '4px', top: '50%', transform: `translate(${checked ? '20px' : '0px'}, -50%)`}}
-        />
-    </button>
-);
 
 const conversationTitle = (text: string) => {
     const clean = text.replace(/\s+/g, ' ').trim();
@@ -489,20 +464,7 @@ export default function AIAssistantView({
         setIsSending(false);
     };
 
-    if (!hasAIProfile) {
-        return (
-            <div className="flex h-full min-h-0 w-full items-center justify-center overflow-y-auto bg-[var(--surface)] p-6">
-                <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-7 text-center shadow-sm">
-                    <span className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)]">
-                        <i className="ph-fill ph-sparkle text-[26px]"/>
-                    </span>
-                    <h1 className="mt-5 text-lg font-extrabold text-[var(--text-heading)]">Create an AI profile</h1>
-                    <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">The AI Assistant needs a provider profile before it can answer questions. Choose a provider, model, and transport to get started.</p>
-                    <button type="button" onClick={onOpenSettings} className="mt-5 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"><i className="ph ph-plus me-1.5"/>Create profile</button>
-                </div>
-            </div>
-        );
-    }
+    if (!hasAIProfile) return <AIProfileRequiredState onOpenSettings={onOpenSettings}/>;
 
     const configured = settings.transport === 'gateway'
         ? Boolean(settings.gatewayUrl.trim() && settings.model.trim())
@@ -520,47 +482,6 @@ export default function AIAssistantView({
         const prepared = {...action, id: actionId} as OpenDocUIAction;
         if (activeConversation?.id) pendingBridgeConversationsRef.current.set(actionId, activeConversation.id);
         onBridgeAction(prepared);
-    };
-
-    const renderActions = (text: string) => {
-        const actions = parseOpenDocUIActions(text);
-        if (actions.length === 0) return null;
-        return (
-            <div className="mt-3 space-y-2 border-t border-[var(--border)]/70 pt-2.5">
-                <div
-                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                    <i className="ph ph-lightning text-[12px] text-[var(--primary)]"/>OpenDoc UI actions
-                </div>
-                {actions.map((action, index) => (
-                    <button key={`${action.action}-${index}`} type="button" onClick={() => executeBridgeAction(action)}
-                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--primary)]/25 bg-[var(--primary)]/5 px-3 py-2 text-left text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer">
-                        <span className="min-w-0 truncate">{actionLabel(action)}</span><i
-                        className="ph ph-arrow-up-right shrink-0 text-[13px]"/>
-                    </button>
-                ))}
-                <p className="text-[9px] leading-relaxed text-[var(--text-muted)]">Actions are proposals. Clicking one
-                    is required; filling Runner fields does not send a request unless you explicitly choose a Run
-                    action.</p>
-            </div>
-        );
-    };
-
-    const renderCitations = (citations?: AISourceRef[]) => {
-        if (!citations || citations.length === 0) return null;
-        return (
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--border)]/70 pt-2.5">
-                <span
-                    className="me-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]"><i
-                    className="ph ph-quotes text-[12px]"/>Sources</span>
-                {citations.map(source => (
-                    <button key={source.id} type="button"
-                            onClick={() => source.kind === 'endpoint' && source.path && source.method && onOpenEndpoint(source.path, source.method.toLowerCase())}
-                            className={clsx('rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-[9px] font-semibold text-[var(--text-muted)] transition-colors', source.kind === 'endpoint' ? 'cursor-pointer hover:border-[var(--primary)]/50 hover:text-[var(--primary)]' : 'cursor-default')}>
-                        {source.label}
-                    </button>
-                ))}
-            </div>
-        );
     };
 
     return (
@@ -763,8 +684,8 @@ export default function AIAssistantView({
                                                         content.</span>
                                             :
                                             <p className="whitespace-pre-wrap text-xs leading-relaxed">{message.content}</p>}
-                                        {message.role === 'assistant' && renderCitations(message.citations)}
-                                        {message.role === 'assistant' && renderActions(message.content)}
+                                        {message.role === 'assistant' && <AssistantCitations citations={message.citations} onOpenEndpoint={onOpenEndpoint}/>}
+                                        {message.role === 'assistant' && <AssistantActions text={message.content} onExecute={executeBridgeAction}/>}
                                     </div>
                                 </div>
                             ))}
