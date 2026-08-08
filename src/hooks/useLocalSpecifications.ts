@@ -1,17 +1,26 @@
-import { type ChangeEvent, useCallback, useRef, useState } from 'react';
-import type { OpenApiSpec } from '../types';
-import { clearLocalHistory, type LocalHistoryEntry, readLocalHistory, removeLocalHistoryEntry, upsertLocalHistory, } from '../utils/localHistory';
-import { type LocalSpec, parseSpecDraft } from '../utils/appSpec';
+import {type ChangeEvent, useCallback, useRef, useState} from 'react';
+import type {OpenApiSpec} from '../types';
+import {
+    clearLocalHistory,
+    type LocalHistoryEntry,
+    readLocalHistory,
+    removeLocalHistoryEntry,
+    upsertLocalHistory,
+} from '../utils/localHistory';
+import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
+
 interface AppliedLocalSpec {
     key: string;
     document: OpenApiSpec;
     switchingSpec: boolean;
 }
+
 interface UseLocalSpecificationsOptions {
     selectedSpecKey: string;
     onApply: (value: AppliedLocalSpec) => void;
 }
-export function useLocalSpecifications({ selectedSpecKey, onApply }: UseLocalSpecificationsOptions) {
+
+export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpecificationsOptions) {
     const [localSpec, setLocalSpec] = useState<LocalSpec | null>(null);
     const [localHistory, setLocalHistory] = useState<LocalHistoryEntry[]>(() => readLocalHistory());
     const [localOpenError, setLocalOpenError] = useState<string | null>(null);
@@ -20,11 +29,11 @@ export function useLocalSpecifications({ selectedSpecKey, onApply }: UseLocalSpe
         const document = parseSpecDraft(raw);
         const title = document.info?.title || fileName.replace(/\.(json|ya?ml)$/i, '') || fileName;
         const key = `local:${fileName}`;
-        const entry: LocalHistoryEntry = { key, title, fileName, raw, openedAt: Date.now() };
-        setLocalSpec({ key, title, fileName, raw, file });
+        const entry: LocalHistoryEntry = {key, title, fileName, raw, openedAt: Date.now()};
+        setLocalSpec({key, title, fileName, raw, file});
         upsertLocalHistory(entry);
         setLocalHistory(readLocalHistory());
-        onApply({ key, document, switchingSpec: key !== selectedSpecKey });
+        onApply({key, document, switchingSpec: key !== selectedSpecKey});
         return document;
     }, [selectedSpecKey, onApply]);
     const handleFileChosen = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
@@ -35,8 +44,7 @@ export function useLocalSpecifications({ selectedSpecKey, onApply }: UseLocalSpe
         setLocalOpenError(null);
         try {
             applyLocalSpec(await file.text(), file.name, file);
-        }
-        catch (error) {
+        } catch (error) {
             setLocalOpenError(`"${file.name}" could not be parsed as JSON or YAML.`);
             console.error('Failed to open local spec file', error);
         }
@@ -45,8 +53,7 @@ export function useLocalSpecifications({ selectedSpecKey, onApply }: UseLocalSpe
         setLocalOpenError(null);
         try {
             applyLocalSpec(entry.raw, entry.fileName, null);
-        }
-        catch (error) {
+        } catch (error) {
             setLocalOpenError(`"${entry.fileName}" could not be parsed anymore.`);
             console.error('Failed to reopen spec from history', error);
         }

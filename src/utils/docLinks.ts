@@ -1,10 +1,12 @@
-import type { OpenApiSpec } from '../types';
-import { getEndpointId, HTTP_METHODS } from './routing';
+import type {OpenApiSpec} from '../types';
+import {getEndpointId, HTTP_METHODS} from './routing';
+
 export interface OperationLinkTarget {
     path: string;
     method: string;
     endpointId: string;
 }
+
 export function buildOperationLinkIndex(spec: OpenApiSpec | null): Record<string, OperationLinkTarget> {
     const index: Record<string, OperationLinkTarget> = {};
     if (!spec?.paths)
@@ -19,7 +21,7 @@ export function buildOperationLinkIndex(spec: OpenApiSpec | null): Record<string
             if (!op)
                 return;
             const endpointId = getEndpointId(op, path, method);
-            const target: OperationLinkTarget = { path, method, endpointId };
+            const target: OperationLinkTarget = {path, method, endpointId};
             index[endpointId.toLowerCase()] = target;
             if (op.operationId)
                 index[String(op.operationId).toLowerCase()] = target;
@@ -36,7 +38,9 @@ export function buildOperationLinkIndex(spec: OpenApiSpec | null): Record<string
     });
     return index;
 }
+
 const RESPONSE_FRAGMENT_RE = /#response-([a-zA-Z0-9_-]+)/;
+
 export function rewriteInternalEndpointLinks(doc: Document, index: Record<string, OperationLinkTarget>, parsableKey: string): void {
     if (!parsableKey || Object.keys(index).length === 0)
         return;
@@ -69,8 +73,7 @@ export function rewriteInternalEndpointLinks(doc: Document, index: Record<string
                 let decoded = raw;
                 try {
                     decoded = decodeURIComponent(raw);
-                }
-                catch {
+                } catch {
                 }
                 const key = decoded.toLowerCase();
                 if (index[key]) {
@@ -87,8 +90,7 @@ export function rewriteInternalEndpointLinks(doc: Document, index: Record<string
                 a.removeAttribute('target');
                 a.setAttribute('data-internal-endpoint-link', 'true');
             }
-        }
-        catch {
+        } catch {
         }
     });
 }

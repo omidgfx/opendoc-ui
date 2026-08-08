@@ -1,6 +1,7 @@
 import type React from 'react';
-import type { ThemeItem } from '../types';
-import { getContrastColor } from './color';
+import type {ThemeItem} from '../types';
+import {getContrastColor} from './color';
+
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const;
 export const createThemeCssVariables = (theme: ThemeItem): React.CSSProperties => {
     const variables: Record<string, string> = {

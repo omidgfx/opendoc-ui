@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
+
 export function useModalTransition(isOpen: boolean, onClose: () => void, durationMs = 180) {
     const [rendered, setRendered] = useState(isOpen);
     const [closing, setClosing] = useState(false);

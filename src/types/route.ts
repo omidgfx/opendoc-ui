@@ -2,6 +2,7 @@ export interface EndpointRef {
     path: string;
     method: string;
 }
+
 export interface ParsedRoute {
     parsableKey: string;
     showSchemaExplorer: boolean;

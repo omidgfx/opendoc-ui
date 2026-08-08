@@ -1,7 +1,17 @@
-import type { AIChatMessage, AIConversation, AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack, AISourceRef } from '../types';
-import { sessionStore, specStorage, uiStorage } from './storage';
-import { idbClearPrefix, idbDelete, idbGet, idbSet } from './indexedDb';
-import { getProviderPreset } from './aiProviders';
+import type {
+    AIChatMessage,
+    AIConversation,
+    AIModelOption,
+    AIProfile,
+    AIProviderId,
+    AISettings,
+    AISkillPack,
+    AISourceRef
+} from '../types';
+import {sessionStore, specStorage, uiStorage} from './storage';
+import {idbClearPrefix, idbDelete, idbGet, idbSet} from './indexedDb';
+import {getProviderPreset} from './aiProviders';
+
 const AI_SETTINGS_KEY = 'ai_settings';
 const AI_PROFILES_KEY = 'ai_profiles';
 const AI_ACTIVE_PROFILE_KEY = 'ai_active_profile';
@@ -79,7 +89,7 @@ export const readAISettings = (): AISettings => {
 export const writeAISettings = (settings: AISettings) => {
     const normalized = normalizeSettings(settings);
     const secrets = readSessionSecrets();
-    secrets.global = { apiKey: normalized.apiKey || undefined, gatewayToken: normalized.gatewayToken || undefined };
+    secrets.global = {apiKey: normalized.apiKey || undefined, gatewayToken: normalized.gatewayToken || undefined};
     sessionStore.setJSON(AI_SESSION_SECRETS_KEY, secrets);
     uiStorage.setJSON(AI_SETTINGS_KEY, settingsWithoutSecrets(normalized));
 };
@@ -146,7 +156,7 @@ export const newAIProfile = (name: string, settings: AISettings): AIProfile => {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `profile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    return { id, name, settings: normalizeSettings(settings), createdAt: Date.now(), updatedAt: Date.now() };
+    return {id, name, settings: normalizeSettings(settings), createdAt: Date.now(), updatedAt: Date.now()};
 };
 const isSource = (value: any): value is AISourceRef => isRecord(value)
     && typeof value.id === 'string'
@@ -177,14 +187,14 @@ const trimMessage = (message: AIChatMessage): AIChatMessage => ({
 export const trimAIConversation = (conversation: AIConversation): AIConversation => {
     const messages = conversation.messages.map(trimMessage);
     if (messages.length <= MAX_CONVERSATION_MESSAGES)
-        return { ...conversation, messages };
+        return {...conversation, messages};
     const marker: AIChatMessage = {
         id: `history-marker-${conversation.id}`,
         role: 'assistant',
         content: '[Earlier conversation messages were omitted after the 100-message local history limit.]',
         createdAt: messages[0]?.createdAt || Date.now(),
     };
-    return { ...conversation, messages: [marker, ...messages.slice(-(MAX_CONVERSATION_MESSAGES - 1))] };
+    return {...conversation, messages: [marker, ...messages.slice(-(MAX_CONVERSATION_MESSAGES - 1))]};
 };
 export const readAIConversations = (specKey: string): AIConversation[] => {
     if (!specKey)

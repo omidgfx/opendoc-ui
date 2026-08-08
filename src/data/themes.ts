@@ -1,4 +1,5 @@
-import { AppTheme } from '../types';
+import {AppTheme} from '../types';
+
 export const THEME_LIST: AppTheme[] = [
     {
         name: "Default Slate",

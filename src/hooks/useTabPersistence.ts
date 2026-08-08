@@ -1,10 +1,12 @@
-import { type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef, useState } from 'react';
-import type { OpenApiSpec } from '../types';
-import type { TabItem } from '../components/endpoint/EndpointTabs';
-import { parseSmartRoute } from '../utils/routing';
-import { specStorage } from '../utils/storage';
-import { hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode } from '../utils/tabPersistence';
+import {type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef, useState} from 'react';
+import type {OpenApiSpec} from '../types';
+import type {TabItem} from '../components/endpoint/EndpointTabs';
+import {parseSmartRoute} from '../utils/routing';
+import {specStorage} from '../utils/storage';
+import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../utils/tabPersistence';
+
 type ViewMode = 'docs' | 'examine' | 'both';
+
 interface UseTabPersistenceOptions {
     selectedSpecKey: string;
     loadedSpecKey: string;
@@ -22,12 +24,30 @@ interface UseTabPersistenceOptions {
     setSelectedViewMode: Dispatch<SetStateAction<ViewMode>>;
     setShowWelcome: Dispatch<SetStateAction<boolean>>;
 }
+
 interface TabPersistenceResult {
     tabsRestoredForKey: string;
     tabsRestoreDoneRef: MutableRefObject<string>;
     specRouteReadyRef: MutableRefObject<string>;
 }
-export function useTabPersistence({ selectedSpecKey, loadedSpecKey, spec, tabs, activeTabId, viewModes, selectedViewMode, orderTabs, getEndpointLabel, applyTabViewState, setTabs, setActiveTabId, setViewModes, setSelectedViewMode, setShowWelcome, }: UseTabPersistenceOptions): TabPersistenceResult {
+
+export function useTabPersistence({
+                                      selectedSpecKey,
+                                      loadedSpecKey,
+                                      spec,
+                                      tabs,
+                                      activeTabId,
+                                      viewModes,
+                                      selectedViewMode,
+                                      orderTabs,
+                                      getEndpointLabel,
+                                      applyTabViewState,
+                                      setTabs,
+                                      setActiveTabId,
+                                      setViewModes,
+                                      setSelectedViewMode,
+                                      setShowWelcome,
+                                  }: UseTabPersistenceOptions): TabPersistenceResult {
     const [tabsRestoredForKey, setTabsRestoredForKey] = useState('');
     const tabsRestoreDoneRef = useRef('');
     const specRouteReadyRef = useRef('');
@@ -62,7 +82,7 @@ export function useTabPersistence({ selectedSpecKey, loadedSpecKey, spec, tabs, 
             : [];
         const restoredTabs = filtered.map(tab => tab.kind && tab.kind !== 'endpoint'
             ? tab
-            : { ...tab, label: getEndpointLabel(tab.path, tab.method) });
+            : {...tab, label: getEndpointLabel(tab.path, tab.method)});
         const restoredModes = data?.viewModes
             ? Object.fromEntries(Object.entries(data.viewModes)
                 .filter(([id]) => restoredTabs.some(tab => tab.id === id))) as Record<string, ViewMode>
@@ -107,10 +127,9 @@ export function useTabPersistence({ selectedSpecKey, loadedSpecKey, spec, tabs, 
         }
         const mode = viewModes[activeTabId];
         if (mode && mode !== selectedViewMode) {
-            restoringModeRef.current = { tabId: activeTabId, mode };
+            restoringModeRef.current = {tabId: activeTabId, mode};
             setSelectedViewMode(mode);
-        }
-        else {
+        } else {
             restoringModeRef.current = null;
         }
     }, [activeTabId]);
@@ -125,7 +144,7 @@ export function useTabPersistence({ selectedSpecKey, loadedSpecKey, spec, tabs, 
         }
         setViewModes(current => current[activeTabId] === selectedViewMode
             ? current
-            : { ...current, [activeTabId]: selectedViewMode });
+            : {...current, [activeTabId]: selectedViewMode});
     }, [selectedViewMode, activeTabId, setViewModes]);
-    return { tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef };
+    return {tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef};
 }

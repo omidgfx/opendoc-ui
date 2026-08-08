@@ -1,17 +1,20 @@
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
+
 export interface TooltipSize {
     width: number;
     height: number;
 }
+
 export interface TooltipPosition {
     top: number;
     left: number;
     transform: string;
     placement: TooltipPlacement;
 }
+
 const TOOLTIP_GAP = 8;
 const TOOLTIP_EDGE = 8;
-export const INITIAL_TOOLTIP_SIZE: TooltipSize = { width: 320, height: 48 };
+export const INITIAL_TOOLTIP_SIZE: TooltipSize = {width: 320, height: 48};
 export const samePosition = (left: TooltipPosition, right: TooltipPosition): boolean => left.top === right.top
     && left.left === right.left
     && left.transform === right.transform

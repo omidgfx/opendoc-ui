@@ -1,15 +1,18 @@
-import type { Parameter } from '../../types';
+import type {Parameter} from '../../types';
+
 export interface SerializedPair {
     name: string;
     value: string;
     allowReserved?: boolean;
 }
+
 export interface SerializedParameter {
     pathValue?: string;
     query: SerializedPair[];
     headers: Record<string, string>;
     cookies: SerializedPair[];
 }
+
 const DEFAULT_STYLE: Record<string, string> = {
     path: 'simple',
     query: 'form',
@@ -24,7 +27,7 @@ const firstContentEntry = (parameter: any): {
         string,
         any
     ] | undefined;
-    return entry ? { mediaType: entry[0], media: entry[1] } : null;
+    return entry ? {mediaType: entry[0], media: entry[1]} : null;
 };
 const schemaOf = (parameter: any): any => parameter?.schema || firstContentEntry(parameter)?.media?.schema || parameter || {};
 const contentMediaTypeOf = (parameter: any): string => firstContentEntry(parameter)?.mediaType?.toLowerCase().split(';', 1)[0].trim() || '';
@@ -59,8 +62,7 @@ const scalar = (value: unknown): string => {
     if (typeof value === 'object') {
         try {
             return JSON.stringify(value);
-        }
-        catch {
+        } catch {
             return String(value);
         }
     }
@@ -81,8 +83,7 @@ const arrayValues = (value: any): string[] => Array.isArray(value)
             try {
                 const parsed = JSON.parse(value);
                 return Array.isArray(parsed) ? parsed.map(scalar) : [value];
-            }
-            catch {
+            } catch {
                 return [value];
             }
         })()
@@ -95,11 +96,10 @@ const objectValue = (value: any): Record<string, unknown> => {
             const parsed = JSON.parse(value);
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
                 return parsed;
-        }
-        catch {
+        } catch {
         }
     }
-    return { value };
+    return {value};
 };
 const delimited = (items: string[], delimiter: string) => items.join(delimiter);
 const queryEncoding = (location: string, allowReserved: boolean) => (location === 'query' || location === 'querystring') && allowReserved;
@@ -109,8 +109,7 @@ const contentValue = (parameter: any, value: any): string => {
         if (typeof value === 'string') {
             try {
                 return JSON.stringify(JSON.parse(value));
-            }
-            catch {
+            } catch {
                 return value;
             }
         }
@@ -130,7 +129,7 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     const allowReserved = Boolean(parameter?.allowReserved);
     const name = String(parameter?.name || '');
     const type = typeOf(parameter, value);
-    const result: SerializedParameter = { query: [], headers: {}, cookies: [] };
+    const result: SerializedParameter = {query: [], headers: {}, cookies: []};
     if (!name && location !== 'querystring')
         return result;
     if (parameter?.content) {
@@ -142,21 +141,16 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     value: item,
                     allowReserved
                 }));
+            } else {
+                result.query.push({name: '', value: serialized, allowReserved});
             }
-            else {
-                result.query.push({ name: '', value: serialized, allowReserved });
-            }
-        }
-        else if (location === 'query') {
-            result.query.push({ name, value: serialized, allowReserved });
-        }
-        else if (location === 'header') {
+        } else if (location === 'query') {
+            result.query.push({name, value: serialized, allowReserved});
+        } else if (location === 'header') {
             result.headers[name] = serialized;
-        }
-        else if (location === 'cookie') {
-            result.cookies.push({ name, value: serialized });
-        }
-        else if (location === 'path') {
+        } else if (location === 'cookie') {
+            result.cookies.push({name, value: serialized});
+        } else if (location === 'path') {
             result.pathValue = encodeComponent(serialized, false);
         }
         return result;
@@ -168,9 +162,8 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 value: item,
                 allowReserved
             }));
-        }
-        else {
-            result.query.push({ name: '', value: scalar(value), allowReserved });
+        } else {
+            result.query.push({name: '', value: scalar(value), allowReserved});
         }
         return result;
     }
@@ -184,15 +177,12 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 result.pathValue = `;${encodeComponent(name)}=${encodeComponent(text, allowReservedForLocation)}`;
             else
                 result.pathValue = encodeComponent(text, allowReservedForLocation);
-        }
-        else if (location === 'header') {
+        } else if (location === 'header') {
             result.headers[name] = text;
-        }
-        else if (location === 'cookie') {
-            result.cookies.push({ name, value: text });
-        }
-        else {
-            result.query.push({ name, value: text, allowReserved: allowReservedForLocation });
+        } else if (location === 'cookie') {
+            result.cookies.push({name, value: text});
+        } else {
+            result.query.push({name, value: text, allowReserved: allowReservedForLocation});
         }
         return result;
     }
@@ -206,32 +196,26 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     value: item,
                     allowReserved: allowReservedForLocation
                 }));
+            } else if (explode && style === 'form') {
+                values.forEach(item => result.query.push({name, value: item, allowReserved: allowReservedForLocation}));
+            } else {
+                result.query.push({name, value: delimited(values, delimiter), allowReserved: allowReservedForLocation});
             }
-            else if (explode && style === 'form') {
-                values.forEach(item => result.query.push({ name, value: item, allowReserved: allowReservedForLocation }));
-            }
-            else {
-                result.query.push({ name, value: delimited(values, delimiter), allowReserved: allowReservedForLocation });
-            }
-        }
-        else if (location === 'cookie') {
+        } else if (location === 'cookie') {
             if (explode && style === 'form')
-                values.forEach(item => result.cookies.push({ name, value: item }));
+                values.forEach(item => result.cookies.push({name, value: item}));
             else
-                result.cookies.push({ name, value: delimited(values, delimiter) });
-        }
-        else if (location === 'header') {
+                result.cookies.push({name, value: delimited(values, delimiter)});
+        } else if (location === 'header') {
             result.headers[name] = delimited(values, delimiter);
-        }
-        else {
+        } else {
             if (style === 'label')
                 result.pathValue = `.${values.map(item => encodeComponent(item, false)).join(explode ? '.' : ',')}`;
             else if (style === 'matrix') {
                 result.pathValue = explode
                     ? values.map(item => `;${encodeComponent(name)}=${encodeComponent(item, false)}`).join('')
                     : `;${encodeComponent(name)}=${values.map(item => encodeComponent(item, false)).join(',')}`;
-            }
-            else
+            } else
                 result.pathValue = values.map(item => encodeComponent(item, false)).join(',');
         }
         return result;
@@ -244,53 +228,45 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 value: item,
                 allowReserved: allowReservedForLocation
             }));
-        }
-        else if (explode && style === 'form') {
+        } else if (explode && style === 'form') {
             entries.forEach(([key, item]) => result.query.push({
                 name: key,
                 value: item,
                 allowReserved: allowReservedForLocation
             }));
-        }
-        else if (style === 'spaceDelimited' || style === 'pipeDelimited') {
+        } else if (style === 'spaceDelimited' || style === 'pipeDelimited') {
             const delimiter = style === 'spaceDelimited' ? ' ' : '|';
             result.query.push({
                 name,
                 value: delimited(entries.flatMap(([key, item]) => [key, item]), delimiter),
                 allowReserved: allowReservedForLocation
             });
-        }
-        else {
+        } else {
             const flattened = entries.flatMap(([key, item]) => [key, item]);
-            result.query.push({ name, value: delimited(flattened, ','), allowReserved: allowReservedForLocation });
+            result.query.push({name, value: delimited(flattened, ','), allowReserved: allowReservedForLocation});
         }
-    }
-    else if (location === 'cookie') {
+    } else if (location === 'cookie') {
         if (explode && style === 'form')
             entries.forEach(([key, item]) => result.cookies.push({
                 name: key,
                 value: item
             }));
         else
-            result.cookies.push({ name, value: delimited(entries.flatMap(([key, item]) => [key, item]), ',') });
-    }
-    else if (location === 'header') {
+            result.cookies.push({name, value: delimited(entries.flatMap(([key, item]) => [key, item]), ',')});
+    } else if (location === 'header') {
         result.headers[name] = explode
             ? entries.map(([key, item]) => `${key}=${item}`).join(',')
             : entries.flatMap(([key, item]) => [key, item]).join(',');
-    }
-    else {
+    } else {
         if (style === 'label') {
             result.pathValue = explode
                 ? `.${entries.map(([key, item]) => `${encodeComponent(key, false)}=${encodeComponent(item, false)}`).join(',')}`
                 : `.${entries.flatMap(([key, item]) => [encodeComponent(key, false), encodeComponent(item, false)]).join(',')}`;
-        }
-        else if (style === 'matrix') {
+        } else if (style === 'matrix') {
             result.pathValue = explode
                 ? entries.map(([key, item]) => `;${encodeComponent(key, false)}=${encodeComponent(item, false)}`).join('')
                 : `;${encodeComponent(name)}=${entries.flatMap(([key, item]) => [encodeComponent(key, false), encodeComponent(item, false)]).join(',')}`;
-        }
-        else {
+        } else {
             const flattened = explode
                 ? entries.map(([key, item]) => `${key}=${item}`).join(',')
                 : entries.flatMap(([key, item]) => [key, item]).join(',');
@@ -317,8 +293,7 @@ export const normalizeParameterValue = (parameter: Parameter | any, value: unkno
     if (contentType === 'application/json' || contentType.endsWith('+json')) {
         try {
             return JSON.parse(value);
-        }
-        catch {
+        } catch {
             return value;
         }
     }
@@ -328,8 +303,7 @@ export const normalizeParameterValue = (parameter: Parameter | any, value: unkno
     if (looksStructured) {
         try {
             return JSON.parse(value);
-        }
-        catch {
+        } catch {
             return value;
         }
     }

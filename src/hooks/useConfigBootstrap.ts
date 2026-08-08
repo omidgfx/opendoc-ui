@@ -1,9 +1,10 @@
-import { type Dispatch, type SetStateAction, useEffect } from 'react';
-import type { AISettings, ParsableConfig } from '../types';
-import { findLocalHistoryEntry } from '../utils/localHistory';
-import { parseSmartRoute } from '../utils/routing';
-import { migrateLegacyStorage, specStorage, storage, uiStorage } from '../utils/storage';
-import type { ConfigSource } from '../utils/appSpec';
+import {type Dispatch, type SetStateAction, useEffect} from 'react';
+import type {AISettings, ParsableConfig} from '../types';
+import {findLocalHistoryEntry} from '../utils/localHistory';
+import {parseSmartRoute} from '../utils/routing';
+import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage';
+import type {ConfigSource} from '../utils/appSpec';
+
 interface UseConfigBootstrapOptions {
     setConfigSource: Dispatch<SetStateAction<ConfigSource>>;
     setAISettings: Dispatch<SetStateAction<AISettings>>;
@@ -13,7 +14,16 @@ interface UseConfigBootstrapOptions {
     setInitialLoadComplete: Dispatch<SetStateAction<boolean>>;
     applyLocalSpec: (raw: string, fileName: string, file: File | null) => unknown;
 }
-export function useConfigBootstrap({ setConfigSource, setAISettings, setAISettingsReady, setParsables, setSelectedSpecKey, setInitialLoadComplete, applyLocalSpec, }: UseConfigBootstrapOptions): void {
+
+export function useConfigBootstrap({
+                                       setConfigSource,
+                                       setAISettings,
+                                       setAISettingsReady,
+                                       setParsables,
+                                       setSelectedSpecKey,
+                                       setInitialLoadComplete,
+                                       applyLocalSpec,
+                                   }: UseConfigBootstrapOptions): void {
     useEffect(() => {
         let cancelled = false;
         const bootstrap = async () => {
@@ -23,16 +33,14 @@ export function useConfigBootstrap({ setConfigSource, setAISettings, setAISettin
             if (window.INITIAL_CONFIG) {
                 data = window.INITIAL_CONFIG;
                 source = 'initial';
-            }
-            else {
+            } else {
                 try {
-                    const response = await fetch('/config.json', { cache: 'no-store' });
+                    const response = await fetch('/config.json', {cache: 'no-store'});
                     if (response.ok) {
                         data = await response.json();
                         source = 'file';
                     }
-                }
-                catch (error) {
+                } catch (error) {
                     console.warn('config.json unreachable, running in local mode.', error);
                 }
             }
@@ -43,7 +51,7 @@ export function useConfigBootstrap({ setConfigSource, setAISettings, setAISettin
                 setAISettings(current => ({
                     ...current,
                     ...data.ai,
-                    ...(Array.isArray(data.ai.skillPacks) ? { skillPacks: data.ai.skillPacks } : {}),
+                    ...(Array.isArray(data.ai.skillPacks) ? {skillPacks: data.ai.skillPacks} : {}),
                 }));
             }
             setAISettingsReady(true);
@@ -75,16 +83,14 @@ export function useConfigBootstrap({ setConfigSource, setAISettings, setAISettin
                 if (initialKey)
                     setSelectedSpecKey(initialKey);
                 specStorage.prune(Object.keys(loaded));
-            }
-            else if (window.location.hash) {
+            } else if (window.location.hash) {
                 const route = parseSmartRoute(window.location.hash);
                 if (route.parsableKey) {
                     const entry = findLocalHistoryEntry(route.parsableKey);
                     if (entry) {
                         try {
                             applyLocalSpec(entry.raw, entry.fileName, null);
-                        }
-                        catch {
+                        } catch {
                         }
                     }
                 }

@@ -14,6 +14,7 @@ export interface ExamineResponse {
     errorKind?: 'validation' | 'network' | 'cors' | 'timeout' | 'http' | 'cancelled';
     errorMessage?: string;
 }
+
 export interface ExamineInputs {
     params: {
         [name: string]: string | string[];

@@ -1,7 +1,8 @@
 import * as jsYaml from 'js-yaml';
-import type { OpenApiSpec, Parsable } from '@/src/types';
-import { assertValidOpenApiDocument, normalizeOpenApiSpec } from '@/src/utils/openapi';
-import { fetchSpecText } from '@/src/utils/specCache';
+import type {OpenApiSpec, Parsable} from '@/src/types';
+import {assertValidOpenApiDocument, normalizeOpenApiSpec} from '@/src/utils/openapi';
+import {fetchSpecText} from '@/src/utils/specCache';
+
 export interface SpecificationSummary {
     title: string;
     version: string;
@@ -14,11 +15,13 @@ export interface SpecificationSummary {
     securedEndpointCount: number;
     methods: string[];
 }
+
 export interface SummaryState {
     status: 'loading' | 'ready' | 'error';
     summary?: SpecificationSummary;
     message?: string;
 }
+
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
 export const summarizeSpecification = (spec: OpenApiSpec): SpecificationSummary => {
     let endpointCount = 0;

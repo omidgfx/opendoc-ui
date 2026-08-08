@@ -4,6 +4,7 @@ export interface OpenApiValidationResult {
     warnings: string[];
     version: 'openapi3' | 'swagger2' | 'unknown';
 }
+
 const METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 const isRecord = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const error = (errors: string[], message: string) => errors.push(message);
@@ -11,7 +12,7 @@ export const validateOpenApiDocument = (document: any): OpenApiValidationResult 
     const errors: string[] = [];
     const warnings: string[] = [];
     if (!isRecord(document)) {
-        return { valid: false, errors: ['The specification root must be an object.'], warnings, version: 'unknown' };
+        return {valid: false, errors: ['The specification root must be an object.'], warnings, version: 'unknown'};
     }
     const version: OpenApiValidationResult['version'] = String(document.openapi || '').startsWith('3.')
         ? 'openapi3'
@@ -99,7 +100,7 @@ export const validateOpenApiDocument = (document: any): OpenApiValidationResult 
     }
     if (document.security !== undefined && !Array.isArray(document.security))
         error(errors, '`security` must be an array when present.');
-    return { valid: errors.length === 0, errors, warnings, version };
+    return {valid: errors.length === 0, errors, warnings, version};
 };
 export const assertValidOpenApiDocument = (document: any): void => {
     const result = validateOpenApiDocument(document);

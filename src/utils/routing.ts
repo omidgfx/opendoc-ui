@@ -1,4 +1,5 @@
-import type { EndpointRef, OpenApiSpec, ParsedRoute } from '../types';
+import type {EndpointRef, OpenApiSpec, ParsedRoute} from '../types';
+
 export const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
 export const getEndpointId = (operation: any, path: string, method: string): string => {
     if (operation?.operationId)
@@ -13,7 +14,7 @@ export const resolveEndpointFromId = (id: string, spec: OpenApiSpec | null): End
             if (!HTTP_METHODS.includes(method))
                 continue;
             if (getEndpointId(operation, path, method) === id) {
-                return { path, method };
+                return {path, method};
             }
         }
     }
@@ -80,7 +81,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     }
     const parts = raw.split('/').filter(Boolean);
     if (parts[0] === 'about') {
-        return { ...empty, showHome: false, showAbout: true };
+        return {...empty, showHome: false, showAbout: true};
     }
     if (parts[0] === 'schema' && parts[1]) {
         return {
@@ -103,10 +104,10 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         };
     }
     if (parts[0] === 'schema-explorer') {
-        return { ...empty, showSchemaExplorer: true, showHome: false, schemas, responseCode, searchQuery };
+        return {...empty, showSchemaExplorer: true, showHome: false, schemas, responseCode, searchQuery};
     }
     if (parts[0] === 'assistant') {
-        return { ...empty, showAssistant: true, showHome: false, responseCode, searchQuery };
+        return {...empty, showAssistant: true, showHome: false, responseCode, searchQuery};
     }
     let parsableKey = '';
     let showSchemaExplorer = false;
@@ -117,11 +118,9 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         parsableKey = decodeURIComponent(parts[1]);
         if (parts[2] === 'schema-explorer') {
             showSchemaExplorer = true;
-        }
-        else if (parts[2] === 'assistant') {
+        } else if (parts[2] === 'assistant') {
             showAssistant = true;
-        }
-        else if (parts[2] === 'api' && parts[3]) {
+        } else if (parts[2] === 'api' && parts[3]) {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
@@ -138,8 +137,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 searchTags,
                 searchSecured
             };
-        }
-        else if (parts[2] === 'about') {
+        } else if (parts[2] === 'about') {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
@@ -156,12 +154,10 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 searchTags,
                 searchSecured
             };
-        }
-        else {
+        } else {
             showHome = true;
         }
-    }
-    else {
+    } else {
         showHome = true;
     }
     return {
@@ -181,6 +177,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         searchSecured
     };
 };
+
 interface BuildRouteOpts {
     parsableKey: string;
     showHome: boolean;
@@ -200,8 +197,24 @@ interface BuildRouteOpts {
     searchSecured?: boolean | null;
     activeSpec?: OpenApiSpec | null;
 }
+
 export const generateSmartRoute = (state: BuildRouteOpts): string => {
-    const { parsableKey, showHome, showAbout, showAssistant, showSchemaExplorer, endpoint, tab, schemaModals, responseCode, searchQuery, searchMethods, searchTags, searchSecured, activeSpec } = state;
+    const {
+        parsableKey,
+        showHome,
+        showAbout,
+        showAssistant,
+        showSchemaExplorer,
+        endpoint,
+        tab,
+        schemaModals,
+        responseCode,
+        searchQuery,
+        searchMethods,
+        searchTags,
+        searchSecured,
+        activeSpec
+    } = state;
     if (!parsableKey)
         return showAbout ? '#/about' : showAssistant ? '#/assistant' : '#/';
     if (showAbout)
@@ -211,8 +224,7 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     let route = `#/parsable/${encodeURIComponent(parsableKey)}`;
     if (showSchemaExplorer) {
         route += `/schema-explorer`;
-    }
-    else if (endpoint) {
+    } else if (endpoint) {
         let endpointId = '';
         if (activeSpec) {
             const pathItem = activeSpec.paths[endpoint.path];

@@ -17,6 +17,7 @@ function crc32Uint8(data: Uint8Array): number {
     }
     return (crc ^ -1) >>> 0;
 }
+
 function toDosDateTime(date: Date) {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
@@ -26,27 +27,31 @@ function toDosDateTime(date: Date) {
     const seconds = Math.floor(date.getSeconds() / 2);
     const dosDate = ((year - 1980) << 9) | (month << 5) | day;
     const dosTime = (hours << 11) | (minutes << 5) | seconds;
-    return { dosDate, dosTime };
+    return {dosDate, dosTime};
 }
+
 function writeU16(view: DataView, offset: number, value: number) {
     view.setUint16(offset, value, true);
 }
+
 function writeU32(view: DataView, offset: number, value: number) {
     view.setUint32(offset, value, true);
 }
+
 export interface ZipFileEntry {
     name: string;
     content: string | Uint8Array;
 }
+
 export function createZipBlob(files: ZipFileEntry[]): Blob {
     const encoder = new TextEncoder();
     const now = new Date();
-    const { dosDate, dosTime } = toDosDateTime(now);
+    const {dosDate, dosTime} = toDosDateTime(now);
     const prepared = files.map((f) => {
         const nameBytes = encoder.encode(f.name);
         const contentBytes = typeof f.content === 'string' ? encoder.encode(f.content) : f.content;
         const crc = crc32Uint8(contentBytes);
-        return { ...f, nameBytes, contentBytes, crc };
+        return {...f, nameBytes, contentBytes, crc};
     });
     let totalLocalSize = 0;
     let totalCentralSize = 0;
@@ -66,7 +71,7 @@ export function createZipBlob(files: ZipFileEntry[]): Blob {
     }[] = [];
     for (const p of prepared) {
         const localHeaderOffset = offset;
-        centralRecords.push({ offset: localHeaderOffset, data: p });
+        centralRecords.push({offset: localHeaderOffset, data: p});
         writeU32(view, offset, 0x04034b50);
         offset += 4;
         writeU16(view, offset, 20);
@@ -151,8 +156,9 @@ export function createZipBlob(files: ZipFileEntry[]): Blob {
     offset += 4;
     writeU16(view, offset, 0);
     offset += 2;
-    return new Blob([buffer], { type: 'application/zip' });
+    return new Blob([buffer], {type: 'application/zip'});
 }
+
 export function downloadBlob(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

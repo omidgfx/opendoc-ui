@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
-import { marked } from 'marked';
-import { highlightCodeString } from './CodeViewer';
+import {useEffect, useState} from 'react';
+import {marked} from 'marked';
+import {highlightCodeString} from './CodeViewer';
 import DOMPurify from 'dompurify';
-import { useOperationLinkIndex } from '../../contexts/OperationLinkContext';
-import { rewriteInternalEndpointLinks } from '../../utils/docLinks';
+import {useOperationLinkIndex} from '../../contexts/OperationLinkContext';
+import {rewriteInternalEndpointLinks} from '../../utils/docLinks';
+
 interface MarkdownProps {
     text?: string;
     className?: string;
 }
+
 function addDirAttributesToDoc(doc: Document): void {
     const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
     const allElements = doc.querySelectorAll('*');
@@ -24,15 +26,15 @@ function addDirAttributesToDoc(doc: Document): void {
         const firstCharRTL = firstChar && rtlRegex.test(firstChar);
         if (rtlCount > 0 && (firstCharRTL || percentage >= 40)) {
             el.setAttribute('dir', 'rtl');
-        }
-        else {
+        } else {
             el.setAttribute('dir', 'auto');
         }
     });
 }
-export default function Markdown({ text, className = '' }: MarkdownProps) {
+
+export default function Markdown({text, className = ''}: MarkdownProps) {
     const [html, setHtml] = useState('');
-    const { index: linkIndex, parsableKey } = useOperationLinkIndex();
+    const {index: linkIndex, parsableKey} = useOperationLinkIndex();
     useEffect(() => {
         if (!text) {
             setHtml('');
@@ -40,7 +42,7 @@ export default function Markdown({ text, className = '' }: MarkdownProps) {
         }
         try {
             const renderer = new marked.Renderer();
-            renderer.code = function ({ text: codeVal, lang }: {
+            renderer.code = function ({text: codeVal, lang}: {
                 text: string;
                 lang?: string;
             }) {
@@ -54,7 +56,7 @@ export default function Markdown({ text, className = '' }: MarkdownProps) {
  </div>
  `;
             };
-            const parsed = marked.parse(text, { renderer, async: false }) as string;
+            const parsed = marked.parse(text, {renderer, async: false}) as string;
             const cleanHtml = DOMPurify.sanitize(parsed);
             const parser = new DOMParser();
             const doc = parser.parseFromString(cleanHtml, 'text/html');
@@ -62,13 +64,12 @@ export default function Markdown({ text, className = '' }: MarkdownProps) {
             rewriteInternalEndpointLinks(doc, linkIndex, parsableKey);
             const finalHtml = doc.body.innerHTML;
             setHtml(finalHtml);
-        }
-        catch (e) {
+        } catch (e) {
             console.error('Failed to parse markdown', e);
             setHtml(text || '');
         }
     }, [text, linkIndex, parsableKey]);
     if (!text)
         return null;
-    return (<div className={`markdown-body ${className}`} dangerouslySetInnerHTML={{ __html: html }}/>);
+    return (<div className={`markdown-body ${className}`} dangerouslySetInnerHTML={{__html: html}}/>);
 }

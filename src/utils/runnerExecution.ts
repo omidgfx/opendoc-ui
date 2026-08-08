@@ -1,10 +1,17 @@
-import type { ActiveAuth, ExamineResponse, OpenApiSpec, Operation } from '../types';
-import { applyAuthToRequest } from './auth';
-import { appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody } from './bodyFormats';
-import { isJsonMediaType, normalizeParameterValue, queryStringFromPairs, serializeOpenApiParameter } from './openapi/serialization';
-import { getMergedParameters, resolveRequestBody } from './openapi';
+import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
+import {applyAuthToRequest} from './auth';
+import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from './bodyFormats';
+import {
+    isJsonMediaType,
+    normalizeParameterValue,
+    queryStringFromPairs,
+    serializeOpenApiParameter
+} from './openapi/serialization';
+import {getMergedParameters, resolveRequestBody} from './openapi';
+
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
 export interface RunnerExecutionInput {
     spec: OpenApiSpec;
     path: string;
@@ -18,6 +25,7 @@ export interface RunnerExecutionInput {
     bodyType?: string;
     signal?: AbortSignal;
 }
+
 const readResponseBody = async (response: Response): Promise<{
     text: string;
     bytes: number;
@@ -38,7 +46,7 @@ const readResponseBody = async (response: Response): Promise<{
     let truncated = false;
     try {
         while (true) {
-            const { value, done } = await reader.read();
+            const {value, done} = await reader.read();
             if (done)
                 break;
             if (!value)
@@ -55,8 +63,7 @@ const readResponseBody = async (response: Response): Promise<{
             chunks.push(value);
             bytes += value.byteLength;
         }
-    }
-    finally {
+    } finally {
         reader.releaseLock();
     }
     const merged = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0));
@@ -65,7 +72,7 @@ const readResponseBody = async (response: Response): Promise<{
         merged.set(chunk, offset);
         offset += chunk.byteLength;
     });
-    return { text: new TextDecoder().decode(merged), bytes, truncated };
+    return {text: new TextDecoder().decode(merged), bytes, truncated};
 };
 const buildRequestBody = (body: string | undefined, bodyType: string, headers: Record<string, string>): BodyInit | null => {
     if (body === undefined || body === '')
@@ -75,16 +82,14 @@ const buildRequestBody = (body: string | undefined, bodyType: string, headers: R
         try {
             headers['Content-Type'] = bodyType;
             return serializeUrlEncodedBody(parseStructuredBody(body, bodyType));
-        }
-        catch {
+        } catch {
         }
     }
     if (normalizedType === 'multipart/form-data') {
         const form = new FormData();
         try {
             appendMultipartBody(form, parseStructuredBody(body, bodyType));
-        }
-        catch {
+        } catch {
         }
         return form;
     }
@@ -95,7 +100,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
     const startedAt = Date.now();
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();
-    input.signal?.addEventListener('abort', forwardAbort, { once: true });
+    input.signal?.addEventListener('abort', forwardAbort, {once: true});
     let timedOut = false;
     const timeout = window.setTimeout(() => {
         timedOut = true;
@@ -129,7 +134,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             Object.assign(parameterHeaders, serialized.headers);
             cookies.push(...serialized.cookies);
         });
-        const requestHeaders: Record<string, string> = { Accept: 'application/json', ...parameterHeaders, ...(input.headers || {}) };
+        const requestHeaders: Record<string, string> = {Accept: 'application/json', ...parameterHeaders, ...(input.headers || {})};
         const auth = applyAuthToRequest(input.spec, input.activeAuth, {
             headers: requestHeaders,
             query,
@@ -168,8 +173,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             truncated: body.truncated,
             isBinary: binary,
         };
-    }
-    catch (error: any) {
+    } catch (error: any) {
         const cancelled = input.signal?.aborted || controller.signal.aborted && !timedOut;
         const errorKind = cancelled ? 'cancelled' : timedOut ? 'timeout' : 'network';
         const errorMessage = cancelled ? 'Request cancelled by the user.' : error?.message || 'The request failed.';
@@ -184,8 +188,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             errorKind,
             errorMessage,
         };
-    }
-    finally {
+    } finally {
         window.clearTimeout(timeout);
         input.signal?.removeEventListener('abort', forwardAbort);
     }

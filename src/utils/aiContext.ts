@@ -1,7 +1,8 @@
-import type { AIContextInput, AIContextResult, AISettings, AISourceRef } from '../types';
-import { getEndpointId } from './routing';
-import { OPENDOC_UI_BRIDGE_INSTRUCTIONS } from './aiBridge';
-import { renderAISkillPackContent } from './aiSkills';
+import type {AIContextInput, AIContextResult, AISettings, AISourceRef} from '../types';
+import {getEndpointId} from './routing';
+import {OPENDOC_UI_BRIDGE_INSTRUCTIONS} from './aiBridge';
+import {renderAISkillPackContent} from './aiSkills';
+
 const SECRET_KEY = /(api[-_ ]?key|access[-_ ]?key|secret|token|password|passwd|credential|authorization|cookie|private[-_ ]?key|client[-_ ]?secret)/i;
 const SECRET_VALUE = /^(bearer\s+)?[A-Za-z0-9_\-./+=]{20,}$/i;
 const MAX_INCLUDED_ENDPOINTS = 24;
@@ -20,8 +21,7 @@ const redactUrl = (value: string): string => {
                 url.searchParams.set(key, '[REDACTED]');
         });
         return url.toString();
-    }
-    catch {
+    } catch {
         return value;
     }
 };
@@ -101,10 +101,10 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
                 href: `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(op, path, method))}`,
             };
             sources.push(source);
-            endpoints.push({ path, method: method.toLowerCase(), operation: op, source, tags: tagList });
+            endpoints.push({path, method: method.toLowerCase(), operation: op, source, tags: tagList});
         });
     });
-    Array.from(tags).sort().forEach(tag => sources.push({ id: `tag:${tag}`, kind: 'tag', label: `Tag: ${tag}` }));
+    Array.from(tags).sort().forEach(tag => sources.push({id: `tag:${tag}`, kind: 'tag', label: `Tag: ${tag}`}));
     Object.keys(input.spec?.components?.schemas || {}).sort().forEach(schemaName => sources.push({
         id: `schema:${schemaName}`,
         kind: 'schema',
@@ -133,7 +133,7 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
         const haystack = `${endpoint.path} ${endpoint.method} ${endpoint.operation.summary || ''} ${endpoint.operation.description || ''} ${endpoint.tags.join(' ')}`.toLowerCase();
         const selected = selectedSet.has(endpoint.source.id);
         const matched = terms.length > 0 && terms.every(term => haystack.includes(term));
-        return { endpoint, score: selected ? 100 : matched ? 50 : terms.length === 0 ? 1 : 0 };
+        return {endpoint, score: selected ? 100 : matched ? 50 : terms.length === 0 ? 1 : 0};
     }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.endpoint.path.localeCompare(b.endpoint.path));
     const included = ranked.slice(0, MAX_INCLUDED_ENDPOINTS).map(item => item.endpoint);
     if (included.length === 0)
@@ -195,7 +195,7 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
     let context = JSON.stringify(contextPayload, null, 2);
     if (context.length > MAX_CONTEXT_CHARS)
         context = `${context.slice(0, MAX_CONTEXT_CHARS)}\n… [context truncated by OpenDoc UI]`;
-    return { context, sources };
+    return {context, sources};
 };
 export const buildAISystemPrompt = (settings: AISettings, context: AIContextResult): string => {
     const skills = settings.skillPacks.length > 0 ? settings.skillPacks.join(', ') : 'openapi';

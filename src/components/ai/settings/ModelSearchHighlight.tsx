@@ -2,7 +2,8 @@ interface ModelSearchHighlightProps {
     text: string;
     query: string;
 }
-export default function ModelSearchHighlight({ text, query }: ModelSearchHighlightProps) {
+
+export default function ModelSearchHighlight({text, query}: ModelSearchHighlightProps) {
     const terms = query.trim().split(/\s+/).filter(Boolean)
         .map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     if (terms.length === 0)
@@ -10,6 +11,6 @@ export default function ModelSearchHighlight({ text, query }: ModelSearchHighlig
     const splitMatcher = new RegExp(`(${terms.join('|')})`, 'giu');
     const matcher = new RegExp(`(${terms.join('|')})`, 'iu');
     return <>{text.split(splitMatcher).map((part, index) => matcher.test(part)
-            ? <mark key={`${part}-${index}`} className="rounded bg-[var(--highlight)] text-inherit">{part}</mark>
-            : <span key={`${part}-${index}`}>{part}</span>)}</>;
+        ? <mark key={`${part}-${index}`} className="rounded bg-[var(--highlight)] text-inherit">{part}</mark>
+        : <span key={`${part}-${index}`}>{part}</span>)}</>;
 }

@@ -1,6 +1,7 @@
 export type AIProviderId = 'openrouter' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'custom';
 export type AITransport = 'direct' | 'gateway';
 export type AISkillPack = 'openapi' | 'rest-debugging' | 'security' | 'sdk-generation' | 'api-testing';
+
 export interface AISettings {
     transport: AITransport;
     gatewayUrl: string;
@@ -15,11 +16,13 @@ export interface AISettings {
     skillPacks: AISkillPack[];
     customInstructions: string;
 }
+
 export interface AIModelOption {
     id: string;
     label: string;
     tier: 'free' | 'premium' | 'local';
 }
+
 export interface AIProviderPreset {
     id: AIProviderId;
     label: string;
@@ -29,6 +32,7 @@ export interface AIProviderPreset {
     native: boolean;
     models: AIModelOption[];
 }
+
 export interface AIProfile {
     id: string;
     name: string;
@@ -36,7 +40,9 @@ export interface AIProfile {
     createdAt: number;
     updatedAt: number;
 }
+
 export type AIMessageRole = 'system' | 'user' | 'assistant';
+
 export interface AIChatMessage {
     id: string;
     role: Exclude<AIMessageRole, 'system'>;
@@ -45,6 +51,7 @@ export interface AIChatMessage {
     citations?: AISourceRef[];
     isError?: boolean;
 }
+
 export interface AIConversation {
     id: string;
     specKey: string;
@@ -55,6 +62,7 @@ export interface AIConversation {
     trustedRunner: boolean;
     messages: AIChatMessage[];
 }
+
 export interface AISourceRef {
     id: string;
     label: string;
@@ -64,6 +72,7 @@ export interface AISourceRef {
     schemaName?: string;
     href?: string;
 }
+
 export interface AIContextInput {
     spec: any;
     specKey: string;
@@ -78,10 +87,12 @@ export interface AIContextInput {
     includeAuthValues?: boolean;
     auth?: any;
 }
+
 export interface AIContextResult {
     context: string;
     sources: AISourceRef[];
 }
+
 export interface AIRequestMessage {
     role: AIMessageRole;
     content: string;

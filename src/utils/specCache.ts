@@ -1,5 +1,6 @@
-import { storage } from './storage';
-import { idbClearPrefix, idbDelete, idbGet, idbSet } from './indexedDb';
+import {storage} from './storage';
+import {idbClearPrefix, idbDelete, idbGet, idbSet} from './indexedDb';
+
 const PREFIX = 'opendoc_spec_cache_v2:';
 const IDB_PREFIX = 'spec:';
 export const DEFAULT_SPEC_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -22,7 +23,7 @@ const writeLocalEntry = (url: string, entry: CacheEntry) => {
 };
 export const readCachedSpec = (url: string): string | null => readLocalEntry(url)?.raw ?? null;
 export const writeCachedSpec = (url: string, raw: string, metadata: Partial<CacheEntry> = {}) => {
-    const entry: CacheEntry = { raw, fetchedAt: Date.now(), ...metadata };
+    const entry: CacheEntry = {raw, fetchedAt: Date.now(), ...metadata};
     writeLocalEntry(url, entry);
     void idbSet(idbKeyFor(url), entry);
 };
@@ -58,7 +59,7 @@ export const fetchSpecText = async (url: string, opts: {
     if (cached?.lastModified)
         headers['If-Modified-Since'] = cached.lastModified;
     try {
-        const response = await fetch(url, { cache: 'no-store', headers });
+        const response = await fetch(url, {cache: 'no-store', headers});
         if (response.status === 304 && cached) {
             writeCachedSpec(url, cached.raw, {
                 etag: response.headers.get('etag') || cached.etag,
@@ -74,8 +75,7 @@ export const fetchSpecText = async (url: string, opts: {
             lastModified: response.headers.get('last-modified') || undefined,
         });
         return raw;
-    }
-    catch (error) {
+    } catch (error) {
         if (cached) {
             console.warn(`Using stale cached specification for ${url} after revalidation failed.`, error);
             return cached.raw;

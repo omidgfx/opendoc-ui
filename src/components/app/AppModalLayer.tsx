@@ -1,6 +1,6 @@
-import type { Dispatch, SetStateAction } from 'react';
-import type { ActiveAuth, AISettings, OpenApiSpec, ThemeMode } from '../../types';
-import type { TabItem } from '../endpoint/EndpointTabs';
+import type {Dispatch, SetStateAction} from 'react';
+import type {ActiveAuth, AISettings, OpenApiSpec, ThemeMode} from '../../types';
+import type {TabItem} from '../endpoint/EndpointTabs';
 import ModalsStack from '../modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from '../modals/CodeGeneratorModal';
 import AuthModal from '../modals/AuthModal';
@@ -8,11 +8,13 @@ import ShareModal from '../modals/ShareModal';
 import ThemeSelectorModal from '../modals/ThemeSelectorModal';
 import AISettingsModal from '../ai/AISettingsModal';
 import TabSwitcherOverlay from './TabSwitcherOverlay';
+
 interface ShareTarget {
     url: string;
     title: string;
     description?: string;
 }
+
 interface AppModalLayerProps {
     spec: OpenApiSpec | null;
     specKey: string;
@@ -53,17 +55,66 @@ interface AppModalLayerProps {
     aiSettings: AISettings;
     onSaveAISettings: (settings: AISettings) => void;
 }
-export default function AppModalLayer({ spec, specKey, schemaStack, setSchemaStack, onPopSchema, onPushSchema, codeEndpoint, setCodeEndpoint, activeAuth, setActiveAuth, authOpen, setAuthOpen, switcherOpen, tabs, activeTabId, switcherIndex, onCancelSwitcher, onSelectSwitcherTab, shareTarget, setShareTarget, themeOpen, setThemeOpen, selectedThemeName, setSelectedThemeName, currentThemeMode, setCurrentThemeMode, resolvedThemeMode, toggleThemeMode, aiSettingsOpen, setAISettingsOpen, aiSettings, onSaveAISettings, }: AppModalLayerProps) {
+
+export default function AppModalLayer({
+                                          spec,
+                                          specKey,
+                                          schemaStack,
+                                          setSchemaStack,
+                                          onPopSchema,
+                                          onPushSchema,
+                                          codeEndpoint,
+                                          setCodeEndpoint,
+                                          activeAuth,
+                                          setActiveAuth,
+                                          authOpen,
+                                          setAuthOpen,
+                                          switcherOpen,
+                                          tabs,
+                                          activeTabId,
+                                          switcherIndex,
+                                          onCancelSwitcher,
+                                          onSelectSwitcherTab,
+                                          shareTarget,
+                                          setShareTarget,
+                                          themeOpen,
+                                          setThemeOpen,
+                                          selectedThemeName,
+                                          setSelectedThemeName,
+                                          currentThemeMode,
+                                          setCurrentThemeMode,
+                                          resolvedThemeMode,
+                                          toggleThemeMode,
+                                          aiSettingsOpen,
+                                          setAISettingsOpen,
+                                          aiSettings,
+                                          onSaveAISettings,
+                                      }: AppModalLayerProps) {
     return (<>
-            {spec?.components?.schemas && (<ModalsStack modals={schemaStack.map(name => ({
-                schemaName: name,
-                schema: spec.components!.schemas![name] || {},
-            })).filter(item => item.schema)} onPopSchema={onPopSchema} onPushSchema={onPushSchema} onCloseAll={() => setSchemaStack([])} componentsSchemas={spec.components.schemas} parsableKey={specKey}/>)}
-            {codeEndpoint && spec && (<CodeGeneratorModal isOpen onClose={() => setCodeEndpoint(null)} spec={spec} path={codeEndpoint.path} method={codeEndpoint.method} operation={(spec.paths[codeEndpoint.path] as any)?.[codeEndpoint.method] || {}} activeAuth={activeAuth}/>)}
-            <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} spec={spec} activeAuth={activeAuth} onSave={setActiveAuth}/>
-            <TabSwitcherOverlay open={switcherOpen} tabs={tabs} activeTabId={activeTabId} selectedIndex={switcherIndex} onCancel={onCancelSwitcher} onSelect={onSelectSwitcherTab}/>
-            {shareTarget && (<ShareModal isOpen onClose={() => setShareTarget(null)} url={shareTarget.url} title={shareTarget.title} description={shareTarget.description}/>)}
-            <ThemeSelectorModal isOpen={themeOpen} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode} onSelectTheme={setSelectedThemeName} onToggleThemeMode={toggleThemeMode} onSetThemeMode={setCurrentThemeMode} onClose={() => setThemeOpen(false)}/>
-            <AISettingsModal isOpen={aiSettingsOpen} settings={aiSettings} onSave={onSaveAISettings} onClose={() => setAISettingsOpen(false)}/>
-        </>);
+        {spec?.components?.schemas && (<ModalsStack modals={schemaStack.map(name => ({
+            schemaName: name,
+            schema: spec.components!.schemas![name] || {},
+        })).filter(item => item.schema)} onPopSchema={onPopSchema} onPushSchema={onPushSchema}
+                                                    onCloseAll={() => setSchemaStack([])}
+                                                    componentsSchemas={spec.components.schemas}
+                                                    parsableKey={specKey}/>)}
+        {codeEndpoint && spec && (
+            <CodeGeneratorModal isOpen onClose={() => setCodeEndpoint(null)} spec={spec} path={codeEndpoint.path}
+                                method={codeEndpoint.method}
+                                operation={(spec.paths[codeEndpoint.path] as any)?.[codeEndpoint.method] || {}}
+                                activeAuth={activeAuth}/>)}
+        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} spec={spec} activeAuth={activeAuth}
+                   onSave={setActiveAuth}/>
+        <TabSwitcherOverlay open={switcherOpen} tabs={tabs} activeTabId={activeTabId} selectedIndex={switcherIndex}
+                            onCancel={onCancelSwitcher} onSelect={onSelectSwitcherTab}/>
+        {shareTarget && (
+            <ShareModal isOpen onClose={() => setShareTarget(null)} url={shareTarget.url} title={shareTarget.title}
+                        description={shareTarget.description}/>)}
+        <ThemeSelectorModal isOpen={themeOpen} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode}
+                            resolvedThemeMode={resolvedThemeMode} onSelectTheme={setSelectedThemeName}
+                            onToggleThemeMode={toggleThemeMode} onSetThemeMode={setCurrentThemeMode}
+                            onClose={() => setThemeOpen(false)}/>
+        <AISettingsModal isOpen={aiSettingsOpen} settings={aiSettings} onSave={onSaveAISettings}
+                         onClose={() => setAISettingsOpen(false)}/>
+    </>);
 }

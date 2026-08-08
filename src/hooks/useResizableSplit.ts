@@ -1,6 +1,7 @@
-import type { RefObject } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { storage } from '../utils/storage';
+import type {RefObject} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {storage} from '../utils/storage';
+
 export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, storageKey: string, minPx = 320) {
     const [leftWidth, setLeftWidth] = useState<number>(() => {
         const saved = storage.get(storageKey);
@@ -35,5 +36,5 @@ export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, s
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     };
-    return { leftWidth, isDragging, onMouseDown };
+    return {leftWidth, isDragging, onMouseDown};
 }

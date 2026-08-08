@@ -8,7 +8,8 @@ export type LocalHistoryEntry = {
 const STORAGE_KEY = 'opendoc_local_history';
 const MAX_ENTRIES = 12;
 const MAX_RAW_BYTES = 2000000;
-import { storage } from './storage';
+import {storage} from './storage';
+
 export const readLocalHistory = (): LocalHistoryEntry[] => {
     const parsed = storage.getJSON<LocalHistoryEntry[]>(STORAGE_KEY, [], (v) => Array.isArray(v) && v.every((e) => e
         && typeof e === 'object'

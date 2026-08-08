@@ -1,5 +1,6 @@
-import type { OpenApiSpec } from '@/src/types';
-import { specStorage } from '@/src/utils/storage';
+import type {OpenApiSpec} from '@/src/types';
+import {specStorage} from '@/src/utils/storage';
+
 export interface TreeNode {
     name: string;
     children: Record<string, TreeNode>;
@@ -10,9 +11,11 @@ export interface TreeNode {
         isProtected: boolean;
     }>;
 }
+
 export type SidebarSortBy = 'name' | 'method' | 'route';
 export type SidebarSortDirection = 'asc' | 'desc';
 export type SidebarFolderBehavior = 'multiple' | 'single';
+
 export interface SidebarConfig {
     displayRoutes: boolean;
     flattenTags: boolean;
@@ -25,6 +28,7 @@ export interface SidebarConfig {
     hideProtectedIcon: boolean;
     hideDeprecatedEndpoints: boolean;
 }
+
 const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
     displayRoutes: true,
     flattenTags: false,
@@ -48,6 +52,7 @@ export const compactMethodLabel = (method: string): string => {
     const normalized = method.toLowerCase();
     return (labels[normalized] || normalized.slice(0, 3)).toUpperCase();
 };
+
 export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | undefined): SidebarConfig {
     const displayRoutes = typeof value?.displayRoutes === 'boolean'
         ? value.displayRoutes
@@ -82,14 +87,16 @@ export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | un
             : DEFAULT_SIDEBAR_CONFIG.hideDeprecatedEndpoints,
     };
 }
+
 export function readSidebarConfig(specKey: string): SidebarConfig {
     if (!specKey)
         return DEFAULT_SIDEBAR_CONFIG;
     const stored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);
     return normalizeSidebarConfig(stored);
 }
+
 export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): TreeNode {
-    const root: TreeNode = { name: '', children: {}, endpoints: [] };
+    const root: TreeNode = {name: '', children: {}, endpoints: []};
     if (!spec?.paths)
         return root;
     const byTag: Record<string, typeof root.endpoints> = {};
@@ -107,7 +114,7 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
             tags.forEach((tag: string) => {
                 if (!byTag[tag])
                     byTag[tag] = [];
-                byTag[tag].push({ path: pathStr, method: methodStr, operation: op, isProtected });
+                byTag[tag].push({path: pathStr, method: methodStr, operation: op, isProtected});
             });
         });
     });
@@ -116,12 +123,12 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
         let node = root;
         for (const part of (parts.length ? parts : ['General'])) {
             if (!node.children[part])
-                node.children[part] = { name: part, children: {}, endpoints: [] };
+                node.children[part] = {name: part, children: {}, endpoints: []};
             node = node.children[part];
         }
         node.endpoints.push(...endpoints);
     });
-    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {sensitivity: 'base'});
     const direction = config.sortDirection === 'desc' ? -1 : 1;
     const endpointName = (endpoint: TreeNode['endpoints'][number]) => endpoint.operation?.summary || endpoint.path;
     const compareEndpoints = (a: TreeNode['endpoints'][number], b: TreeNode['endpoints'][number]) => {
@@ -142,14 +149,15 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
         Object.entries(n.children)
             .sort(([a], [b]) => compareText(a, b) * direction)
             .forEach(([key, child]) => {
-            sorted[key] = sort(child);
-        });
+                sorted[key] = sort(child);
+            });
         n.children = sorted;
         n.endpoints = [...n.endpoints].sort(compareEndpoints);
         return n;
     };
     return sort(root);
 }
+
 export function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoints'][number]) => boolean): TreeNode {
     const newChildren: Record<string, TreeNode> = {};
     Object.entries(node.children).forEach(([k, child]) => {

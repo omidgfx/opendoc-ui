@@ -38,6 +38,7 @@ export type OpenDocUIAction = ({
 }) & {
     id?: string;
 };
+
 export interface OpenDocUIRunnerResult {
     actionId: string;
     specKey?: string;
@@ -57,6 +58,7 @@ export interface OpenDocUIRunnerResult {
         errorMessage?: string;
     };
 }
+
 export const createOpenDocUIActionId = (): string => typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `action-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -88,7 +90,7 @@ const normalizeEndpoint = (value: Record<string, any>): OpenDocUIAction | null =
         return {
             action: value.action,
             path: value.path,
-            method, ...(value.params ? { params: value.params } : {}), ...(value.headers ? { headers: value.headers } : {}), ...(value.body !== undefined ? { body: value.body } : {}), ...(value.bodyType ? { bodyType: value.bodyType } : {}),
+            method, ...(value.params ? {params: value.params} : {}), ...(value.headers ? {headers: value.headers} : {}), ...(value.body !== undefined ? {body: value.body} : {}), ...(value.bodyType ? {bodyType: value.bodyType} : {}),
             clearExisting: value.clearExisting !== false,
         };
     }
@@ -124,8 +126,7 @@ export const parseOpenDocUIActions = (text: string): OpenDocUIAction[] => {
             const action = validateAction(JSON.parse(raw));
             if (action)
                 actions.push(action);
-        }
-        catch {
+        } catch {
         }
     }
     return actions;
@@ -133,13 +134,12 @@ export const parseOpenDocUIActions = (text: string): OpenDocUIAction[] => {
 export const stripOpenDocUIActionBlocks = (text: string): string => text
     .replace(/<opendoc-ui-action>[\s\S]*?<\/opendoc-ui-action>/gi, '')
     .replace(/```(?:opendoc-ui-action|json)\s*([\s\S]*?)```/gi, (whole, body: string) => {
-    try {
-        return validateAction(JSON.parse(body.trim())) ? '' : whole;
-    }
-    catch {
-        return whole;
-    }
-})
+        try {
+            return validateAction(JSON.parse(body.trim())) ? '' : whole;
+        } catch {
+            return whole;
+        }
+    })
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 export const actionLabel = (action: OpenDocUIAction): string => {
@@ -160,12 +160,12 @@ export const actionLabel = (action: OpenDocUIAction): string => {
 export const dispatchOpenDocUIAction = (action: OpenDocUIAction) => {
     if (typeof window === 'undefined')
         return;
-    window.dispatchEvent(new CustomEvent(OPENDOC_UI_ACTION_EVENT, { detail: action }));
+    window.dispatchEvent(new CustomEvent(OPENDOC_UI_ACTION_EVENT, {detail: action}));
 };
 export const dispatchOpenDocUIRunnerResult = (result: OpenDocUIRunnerResult) => {
     if (typeof window === 'undefined')
         return;
-    window.dispatchEvent(new CustomEvent(OPENDOC_UI_RUNNER_RESULT_EVENT, { detail: result }));
+    window.dispatchEvent(new CustomEvent(OPENDOC_UI_RUNNER_RESULT_EVENT, {detail: result}));
 };
 const redactRunnerBody = (body: string): string => body
     .replace(/((?:authorization|cookie|set-cookie|api[-_ ]?key|token|secret|password)\s*[:=]\s*)([^\s,;]+)/gi, '$1[REDACTED]')

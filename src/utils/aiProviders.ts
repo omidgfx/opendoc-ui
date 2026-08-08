@@ -1,19 +1,23 @@
-import type { AIProviderId, AIProviderPreset, AIRequestMessage, AISettings } from '../types';
+import type {AIProviderId, AIProviderPreset, AIRequestMessage, AISettings} from '../types';
+
 export interface GatewayModelPolicyInfo {
     clientModelSelection: boolean;
     provider: AIProviderId;
     model: string;
     models?: string[];
 }
+
 export interface AIModelCatalogResult {
     models: AIProviderPreset['models'];
     gateway?: GatewayModelPolicyInfo;
 }
+
 export class AIStreamError extends Error {
     readonly status?: number;
     readonly code?: string;
     readonly provider?: string;
     readonly model?: string;
+
     constructor(message: string, details: {
         status?: number;
         code?: string;
@@ -28,6 +32,7 @@ export class AIStreamError extends Error {
         this.model = details.model;
     }
 }
+
 export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
     {
         id: 'openrouter',
@@ -37,13 +42,13 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         requiresApiKey: true,
         native: false,
         models: [
-            { id: 'openrouter/free', label: 'OpenRouter Free Models Router · Free', tier: 'free' },
-            { id: 'openai/gpt-oss-20b:free', label: 'OpenAI gpt-oss-20b · Free', tier: 'free' },
-            { id: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash · Free', tier: 'free' },
-            { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra · Free', tier: 'free' },
-            { id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B · Free', tier: 'free' },
-            { id: 'openai/gpt-5', label: 'GPT latest · Premium', tier: 'premium' },
-            { id: 'anthropic/claude-latest', label: 'Claude latest · Premium', tier: 'premium' },
+            {id: 'openrouter/free', label: 'OpenRouter Free Models Router · Free', tier: 'free'},
+            {id: 'openai/gpt-oss-20b:free', label: 'OpenAI gpt-oss-20b · Free', tier: 'free'},
+            {id: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash · Free', tier: 'free'},
+            {id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra · Free', tier: 'free'},
+            {id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B · Free', tier: 'free'},
+            {id: 'openai/gpt-5', label: 'GPT latest · Premium', tier: 'premium'},
+            {id: 'anthropic/claude-latest', label: 'Claude latest · Premium', tier: 'premium'},
         ],
     },
     {
@@ -54,9 +59,9 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         requiresApiKey: false,
         native: false,
         models: [
-            { id: 'llama3.2', label: 'Llama 3.2 · Local', tier: 'local' },
-            { id: 'qwen2.5:7b', label: 'Qwen 2.5 7B · Local', tier: 'local' },
-            { id: 'mistral', label: 'Mistral · Local', tier: 'local' },
+            {id: 'llama3.2', label: 'Llama 3.2 · Local', tier: 'local'},
+            {id: 'qwen2.5:7b', label: 'Qwen 2.5 7B · Local', tier: 'local'},
+            {id: 'mistral', label: 'Mistral · Local', tier: 'local'},
         ],
     },
     {
@@ -67,8 +72,8 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         requiresApiKey: true,
         native: false,
         models: [
-            { id: 'gpt-4o-mini', label: 'GPT-4o mini · Premium', tier: 'premium' },
-            { id: 'gpt-4o', label: 'GPT-4o · Premium', tier: 'premium' },
+            {id: 'gpt-4o-mini', label: 'GPT-4o mini · Premium', tier: 'premium'},
+            {id: 'gpt-4o', label: 'GPT-4o · Premium', tier: 'premium'},
         ],
     },
     {
@@ -79,8 +84,8 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         requiresApiKey: true,
         native: true,
         models: [
-            { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku · Premium', tier: 'premium' },
-            { id: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet · Premium', tier: 'premium' },
+            {id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku · Premium', tier: 'premium'},
+            {id: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet · Premium', tier: 'premium'},
         ],
     },
     {
@@ -91,8 +96,8 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         requiresApiKey: true,
         native: true,
         models: [
-            { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash · Premium', tier: 'premium' },
-            { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash · Premium', tier: 'premium' },
+            {id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash · Premium', tier: 'premium'},
+            {id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash · Premium', tier: 'premium'},
         ],
     },
     {
@@ -158,7 +163,7 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
         const response = await fetch(url, {
             method: 'POST',
             signal: options.signal,
-            headers: { 'Content-Type': 'application/json', ...(settings.gatewayToken ? { Authorization: `Bearer ${settings.gatewayToken}` } : {}) },
+            headers: {'Content-Type': 'application/json', ...(settings.gatewayToken ? {Authorization: `Bearer ${settings.gatewayToken}`} : {})},
             body: JSON.stringify({}),
         });
         await ensureOk(response);
@@ -176,12 +181,12 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
                 models: Array.isArray(rawGateway.models) ? rawGateway.models.filter((model: unknown): model is string => typeof model === 'string') : undefined,
             };
         }
-        return { models: Array.isArray(body.models) ? body.models.filter(isModelOption) : [], gateway };
+        return {models: Array.isArray(body.models) ? body.models.filter(isModelOption) : [], gateway};
     }
     const response = await fetch(modelListUrl(settings), {
         signal: options.signal,
         headers: {
-            ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
+            ...(settings.apiKey ? {Authorization: `Bearer ${settings.apiKey}`} : {}),
             ...(settings.provider === 'anthropic' ? {
                 'x-api-key': settings.apiKey,
                 'anthropic-version': '2023-06-01',
@@ -192,7 +197,7 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
     await ensureOk(response);
     const body = await response.json();
     const rawModels = settings.provider === 'ollama'
-        ? (Array.isArray(body.models) ? body.models.map((item: any) => ({ id: item.name, name: item.name })) : [])
+        ? (Array.isArray(body.models) ? body.models.map((item: any) => ({id: item.name, name: item.name})) : [])
         : settings.provider === 'gemini'
             ? (Array.isArray(body.models) ? body.models.filter((item: any) => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes('generateContent')).map((item: any) => ({
                 ...item,
@@ -202,12 +207,12 @@ export const fetchProviderModelCatalog = async (settings: AISettings, options: {
     const models = rawModels
         .filter((model: any) => typeof model.id === 'string' && model.id.trim())
         .map((model: any) => ({
-        id: model.id,
-        label: `${model.name || model.id} · ${modelTier(model) === 'free' ? 'Free' : settings.provider === 'ollama' ? 'Local' : 'Premium'}`,
-        tier: settings.provider === 'ollama' ? 'local' : modelTier(model),
-    }))
+            id: model.id,
+            label: `${model.name || model.id} · ${modelTier(model) === 'free' ? 'Free' : settings.provider === 'ollama' ? 'Local' : 'Premium'}`,
+            tier: settings.provider === 'ollama' ? 'local' : modelTier(model),
+        }))
         .sort((a, b) => (a.tier === b.tier ? a.label.localeCompare(b.label) : a.tier === 'free' ? -1 : b.tier === 'free' ? 1 : 0));
-    return { models };
+    return {models};
 };
 export const fetchProviderModels = async (settings: AISettings, options: {
     signal?: AbortSignal;
@@ -234,11 +239,10 @@ const errorFromResponse = async (response: Response): Promise<AIStreamError> => 
     const raw = await response.text();
     try {
         const parsed = JSON.parse(raw);
-        return errorFromPayload(parsed, { status: response.status, message: `${response.status} ${response.statusText}` })
-            || new AIStreamError(`${response.status} ${response.statusText}`, { status: response.status });
-    }
-    catch {
-        return new AIStreamError(raw || `${response.status} ${response.statusText}`, { status: response.status });
+        return errorFromPayload(parsed, {status: response.status, message: `${response.status} ${response.statusText}`})
+            || new AIStreamError(`${response.status} ${response.statusText}`, {status: response.status});
+    } catch {
+        return new AIStreamError(raw || `${response.status} ${response.statusText}`, {status: response.status});
     }
 };
 const ensureOk = async (response: Response) => {
@@ -297,8 +301,7 @@ const consumeEventStream = async (response: Response, onToken: (token: string) =
         let payload: any;
         try {
             payload = JSON.parse(raw);
-        }
-        catch {
+        } catch {
             return;
         }
         const streamError = errorFromPayload(payload, {}, false);
@@ -311,8 +314,8 @@ const consumeEventStream = async (response: Response, onToken: (token: string) =
         }
     };
     while (true) {
-        const { value, done } = await reader.read();
-        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const {value, done} = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), {stream: !done});
         const lines = buffer.split(/\r?\n/);
         buffer = lines.pop() || '';
         lines.forEach(consumeLine);
@@ -333,14 +336,14 @@ const requestCompatible = async (settings: AISettings, messages: AIRequestMessag
         signal,
         headers: {
             'Content-Type': 'application/json',
-            ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
-            ...(settings.provider === 'openrouter' ? { 'X-Title': 'OpenDoc UI' } : {}),
+            ...(settings.apiKey ? {Authorization: `Bearer ${settings.apiKey}`} : {}),
+            ...(settings.provider === 'openrouter' ? {'X-Title': 'OpenDoc UI'} : {}),
         },
         body: JSON.stringify({
             model: settings.model,
             messages: asOpenAIMessages(messages),
             temperature: settings.temperature,
-            ...(settings.maxTokens ? { max_tokens: settings.maxTokens } : {}),
+            ...(settings.maxTokens ? {max_tokens: settings.maxTokens} : {}),
             stream: true,
         }),
     });
@@ -370,7 +373,7 @@ const requestAnthropic = async (settings: AISettings, messages: AIRequestMessage
             model: settings.model,
             max_tokens: settings.maxTokens || 4096,
             temperature: settings.temperature,
-            ...(system ? { system } : {}),
+            ...(system ? {system} : {}),
             messages: messages.filter(message => message.role !== 'system').map(message => ({
                 role: message.role,
                 content: message.content
@@ -393,17 +396,17 @@ const requestGemini = async (settings: AISettings, messages: AIRequestMessage[],
     const system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n\n');
     const contents = messages.filter(message => message.role !== 'system').map(message => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }],
+        parts: [{text: message.content}],
     }));
     const url = `${providerBaseUrl(settings)}/v1beta/models/${encodeURIComponent(settings.model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(settings.apiKey)}`;
     const response = await fetch(url, {
         method: 'POST',
         signal,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+            ...(system ? {systemInstruction: {parts: [{text: system}]}} : {}),
             contents,
-            generationConfig: { temperature: settings.temperature, ...(settings.maxTokens ? { maxOutputTokens: settings.maxTokens } : {}) },
+            generationConfig: {temperature: settings.temperature, ...(settings.maxTokens ? {maxOutputTokens: settings.maxTokens} : {})},
         }),
     });
     await ensureOk(response);
@@ -423,7 +426,7 @@ const requestGateway = async (settings: AISettings, messages: AIRequestMessage[]
         signal,
         headers: {
             'Content-Type': 'application/json',
-            ...(settings.gatewayToken ? { Authorization: `Bearer ${settings.gatewayToken}` } : {}),
+            ...(settings.gatewayToken ? {Authorization: `Bearer ${settings.gatewayToken}`} : {}),
         },
         body: JSON.stringify({
             model: settings.model,

@@ -1,11 +1,13 @@
 const DB_NAME = 'opendoc-ui';
 const DB_VERSION = 1;
 const STORE_NAME = 'records';
+
 interface StoredRecord<T> {
     key: string;
     value: T;
     updatedAt: number;
 }
+
 const canUseIndexedDb = () => typeof indexedDB !== 'undefined';
 const openDatabase = (): Promise<IDBDatabase | null> => new Promise(resolve => {
     if (!canUseIndexedDb()) {
@@ -16,13 +18,12 @@ const openDatabase = (): Promise<IDBDatabase | null> => new Promise(resolve => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = () => {
             if (!request.result.objectStoreNames.contains(STORE_NAME))
-                request.result.createObjectStore(STORE_NAME, { keyPath: 'key' });
+                request.result.createObjectStore(STORE_NAME, {keyPath: 'key'});
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(null);
         request.onblocked = () => resolve(null);
-    }
-    catch {
+    } catch {
         resolve(null);
     }
 });
@@ -35,8 +36,7 @@ export const idbGet = async <T>(key: string): Promise<T | null> => {
             const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
             request.onsuccess = () => resolve((request.result as StoredRecord<T> | undefined)?.value ?? null);
             request.onerror = () => resolve(null);
-        }
-        catch {
+        } catch {
             resolve(null);
         }
     });
@@ -50,8 +50,7 @@ export const idbGetAll = async <T = unknown>(prefix = ''): Promise<Array<StoredR
             const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll();
             request.onsuccess = () => resolve((request.result as StoredRecord<T>[]).filter(record => String(record.key).startsWith(prefix)));
             request.onerror = () => resolve([]);
-        }
-        catch {
+        } catch {
             resolve([]);
         }
     });
@@ -69,8 +68,7 @@ export const idbSet = async <T>(key: string, value: T): Promise<boolean> => {
             } satisfies StoredRecord<T>);
             request.onsuccess = () => resolve(true);
             request.onerror = () => resolve(false);
-        }
-        catch {
+        } catch {
             resolve(false);
         }
     });
@@ -86,8 +84,7 @@ export const idbDelete = async (key: string): Promise<void> => {
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => resolve();
             transaction.onabort = () => resolve();
-        }
-        catch {
+        } catch {
             resolve();
         }
     });
@@ -111,8 +108,7 @@ export const idbClearPrefix = async (prefix: string): Promise<void> => {
             };
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => resolve();
-        }
-        catch {
+        } catch {
             resolve();
         }
     });

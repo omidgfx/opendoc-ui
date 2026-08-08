@@ -47,6 +47,7 @@ const NATIVE_TO_SHORTCODE: Record<string, string> = {
     '📦': 'package',
     '💡': 'bulb',
 };
+
 export function parseEmojis(text: string): string {
     if (!text)
         return '';

@@ -1,6 +1,7 @@
 import * as jsYaml from 'js-yaml';
-import type { OpenApiSpec } from '@/src/types';
-import { getRefName } from '@/src/utils/openapi';
+import type {OpenApiSpec} from '@/src/types';
+import {getRefName} from '@/src/utils/openapi';
+
 export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
     const getMockSnippet = (schema: any): string => {
         if (!schema)
@@ -36,8 +37,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                     else
                         generated += next || '';
                     i += 2;
-                }
-                else if (char === '[') {
+                } else if (char === '[') {
                     let endIdx = cleaned.indexOf(']', i);
                     if (endIdx !== -1) {
                         let content = cleaned.substring(i + 1, endIdx);
@@ -52,13 +52,11 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                         else
                             generated += 'a';
                         i = endIdx + 1;
-                    }
-                    else {
+                    } else {
                         generated += '[';
                         i++;
                     }
-                }
-                else if (cleaned[i] === '{') {
+                } else if (cleaned[i] === '{') {
                     let endIdx = cleaned.indexOf('}', i);
                     if (endIdx !== -1) {
                         let countStr = cleaned.substring(i + 1, endIdx);
@@ -67,16 +65,13 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                         for (let k = 0; k < count - 1; k++)
                             generated += lastChar;
                         i = endIdx + 1;
-                    }
-                    else {
+                    } else {
                         generated += '{';
                         i++;
                     }
-                }
-                else if (char === '(' || char === ')' || char === '?' || char === '*' || char === '+') {
+                } else if (char === '(' || char === ')' || char === '?' || char === '*' || char === '+') {
                     i++;
-                }
-                else if (char === '|')
+                } else if (char === '|')
                     break;
                 else {
                     generated += char;
@@ -113,7 +108,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                 s.allOf.forEach((sub: any) => {
                     const subMock = generateMock(sub, depth + 1, new Set(visited));
                     if (typeof subMock === 'object' && subMock !== null)
-                        merged = { ...merged, ...subMock };
+                        merged = {...merged, ...subMock};
                     else if (subMock !== null)
                         merged = subMock;
                 });
@@ -177,16 +172,14 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         };
         try {
             return JSON.stringify(generateMock(schema), null, 2);
-        }
-        catch {
+        } catch {
             return '{}';
         }
     };
     const getMockValue = (schema: any): any => {
         try {
             return JSON.parse(getMockSnippet(schema));
-        }
-        catch {
+        } catch {
             return null;
         }
     };
@@ -266,8 +259,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             if (c.includes('json')) {
                 try {
                     return JSON.stringify(JSON.parse(value), null, 2);
-                }
-                catch {
+                } catch {
                     return JSON.stringify(value, null, 2);
                 }
             }

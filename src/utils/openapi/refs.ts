@@ -1,12 +1,13 @@
-import type { OpenApiSpec } from '../../types';
+import type {OpenApiSpec} from '../../types';
+
 export interface ReferenceDocuments {
     [url: string]: any;
 }
+
 const decodePointerPart = (part: string): string => {
     try {
         return decodeURIComponent(part).replace(/~1/g, '/').replace(/~0/g, '~');
-    }
-    catch {
+    } catch {
         return part.replace(/~1/g, '/').replace(/~0/g, '~');
     }
 };
@@ -44,13 +45,13 @@ const splitReference = (ref: string): {
 } => {
     const hash = ref.indexOf('#');
     if (hash < 0)
-        return { documentUrl: ref, pointer: '' };
-    return { documentUrl: ref.slice(0, hash), pointer: ref.slice(hash) || '#' };
+        return {documentUrl: ref, pointer: ''};
+    return {documentUrl: ref.slice(0, hash), pointer: ref.slice(hash) || '#'};
 };
 export const resolveRefTarget = (ref: string, spec: OpenApiSpec | any | null, documents: ReferenceDocuments = {}): any => {
     if (!ref || typeof ref !== 'string')
         return null;
-    const { documentUrl, pointer } = splitReference(ref);
+    const {documentUrl, pointer} = splitReference(ref);
     const document = documentUrl ? documents[documentUrl] : spec;
     if (!document)
         return null;
@@ -69,7 +70,7 @@ const resolveWithCycleGuard = (item: any, spec: OpenApiSpec | any | null, docume
     const resolved = resolveWithCycleGuard(target, spec, documents, nextVisited, depth + 1);
     const siblings = Object.fromEntries(Object.entries(item).filter(([key]) => key !== '$ref'));
     return Object.keys(siblings).length > 0 && resolved && typeof resolved === 'object' && !Array.isArray(resolved)
-        ? { ...resolved, ...siblings }
+        ? {...resolved, ...siblings}
         : resolved;
 };
 export const resolveReference = (item: any, spec: OpenApiSpec | null, documents: ReferenceDocuments = {}): any => resolveWithCycleGuard(item, spec, documents, new Set<string>(), 0);
@@ -93,7 +94,7 @@ const resolveComponentReference = (item: any, spec: OpenApiSpec | null, document
     const resolved = resolveComponentReference(target, spec, documents, next);
     const siblings = Object.fromEntries(Object.entries(item).filter(([key]) => key !== '$ref'));
     return Object.keys(siblings).length > 0 && resolved && typeof resolved === 'object' && !Array.isArray(resolved)
-        ? { ...resolved, ...siblings }
+        ? {...resolved, ...siblings}
         : resolved;
 };
 export const resolveParameter = (param: any, spec: OpenApiSpec | null): any => {
@@ -103,9 +104,9 @@ export const resolveParameter = (param: any, spec: OpenApiSpec | null): any => {
     const contentMedia = Object.values(resolved.content || {})[0] as any;
     const parameterSchema = resolved.schema || contentMedia?.schema;
     if (parameterSchema?.$ref) {
-        return { ...resolved, schema: resolveReference(parameterSchema, spec) };
+        return {...resolved, schema: resolveReference(parameterSchema, spec)};
     }
-    return parameterSchema && !resolved.schema ? { ...resolved, schema: parameterSchema } : resolved;
+    return parameterSchema && !resolved.schema ? {...resolved, schema: parameterSchema} : resolved;
 };
 export const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any => {
     const resolved = resolveComponentReference(body, spec, {}, new Set<string>());
@@ -118,7 +119,7 @@ export const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any => 
         mediaType,
         media?.$ref ? resolveReference(media, spec) : media
     ]));
-    return { ...resolved, content };
+    return {...resolved, content};
 };
 const parameterKey = (param: any): string | null => {
     if (!param?.name || !param?.in)

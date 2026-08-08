@@ -1,12 +1,15 @@
-import { createZipBlob, downloadBlob } from './zip';
+import {createZipBlob, downloadBlob} from './zip';
+
 export function getRefName(ref: string): string {
     if (!ref)
         return '';
     return ref.split('/').pop() || '';
 }
+
 function isPlainObject(v: any) {
     return v && typeof v === 'object' && !Array.isArray(v);
 }
+
 export function generateMockValue(schema: any, allSchemas: Record<string, any> = {}, visited = new Set<string>(), depth = 0): any {
     if (!schema)
         return null;
@@ -35,11 +38,10 @@ export function generateMockValue(schema: any, allSchemas: Record<string, any> =
         schema.allOf.forEach((sub: any) => {
             const subMock = generateMockValue(sub, allSchemas, new Set(visited), depth + 1);
             if (isPlainObject(subMock) && isPlainObject(merged)) {
-                merged = { ...merged, ...subMock };
-            }
-            else if (subMock !== undefined) {
+                merged = {...merged, ...subMock};
+            } else if (subMock !== undefined) {
                 if (isPlainObject(subMock))
-                    merged = { ...merged, ...subMock };
+                    merged = {...merged, ...subMock};
                 else if (Object.keys(merged).length === 0)
                     merged = subMock;
             }
@@ -96,6 +98,7 @@ export function generateMockValue(schema: any, allSchemas: Record<string, any> =
     }
     return null;
 }
+
 function mapPrimitiveType(t: string): string {
     switch (t) {
         case 'string':
@@ -113,6 +116,7 @@ function mapPrimitiveType(t: string): string {
             return 'any';
     }
 }
+
 export function schemaToTsType(schema: any, allSchemas: Record<string, any>, visited = new Set<string>()): string {
     if (!schema)
         return 'any';
@@ -143,8 +147,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
                 if (t === 'array') {
                     const it = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited)) : 'any';
                     mapped.push(`${it}[]`);
-                }
-                else {
+                } else {
                     mapped.push(mapPrimitiveType(t));
                 }
             }
@@ -198,6 +201,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
     }
     return 'any';
 }
+
 function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, visited = new Set<string>()): {
     properties: Record<string, any>;
     required: string[];
@@ -207,44 +211,46 @@ function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, vi
     let required: string[] = [];
     let description: string | undefined = schema.description;
     if (!schema)
-        return { properties: props, required, description };
+        return {properties: props, required, description};
     if (schema.$ref) {
         const refName = getRefName(schema.$ref);
         if (visited.has(refName))
-            return { properties: props, required, description };
+            return {properties: props, required, description};
         visited.add(refName);
         const refSchema = allSchemas[refName];
         if (refSchema) {
             const resolved = resolveAllOfProperties(refSchema, allSchemas, visited);
-            props = { ...props, ...resolved.properties };
+            props = {...props, ...resolved.properties};
             required = [...required, ...resolved.required];
             if (!description && resolved.description)
                 description = resolved.description;
         }
-        return { properties: props, required, description };
+        return {properties: props, required, description};
     }
     if (schema.allOf && Array.isArray(schema.allOf)) {
         schema.allOf.forEach((sub: any) => {
             const subResolved = resolveAllOfProperties(sub, allSchemas, new Set(visited));
-            props = { ...props, ...subResolved.properties };
+            props = {...props, ...subResolved.properties};
             required = [...required, ...subResolved.required];
             if (!description && subResolved.description)
                 description = subResolved.description;
         });
     }
     if (schema.properties) {
-        props = { ...props, ...schema.properties };
+        props = {...props, ...schema.properties};
     }
     if (schema.required && Array.isArray(schema.required)) {
         required = [...required, ...schema.required];
     }
-    return { properties: props, required: Array.from(new Set(required)), description };
+    return {properties: props, required: Array.from(new Set(required)), description};
 }
+
 function sanitizeDoc(text: string): string {
     if (!text)
         return '';
     return text.replace(/\*\//g, '*\\/');
 }
+
 function buildDocBlock(opts: {
     description?: string;
     deprecated?: boolean;
@@ -255,7 +261,7 @@ function buildDocBlock(opts: {
     pattern?: string;
 }): string {
     const lines: string[] = [];
-    const { description, deprecated, example, seeLink, defaultValue, format, pattern } = opts;
+    const {description, deprecated, example, seeLink, defaultValue, format, pattern} = opts;
     if (description) {
         const descLines = sanitizeDoc(description).split('\n');
         descLines.forEach((l) => lines.push(l.trim() ? l : ''));
@@ -294,16 +300,13 @@ function buildDocBlock(opts: {
             try {
                 const parsed = JSON.parse(example);
                 exampleStr = JSON.stringify(parsed, null, 2);
-            }
-            catch {
+            } catch {
                 exampleStr = example;
             }
-        }
-        else {
+        } else {
             try {
                 exampleStr = JSON.stringify(example, null, 2);
-            }
-            catch {
+            } catch {
                 exampleStr = String(example);
             }
         }
@@ -311,16 +314,13 @@ function buildDocBlock(opts: {
             lines.push('```json');
             exampleStr.split('\n').forEach((l) => lines.push(l));
             lines.push('```');
-        }
-        else {
+        } else {
             if (typeof example === 'string') {
                 lines.push(JSON.stringify(example));
-            }
-            else {
+            } else {
                 try {
                     lines.push(JSON.stringify(example));
-                }
-                catch {
+                } catch {
                     lines.push(String(example));
                 }
             }
@@ -331,6 +331,7 @@ function buildDocBlock(opts: {
     const blockLines = ['/**', ...lines.map((l) => ` * ${l}`.trimEnd()), ' */'];
     return blockLines.join('\n');
 }
+
 function buildFieldDocBlock(prop: any, seeOverride?: string): string {
     if (!prop)
         return '';
@@ -369,16 +370,14 @@ function buildFieldDocBlock(prop: any, seeOverride?: string): string {
         let exStr: string;
         try {
             exStr = JSON.stringify(prop.example, null, 2);
-        }
-        catch {
+        } catch {
             exStr = String(prop.example);
         }
         if (typeof prop.example === 'object' && prop.example !== null) {
             lines.push('```json');
             exStr.split('\n').forEach((l) => lines.push(l));
             lines.push('```');
-        }
-        else {
+        } else {
             lines.push(exStr);
         }
     }
@@ -387,6 +386,7 @@ function buildFieldDocBlock(prop: any, seeOverride?: string): string {
     const block = ['/**', ...lines.map((l) => ` * ${l}`.trimEnd()), ' */'].join('\n');
     return block;
 }
+
 function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, parsableKey: string): string {
     const encodedKey = encodeURIComponent(parsableKey);
     const encodedSchema = encodeURIComponent(schemaName);
@@ -398,6 +398,7 @@ function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, 
         example: exampleValue,
     });
 }
+
 export function generateTsContentForSchema(schemaName: string, schema: any, allSchemas: Record<string, any>, parsableKey: string): string {
     const exampleValue = generateMockValue(schema, allSchemas);
     const modelDoc = buildModelDocBlock(schemaName, schema, exampleValue, parsableKey);
@@ -408,20 +409,16 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
     if (schema.enum) {
         const tsType = schemaToTsType(schema, allSchemas);
         body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    }
-    else if (schema.const !== undefined) {
+    } else if (schema.const !== undefined) {
         const tsType = JSON.stringify(schema.const);
         body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    }
-    else if (schema.oneOf || schema.anyOf) {
+    } else if (schema.oneOf || schema.anyOf) {
         const tsType = schemaToTsType(schema, allSchemas);
         body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    }
-    else if (schema.type === 'array' || (Array.isArray(schema.type) && schema.type.includes('array'))) {
+    } else if (schema.type === 'array' || (Array.isArray(schema.type) && schema.type.includes('array'))) {
         const tsType = schemaToTsType(schema, allSchemas);
         body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    }
-    else if (isObjectType) {
+    } else if (isObjectType) {
         const requiredSet = new Set(resolved.required);
         const lines: string[] = [];
         lines.push(`${modelDoc}`);
@@ -442,14 +439,12 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
         if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && !hasProps) {
             const valType = schemaToTsType(schema.additionalProperties, allSchemas);
             lines.push(`  [key: string]: ${valType};`);
-        }
-        else if (Object.keys(resolved.properties).length === 0) {
+        } else if (Object.keys(resolved.properties).length === 0) {
             lines.push(`  [key: string]: any;`);
         }
         lines.push(`}`);
         body = lines.join('\n');
-    }
-    else {
+    } else {
         const tsType = schemaToTsType(schema, allSchemas);
         body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
     }
@@ -474,11 +469,13 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
     const header = `\n\n`;
     return header + finalContent + '\n';
 }
+
 export function generateSingleSchemaFile(schemaName: string, schema: any, allSchemas: Record<string, any>, parsableKey: string) {
     const content = generateTsContentForSchema(schemaName, schema, allSchemas, parsableKey);
-    const blob = new Blob([content], { type: 'text/typescript' });
+    const blob = new Blob([content], {type: 'text/typescript'});
     downloadBlob(blob, `${schemaName}.ts`);
 }
+
 export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey: string) {
     if (!schemas || Object.keys(schemas).length === 0) {
         alert('No schemas to export');
@@ -490,7 +487,7 @@ export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey
     }[] = [];
     for (const [name, schema] of Object.entries(schemas)) {
         const content = generateTsContentForSchema(name, schema, schemas, parsableKey);
-        files.push({ name: `${name}.ts`, content });
+        files.push({name: `${name}.ts`, content});
     }
     const indexContent = [
         ``,
@@ -498,7 +495,7 @@ export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey
         ...Object.keys(schemas).map((name) => `export * from './${name}';`),
         ``,
     ].join('\n');
-    files.push({ name: `index.ts`, content: indexContent });
+    files.push({name: `index.ts`, content: indexContent});
     const readme = [
         `# Schemas Export - ${parsableKey}`,
         ``,
@@ -517,7 +514,7 @@ export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey
         `Each file contains TSDoc with @see link to original schema explorer`,
         ``,
     ].join('\n');
-    files.push({ name: `README.md`, content: readme });
+    files.push({name: `README.md`, content: readme});
     const blob = createZipBlob(files);
     const timestamp = new Date().toISOString().slice(0, 10);
     downloadBlob(blob, `${parsableKey.replace(/\s+/g, '_')}_schemas_${timestamp}.zip`);

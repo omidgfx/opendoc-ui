@@ -1,17 +1,17 @@
-import type { OpenApiSpec } from '../../types';
-import { assertValidOpenApiDocument } from './validation';
+import type {OpenApiSpec} from '../../types';
+import {assertValidOpenApiDocument} from './validation';
+
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
 const isPlainObject = (value: any): value is Record<string, any> => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
-const clone = <T,>(value: T): T => {
+const clone = <T, >(value: T): T => {
     if (value === undefined || value === null)
         return value;
     try {
         if (typeof structuredClone === 'function')
             return structuredClone(value);
-    }
-    catch {
+    } catch {
     }
     return JSON.parse(JSON.stringify(value));
 };
@@ -35,8 +35,7 @@ const rewriteRefsDeep = (value: any): any => {
     Object.entries(value).forEach(([key, child]) => {
         if (key === '$ref' && typeof child === 'string') {
             next[key] = rewriteRef(child);
-        }
-        else {
+        } else {
             next[key] = rewriteRefsDeep(child);
         }
     });
@@ -57,10 +56,10 @@ const getSwaggerServers = (doc: any) => {
     const basePath = doc.basePath || '';
     if (host) {
         const schemes = Array.isArray(doc.schemes) && doc.schemes.length > 0 ? doc.schemes : ['https'];
-        return schemes.map((scheme: string) => ({ url: buildServerUrl(scheme, host, basePath) }));
+        return schemes.map((scheme: string) => ({url: buildServerUrl(scheme, host, basePath)}));
     }
     if (basePath) {
-        return [{ url: basePath }];
+        return [{url: basePath}];
     }
     return undefined;
 };
@@ -70,7 +69,7 @@ const swaggerSchemaFromParameter = (param: any): any => {
     if (param.schema)
         return rewriteRefsDeep(param.schema);
     if (param.type === 'file') {
-        return { type: 'string', format: 'binary' };
+        return {type: 'string', format: 'binary'};
     }
     const schemaKeys = [
         'type', 'format', 'items', 'collectionFormat', 'default', 'maximum', 'exclusiveMaximum',
@@ -99,11 +98,11 @@ const normalizeParameter = (param: any): any => {
             style: string;
             explode?: boolean;
         }> = {
-            csv: { style: 'form', explode: false },
-            multi: { style: 'form', explode: true },
-            ssv: { style: 'spaceDelimited', explode: false },
-            pipes: { style: 'pipeDelimited', explode: false },
-            tsv: { style: 'form', explode: false },
+            csv: {style: 'form', explode: false},
+            multi: {style: 'form', explode: true},
+            ssv: {style: 'spaceDelimited', explode: false},
+            pipes: {style: 'pipeDelimited', explode: false},
+            tsv: {style: 'form', explode: false},
         };
         const mapped = collectionStyle[next.collectionFormat];
         if (mapped)
@@ -117,11 +116,11 @@ const resolveSwaggerParameter = (param: any, doc: any, visited = new Set<string>
     const rewritten = rewriteRef(param.$ref);
     const name = getRefName(rewritten);
     if (!name || visited.has(name))
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     visited.add(name);
     const resolved = doc?.parameters?.[name] || doc?.components?.parameters?.[name];
     if (!resolved)
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     return resolveSwaggerParameter(resolved, doc, visited);
 };
 const convertSecurityScheme = (scheme: any): any => {
@@ -141,14 +140,14 @@ const convertSecurityScheme = (scheme: any): any => {
             accessCode: 'authorizationCode'
         };
         const flowKey = flowNameMap[next.flow] || next.flow;
-        const flow: any = { scopes: next.scopes || {} };
+        const flow: any = {scopes: next.scopes || {}};
         if (next.authorizationUrl)
             flow.authorizationUrl = next.authorizationUrl;
         if (next.tokenUrl)
             flow.tokenUrl = next.tokenUrl;
         return {
             ...next,
-            flows: { [flowKey]: flow }
+            flows: {[flowKey]: flow}
         };
     }
     return next;
@@ -175,7 +174,7 @@ const convertHeaders = (headers: any): any => {
 };
 const convertResponse = (response: any, produces: string[] = ['application/json']): any => {
     if (!response) {
-        return { description: 'Response' };
+        return {description: 'Response'};
     }
     if (response.$ref) {
         return rewriteRefsDeep(response);
@@ -194,7 +193,7 @@ const convertResponse = (response: any, produces: string[] = ['application/json'
             next.content[mediaType] = {
                 ...(next.content[mediaType] || {}),
                 schema: rewriteRefsDeep(schema),
-                ...(mediaExample !== undefined ? { example: mediaExample } : {})
+                ...(mediaExample !== undefined ? {example: mediaExample} : {})
             };
         });
     }
@@ -213,13 +212,12 @@ const convertResponses = (responses: any, produces: string[] = ['application/jso
             const rewritten = rewriteRef(response.$ref);
             const name = getRefName(rewritten);
             const resolved = name ? (doc?.responses?.[name] || doc?.components?.responses?.[name]) : null;
-            next[code] = resolved ? convertResponse(resolved, produces) : { $ref: rewritten };
-        }
-        else {
+            next[code] = resolved ? convertResponse(resolved, produces) : {$ref: rewritten};
+        } else {
             next[code] = convertResponse(response, produces);
         }
     });
-    return Object.keys(next).length > 0 ? next : { default: { description: 'Default response' } };
+    return Object.keys(next).length > 0 ? next : {default: {description: 'Default response'}};
 };
 const contentTypesForBody = (operation: any, doc: any) => {
     const consumes = operation?.consumes || doc?.consumes;
@@ -250,7 +248,7 @@ const convertBodyParametersToRequestBody = (parameters: any[], operation: any, d
         });
         const content: any = {};
         mediaTypes.forEach((mediaType: string) => {
-            content[mediaType] = { schema: rewriteRefsDeep(schema) };
+            content[mediaType] = {schema: rewriteRefsDeep(schema)};
         });
         return {
             required: required.length > 0,
@@ -261,7 +259,7 @@ const convertBodyParametersToRequestBody = (parameters: any[], operation: any, d
         const bodyParam = bodyParams[0];
         const content: any = {};
         contentTypesForBody(operation, doc).forEach((mediaType: string) => {
-            content[mediaType] = { schema: rewriteRefsDeep(bodyParam.schema || {}) };
+            content[mediaType] = {schema: rewriteRefsDeep(bodyParam.schema || {})};
         });
         return {
             description: bodyParam.description,
@@ -301,9 +299,8 @@ const normalizeOpenApiOperation = (operation: any, root: any): any => {
         op.parameters = op.parameters.map(normalizeParameter);
     }
     if (!op.responses || Object.keys(op.responses).length === 0) {
-        op.responses = { default: { description: 'Default response' } };
-    }
-    else {
+        op.responses = {default: {description: 'Default response'}};
+    } else {
         const responses: any = {};
         Object.entries(op.responses).forEach(([code, response]: [
             string,
@@ -325,11 +322,11 @@ const resolveResponseObject = (response: any, root: any, visited = new Set<strin
     const rewritten = rewriteRef(response.$ref);
     const name = getRefName(rewritten);
     if (!name || visited.has(name))
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     visited.add(name);
     const resolved = root?.components?.responses?.[name] || root?.responses?.[name];
     if (!resolved)
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     return resolveResponseObject(resolved, root, visited);
 };
 const resolveRequestBodyObject = (requestBody: any, root: any, visited = new Set<string>()): any => {
@@ -338,11 +335,11 @@ const resolveRequestBodyObject = (requestBody: any, root: any, visited = new Set
     const rewritten = rewriteRef(requestBody.$ref);
     const name = getRefName(rewritten);
     if (!name || visited.has(name))
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     visited.add(name);
     const resolved = root?.components?.requestBodies?.[name];
     if (!resolved)
-        return { $ref: rewritten };
+        return {$ref: rewritten};
     return resolveRequestBodyObject(resolved, root, visited);
 };
 const convertSwagger2 = (input: any): OpenApiSpec => {
@@ -406,7 +403,7 @@ const convertSwagger2 = (input: any): OpenApiSpec => {
 const normalizeOpenApiLike = (input: any): OpenApiSpec => {
     const doc: any = rewriteRefsDeep(input);
     doc.openapi = doc.openapi || (doc.swagger ? '3.0.0' : '3.0.0');
-    doc.info = doc.info || { title: 'OpenAPI Specification', version: '1.0.0' };
+    doc.info = doc.info || {title: 'OpenAPI Specification', version: '1.0.0'};
     doc.paths = doc.paths || {};
     doc.components = doc.components || {};
     if (doc.definitions && !doc.components.schemas) {

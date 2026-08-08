@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
-import type { OpenApiSpec } from '@/src/types';
+import type {ReactNode} from 'react';
+import type {OpenApiSpec} from '@/src/types';
+
 export type BodyValue = unknown;
 export type PathPart = string | number;
+
 export interface RecursiveBodyFormProps {
     schema: any;
     spec: OpenApiSpec;
@@ -11,6 +13,7 @@ export interface RecursiveBodyFormProps {
     selectedFiles: Record<string, File | null>;
     setSelectedFiles: (value: Record<string, File | null>) => void;
 }
+
 export interface FieldProps {
     schema: any;
     spec: OpenApiSpec;

@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import type React from 'react';
-import type { OpenApiSpec } from '@/src/types';
-import { getRefName } from '@/src/utils/openapi';
-import { Tip } from '@/src/components/common/Tooltip';
+import {useState} from 'react';
+import type {OpenApiSpec} from '@/src/types';
+import {getRefName} from '@/src/utils/openapi';
+import {Tip} from '@/src/components/common/Tooltip';
+
 export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSchemaModal: (name: string) => void) {
     const [viewerExampleSchemas, setViewerExampleSchemas] = useState<Record<string, any>>({});
     const [viewerExampleNames, setViewerExampleNames] = useState<Record<string, string>>({});
@@ -48,8 +49,8 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         }
         if (!name || !spec.components?.schemas?.[name])
             name = fallbackName || null;
-        setViewerExampleSchemas(prev => ({ ...prev, [code]: sub }));
-        setViewerExampleNames(prev => ({ ...prev, [code]: name || '' }));
+        setViewerExampleSchemas(prev => ({...prev, [code]: sub}));
+        setViewerExampleNames(prev => ({...prev, [code]: name || ''}));
     };
     const renderSchemaType = (prop: any): React.ReactNode => {
         if (!prop)
@@ -62,68 +63,74 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);
             return (<Tip content={`Inspect schema: ${refName}`}>
-                    <button onClick={() => onOpenSchemaModal(refName)} className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
-                        <i className="ph ph-diamonds-four text-[12px]"></i>{isMobile ? '' : ` ${refName}`}
-                    </button>
-                </Tip>);
+                <button onClick={() => onOpenSchemaModal(refName)}
+                        className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
+                    <i className="ph ph-diamonds-four text-[12px]"></i>{isMobile ? '' : ` ${refName}`}
+                </button>
+            </Tip>);
         }
         if (prop.type === 'object' && !prop.properties && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
             return (<span className="font-mono text-xs text-[var(--text)]">
-                    object <span className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
-                </span>);
+                object <span
+                className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
+            </span>);
         }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.oneOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
+                <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.oneOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
                         const refName = sub.$ref ? getRefName(sub.$ref) : null;
                         if (refName)
                             onOpenSchemaModal(refName);
-                    }} className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
-                                {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
-                            </button>)}
-                    </div>
-                </div>);
+                    }}
+                                                                        className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
+                        {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
+                    </button>)}
+                </div>
+            </div>);
         }
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.anyOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
+                <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.anyOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
                         const refName = sub.$ref ? getRefName(sub.$ref) : null;
                         if (refName)
                             onOpenSchemaModal(refName);
-                    }} className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
-                                {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
-                            </button>)}
-                    </div>
-                </div>);
+                    }}
+                                                                        className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
+                        {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
+                    </button>)}
+                </div>
+            </div>);
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.allOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.allOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
                         const refName = sub.$ref ? getRefName(sub.$ref) : null;
                         if (refName)
                             onOpenSchemaModal(refName);
-                    }} className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
-                                {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
-                            </button>)}
-                    </div>
-                </div>);
+                    }}
+                                                                        className="px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer hover:opacity-80">
+                        {sub.$ref ? getRefName(sub.$ref) : `Option ${sIdx + 1}`}
+                    </button>)}
+                </div>
+            </div>);
         }
         if (prop.type === 'array' && prop.items) {
             if (prop.items.$ref) {
                 const refName = getRefName(prop.items.$ref);
                 return (<span className="text-xs font-sans">Array&lt;
-                        <button onClick={() => onOpenSchemaModal(refName)} className="text-[var(--primary)] hover:underline font-semibold cursor-pointer">{refName}</button>
-                        &gt;
-                    </span>);
+                    <button onClick={() => onOpenSchemaModal(refName)}
+                            className="text-[var(--primary)] hover:underline font-semibold cursor-pointer">{refName}</button>
+                    &gt;
+                </span>);
             }
             if (prop.items.oneOf || prop.items.anyOf)
                 return <span className="text-xs font-sans">Array&lt;{renderSchemaType(prop.items)}&gt;</span>;
@@ -179,59 +186,64 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
             const refSchema = spec.components?.schemas?.[refName];
             const viewerSchema = viewerExampleSchemas[code];
             const isActive = isSchemaActive(prop, code, viewerSchema);
-            return (<button onClick={() => pickViewerSchema(code, refSchema || prop, refName)} className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
-                    <i className="ph ph-diamonds-four text-[12px] mr-1"></i> {refName}
-                </button>);
+            return (<button onClick={() => pickViewerSchema(code, refSchema || prop, refName)}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
+                <i className="ph ph-diamonds-four text-[12px] mr-1"></i> {refName}
+            </button>);
         }
         if (prop.type === 'object' && !prop.properties && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
             return (<span className="font-mono text-xs text-[var(--text)]">
-                    object <span className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
-                </span>);
+                object <span
+                className="text-[var(--text-muted)]">Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;</span>
+            </span>);
         }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             const viewerSchema = viewerExampleSchemas[code];
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.oneOf.map((sub: any, sIdx: number) => {
-                    const isActive = isSchemaActive(sub, code, viewerSchema);
-                    return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)} className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
-                                    {getSubLabel(sub, sIdx)}
-                                </button>);
-                })}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.oneOf.map((sub: any, sIdx: number) => {
+                        const isActive = isSchemaActive(sub, code, viewerSchema);
+                        return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
+                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
+                            {getSubLabel(sub, sIdx)}
+                        </button>);
+                    })}
+                </div>
+            </div>);
         }
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
             const viewerSchema = viewerExampleSchemas[code];
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.anyOf.map((sub: any, sIdx: number) => {
-                    const isActive = isSchemaActive(sub, code, viewerSchema);
-                    return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)} className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
-                                    {getSubLabel(sub, sIdx)}
-                                </button>);
-                })}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.anyOf.map((sub: any, sIdx: number) => {
+                        const isActive = isSchemaActive(sub, code, viewerSchema);
+                        return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
+                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
+                            {getSubLabel(sub, sIdx)}
+                        </button>);
+                    })}
+                </div>
+            </div>);
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             const viewerSchema = viewerExampleSchemas[code];
             return (<div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                        Of:</span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.allOf.map((sub: any, sIdx: number) => {
-                    const isActive = isSchemaActive(sub, code, viewerSchema);
-                    return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)} className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
-                                    {getSubLabel(sub, sIdx)}
-                                </button>);
-                })}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
+                    Of:</span>
+                <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
+                    {prop.allOf.map((sub: any, sIdx: number) => {
+                        const isActive = isSchemaActive(sub, code, viewerSchema);
+                        return (<button key={sIdx} onClick={() => pickViewerSchema(code, sub, fallbackName)}
+                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
+                            {getSubLabel(sub, sIdx)}
+                        </button>);
+                    })}
+                </div>
+            </div>);
         }
         if (prop.type === 'array' && prop.items) {
             if (prop.items.$ref) {
@@ -240,16 +252,26 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                 const viewerSchema = viewerExampleSchemas[code];
                 const isActive = isSchemaActive(prop.items, code, viewerSchema);
                 return (<span className="text-xs font-sans">Array&lt;
-                        <button onClick={() => pickViewerSchema(code, refSchema || prop.items, refName)} className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>{refName}</button>
-                        &gt;
-                    </span>);
+                    <button onClick={() => pickViewerSchema(code, refSchema || prop.items, refName)}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>{refName}</button>
+                    &gt;
+                </span>);
             }
             if (prop.items.oneOf || prop.items.anyOf)
-                return <span className="text-xs font-sans">Array&lt;{renderSchemaTypeExample(prop.items, code)}&gt;</span>;
+                return <span
+                    className="text-xs font-sans">Array&lt;{renderSchemaTypeExample(prop.items, code)}&gt;</span>;
             const resolvedItemsType = Array.isArray(prop.items.type) ? prop.items.type.join(' | ') : prop.items.type || 'any';
             return <span className="text-xs font-mono text-[var(--text-muted)]">Array&lt;{resolvedItemsType}&gt;</span>;
         }
         return <span className="font-mono text-xs text-[var(--text)]">{renderTypeName(prop.type, prop.format)}</span>;
     };
-    return { viewerExampleSchemas, viewerExampleNames, resolveReference, renderSchemaType, renderSchemaButton, renderSchemaTypeExample, pickViewerSchema };
+    return {
+        viewerExampleSchemas,
+        viewerExampleNames,
+        resolveReference,
+        renderSchemaType,
+        renderSchemaButton,
+        renderSchemaTypeExample,
+        pickViewerSchema
+    };
 }

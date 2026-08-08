@@ -1,5 +1,7 @@
 import * as jsYaml from 'js-yaml';
+
 export type BodyLanguage = 'json' | 'yaml' | 'xml' | 'plaintext' | 'javascript' | 'html';
+
 export interface BodyFormat {
     mediaType: string;
     language: BodyLanguage;
@@ -8,6 +10,7 @@ export interface BodyFormat {
     isXml: boolean;
     supportsSchema: boolean;
 }
+
 export type BodyEditorMode = 'form' | 'raw';
 export const bodyTypeSupportsForm = (mediaType: string): boolean => {
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
@@ -24,7 +27,7 @@ export const getBodyFormat = (mediaType: string): BodyFormat => {
     const isYaml = normalized.includes('yaml') || normalized === 'application/x-yaml';
     const isXml = normalized === 'application/xml' || normalized.endsWith('+xml') || normalized === 'text/xml';
     const language: BodyLanguage = isJson ? 'json' : isYaml ? 'yaml' : isXml ? 'xml' : normalized.includes('javascript') ? 'javascript' : normalized.includes('html') ? 'html' : 'plaintext';
-    return { mediaType: normalized || 'text/plain', language, isJson, isYaml, isXml, supportsSchema: isJson };
+    return {mediaType: normalized || 'text/plain', language, isJson, isYaml, isXml, supportsSchema: isJson};
 };
 export const getBodyEditorLanguage = (text: string, mediaType: string): BodyLanguage => {
     const format = getBodyFormat(mediaType);
@@ -56,8 +59,7 @@ export const validateBodyText = (text: string, mediaType: string): string | null
                 return document.querySelector('parsererror')?.textContent || 'Invalid XML.';
         }
         return null;
-    }
-    catch (error) {
+    } catch (error) {
         return error instanceof Error ? error.message : 'Invalid request body.';
     }
 };
@@ -68,17 +70,16 @@ export const formatBodyText = (text: string, mediaType: string): {
     const format = getBodyFormat(mediaType);
     try {
         if (format.isJson || isFormLikeMediaType(mediaType) && looksLikeJsonBody(text))
-            return { text: JSON.stringify(JSON.parse(text), null, 2) };
+            return {text: JSON.stringify(JSON.parse(text), null, 2)};
         if (format.isYaml)
-            return { text: jsYaml.dump(jsYaml.load(text), { noRefs: true, lineWidth: 120 }) };
+            return {text: jsYaml.dump(jsYaml.load(text), {noRefs: true, lineWidth: 120})};
         if (format.isXml) {
             const compact = text.replace(/>\s+</g, '><').trim();
-            return { text: compact };
+            return {text: compact};
         }
-        return { text };
-    }
-    catch (error) {
-        return { text, error: error instanceof Error ? error.message : 'Cannot format this body.' };
+        return {text};
+    } catch (error) {
+        return {text, error: error instanceof Error ? error.message : 'Cannot format this body.'};
     }
 };
 export const parseStructuredBody = (text: string, mediaType: string): unknown => {
@@ -91,8 +92,7 @@ export const parseStructuredBody = (text: string, mediaType: string): unknown =>
     if (normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data') {
         try {
             return JSON.parse(text);
-        }
-        catch {
+        } catch {
             const parsed: Record<string, string | string[]> = {};
             new URLSearchParams(text).forEach((item, key) => {
                 const previous = parsed[key];
@@ -113,8 +113,7 @@ const formScalar = (value: unknown): string => {
     if (typeof value === 'object') {
         try {
             return JSON.stringify(value);
-        }
-        catch {
+        } catch {
             return String(value);
         }
     }
@@ -145,8 +144,7 @@ export const appendMultipartBody = (form: FormData, value: unknown, selectedFile
         }
         if (Array.isArray(item)) {
             item.forEach(part => form.append(key, formScalar(part)));
-        }
-        else {
+        } else {
             form.append(key, formScalar(item));
         }
     });

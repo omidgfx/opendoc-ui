@@ -1,8 +1,17 @@
-import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
-import type { OpenApiSpec } from '../types';
-import { type TabItem, VIEW_TAB_META, type ViewTabKind } from '../components/endpoint/EndpointTabs';
-import { useTabPersistence } from './useTabPersistence';
-import { useTabSwitcher } from './useTabSwitcher';
+import {
+    type Dispatch,
+    type MutableRefObject,
+    type SetStateAction,
+    useCallback,
+    useEffect,
+    useRef,
+    useState
+} from 'react';
+import type {OpenApiSpec} from '../types';
+import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../components/endpoint/EndpointTabs';
+import {useTabPersistence} from './useTabPersistence';
+import {useTabSwitcher} from './useTabSwitcher';
+
 export type WorkspaceEndpoint = {
     path: string;
     method: string;
@@ -19,6 +28,7 @@ type NavigationSnapshot = {
     selectedTagsLength: number;
     onlyProtected: boolean | null;
 };
+
 interface UseWorkspaceTabsOptions {
     spec: OpenApiSpec | null;
     selectedSpecKey: string;
@@ -47,7 +57,35 @@ interface UseWorkspaceTabsOptions {
     setModalStack: Dispatch<SetStateAction<string[]>>;
     modalCount: number;
 }
-export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQuery, setSearchQuery, setResultsQuery, searchRenderTimer, selectedMethods, setSelectedMethods, selectedTags, setSelectedTags, onlyProtected, setOnlyProtected, showWelcome, setShowWelcome, showHome, setShowHome, showSchemaExplorer, setShowSchemaExplorer, showAbout, setShowAbout, showAssistant, setShowAssistant, setActiveResponseCode, setModalStack, modalCount, }: UseWorkspaceTabsOptions) {
+
+export function useWorkspaceTabs({
+                                     spec,
+                                     selectedSpecKey,
+                                     loadedSpecKey,
+                                     searchQuery,
+                                     setSearchQuery,
+                                     setResultsQuery,
+                                     searchRenderTimer,
+                                     selectedMethods,
+                                     setSelectedMethods,
+                                     selectedTags,
+                                     setSelectedTags,
+                                     onlyProtected,
+                                     setOnlyProtected,
+                                     showWelcome,
+                                     setShowWelcome,
+                                     showHome,
+                                     setShowHome,
+                                     showSchemaExplorer,
+                                     setShowSchemaExplorer,
+                                     showAbout,
+                                     setShowAbout,
+                                     showAssistant,
+                                     setShowAssistant,
+                                     setActiveResponseCode,
+                                     setModalStack,
+                                     modalCount,
+                                 }: UseWorkspaceTabsOptions) {
     const [selectedEndpoint, setSelectedEndpoint] = useState<WorkspaceEndpoint | null>(null);
     const [assistantUnread, setAssistantUnread] = useState(false);
     const [selectedTab, setSelectedTab] = useState<WorkspaceViewMode>('docs');
@@ -116,7 +154,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             if (previewIdx >= 0) {
                 const oldId = prev[previewIdx].id;
                 setTabViewModes(vm => {
-                    const next2 = { ...vm };
+                    const next2 = {...vm};
                     if (next2[oldId]) {
                         next2[id] = next2[oldId];
                         delete next2[oldId];
@@ -128,7 +166,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             return [...prev, newTab];
         });
         setActiveTabId(id);
-        setSelectedEndpoint({ path, method: method.toLowerCase() });
+        setSelectedEndpoint({path, method: method.toLowerCase()});
     }, [getEndpointLabel, withPreviewLast]);
     const openEndpointPermanent = useCallback((path: string, method: string) => {
         setShowWelcome(false);
@@ -143,7 +181,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             const existing = prev.find(t => t.id === id);
             if (existing) {
                 if (existing.isPreview) {
-                    return prev.map(t => t.id === id ? { ...t, isPreview: false } : t);
+                    return prev.map(t => t.id === id ? {...t, isPreview: false} : t);
                 }
                 return prev;
             }
@@ -163,7 +201,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             return [...prev, newTab];
         });
         setActiveTabId(id);
-        setSelectedEndpoint({ path, method: method.toLowerCase() });
+        setSelectedEndpoint({path, method: method.toLowerCase()});
         setShowWelcome(false);
         setShowHome(false);
         setShowSchemaExplorer(false);
@@ -173,7 +211,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
     }, [getEndpointLabel]);
     const stashSearchTab = useCallback(() => {
         setEndpointTabs(prev => prev.map(t => t.id === 'view:search'
-            ? { ...t, query: searchQuery, filters: { methods: selectedMethods, tags: selectedTags, onlyProtected } }
+            ? {...t, query: searchQuery, filters: {methods: selectedMethods, tags: selectedTags, onlyProtected}}
             : t));
     }, [searchQuery, selectedMethods, selectedTags, onlyProtected]);
     const [scrollIntent, setScrollIntent] = useState<{
@@ -202,22 +240,21 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
                 setSelectedMethods(tab.filters?.methods || []);
                 setSelectedTags(tab.filters?.tags || []);
                 setOnlyProtected(tab.filters?.onlyProtected ?? null);
-            }
-            else {
+            } else {
                 setSearchQuery('');
             }
             setActiveResponseCode(null);
-            setScrollIntent({ type: 'view', id: tab.id });
+            setScrollIntent({type: 'view', id: tab.id});
             return;
         }
-        setSelectedEndpoint({ path: tab.path, method: tab.method });
+        setSelectedEndpoint({path: tab.path, method: tab.method});
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowAbout(false);
         setShowAssistant(false);
         setSearchQuery('');
     }, [endpointTabs, activeTabId, stashSearchTab]);
-    const { switcherOpen, switcherIndex, setSwitcherOpen, cancelSwitcher, openSwitcher, } = useTabSwitcher({
+    const {switcherOpen, switcherIndex, setSwitcherOpen, cancelSwitcher, openSwitcher,} = useTabSwitcher({
         tabs: endpointTabs,
         activeTabId,
         modalCount,
@@ -323,15 +360,14 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
                 setSelectedMethods(tab.filters?.methods || []);
                 setSelectedTags(tab.filters?.tags || []);
                 setOnlyProtected(tab.filters?.onlyProtected ?? null);
-            }
-            else {
+            } else {
                 setSearchQuery('');
                 setResultsQuery('');
             }
-            setScrollIntent({ type: 'view', id: tab.id });
+            setScrollIntent({type: 'view', id: tab.id});
             return;
         }
-        setSelectedEndpoint({ path: tab.path, method: tab.method });
+        setSelectedEndpoint({path: tab.path, method: tab.method});
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowAbout(false);
@@ -370,7 +406,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
         searchTags?: string[];
         searchSecured?: boolean | null;
     }) => {
-        const s = { ...navStateRef.current, ...override };
+        const s = {...navStateRef.current, ...override};
         const expected: ViewTabKind | null = (s.searchQuery || '').trim().length || (s.searchMethods?.length || 0) > 0 || (s.searchTags?.length || 0) > 0 || s.searchSecured !== null
             ? 'search'
             : s.showSchemaExplorer
@@ -430,13 +466,13 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             return next;
         });
         setTabViewModes(vm => {
-            const next = { ...vm };
+            const next = {...vm};
             delete next[id];
             return next;
         });
     }, [activeTabId, applyTabViewState]);
     const handleDoubleClickTab = useCallback((id: string) => {
-        setEndpointTabs(prev => withPreviewLast(prev.map(t => t.id === id ? { ...t, isPreview: false } : t)));
+        setEndpointTabs(prev => withPreviewLast(prev.map(t => t.id === id ? {...t, isPreview: false} : t)));
     }, [withPreviewLast]);
     const handleCloseAllLeft = useCallback((id: string) => {
         setEndpointTabs(prev => {
@@ -452,7 +488,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
                     applyTabViewState(tab);
             }
             setTabViewModes(vm => {
-                const n = { ...vm };
+                const n = {...vm};
                 toRemove.forEach(r => delete n[r]);
                 return n;
             });
@@ -473,7 +509,7 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
                     applyTabViewState(tab);
             }
             setTabViewModes(vm => {
-                const n = { ...vm };
+                const n = {...vm};
                 toRemove.forEach(r => delete n[r]);
                 return n;
             });
@@ -510,9 +546,9 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             return;
         setEndpointTabs(prev => prev.map(t => t.kind && t.kind !== 'endpoint'
             ? t
-            : { ...t, label: getEndpointLabel(t.path, t.method) }));
+            : {...t, label: getEndpointLabel(t.path, t.method)}));
     }, [spec, getEndpointLabel]);
-    const { tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef, } = useTabPersistence({
+    const {tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef,} = useTabPersistence({
         selectedSpecKey: selectedSpecKey,
         loadedSpecKey,
         spec,
@@ -546,14 +582,13 @@ export function useWorkspaceTabs({ spec, selectedSpecKey, loadedSpecKey, searchQ
             let nextIdx: number;
             if (e.key === 'ArrowLeft') {
                 nextIdx = currentIdx > 0 ? currentIdx - 1 : endpointTabs.length - 1;
-            }
-            else {
+            } else {
                 nextIdx = currentIdx < endpointTabs.length - 1 ? currentIdx + 1 : 0;
             }
             const nextTab = endpointTabs[nextIdx];
             if (nextTab) {
                 setActiveTabId(nextTab.id);
-                setSelectedEndpoint({ path: nextTab.path, method: nextTab.method });
+                setSelectedEndpoint({path: nextTab.path, method: nextTab.method});
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowAbout(false);

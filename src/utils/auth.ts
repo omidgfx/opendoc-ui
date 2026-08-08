@@ -1,10 +1,12 @@
-import type { ActiveAuth, AuthCredential, OpenApiSpec, Operation, SecurityScheme } from '../types';
-import type { SerializedPair } from './openapi/serialization';
+import type {ActiveAuth, AuthCredential, OpenApiSpec, Operation, SecurityScheme} from '../types';
+import type {SerializedPair} from './openapi/serialization';
+
 export interface SecurityRequirementOption {
     id: string;
     label: string;
     schemeIds: string[];
 }
+
 export interface RequestAuthParts {
     headers: Record<string, string>;
     query: SerializedPair[];
@@ -12,6 +14,7 @@ export interface RequestAuthParts {
     credentials: RequestCredentials;
     warnings: string[];
 }
+
 const emptyAuth = (): ActiveAuth => ({
     activeScheme: 'none',
     selectedSchemes: [],
@@ -43,24 +46,24 @@ export const getSecurityRequirementOptions = (spec: OpenApiSpec | null, operatio
     const requirements = operationSecurity(spec, operation);
     if (requirements && requirements.length === 0)
         return [{
-                id: 'none',
-                label: 'No authentication (public operation)',
-                schemeIds: []
-            }];
+            id: 'none',
+            label: 'No authentication (public operation)',
+            schemeIds: []
+        }];
     if (!requirements || requirements.length === 0) {
         const ids = Object.keys(schemes);
         return ids.length > 0
-            ? [{ id: 'none', label: 'No authentication (manual)', schemeIds: [] }, ...ids.map(id => ({
-                    id: `scheme:${id}`,
-                    label: getAuthSchemeLabel(id, schemes[id]),
-                    schemeIds: [id]
-                }))]
-            : [{ id: 'none', label: 'No Authentication', schemeIds: [] }];
+            ? [{id: 'none', label: 'No authentication (manual)', schemeIds: []}, ...ids.map(id => ({
+                id: `scheme:${id}`,
+                label: getAuthSchemeLabel(id, schemes[id]),
+                schemeIds: [id]
+            }))]
+            : [{id: 'none', label: 'No Authentication', schemeIds: []}];
     }
     return requirements.map((requirement, index) => {
         const ids = Object.keys(requirement || {});
         return ids.length === 0
-            ? { id: `requirement:${index}`, label: 'No authentication (public alternative)', schemeIds: [] }
+            ? {id: `requirement:${index}`, label: 'No authentication (public alternative)', schemeIds: []}
             : {
                 id: `requirement:${index}`,
                 label: ids.map(id => getAuthSchemeLabel(id, schemes[id])).join(' + '),
@@ -123,18 +126,16 @@ const credentialFor = (auth: ActiveAuth, id: string, scheme: any): AuthCredentia
             name: auth.apiKeyName,
             value: auth.cookieValues[auth.apiKeyName] || ''
         };
-    return { schemeId: id, type: 'unknown' };
+    return {schemeId: id, type: 'unknown'};
 };
 const basicEncode = (username: string, password: string): string => {
     const raw = `${username}:${password}`;
     try {
         return btoa(raw);
-    }
-    catch {
+    } catch {
         try {
             return btoa(unescape(encodeURIComponent(raw)));
-        }
-        catch {
+        } catch {
             return raw;
         }
     }
@@ -144,7 +145,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
     query?: SerializedPair[];
     cookies?: SerializedPair[];
 }, operation?: Operation | null): RequestAuthParts => {
-    const headers = { ...(request.headers || {}) };
+    const headers = {...(request.headers || {})};
     const query = [...(request.query || [])];
     const cookies = [...(request.cookies || [])];
     const warnings: string[] = [];
@@ -161,13 +162,13 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             if (!value && location !== 'cookie')
                 warnings.push(`No value is configured for API-key scheme '${id}'.`);
             if (location === 'query' && value)
-                query.push({ name, value, allowReserved: false });
+                query.push({name, value, allowReserved: false});
             else if (location === 'header' && value)
                 headers[name] = value;
             else if (location === 'cookie') {
                 credentials = 'include';
                 if (value)
-                    cookies.push({ name, value });
+                    cookies.push({name, value});
                 warnings.push(`Browser fetch cannot set a Cookie header for '${id}'; credentials: include only sends an existing same-site cookie. Use the gateway/local agent to inject a value.`);
             }
             return;
@@ -195,7 +196,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
     if (operationSecurity(spec, operation)?.length && ids.length === 0 && operationSecurity(spec, operation)?.some(item => Object.keys(item).length > 0)) {
         warnings.push('This operation declares authentication, but no security requirement is selected.');
     }
-    return { headers, query, cookies, credentials, warnings };
+    return {headers, query, cookies, credentials, warnings};
 };
 export const authDisplayName = (auth: ActiveAuth, spec: OpenApiSpec | null): string => {
     const ids = selectedSchemeIds(auth, spec);

@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import {useEffect} from 'react';
+
 export function useEscClose(isOpen: boolean, onClose: () => void, enabled = true) {
     useEffect(() => {
         if (!isOpen)
@@ -14,6 +15,7 @@ export function useEscClose(isOpen: boolean, onClose: () => void, enabled = true
         return () => window.removeEventListener('keydown', handler);
     }, [isOpen, onClose, enabled]);
 }
+
 export function useEscStack(isOpen: boolean, stackLength: number, onPop: () => void, onCloseAll: () => void, enabled = true) {
     useEffect(() => {
         if (!isOpen)
@@ -25,8 +27,7 @@ export function useEscStack(isOpen: boolean, stackLength: number, onPop: () => v
                 e.preventDefault();
                 if (stackLength > 1) {
                     onPop();
-                }
-                else {
+                } else {
                     onCloseAll();
                 }
             }

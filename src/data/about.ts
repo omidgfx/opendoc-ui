@@ -3,17 +3,17 @@ export const TOC_SECTIONS: Array<{
     label: string;
     icon: string;
 }> = [
-    { id: 'why', label: 'Why', icon: 'ph ph-lightbulb' },
-    { id: 'what', label: 'What it does', icon: 'ph ph-cube' },
-    { id: 'how', label: 'How it works', icon: 'ph ph-gear-six' },
-    { id: 'ai', label: 'AI assistant', icon: 'ph ph-sparkle' },
-    { id: 'keyboard', label: 'Keyboard', icon: 'ph ph-keyboard' },
-    { id: 'mouse', label: 'Mouse', icon: 'ph ph-cursor-click' },
-    { id: 'preview', label: 'Preview', icon: 'ph ph-eye' },
-    { id: 'reading', label: 'Reading', icon: 'ph ph-book-open' },
-    { id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush' },
-    { id: 'about', label: 'About', icon: 'ph ph-info' },
-    { id: 'license', label: 'License', icon: 'ph ph-scroll' },
+    {id: 'why', label: 'Why', icon: 'ph ph-lightbulb'},
+    {id: 'what', label: 'What it does', icon: 'ph ph-cube'},
+    {id: 'how', label: 'How it works', icon: 'ph ph-gear-six'},
+    {id: 'ai', label: 'AI assistant', icon: 'ph ph-sparkle'},
+    {id: 'keyboard', label: 'Keyboard', icon: 'ph ph-keyboard'},
+    {id: 'mouse', label: 'Mouse', icon: 'ph ph-cursor-click'},
+    {id: 'preview', label: 'Preview', icon: 'ph ph-eye'},
+    {id: 'reading', label: 'Reading', icon: 'ph ph-book-open'},
+    {id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush'},
+    {id: 'about', label: 'About', icon: 'ph ph-info'},
+    {id: 'license', label: 'License', icon: 'ph ph-scroll'},
 ];
 export const FEATURES: Array<{
     icon: string;
@@ -263,10 +263,10 @@ export const PREVIEW_RULES: Array<{
         desc: 'Your open tabs, which one is active, each tab’s view mode and its preview state are all saved per specification. Reload the page and you return to the same working set — with the preview tab still parked at the end.',
     },
 ];
-export const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
+export const stagger = {visible: {transition: {staggerChildren: 0.06}}};
 export const fadeUp = {
-    hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
+    hidden: {opacity: 0, y: 12},
+    visible: {opacity: 1, y: 0, transition: {duration: 0.4, ease: 'easeOut' as const}},
 };
 export const MIT_LICENSE = `MIT License
 

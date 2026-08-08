@@ -1,4 +1,5 @@
-import type { AISkillPack } from '../types';
+import type {AISkillPack} from '../types';
+
 export const AI_SKILL_PACK_CONTENT: Record<AISkillPack, string> = {
     openapi: `OpenAPI grounding:
 - Prefer the retrieved operation record and referenced schema records over general knowledge.

@@ -1,5 +1,6 @@
-import type { OpenApiSpec } from '../types';
-import { getRefName, resolveSchema } from './openapi';
+import type {OpenApiSpec} from '../types';
+import {getRefName, resolveSchema} from './openapi';
+
 const mockFromPattern = (pattern: string): string => {
     if (!pattern)
         return 'string';
@@ -17,6 +18,7 @@ const mockFromPattern = (pattern: string): string => {
         return '2026-07-03';
     return 'string';
 };
+
 export function generateMock(s: any, spec: OpenApiSpec | null, depth = 0, visited = new Set<string>()): any {
     if (!s)
         return null;
@@ -62,7 +64,7 @@ export function generateMock(s: any, spec: OpenApiSpec | null, depth = 0, visite
         s.allOf.forEach((sub: any) => {
             const subMock = generateMock(sub, spec, depth + 1, new Set(visited));
             if (typeof subMock === 'object' && subMock !== null)
-                merged = { ...merged, ...subMock };
+                merged = {...merged, ...subMock};
             else if (subMock !== null)
                 merged = subMock;
         });
@@ -107,11 +109,11 @@ export function generateMock(s: any, spec: OpenApiSpec | null, depth = 0, visite
         return true;
     return null;
 }
+
 export const getMockSnippet = (schema: any, spec: OpenApiSpec | null): string => {
     try {
         return JSON.stringify(generateMock(schema, spec), null, 2);
-    }
-    catch {
+    } catch {
         return '{}';
     }
 };

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { TabItem } from '../components/endpoint/EndpointTabs';
+import {useCallback, useEffect, useRef, useState} from 'react';
+import type {TabItem} from '../components/endpoint/EndpointTabs';
+
 interface UseTabSwitcherOptions {
     tabs: TabItem[];
     activeTabId: string | null;
     modalCount: number;
     onSelectTab: (id: string) => void;
 }
-export function useTabSwitcher({ tabs, activeTabId, modalCount, onSelectTab }: UseTabSwitcherOptions) {
+
+export function useTabSwitcher({tabs, activeTabId, modalCount, onSelectTab}: UseTabSwitcherOptions) {
     const [open, setOpen] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const tabsRef = useRef(tabs);
@@ -53,20 +55,17 @@ export function useTabSwitcher({ tabs, activeTabId, modalCount, onSelectTab }: U
                 previousTabRef.current = activeTabRef.current;
                 setSelectedIndex(current >= 0 ? (current + direction + list.length) % list.length : 0);
                 setOpen(true);
-            }
-            else {
+            } else {
                 setSelectedIndex(index => (index + direction + list.length) % list.length);
             }
         };
         const onKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && (event.key === '`' || event.key === '~' || event.key === 'Tab')) {
                 cycle(event, event.shiftKey ? -1 : 1);
-            }
-            else if (event.key === 'Escape' && open) {
+            } else if (event.key === 'Escape' && open) {
                 event.preventDefault();
                 cancel();
-            }
-            else if (event.key === 'Enter' && open) {
+            } else if (event.key === 'Enter' && open) {
                 event.preventDefault();
                 commit();
             }

@@ -1,9 +1,10 @@
-import { type Dispatch, type SetStateAction, useCallback, useState } from 'react';
-import type { OpenApiSpec, Parsable, ParsableConfig } from '../types';
-import { clearAllCachedSpecs, clearCachedSpec } from '../utils/specCache';
-import { specStorage, uiStorage } from '../utils/storage';
-import { clearAIConversations, clearAISessionSecrets, clearAllAIConversations } from '../utils/aiStorage';
-import { type LocalSpec, parseSpecDraft } from '../utils/appSpec';
+import {type Dispatch, type SetStateAction, useCallback, useState} from 'react';
+import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
+import {clearAllCachedSpecs, clearCachedSpec} from '../utils/specCache';
+import {specStorage, uiStorage} from '../utils/storage';
+import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/aiStorage';
+import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
+
 interface UseSpecificationActionsOptions {
     selectedSpecKey: string;
     parsables: ParsableConfig;
@@ -14,7 +15,17 @@ interface UseSpecificationActionsOptions {
     setLoadedSpecKey: Dispatch<SetStateAction<string>>;
     setLocalOpenError: Dispatch<SetStateAction<string | null>>;
 }
-export function useSpecificationActions({ selectedSpecKey, parsables, localSpec, loadSpec, applyLocalSpec, setSpec, setLoadedSpecKey, setLocalOpenError, }: UseSpecificationActionsOptions) {
+
+export function useSpecificationActions({
+                                            selectedSpecKey,
+                                            parsables,
+                                            localSpec,
+                                            loadSpec,
+                                            applyLocalSpec,
+                                            setSpec,
+                                            setLoadedSpecKey,
+                                            setLocalOpenError,
+                                        }: UseSpecificationActionsOptions) {
     const [isRefreshingSpec, setIsRefreshingSpec] = useState(false);
     const refreshSpec = useCallback(async () => {
         setIsRefreshingSpec(true);
@@ -23,22 +34,18 @@ export function useSpecificationActions({ selectedSpecKey, parsables, localSpec,
             if (selectedSpecKey && parsables[selectedSpecKey]) {
                 await clearAllCachedSpecs();
                 await loadSpec(selectedSpecKey, parsables[selectedSpecKey], true);
-            }
-            else if (localSpec) {
+            } else if (localSpec) {
                 if (localSpec.file) {
                     applyLocalSpec(await localSpec.file.text(), localSpec.fileName, localSpec.file);
-                }
-                else {
+                } else {
                     setSpec(parseSpecDraft(localSpec.raw));
                     setLoadedSpecKey(localSpec.key);
                 }
             }
-        }
-        catch (error) {
+        } catch (error) {
             console.error('Refresh failed', error);
             setLocalOpenError('Could not re-read the specification.');
-        }
-        finally {
+        } finally {
             await minimumVisible;
             setIsRefreshingSpec(false);
         }

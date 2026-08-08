@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import type { OpenApiSpec, Parsable, ParsableConfig } from '../types';
-import { fetchSpecText } from '../utils/specCache';
-import { parseSpecDraft } from '../utils/appSpec';
+import {useEffect, useRef, useState} from 'react';
+import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
+import {fetchSpecText} from '../utils/specCache';
+import {parseSpecDraft} from '../utils/appSpec';
+
 export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig) {
     const [spec, setSpec] = useState<OpenApiSpec | null>(null);
     const [loadedSpecKey, setLoadedSpecKey] = useState('');
@@ -17,9 +18,8 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
             let document: OpenApiSpec | null = null;
             if (parsable.isCustom === true && parsable.rawSpec) {
                 document = parseSpecDraft(parsable.rawSpec);
-            }
-            else if (parsable.url) {
-                document = parseSpecDraft(await fetchSpecText(parsable.url, { force: forceRefresh }));
+            } else if (parsable.url) {
+                document = parseSpecDraft(await fetchSpecText(parsable.url, {force: forceRefresh}));
             }
             if (sequence !== loadSequenceRef.current)
                 return;
@@ -27,15 +27,13 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
             setLoadedSpecKey(document ? specKey : '');
             if (document)
                 setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
-        }
-        catch (error) {
+        } catch (error) {
             if (sequence !== loadSequenceRef.current)
                 return;
             console.error(`Failed to load spec '${specKey}'`, error);
             setLoadedSpecKey('');
             setSpec(null);
-        }
-        finally {
+        } finally {
             if (sequence === loadSequenceRef.current)
                 setIsLoadingSpec(false);
         }

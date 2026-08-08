@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import CodeViewer from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import Markdown from '../../common/Markdown';
@@ -7,12 +7,11 @@ import CustomDropdown from '../../common/CustomDropdown';
 import ShareModal from '../ShareModal';
 import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
-import { Tip } from '../../common/Tooltip';
-import { generateSingleSchemaFile } from '../../../utils/schemaExport';
-import { useModalTransition } from '../../../hooks/useModalTransition';
-import { useEscClose } from '../../../hooks/useEscClose';
+import {useModalTransition} from '../../../hooks/useModalTransition';
+import {useEscClose} from '../../../hooks/useEscClose';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
+
 interface ModalsStackProps {
     modals: Array<{
         schemaName: string;
@@ -26,7 +25,15 @@ interface ModalsStackProps {
     onCloseAll: () => void;
     parsableKey?: string;
 }
-export default function ModalsStack({ modals, componentsSchemas, onPushSchema, onPopSchema, onCloseAll, parsableKey = 'API' }: ModalsStackProps) {
+
+export default function ModalsStack({
+                                        modals,
+                                        componentsSchemas,
+                                        onPushSchema,
+                                        onPopSchema,
+                                        onCloseAll,
+                                        parsableKey = 'API'
+                                    }: ModalsStackProps) {
     const [helpModalContent, setHelpModalContent] = useState<{
         title: string;
         content: string;
@@ -42,7 +49,7 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
         title: string;
         description?: string;
     } | null>(null);
-    const { requestClose, backdropClassName } = useModalTransition(true, onCloseAll);
+    const {requestClose, backdropClassName} = useModalTransition(true, onCloseAll);
     const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
     useEscClose(!!helpModalContent, helpTransition.requestClose, !!helpModalContent);
     useEffect(() => {
@@ -56,8 +63,7 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
             e.preventDefault();
             if (modals.length > 1) {
                 onPopSchema();
-            }
-            else {
+            } else {
                 requestClose();
             }
         };
@@ -175,7 +181,7 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
         }
         if (schema.allOf && Array.isArray(schema.allOf)) {
             schema.allOf.forEach((sub: any) => {
-                props = { ...props, ...traverseSchemaProperties(sub, prefix, new Set(visited)) };
+                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
             });
         }
         if (schema.properties) {
@@ -188,25 +194,24 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
                 const resolved = resolveReference(prop);
                 if (resolved && (resolved.type === 'object' || resolved.properties || resolved.allOf)) {
                     const nested = traverseSchemaProperties(resolved, key, new Set(visited));
-                    props = { ...props, ...nested };
-                }
-                else if (resolved && resolved.type === 'array' && resolved.items) {
+                    props = {...props, ...nested};
+                } else if (resolved && resolved.type === 'array' && resolved.items) {
                     const resolvedItems = resolveReference(resolved.items);
                     if (resolvedItems && (resolvedItems.type === 'object' || resolvedItems.properties || resolvedItems.allOf)) {
                         const nested = traverseSchemaProperties(resolvedItems, `${key}.*`, new Set(visited));
-                        props = { ...props, ...nested };
+                        props = {...props, ...nested};
                     }
                 }
             });
         }
         if (schema.oneOf && Array.isArray(schema.oneOf)) {
             schema.oneOf.forEach((sub: any) => {
-                props = { ...props, ...traverseSchemaProperties(sub, prefix, new Set(visited)) };
+                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
             });
         }
         if (schema.anyOf && Array.isArray(schema.anyOf)) {
             schema.anyOf.forEach((sub: any) => {
-                props = { ...props, ...traverseSchemaProperties(sub, prefix, new Set(visited)) };
+                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
             });
         }
         if (!schema.properties && schema.additionalProperties && typeof schema.additionalProperties === 'object') {
@@ -227,73 +232,76 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
         };
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);
-            return (<button onClick={() => onPushSchema(refName)} className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
+            return (<button onClick={() => onPushSchema(refName)}
+                            className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer">
 
-                    <i className="ph ph-diamonds-four text-[10px]"></i> {refName}
-                </button>);
+                <i className="ph ph-diamonds-four text-[10px]"></i> {refName}
+            </button>);
         }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             return (<div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
-                        Of:</span>
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.oneOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
-                                {sIdx > 0 &&
-                        <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>)}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">One
+                    Of:</span>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                    {prop.oneOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
+                        {sIdx > 0 &&
+                            <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>}
+                        {renderSchemaType(sub)}
+                    </React.Fragment>)}
+                </div>
+            </div>);
         }
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
             return (<div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
-                        Of:</span>
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.anyOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
-                                {sIdx > 0 &&
-                        <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>)}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">Any
+                    Of:</span>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                    {prop.anyOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
+                        {sIdx > 0 &&
+                            <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>}
+                        {renderSchemaType(sub)}
+                    </React.Fragment>)}
+                </div>
+            </div>);
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (<div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                        Of:</span>
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.allOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
-                                {sIdx > 0 && <span className="text-[var(--text-muted)] font-mono text-xs select-none">&amp;</span>}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>)}
-                    </div>
-                </div>);
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
+                    Of:</span>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                    {prop.allOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
+                        {sIdx > 0 &&
+                            <span className="text-[var(--text-muted)] font-mono text-xs select-none">&amp;</span>}
+                        {renderSchemaType(sub)}
+                    </React.Fragment>)}
+                </div>
+            </div>);
         }
         if (prop.type === 'array' && prop.items) {
             if (prop.items.$ref) {
                 const refName = getRefName(prop.items.$ref);
                 return (<span className="text-xs font-sans">
-                        Array&lt;
-                        <button onClick={() => onPushSchema(refName)} className="text-[var(--primary)] hover:underline font-semibold cursor-pointer">
+                    Array&lt;
+                    <button onClick={() => onPushSchema(refName)}
+                            className="text-[var(--primary)] hover:underline font-semibold cursor-pointer">
 
-                            {refName}
-                        </button>
-                        &gt;
-                    </span>);
+                        {refName}
+                    </button>
+                    &gt;
+                </span>);
             }
             if (prop.items.oneOf || prop.items.anyOf) {
                 return (<span className="text-xs font-sans">
-                        Array&lt;{renderSchemaType(prop.items)}&gt;
-                    </span>);
+                    Array&lt;{renderSchemaType(prop.items)}&gt;
+                </span>);
             }
             const resolvedItemsType = Array.isArray(prop.items.type) ? prop.items.type.join(' | ') : prop.items.type || 'any';
             return <span className="text-xs font-mono text-[var(--text-muted)]">
                 Array&lt;{resolvedItemsType}&gt;</span>;
         }
         return (<span className="font-mono text-xs text-[var(--text)]">
-                {renderTypeName(prop.type, prop.format)}
-            </span>);
+            {renderTypeName(prop.type, prop.format)}
+        </span>);
     };
     const getMockSnippet = (schema: any): string => {
         if (!schema)
@@ -328,45 +336,35 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
                     let next = cleaned[i + 1];
                     if (next === 'd') {
                         generated += '5';
-                    }
-                    else if (next === 'w') {
+                    } else if (next === 'w') {
                         generated += 'a';
-                    }
-                    else if (next === 's') {
+                    } else if (next === 's') {
                         generated += ' ';
-                    }
-                    else {
+                    } else {
                         generated += next || '';
                     }
                     i += 2;
-                }
-                else if (char === '[') {
+                } else if (char === '[') {
                     let endIdx = cleaned.indexOf(']', i);
                     if (endIdx !== -1) {
                         let content = cleaned.substring(i + 1, endIdx);
                         if (content.includes('0-9') || content.includes('\\d')) {
                             generated += '9';
-                        }
-                        else if (content.includes('a-z')) {
+                        } else if (content.includes('a-z')) {
                             generated += 'x';
-                        }
-                        else if (content.includes('A-Z')) {
+                        } else if (content.includes('A-Z')) {
                             generated += 'X';
-                        }
-                        else if (content.length > 0) {
+                        } else if (content.length > 0) {
                             generated += content[0];
-                        }
-                        else {
+                        } else {
                             generated += 'a';
                         }
                         i = endIdx + 1;
-                    }
-                    else {
+                    } else {
                         generated += '[';
                         i++;
                     }
-                }
-                else if (cleaned[i] === '{') {
+                } else if (cleaned[i] === '{') {
                     let endIdx = cleaned.indexOf('}', i);
                     if (endIdx !== -1) {
                         let countStr = cleaned.substring(i + 1, endIdx);
@@ -376,19 +374,15 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
                             generated += lastChar;
                         }
                         i = endIdx + 1;
-                    }
-                    else {
+                    } else {
                         generated += '{';
                         i++;
                     }
-                }
-                else if (char === '(' || char === ')' || char === '?' || char === '*' || char === '+') {
+                } else if (char === '(' || char === ')' || char === '?' || char === '*' || char === '+') {
                     i++;
-                }
-                else if (char === '|') {
+                } else if (char === '|') {
                     break;
-                }
-                else {
+                } else {
                     generated += char;
                     i++;
                 }
@@ -424,9 +418,8 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
                 s.allOf.forEach((sub: any) => {
                     const subMock = generateMock(sub, depth + 1, new Set(visited));
                     if (typeof subMock === 'object' && subMock !== null) {
-                        merged = { ...merged, ...subMock };
-                    }
-                    else if (subMock !== null) {
+                        merged = {...merged, ...subMock};
+                    } else if (subMock !== null) {
                         merged = subMock;
                     }
                 });
@@ -485,8 +478,7 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
         };
         try {
             return JSON.stringify(generateMock(schema), null, 2);
-        }
-        catch {
+        } catch {
             return '{}';
         }
     };
@@ -544,15 +536,14 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
         let value: any;
         try {
             value = JSON.parse(json);
-        }
-        catch {
+        } catch {
             value = json;
         }
         if (encoding === 'application/xml') {
             return `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`;
         }
         if (encoding === 'application/yaml') {
-            return jsYaml.dump(value, { noRefs: true, lineWidth: 100 });
+            return jsYaml.dump(value, {noRefs: true, lineWidth: 100});
         }
         if (encoding === 'application/x-php-array') {
             return toPhpArray(value);
@@ -580,131 +571,156 @@ export default function ModalsStack({ modals, componentsSchemas, onPushSchema, o
     };
     const properties = traverseSchemaProperties(activeSchemaObj.schema);
     return (<>
-            <div className={`${backdropClassName} fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px]`} onMouseDown={(e) => {
-            if (e.target === e.currentTarget)
-                requestClose();
-        }}>
-                <div className="modal-surface modal-surface-tall w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
+        <div className={`${backdropClassName} fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px]`}
+             onMouseDown={(e) => {
+                 if (e.target === e.currentTarget)
+                     requestClose();
+             }}>
+            <div
+                className="modal-surface modal-surface-tall w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
 
-                    <SchemaViewerHeader active={activeSchemaObj} stack={modals} schemas={componentsSchemas} specKey={parsableKey} onShare={handleShareSchema} onPop={onPopSchema} onClose={requestClose}/>
+                <SchemaViewerHeader active={activeSchemaObj} stack={modals} schemas={componentsSchemas}
+                                    specKey={parsableKey} onShare={handleShareSchema} onPop={onPopSchema}
+                                    onClose={requestClose}/>
 
-                    <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto flex-1 font-sans scrollbar-thin">
-                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
-                                <button onClick={() => setTab('table')} className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'table' ?
-            'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
-            'hover:bg-[var(--surface-hover)]')}>
+                <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto flex-1 font-sans scrollbar-thin">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div
+                            className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
+                            <button onClick={() => setTab('table')}
+                                    className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'table' ?
+                                        'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
+                                        'hover:bg-[var(--surface-hover)]')}>
 
-                                    <i className="ph ph-table mr-1 text-[10px]"/> Scope Table
-                                </button>
-                                {isEnum &&
-            <button onClick={() => setTab('enum')} className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'enum' ?
-                    'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
-                    'hover:bg-[var(--surface-hover)]')}>
+                                <i className="ph ph-table mr-1 text-[10px]"/> Scope Table
+                            </button>
+                            {isEnum &&
+                                <button onClick={() => setTab('enum')}
+                                        className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'enum' ?
+                                            'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
+                                            'hover:bg-[var(--surface-hover)]')}>
 
-                                        <i className="ph ph-list-numbers mr-1 text-[10px]"/> Enum Values
-                                    </button>}
-                                <button onClick={() => setTab('example')} className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'example' ?
-            'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
-            'hover:bg-[var(--surface-hover)]')}>
+                                    <i className="ph ph-list-numbers mr-1 text-[10px]"/> Enum Values
+                                </button>}
+                            <button onClick={() => setTab('example')}
+                                    className={clsx('rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer', activeTab === 'example' ?
+                                        'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' :
+                                        'hover:bg-[var(--surface-hover)]')}>
 
-                                    <i className="ph ph-dna mr-1 text-[10px]"/> Unified Simulation Example
-                                </button>
-                            </div>
-
-                            {activeTab === 'example' &&
-            <div className="flex min-w-[245px] items-center gap-2 animate-fade-in">
-                                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                                        Encoding type
-                                    </span>
-                                    <CustomDropdown value={activeExampleEncoding} onChange={(encoding) => setExampleEncodings((current) => ({
-                    ...current,
-                    [activeModalIndex]: encoding
-                }))} options={[
-                    { value: 'application/json', label: 'application/json' },
-                    { value: 'application/xml', label: 'application/xml' },
-                    { value: 'application/yaml', label: 'application/yaml' },
-                    { value: 'application/x-php-array', label: 'PHP array' }
-                ]} icon="ph ph-code-block text-[13px]" className="min-w-[170px]"/>
-
-                                </div>}
+                                <i className="ph ph-dna mr-1 text-[10px]"/> Unified Simulation Example
+                            </button>
                         </div>
-                        {(activeSchemaObj.schema?.description || activeSchemaObj.schema?.externalDocs) &&
-            <div className="mb-4 p-3 rounded-lg border text-xs leading-relaxed space-y-3 bg-[var(--background)] border-[var(--border)]">
 
-                                {activeSchemaObj.schema?.description &&
-                    <div>
-                                        <p className="font-semibold mb-1 text-[var(--text-heading)]">
-                                            Description:</p>
-                                        <div>
-                                            <Markdown text={activeSchemaObj.schema.description}/>
-                                        </div>
-                                    </div>}
-                                {activeSchemaObj.schema?.externalDocs && activeSchemaObj.schema.externalDocs.url &&
-                    <div className="pt-2 border-t border-[var(--border)]">
-                                        <p className="font-semibold mb-1 text-[var(--text-heading)]">
-                                            External Reference Docs:</p>
-                                        <a href={activeSchemaObj.schema.externalDocs.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors">
+                        {activeTab === 'example' &&
+                            <div className="flex min-w-[245px] items-center gap-2 animate-fade-in">
+                                <span
+                                    className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                    Encoding type
+                                </span>
+                                <CustomDropdown value={activeExampleEncoding}
+                                                onChange={(encoding) => setExampleEncodings((current) => ({
+                                                    ...current,
+                                                    [activeModalIndex]: encoding
+                                                }))} options={[
+                                    {value: 'application/json', label: 'application/json'},
+                                    {value: 'application/xml', label: 'application/xml'},
+                                    {value: 'application/yaml', label: 'application/yaml'},
+                                    {value: 'application/x-php-array', label: 'PHP array'}
+                                ]} icon="ph ph-code-block text-[13px]" className="min-w-[170px]"/>
 
-                                            <i className="ph ph-arrow-square-out text-[8.5px]"></i>
-                                            <span>{activeSchemaObj.schema.externalDocs.description || 'Open External Documentation'}</span>
-                                        </a>
-                                    </div>}
                             </div>}
+                    </div>
+                    {(activeSchemaObj.schema?.description || activeSchemaObj.schema?.externalDocs) &&
+                        <div
+                            className="mb-4 p-3 rounded-lg border text-xs leading-relaxed space-y-3 bg-[var(--background)] border-[var(--border)]">
 
-                        {activeTab === 'example' ?
-            <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
-                                <CodeViewer code={formatSimulationExample(activeSchemaObj.schema, activeSchemaObj.schemaName, activeExampleEncoding)} language={simulationLanguage} maxHeight="none"/>
-
-                            </div> :
-            activeTab === 'enum' && isEnum ?
-                <div className="flex flex-wrap gap-2 p-3 rounded-xl border animate-in fade-in border-[var(--border)] bg-[var(--background)]">
-
-                                    {resolvedSchema.enum.map((val: any) => <span key={val} className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
-
-
-                                            {JSON.stringify(val)}
-                                        </span>)}
-                                </div> :
-                <div className="space-y-4 animate-in fade-in">
-                                    {activeSchemaObj.schema?.type &&
-                        <div className="text-xs font-mono">
-                                            <span className="font-sans font-semibold mr-1 text-[var(--text-heading)]">
-                                                Base Type:</span>
-                                            <span className="px-2 py-0.5 rounded text-[11px] border bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]">
-
-
-                                                {activeSchemaObj.schema.type}
-                                            </span>
-                                        </div>}
-
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                        Properties
-                                    </h4>
-                                    <SchemaPropertiesTable properties={properties} schema={activeSchemaObj.schema} inspectName={activeSchemaObj.schemaName} resolveReference={resolveReference} getRefName={getRefName} onPushSchema={onPushSchema} onViewExample={(name, subSchema) => setHelpModalContent({
-                        title: `${name} Simulated Example`,
-                        content: getMockSnippet(subSchema),
-                        isJson: true
-                    })} onTestPattern={setPatternToTest}/>
-
+                            {activeSchemaObj.schema?.description &&
+                                <div>
+                                    <p className="font-semibold mb-1 text-[var(--text-heading)]">
+                                        Description:</p>
+                                    <div>
+                                        <Markdown text={activeSchemaObj.schema.description}/>
+                                    </div>
                                 </div>}
-                    </div>
+                            {activeSchemaObj.schema?.externalDocs && activeSchemaObj.schema.externalDocs.url &&
+                                <div className="pt-2 border-t border-[var(--border)]">
+                                    <p className="font-semibold mb-1 text-[var(--text-heading)]">
+                                        External Reference Docs:</p>
+                                    <a href={activeSchemaObj.schema.externalDocs.url} target="_blank"
+                                       rel="noopener noreferrer"
+                                       className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors">
 
-                    <div className="px-6 py-3 text-[11px] flex justify-between border-t shrink-0 border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
+                                        <i className="ph ph-arrow-square-out text-[8.5px]"></i>
+                                        <span>{activeSchemaObj.schema.externalDocs.description || 'Open External Documentation'}</span>
+                                    </a>
+                                </div>}
+                        </div>}
+
+                    {activeTab === 'example' ?
+                        <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
+                            <CodeViewer
+                                code={formatSimulationExample(activeSchemaObj.schema, activeSchemaObj.schemaName, activeExampleEncoding)}
+                                language={simulationLanguage} maxHeight="none"/>
+
+                        </div> :
+                        activeTab === 'enum' && isEnum ?
+                            <div
+                                className="flex flex-wrap gap-2 p-3 rounded-xl border animate-in fade-in border-[var(--border)] bg-[var(--background)]">
+
+                                {resolvedSchema.enum.map((val: any) => <span key={val}
+                                                                             className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
 
 
-                        <span>Indexed reference schemas</span>
-                        <span>Stack Depth: {activeIndex + 1} nested level</span>
-                    </div>
+                                    {JSON.stringify(val)}
+                                </span>)}
+                            </div> :
+                            <div className="space-y-4 animate-in fade-in">
+                                {activeSchemaObj.schema?.type &&
+                                    <div className="text-xs font-mono">
+                                        <span className="font-sans font-semibold mr-1 text-[var(--text-heading)]">
+                                            Base Type:</span>
+                                        <span
+                                            className="px-2 py-0.5 rounded text-[11px] border bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]">
+
+
+                                            {activeSchemaObj.schema.type}
+                                        </span>
+                                    </div>}
+
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                    Properties
+                                </h4>
+                                <SchemaPropertiesTable properties={properties} schema={activeSchemaObj.schema}
+                                                       inspectName={activeSchemaObj.schemaName}
+                                                       resolveReference={resolveReference} getRefName={getRefName}
+                                                       onPushSchema={onPushSchema}
+                                                       onViewExample={(name, subSchema) => setHelpModalContent({
+                                                           title: `${name} Simulated Example`,
+                                                           content: getMockSnippet(subSchema),
+                                                           isJson: true
+                                                       })} onTestPattern={setPatternToTest}/>
+
+                            </div>}
+                </div>
+
+                <div
+                    className="px-6 py-3 text-[11px] flex justify-between border-t shrink-0 border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
+
+
+                    <span>Indexed reference schemas</span>
+                    <span>Stack Depth: {activeIndex + 1} nested level</span>
                 </div>
             </div>
+        </div>
 
-            <SchemaExampleModal visible={helpTransition.shouldRender} backdropClassName={helpTransition.backdropClassName} value={helpModalContent} onClose={helpTransition.requestClose}/>
+        <SchemaExampleModal visible={helpTransition.shouldRender} backdropClassName={helpTransition.backdropClassName}
+                            value={helpModalContent} onClose={helpTransition.requestClose}/>
 
-            {patternToTest &&
+        {patternToTest &&
             <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)}/>}
 
-            {shareModal &&
-            <ShareModal isOpen={!!shareModal} onClose={() => setShareModal(null)} url={shareModal.url} title={shareModal.title} description={shareModal.description}/>}
-        </>);
+        {shareModal &&
+            <ShareModal isOpen={!!shareModal} onClose={() => setShareModal(null)} url={shareModal.url}
+                        title={shareModal.title} description={shareModal.description}/>}
+    </>);
 }

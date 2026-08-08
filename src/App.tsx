@@ -1,31 +1,37 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type { ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig, } from './types';
-import { generateSmartRoute, getEndpointId } from './utils/routing';
-import { uiStorage } from './utils/storage';
-import { useBreakpoint } from './hooks/useBreakpoint';
+import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig,} from './types';
+import {generateSmartRoute, getEndpointId} from './utils/routing';
+import {uiStorage} from './utils/storage';
+import {useBreakpoint} from './hooks/useBreakpoint';
 import Topbar from './components/layout/Topbar';
 import Sidebar from './components/layout/Sidebar/Sidebar';
-import { TooltipProvider } from './components/common/Tooltip';
-import { OperationLinkProvider } from './contexts/OperationLinkContext';
-import { useResizableSplit } from './hooks/useResizableSplit';
-import EndpointTabs, { VIEW_TAB_META, type ViewTabKind } from './components/endpoint/EndpointTabs';
+import {TooltipProvider} from './components/common/Tooltip';
+import {OperationLinkProvider} from './contexts/OperationLinkContext';
+import {useResizableSplit} from './hooks/useResizableSplit';
+import EndpointTabs, {VIEW_TAB_META, type ViewTabKind} from './components/endpoint/EndpointTabs';
 import AIAssistantView from './components/ai/AIAssistantView';
-import { createOpenDocUIActionId, dispatchOpenDocUIAction, dispatchOpenDocUIRunnerResult, type OpenDocUIAction } from './utils/aiBridge';
-import { executeRunnerRequest } from './utils/runnerExecution';
-import { type ConfigSource, type EndpointKey } from './utils/appSpec';
+import {
+    createOpenDocUIActionId,
+    dispatchOpenDocUIAction,
+    dispatchOpenDocUIRunnerResult,
+    type OpenDocUIAction
+} from './utils/aiBridge';
+import {executeRunnerRequest} from './utils/runnerExecution';
+import {type ConfigSource, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
 import WorkspaceContent from './components/app/WorkspaceContent';
-import { useThemeController } from './hooks/useThemeController';
-import { useAISettingsController } from './hooks/useAISettingsController';
-import { useSidebarController } from './hooks/useSidebarController';
-import { useSpecLoader } from './hooks/useSpecLoader';
-import { useLocalSpecifications } from './hooks/useLocalSpecifications';
-import { useWorkspaceRouting } from './hooks/useWorkspaceRouting';
-import { useConfigBootstrap } from './hooks/useConfigBootstrap';
-import { useWorkspaceTabs } from './hooks/useWorkspaceTabs';
-import { useSpecificationActions } from './hooks/useSpecificationActions';
+import {useThemeController} from './hooks/useThemeController';
+import {useAISettingsController} from './hooks/useAISettingsController';
+import {useSidebarController} from './hooks/useSidebarController';
+import {useSpecLoader} from './hooks/useSpecLoader';
+import {useLocalSpecifications} from './hooks/useLocalSpecifications';
+import {useWorkspaceRouting} from './hooks/useWorkspaceRouting';
+import {useConfigBootstrap} from './hooks/useConfigBootstrap';
+import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
+import {useSpecificationActions} from './hooks/useSpecificationActions';
+
 declare global {
     interface Window {
         INITIAL_CONFIG?: any;
@@ -38,7 +44,17 @@ export default function App() {
     const [configSource, setConfigSource] = useState<ConfigSource>('none');
     const [selectedParsableKey, setSelectedParsableKey] = useState<string>('');
     const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-    const { spec, setSpec, loadedSpecKey, setLoadedSpecKey, isLoadingSpec, setIsLoadingSpec, selectedServer, setSelectedServer, loadSpec, } = useSpecLoader(selectedParsableKey, parsables);
+    const {
+        spec,
+        setSpec,
+        loadedSpecKey,
+        setLoadedSpecKey,
+        isLoadingSpec,
+        setIsLoadingSpec,
+        selectedServer,
+        setSelectedServer,
+        loadSpec,
+    } = useSpecLoader(selectedParsableKey, parsables);
     const [searchQuery, setSearchQuery] = useState('');
     const [resultsQuery, setResultsQuery] = useState('');
     const searchRenderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,13 +69,36 @@ export default function App() {
     }>>([]);
     const showAssistantRef = useRef(showAssistant);
     showAssistantRef.current = showAssistant;
-    const { aiSettings, setAISettings, setAISettingsReady, hasAIProfile, showAISettings, setShowAISettings, handleAISettingsSave, } = useAISettingsController();
+    const {
+        aiSettings,
+        setAISettings,
+        setAISettingsReady,
+        hasAIProfile,
+        showAISettings,
+        setShowAISettings,
+        handleAISettingsSave,
+    } = useAISettingsController();
     const assistantRunnerAbortRef = useRef<AbortController | null>(null);
     const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [onlyProtected, setOnlyProtected] = useState<boolean | null>(null);
-    const { sidebarDisplayRoutes, setSidebarDisplayRoutes, desktopCollapsed, setDesktopCollapsed, mobileOpen, setMobileOpen, } = useSidebarController(selectedParsableKey, isMobile);
-    const { selectedThemeName, setSelectedThemeName, currentThemeMode, setCurrentThemeMode, resolvedThemeMode, toggleThemeMode, styleVars, } = useThemeController(selectedParsableKey);
+    const {
+        sidebarDisplayRoutes,
+        setSidebarDisplayRoutes,
+        desktopCollapsed,
+        setDesktopCollapsed,
+        mobileOpen,
+        setMobileOpen,
+    } = useSidebarController(selectedParsableKey, isMobile);
+    const {
+        selectedThemeName,
+        setSelectedThemeName,
+        currentThemeMode,
+        setCurrentThemeMode,
+        resolvedThemeMode,
+        toggleThemeMode,
+        styleVars,
+    } = useThemeController(selectedParsableKey);
     const [modalsStack, setModalsStack] = useState<string[]>([]);
     const [codeGenEndpoint, setCodeGenEndpoint] = useState<{
         path: string;
@@ -74,7 +113,46 @@ export default function App() {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse>>({});
-    const { selectedEndpoint, setSelectedEndpoint, assistantUnread, setAssistantUnread, selectedTab, setSelectedTab, endpointTabs, setEndpointTabs, activeTabId, setActiveTabId, activeTabIdForAssistantRef, tabViewModes, setTabViewModes, scrollIntent, setScrollIntent, openEndpointPreview, openEndpointPermanent, stashSearchTab, handleSelectTab, openViewTab, openViewTabPermanent, applyTabViewState, ensureViewTabFromState, handleCloseTab, handleDoubleClickTab, handleCloseAllLeft, handleCloseAllRight, handleCloseOthers, handleReorderTabs, switcherOpen, switcherIndex, setSwitcherOpen, cancelSwitcher, openSwitcher, tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef, navStateRef, } = useWorkspaceTabs({
+    const {
+        selectedEndpoint,
+        setSelectedEndpoint,
+        assistantUnread,
+        setAssistantUnread,
+        selectedTab,
+        setSelectedTab,
+        endpointTabs,
+        setEndpointTabs,
+        activeTabId,
+        setActiveTabId,
+        activeTabIdForAssistantRef,
+        tabViewModes,
+        setTabViewModes,
+        scrollIntent,
+        setScrollIntent,
+        openEndpointPreview,
+        openEndpointPermanent,
+        stashSearchTab,
+        handleSelectTab,
+        openViewTab,
+        openViewTabPermanent,
+        applyTabViewState,
+        ensureViewTabFromState,
+        handleCloseTab,
+        handleDoubleClickTab,
+        handleCloseAllLeft,
+        handleCloseAllRight,
+        handleCloseOthers,
+        handleReorderTabs,
+        switcherOpen,
+        switcherIndex,
+        setSwitcherOpen,
+        cancelSwitcher,
+        openSwitcher,
+        tabsRestoredForKey,
+        tabsRestoreDoneRef,
+        specRouteReadyRef,
+        navStateRef,
+    } = useWorkspaceTabs({
         spec,
         selectedSpecKey: selectedParsableKey,
         loadedSpecKey,
@@ -104,7 +182,11 @@ export default function App() {
     });
     const [activeSplitPane, setActiveSplitPane] = useState<'docs' | 'examine'>('docs');
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
-    const { leftWidth: docsPaneWidth, isDragging: isSplitDragging, onMouseDown: onSplitResizeMouseDown, } = useResizableSplit(splitContainerRef, 'opendoc:ui:endpoint_split_width');
+    const {
+        leftWidth: docsPaneWidth,
+        isDragging: isSplitDragging,
+        onMouseDown: onSplitResizeMouseDown,
+    } = useResizableSplit(splitContainerRef, 'opendoc:ui:endpoint_split_width');
     useEffect(() => {
         if (selectedTab === 'both')
             setActiveSplitPane('docs');
@@ -123,7 +205,7 @@ export default function App() {
             uiStorage.set('last_parsable', selectedParsableKey);
         }
     }, [selectedParsableKey, parsables]);
-    const handleApplyLocalSpec = useCallback(({ key, document, switchingSpec }: {
+    const handleApplyLocalSpec = useCallback(({key, document, switchingSpec}: {
         key: string;
         document: OpenApiSpec;
         switchingSpec: boolean;
@@ -160,11 +242,28 @@ export default function App() {
             window.location.hash = hash;
         setIsUpdatingHash(false);
     }, []);
-    const { localSpec, localHistory, localOpenError, setLocalOpenError, hiddenFileInputRef, applyLocalSpec, handleFileChosen, handleSelectHistoryEntry, handleRemoveHistoryEntry, handleClearHistory, } = useLocalSpecifications({
+    const {
+        localSpec,
+        localHistory,
+        localOpenError,
+        setLocalOpenError,
+        hiddenFileInputRef,
+        applyLocalSpec,
+        handleFileChosen,
+        handleSelectHistoryEntry,
+        handleRemoveHistoryEntry,
+        handleClearHistory,
+    } = useLocalSpecifications({
         selectedSpecKey: selectedParsableKey,
         onApply: handleApplyLocalSpec,
     });
-    const { isRefreshingSpec, handleRefreshSpec, handleReloadSpecification, handleResetSpecification, handleResetAllConfigurations, } = useSpecificationActions({
+    const {
+        isRefreshingSpec,
+        handleRefreshSpec,
+        handleReloadSpecification,
+        handleResetSpecification,
+        handleResetAllConfigurations,
+    } = useSpecificationActions({
         selectedSpecKey: selectedParsableKey,
         parsables,
         localSpec,
@@ -273,13 +372,12 @@ export default function App() {
     const copyText = useCallback(async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
-        }
-        catch {
+        } catch {
         }
     }, []);
     const askAIAboutEndpoint = useCallback((path: string, method: string) => {
         setAssistantContextEndpoints(current => {
-            const next = { path, method: method.toLowerCase() };
+            const next = {path, method: method.toLowerCase()};
             if (!showAssistant)
                 return [next];
             if (current.some(endpoint => endpoint.path === next.path && endpoint.method === next.method))
@@ -298,7 +396,7 @@ export default function App() {
         view: ViewTabKind;
     }) => {
         if (target.type === 'endpoint') {
-            const { path, method } = target;
+            const {path, method} = target;
             if (action === 'ask-ai' && !hasAIProfile)
                 return;
             if (action === 'ask-ai') {
@@ -320,10 +418,10 @@ export default function App() {
                 copyText(url);
                 return;
             }
-            setShareTarget({ url, title: `${method.toUpperCase()} ${path} — ${label}`, description: label });
+            setShareTarget({url, title: `${method.toUpperCase()} ${path} — ${label}`, description: label});
             return;
         }
-        const { view } = target;
+        const {view} = target;
         if (action === 'open-new-tab') {
             openViewTabPermanent(view);
             return;
@@ -338,7 +436,7 @@ export default function App() {
             copyText(url);
             return;
         }
-        setShareTarget({ url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}` });
+        setShareTarget({url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}`});
     }, [spec, hasAIProfile, openEndpointPermanent, openViewTabPermanent, openEndpointInBrowserTab, openViewInBrowserTab, endpointDeepLink, viewDeepLink, copyText, askAIAboutEndpoint]);
     const handleSelectEndpoint = (path: string, method: string) => {
         if (activeTabId === 'view:search')
@@ -415,8 +513,7 @@ export default function App() {
             }
             setResultsQuery(query);
             openViewTab('search', query);
-        }
-        else {
+        } else {
             setSelectedMethods([]);
             setSelectedTags([]);
             setOnlyProtected(null);
@@ -429,8 +526,7 @@ export default function App() {
             if (target) {
                 setActiveTabId(target.id);
                 applyTabViewState(target);
-            }
-            else {
+            } else {
                 setSelectedEndpoint(null);
                 setActiveTabId(null);
                 setShowHome(false);
@@ -449,21 +545,21 @@ export default function App() {
         }
     };
     const handleOpenHome = () => {
-        setScrollIntent({ type: 'view', id: 'view:home' });
+        setScrollIntent({type: 'view', id: 'view:home'});
         openViewTab('home');
         if (!spec)
             window.location.hash = '#/';
         closeMobileIfNeeded();
     };
     const handleOpenAbout = () => {
-        setScrollIntent({ type: 'view', id: 'view:about' });
+        setScrollIntent({type: 'view', id: 'view:about'});
         openViewTab('about');
         if (!spec)
             window.location.hash = '#/about';
         closeMobileIfNeeded();
     };
     const handleOpenSchemaExplorer = () => {
-        setScrollIntent({ type: 'view', id: 'view:schemas' });
+        setScrollIntent({type: 'view', id: 'view:schemas'});
         openViewTab('schemas');
         closeMobileIfNeeded();
     };
@@ -610,12 +706,38 @@ export default function App() {
     const isLocalMode = Object.keys(parsables).length === 0;
     const canOpenLocal = configSource === 'none';
     const assistantTabActive = showAssistant || activeTabId === 'view:assistant';
-    const content = () => (<WorkspaceContent spec={spec} specKey={selectedParsableKey} canOpenLocal={canOpenLocal} onOpenLocalFile={() => hiddenFileInputRef.current?.click()} showAbout={showAbout} showWelcome={showWelcome} assistantActive={assistantTabActive} activeTabId={activeTabId} resultsQuery={resultsQuery} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods} selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} selectedServer={selectedServer} setSelectedServer={setSelectedServer} displayRoutes={sidebarDisplayRoutes} selectedEndpoint={selectedEndpoint} selectedViewMode={selectedTab} setSelectedViewMode={setSelectedTab} activeSplitPane={activeSplitPane} setActiveSplitPane={setActiveSplitPane} splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth} isSplitDragging={isSplitDragging} onSplitResizeMouseDown={onSplitResizeMouseDown} isMobile={isMobile} activeAuth={activeAuth} resolvedThemeMode={resolvedThemeMode} activeResponseCode={activeResponseCode} setActiveResponseCode={setActiveResponseCode} examineResponses={examineResponses} setExamineResponses={setExamineResponses} showSchemaExplorer={showSchemaExplorer} showHome={showHome} onOpenAbout={handleOpenAbout} onOpenHome={handleOpenHome} onOpenSchema={handlePushSchema} onSearchChange={handleSearchChange} onSelectEndpoint={handleSelectEndpoint} onSearchResult={handleSearchResult} onOpenEndpointPermanent={openEndpointPermanent} onOpenEndpointPreview={openEndpointPreview} onGenerateCode={setCodeGenEndpoint} onHidePageViews={() => {
-            setShowHome(false);
-            setShowSchemaExplorer(false);
-            setShowAbout(false);
-            setShowAssistant(false);
-        }}/>);
+    const content = () => (<WorkspaceContent spec={spec} specKey={selectedParsableKey} canOpenLocal={canOpenLocal}
+                                             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                                             showAbout={showAbout} showWelcome={showWelcome}
+                                             assistantActive={assistantTabActive} activeTabId={activeTabId}
+                                             resultsQuery={resultsQuery} selectedMethods={selectedMethods}
+                                             setSelectedMethods={setSelectedMethods} selectedTags={selectedTags}
+                                             setSelectedTags={setSelectedTags} onlyProtected={onlyProtected}
+                                             setOnlyProtected={setOnlyProtected} selectedServer={selectedServer}
+                                             setSelectedServer={setSelectedServer} displayRoutes={sidebarDisplayRoutes}
+                                             selectedEndpoint={selectedEndpoint} selectedViewMode={selectedTab}
+                                             setSelectedViewMode={setSelectedTab} activeSplitPane={activeSplitPane}
+                                             setActiveSplitPane={setActiveSplitPane}
+                                             splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth}
+                                             isSplitDragging={isSplitDragging}
+                                             onSplitResizeMouseDown={onSplitResizeMouseDown} isMobile={isMobile}
+                                             activeAuth={activeAuth} resolvedThemeMode={resolvedThemeMode}
+                                             activeResponseCode={activeResponseCode}
+                                             setActiveResponseCode={setActiveResponseCode}
+                                             examineResponses={examineResponses}
+                                             setExamineResponses={setExamineResponses}
+                                             showSchemaExplorer={showSchemaExplorer} showHome={showHome}
+                                             onOpenAbout={handleOpenAbout} onOpenHome={handleOpenHome}
+                                             onOpenSchema={handlePushSchema} onSearchChange={handleSearchChange}
+                                             onSelectEndpoint={handleSelectEndpoint} onSearchResult={handleSearchResult}
+                                             onOpenEndpointPermanent={openEndpointPermanent}
+                                             onOpenEndpointPreview={openEndpointPreview}
+                                             onGenerateCode={setCodeGenEndpoint} onHidePageViews={() => {
+        setShowHome(false);
+        setShowSchemaExplorer(false);
+        setShowAbout(false);
+        setShowAssistant(false);
+    }}/>);
     const isSidebarCollapsed = isMobile ? false : desktopCollapsed;
     const onToggleCollapse = () => {
         if (isMobile)
@@ -624,48 +746,131 @@ export default function App() {
             setDesktopCollapsed(c => !c);
     };
     return (<TooltipProvider>
-            <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
-                <div style={styleVars} className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
+        <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
+            <div style={styleVars}
+                 className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
 
-                    <input ref={hiddenFileInputRef} type="file" accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml" className="hidden" onChange={handleFileChosen}/>
+                <input ref={hiddenFileInputRef} type="file"
+                       accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml" className="hidden"
+                       onChange={handleFileChosen}/>
 
-                    <Topbar parsables={parsables} selectedParsableKey={selectedParsableKey} onSelectParsable={handleSelectParsable} activeAuth={activeAuth} onUpdateAuth={setActiveAuth} onOpenAuthModal={() => setShowAuthModal(true)} searchQuery={searchQuery} onSearchChange={handleSearchChange} onDownloadSpec={handleDownload} title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec} showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse} onOpenMobileSidebar={() => setMobileOpen(true)} onOpenAssistant={handleOpenAssistant} selectedThemeName={selectedThemeName} onSelectTheme={setSelectedThemeName} onOpenThemeModal={() => setShowThemeModal(true)} isLocalMode={isLocalMode} canOpenLocal={canOpenLocal} onOpenLocalFile={() => hiddenFileInputRef.current?.click()} onRefreshSpec={handleRefreshSpec} onReloadSpecification={handleReloadSpecification} onResetSpecification={handleResetSpecification} onResetAllConfigurations={handleResetAllConfigurations} isRefreshingSpec={isRefreshingSpec} localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry} onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory} localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)} onSearchHasResults={searchHasResults} hideSearch={false}/>
+                <Topbar parsables={parsables} selectedParsableKey={selectedParsableKey}
+                        onSelectParsable={handleSelectParsable} activeAuth={activeAuth} onUpdateAuth={setActiveAuth}
+                        onOpenAuthModal={() => setShowAuthModal(true)} searchQuery={searchQuery}
+                        onSearchChange={handleSearchChange} onDownloadSpec={handleDownload}
+                        title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec}
+                        showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
+                        onOpenMobileSidebar={() => setMobileOpen(true)} onOpenAssistant={handleOpenAssistant}
+                        selectedThemeName={selectedThemeName} onSelectTheme={setSelectedThemeName}
+                        onOpenThemeModal={() => setShowThemeModal(true)} isLocalMode={isLocalMode}
+                        canOpenLocal={canOpenLocal} onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                        onRefreshSpec={handleRefreshSpec} onReloadSpecification={handleReloadSpecification}
+                        onResetSpecification={handleResetSpecification}
+                        onResetAllConfigurations={handleResetAllConfigurations} isRefreshingSpec={isRefreshingSpec}
+                        localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry}
+                        onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory}
+                        localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)}
+                        onSearchHasResults={searchHasResults} hideSearch={false}/>
 
-                    <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
-                        {isLoadingSpec ? (<SpecLoadingState />) : !spec ? (content()) : (<>
-                                <Sidebar spec={spec} parsables={isMobile ? parsables : undefined} selectedParsableKey={selectedParsableKey} onSelectParsable={isMobile ? handleSelectParsable : undefined} selectedServer={selectedServer} onSelectServer={setSelectedServer} isCollapsed={desktopCollapsed} onToggleCollapse={() => setDesktopCollapsed(c => !c)} onOpenSchemaExplorer={handleOpenSchemaExplorer} showSchemaExplorer={showSchemaExplorer} selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods} selectedTags={selectedTags} setSelectedTags={setSelectedTags} onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected} searchQuery={searchQuery} selectedEndpoint={selectedEndpoint} onSelectEndpoint={handleSelectEndpoint} onMiddleClickEndpoint={openEndpointPermanent} getEndpointHref={(path, method) => generateSmartRoute({
-                parsableKey: selectedParsableKey,
-                showHome: false,
-                showAbout: false,
-                showAssistant: false,
-                showSchemaExplorer: false,
-                endpoint: { path, method },
-                tab: 'docs',
-                schemaModals: [],
-                responseCode: null,
-                searchQuery: '',
-                searchMethods: [],
-                searchTags: [],
-                searchSecured: null,
-                activeSpec: spec
-            })} onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout} onOpenViewPermanent={openViewTabPermanent} onContextAction={handleContextAction} scrollIntent={scrollIntent} setScrollIntent={setScrollIntent} showHome={showHome} showAbout={showAbout} showAssistant={showAssistant} assistantContextEndpoints={assistantContextEndpoints} hasAIProfile={hasAIProfile} themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode} onToggleThemeMode={toggleThemeMode} selectedThemeName={selectedThemeName} onOpenThemeModal={() => setShowThemeModal(true)} onOpenAuthModal={() => setShowAuthModal(true)} activeAuth={activeAuth} onDownloadSpec={handleDownload} isLocalMode={isLocalMode} canOpenLocal={canOpenLocal} onOpenLocalFile={() => hiddenFileInputRef.current?.click()} onDisplayRoutesChange={setSidebarDisplayRoutes} onReloadSpecification={handleReloadSpecification} onResetSpecification={handleResetSpecification} onResetAllConfigurations={handleResetAllConfigurations} onRefreshSpec={handleRefreshSpec} isRefreshingSpec={isRefreshingSpec} localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry} onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory} localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onOpenMobile={() => setMobileOpen(true)}/>
-                                <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
-                                    {endpointTabs.length > 0 && spec && (<EndpointTabs tabs={endpointTabs} activeTabId={activeTabId} onSelectTab={handleSelectTab} onCloseTab={handleCloseTab} onDoubleClickTab={handleDoubleClickTab} onCloseAllLeft={handleCloseAllLeft} onCloseAllRight={handleCloseAllRight} onCloseOthers={handleCloseOthers} onReorderTabs={handleReorderTabs} assistantUnread={assistantUnread} onOpenSwitcher={openSwitcher}/>)}
-                                    <div className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'hidden' : 'flex')}>
-                                        {content()}
-                                    </div>
-                                    <div className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'flex' : 'hidden')}>
-                                        {spec && <AIAssistantView spec={spec} parsableKey={selectedParsableKey} selectedEndpoints={assistantContextEndpoints} selectedServer={selectedServer} activeAuth={activeAuth} activeTab={selectedTab} searchQuery={searchQuery} settings={aiSettings} hasAIProfile={hasAIProfile} isVisible={assistantTabActive} onOpenSettings={() => setShowAISettings(true)} onClearEndpointContext={() => setAssistantContextEndpoints([])} onRemoveEndpointContext={(path, method) => setAssistantContextEndpoints(current => current.filter(endpoint => !(endpoint.path === path && endpoint.method === method)))} onOpenEndpoint={handleSelectEndpoint} onOpenRunner={handleOpenRunner} onBridgeAction={handleAssistantBridgeAction} onResponseFinished={handleAssistantResponseFinished}/>}
-                                    </div>
-                                </div>
-                            </>)}
-                    </div>
-
-                    <AppModalLayer spec={spec} specKey={selectedParsableKey} schemaStack={modalsStack} setSchemaStack={setModalsStack} onPopSchema={handlePopSchema} onPushSchema={handlePushSchema} codeEndpoint={codeGenEndpoint} setCodeEndpoint={setCodeGenEndpoint} activeAuth={activeAuth} setActiveAuth={setActiveAuth} authOpen={showAuthModal} setAuthOpen={setShowAuthModal} switcherOpen={switcherOpen} tabs={endpointTabs} activeTabId={activeTabId} switcherIndex={switcherIndex} onCancelSwitcher={cancelSwitcher} onSelectSwitcherTab={id => {
-            handleSelectTab(id);
-            setSwitcherOpen(false);
-        }} shareTarget={shareTarget} setShareTarget={setShareTarget} themeOpen={showThemeModal} setThemeOpen={setShowThemeModal} selectedThemeName={selectedThemeName} setSelectedThemeName={setSelectedThemeName} currentThemeMode={currentThemeMode} setCurrentThemeMode={setCurrentThemeMode} resolvedThemeMode={resolvedThemeMode} toggleThemeMode={toggleThemeMode} aiSettingsOpen={showAISettings} setAISettingsOpen={setShowAISettings} aiSettings={aiSettings} onSaveAISettings={handleAISettingsSave}/>
+                <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
+                    {isLoadingSpec ? (<SpecLoadingState/>) : !spec ? (content()) : (<>
+                        <Sidebar spec={spec} parsables={isMobile ? parsables : undefined}
+                                 selectedParsableKey={selectedParsableKey}
+                                 onSelectParsable={isMobile ? handleSelectParsable : undefined}
+                                 selectedServer={selectedServer} onSelectServer={setSelectedServer}
+                                 isCollapsed={desktopCollapsed} onToggleCollapse={() => setDesktopCollapsed(c => !c)}
+                                 onOpenSchemaExplorer={handleOpenSchemaExplorer} showSchemaExplorer={showSchemaExplorer}
+                                 selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
+                                 selectedTags={selectedTags} setSelectedTags={setSelectedTags}
+                                 onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected}
+                                 searchQuery={searchQuery} selectedEndpoint={selectedEndpoint}
+                                 onSelectEndpoint={handleSelectEndpoint} onMiddleClickEndpoint={openEndpointPermanent}
+                                 getEndpointHref={(path, method) => generateSmartRoute({
+                                     parsableKey: selectedParsableKey,
+                                     showHome: false,
+                                     showAbout: false,
+                                     showAssistant: false,
+                                     showSchemaExplorer: false,
+                                     endpoint: {path, method},
+                                     tab: 'docs',
+                                     schemaModals: [],
+                                     responseCode: null,
+                                     searchQuery: '',
+                                     searchMethods: [],
+                                     searchTags: [],
+                                     searchSecured: null,
+                                     activeSpec: spec
+                                 })} onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout}
+                                 onOpenViewPermanent={openViewTabPermanent} onContextAction={handleContextAction}
+                                 scrollIntent={scrollIntent} setScrollIntent={setScrollIntent} showHome={showHome}
+                                 showAbout={showAbout} showAssistant={showAssistant}
+                                 assistantContextEndpoints={assistantContextEndpoints} hasAIProfile={hasAIProfile}
+                                 themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode}
+                                 onToggleThemeMode={toggleThemeMode} selectedThemeName={selectedThemeName}
+                                 onOpenThemeModal={() => setShowThemeModal(true)}
+                                 onOpenAuthModal={() => setShowAuthModal(true)} activeAuth={activeAuth}
+                                 onDownloadSpec={handleDownload} isLocalMode={isLocalMode} canOpenLocal={canOpenLocal}
+                                 onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                                 onDisplayRoutesChange={setSidebarDisplayRoutes}
+                                 onReloadSpecification={handleReloadSpecification}
+                                 onResetSpecification={handleResetSpecification}
+                                 onResetAllConfigurations={handleResetAllConfigurations}
+                                 onRefreshSpec={handleRefreshSpec} isRefreshingSpec={isRefreshingSpec}
+                                 localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry}
+                                 onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory}
+                                 localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)}
+                                 mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)}
+                                 onOpenMobile={() => setMobileOpen(true)}/>
+                        <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
+                            {endpointTabs.length > 0 && spec && (
+                                <EndpointTabs tabs={endpointTabs} activeTabId={activeTabId}
+                                              onSelectTab={handleSelectTab} onCloseTab={handleCloseTab}
+                                              onDoubleClickTab={handleDoubleClickTab}
+                                              onCloseAllLeft={handleCloseAllLeft} onCloseAllRight={handleCloseAllRight}
+                                              onCloseOthers={handleCloseOthers} onReorderTabs={handleReorderTabs}
+                                              assistantUnread={assistantUnread} onOpenSwitcher={openSwitcher}/>)}
+                            <div
+                                className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'hidden' : 'flex')}>
+                                {content()}
+                            </div>
+                            <div
+                                className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'flex' : 'hidden')}>
+                                {spec && <AIAssistantView spec={spec} parsableKey={selectedParsableKey}
+                                                          selectedEndpoints={assistantContextEndpoints}
+                                                          selectedServer={selectedServer} activeAuth={activeAuth}
+                                                          activeTab={selectedTab} searchQuery={searchQuery}
+                                                          settings={aiSettings} hasAIProfile={hasAIProfile}
+                                                          isVisible={assistantTabActive}
+                                                          onOpenSettings={() => setShowAISettings(true)}
+                                                          onClearEndpointContext={() => setAssistantContextEndpoints([])}
+                                                          onRemoveEndpointContext={(path, method) => setAssistantContextEndpoints(current => current.filter(endpoint => !(endpoint.path === path && endpoint.method === method)))}
+                                                          onOpenEndpoint={handleSelectEndpoint}
+                                                          onOpenRunner={handleOpenRunner}
+                                                          onBridgeAction={handleAssistantBridgeAction}
+                                                          onResponseFinished={handleAssistantResponseFinished}/>}
+                            </div>
+                        </div>
+                    </>)}
                 </div>
-            </OperationLinkProvider>
-        </TooltipProvider>);
+
+                <AppModalLayer spec={spec} specKey={selectedParsableKey} schemaStack={modalsStack}
+                               setSchemaStack={setModalsStack} onPopSchema={handlePopSchema}
+                               onPushSchema={handlePushSchema} codeEndpoint={codeGenEndpoint}
+                               setCodeEndpoint={setCodeGenEndpoint} activeAuth={activeAuth}
+                               setActiveAuth={setActiveAuth} authOpen={showAuthModal} setAuthOpen={setShowAuthModal}
+                               switcherOpen={switcherOpen} tabs={endpointTabs} activeTabId={activeTabId}
+                               switcherIndex={switcherIndex} onCancelSwitcher={cancelSwitcher}
+                               onSelectSwitcherTab={id => {
+                                   handleSelectTab(id);
+                                   setSwitcherOpen(false);
+                               }} shareTarget={shareTarget} setShareTarget={setShareTarget} themeOpen={showThemeModal}
+                               setThemeOpen={setShowThemeModal} selectedThemeName={selectedThemeName}
+                               setSelectedThemeName={setSelectedThemeName} currentThemeMode={currentThemeMode}
+                               setCurrentThemeMode={setCurrentThemeMode} resolvedThemeMode={resolvedThemeMode}
+                               toggleThemeMode={toggleThemeMode} aiSettingsOpen={showAISettings}
+                               setAISettingsOpen={setShowAISettings} aiSettings={aiSettings}
+                               onSaveAISettings={handleAISettingsSave}/>
+            </div>
+        </OperationLinkProvider>
+    </TooltipProvider>);
 }

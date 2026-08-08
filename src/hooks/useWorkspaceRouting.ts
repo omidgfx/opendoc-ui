@@ -1,9 +1,10 @@
-import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useState } from 'react';
-import type { ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute } from '../types';
-import type { TabItem, ViewTabKind } from '../components/endpoint/EndpointTabs';
-import { generateSmartRoute, parseSmartRoute, resolveEndpointFromId } from '../utils/routing';
-import { specStorage } from '../utils/storage';
-import { hasExplicitSpecRoute } from '../utils/tabPersistence';
+import {type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useState} from 'react';
+import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../types';
+import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
+import {generateSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
+import {specStorage} from '../utils/storage';
+import {hasExplicitSpecRoute} from '../utils/tabPersistence';
+
 type Endpoint = {
     path: string;
     method: string;
@@ -13,6 +14,7 @@ type NavigationSnapshot = {
     showWelcome: boolean;
     [key: string]: unknown;
 };
+
 interface UseWorkspaceRoutingOptions {
     parsables: ParsableConfig;
     selectedSpecKey: string;
@@ -68,14 +70,70 @@ interface UseWorkspaceRoutingOptions {
     openViewTabPermanent: (view: ViewTabKind, query?: string) => void;
     ensureViewTabFromState: (override?: any) => void;
 }
+
 const hasExplicitTab = () => window.location.hash.includes('?tab=') || window.location.hash.includes('&tab=');
 const routeMode = (mode: 'view' | 'examine' | 'both'): ViewMode => mode === 'examine' ? 'examine' : mode === 'both' ? 'both' : 'docs';
 const storedMode = (mode: ViewMode): string => mode === 'examine' ? 'examine' : mode === 'both' ? 'both' : 'view';
 const hasEmptySearchRoute = (route: ParsedRoute): boolean => /[?&]search(?:=|&|$)/.test(window.location.hash)
     && !route.searchQuery && route.searchMethods.length === 0
     && route.searchTags.length === 0 && route.searchSecured === null;
+
 export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
-    const { parsables, selectedSpecKey, setSelectedSpecKey, loadedSpecKey, spec, setSpec, setLoadedSpecKey, isLoadingSpec, isInitialLoadComplete, isUpdatingHash, setIsUpdatingHash, tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef, navStateRef, showWelcome, setShowWelcome, showHome, setShowHome, showAbout, setShowAbout, showAssistant, setShowAssistant, showSchemaExplorer, setShowSchemaExplorer, selectedEndpoint, setSelectedEndpoint, selectedViewMode, setSelectedViewMode, modalStack, setModalStack, activeResponseCode, setActiveResponseCode, searchQuery, setSearchQuery, setResultsQuery, selectedMethods, setSelectedMethods, selectedTags, setSelectedTags, onlyProtected, setOnlyProtected, activeTabId, setTabs, setActiveTabId, setViewModes, setExamineResponses, setAssistantContextEndpoints, openEndpointPreview, openEndpointPermanent, openViewTab, openViewTabPermanent, ensureViewTabFromState, } = options;
+    const {
+        parsables,
+        selectedSpecKey,
+        setSelectedSpecKey,
+        loadedSpecKey,
+        spec,
+        setSpec,
+        setLoadedSpecKey,
+        isLoadingSpec,
+        isInitialLoadComplete,
+        isUpdatingHash,
+        setIsUpdatingHash,
+        tabsRestoredForKey,
+        tabsRestoreDoneRef,
+        specRouteReadyRef,
+        navStateRef,
+        showWelcome,
+        setShowWelcome,
+        showHome,
+        setShowHome,
+        showAbout,
+        setShowAbout,
+        showAssistant,
+        setShowAssistant,
+        showSchemaExplorer,
+        setShowSchemaExplorer,
+        selectedEndpoint,
+        setSelectedEndpoint,
+        selectedViewMode,
+        setSelectedViewMode,
+        modalStack,
+        setModalStack,
+        activeResponseCode,
+        setActiveResponseCode,
+        searchQuery,
+        setSearchQuery,
+        setResultsQuery,
+        selectedMethods,
+        setSelectedMethods,
+        selectedTags,
+        setSelectedTags,
+        onlyProtected,
+        setOnlyProtected,
+        activeTabId,
+        setTabs,
+        setActiveTabId,
+        setViewModes,
+        setExamineResponses,
+        setAssistantContextEndpoints,
+        openEndpointPreview,
+        openEndpointPermanent,
+        openViewTab,
+        openViewTabPermanent,
+        ensureViewTabFromState,
+    } = options;
     const syncHashToState = useCallback(() => {
         const parsed = parseSmartRoute(window.location.hash);
         if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey && parsables[parsed.parsableKey]) {
@@ -125,14 +183,11 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowSchemaExplorer(false);
                 setShowAbout(false);
                 setShowAssistant(false);
-            }
-            else
+            } else
                 setSelectedEndpoint(null);
-        }
-        else if (parsed.endpoint) {
+        } else if (parsed.endpoint) {
             openEndpointPreview(parsed.endpoint.path, parsed.endpoint.method);
-        }
-        else {
+        } else {
             setSelectedEndpoint(null);
         }
         if (hasExplicitTab())
@@ -178,7 +233,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             showSchemaExplorer,
             endpoint: selectedEndpoint,
             tab: selectedViewMode,
-            schemaModals: modalStack.map(name => ({ schemaName: name, schema: spec.components?.schemas?.[name] || {} })),
+            schemaModals: modalStack.map(name => ({schemaName: name, schema: spec.components?.schemas?.[name] || {}})),
             responseCode: activeResponseCode,
             searchQuery: searchInUrl ? searchQuery : '',
             searchMethods: searchInUrl ? selectedMethods : [],
@@ -225,14 +280,11 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowSchemaExplorer(false);
                 setShowAbout(false);
                 setShowAssistant(false);
-            }
-            else
+            } else
                 setSelectedEndpoint(null);
-        }
-        else if (parsed.endpoint) {
+        } else if (parsed.endpoint) {
             openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
-        }
-        else {
+        } else {
             setSelectedEndpoint(null);
         }
         setModalStack(parsed.schemas.filter(name => spec.components?.schemas?.[name]));

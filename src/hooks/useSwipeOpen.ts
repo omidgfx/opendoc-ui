@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import {useEffect, useRef} from 'react';
+
 export function useSwipeEdgeOpen(enabled: boolean, onOpen: () => void, edgeThreshold = 28, minDistance = 50) {
     const startRef = useRef<{
         x: number;
@@ -34,9 +35,9 @@ export function useSwipeEdgeOpen(enabled: boolean, onOpen: () => void, edgeThres
                 onOpen();
             }
         };
-        window.addEventListener('touchstart', onTouchStart, { passive: true });
-        window.addEventListener('touchmove', onTouchMove, { passive: true });
-        window.addEventListener('touchend', onTouchEnd, { passive: true });
+        window.addEventListener('touchstart', onTouchStart, {passive: true});
+        window.addEventListener('touchmove', onTouchMove, {passive: true});
+        window.addEventListener('touchend', onTouchEnd, {passive: true});
         return () => {
             window.removeEventListener('touchstart', onTouchStart);
             window.removeEventListener('touchmove', onTouchMove);

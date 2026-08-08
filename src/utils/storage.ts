@@ -1,4 +1,5 @@
-import { idbClearPrefix, idbDelete, idbGetAll, idbSet } from './indexedDb';
+import {idbClearPrefix, idbDelete, idbGetAll, idbSet} from './indexedDb';
+
 const IDB_STORAGE_PREFIX = 'storage:';
 const LOCAL_DELETE_MARKER = '__opendoc_ui_deleted_v1__';
 const memoryStore = new Map<string, string>();
@@ -33,8 +34,7 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
             memoryStore.set(key, value);
             await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
         }
-    }
-    catch {
+    } catch {
     }
     storageHydrated = true;
     return true;
@@ -45,8 +45,7 @@ let lastWriteError: string | null = null;
 const byteLength = (value: string): number => {
     try {
         return new TextEncoder().encode(value).byteLength;
-    }
-    catch {
+    } catch {
         return value.length * 2;
     }
 };
@@ -56,8 +55,7 @@ const readRaw = (key: string): string | null => {
     try {
         const value = window.localStorage.getItem(key);
         return value === LOCAL_DELETE_MARKER ? null : value;
-    }
-    catch {
+    } catch {
         return null;
     }
 };
@@ -69,8 +67,7 @@ const currentUsageBytes = (): number => {
             total += byteLength(key) + byteLength(window.localStorage.getItem(key) || '');
         }
         return total;
-    }
-    catch {
+    } catch {
         return 0;
     }
 };
@@ -86,8 +83,7 @@ const writeRaw = (key: string, value: string): boolean => {
         window.localStorage.setItem(key, value);
         lastWriteError = null;
         return true;
-    }
-    catch (e) {
+    } catch (e) {
         lastWriteError = e instanceof Error ? e.message : 'localStorage is unavailable.';
         console.warn(`localStorage write failed for "${key}"`, e);
         return false;
@@ -96,15 +92,13 @@ const writeRaw = (key: string, value: string): boolean => {
 const deleteRaw = (key: string) => {
     try {
         window.localStorage.removeItem(key);
-    }
-    catch {
+    } catch {
     }
 };
 const markRawDeleted = (key: string) => {
     try {
         window.localStorage.setItem(key, LOCAL_DELETE_MARKER);
-    }
-    catch {
+    } catch {
     }
 };
 export const storage = {
@@ -115,8 +109,7 @@ export const storage = {
             window.localStorage.setItem(TEST_KEY, '1');
             window.localStorage.removeItem(TEST_KEY);
             return true;
-        }
-        catch {
+        } catch {
             return false;
         }
     },
@@ -153,8 +146,7 @@ export const storage = {
         if (indexedDbEnabled) {
             markRawDeleted(key);
             await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
-        }
-        else {
+        } else {
             deleteRaw(key);
         }
     },
@@ -178,8 +170,7 @@ export const storage = {
                 return fallback;
             }
             return parsed as T;
-        }
-        catch {
+        } catch {
             this.remove(key);
             return fallback;
         }
@@ -187,8 +178,7 @@ export const storage = {
     setJSON(key: string, value: unknown): boolean {
         try {
             return this.set(key, JSON.stringify(value));
-        }
-        catch {
+        } catch {
             lastWriteError = 'Unable to serialize value for persistent storage.';
             return false;
         }
@@ -197,8 +187,7 @@ export const storage = {
         const keys = new Set<string>(memoryStore.keys());
         try {
             Object.keys(window.localStorage).forEach(key => keys.add(key));
-        }
-        catch {
+        } catch {
         }
         return Array.from(keys).filter(key => key.startsWith(prefix) && readRaw(key) !== null);
     },
@@ -213,8 +202,7 @@ export const sessionStore = {
     get(key: string, fallback = ''): string {
         try {
             return window.sessionStorage.getItem(key) ?? fallback;
-        }
-        catch {
+        } catch {
             return fallback;
         }
     },
@@ -222,16 +210,14 @@ export const sessionStore = {
         try {
             window.sessionStorage.setItem(key, value);
             return true;
-        }
-        catch {
+        } catch {
             return false;
         }
     },
     remove(key: string) {
         try {
             window.sessionStorage.removeItem(key);
-        }
-        catch {
+        } catch {
         }
     },
     getJSON<T>(key: string, fallback: T): T {
@@ -240,8 +226,7 @@ export const sessionStore = {
             return fallback;
         try {
             return JSON.parse(raw) as T;
-        }
-        catch {
+        } catch {
             this.remove(key);
             return fallback;
         }
@@ -249,8 +234,7 @@ export const sessionStore = {
     setJSON(key: string, value: unknown): boolean {
         try {
             return this.set(key, JSON.stringify(value));
-        }
-        catch {
+        } catch {
             return false;
         }
     },
@@ -316,8 +300,7 @@ export const specStorage = {
             return null;
         try {
             return decodeURIComponent(rest.slice(0, sep));
-        }
-        catch {
+        } catch {
             return null;
         }
     },
@@ -354,13 +337,13 @@ const migrateSpecKeys = () => {
         prefix: string;
         name: string;
     }> = [
-        { prefix: 'selected_theme_name_', name: 'theme' },
-        { prefix: 'theme_mode_', name: 'theme_mode' },
-        { prefix: 'preferred_tab_', name: 'tab_mode' },
-        { prefix: 'endpoint_tabs_', name: 'tabs' },
+        {prefix: 'selected_theme_name_', name: 'theme'},
+        {prefix: 'theme_mode_', name: 'theme_mode'},
+        {prefix: 'preferred_tab_', name: 'tab_mode'},
+        {prefix: 'endpoint_tabs_', name: 'tabs'},
     ];
     storage.keys('').forEach((legacyKey) => {
-        for (const { prefix, name } of patterns) {
+        for (const {prefix, name} of patterns) {
             if (!legacyKey.startsWith(prefix))
                 continue;
             const specKey = legacyKey.slice(prefix.length);

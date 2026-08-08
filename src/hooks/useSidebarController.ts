@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { specStorage, uiStorage } from '../utils/storage';
+import {useEffect, useState} from 'react';
+import {specStorage, uiStorage} from '../utils/storage';
+
 export function useSidebarController(selectedSpecKey: string, isMobile: boolean) {
     const [sidebarDisplayRoutes, setSidebarDisplayRoutes] = useState(true);
     const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => uiStorage.get('sidebar_collapsed') === 'true');

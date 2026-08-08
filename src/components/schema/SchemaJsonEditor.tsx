@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import {useEffect, useRef, useState} from 'react';
 import Editor from '@monaco-editor/react';
 import SchemaEditorToolButton from './SchemaEditorToolButton';
-import { Tip } from '../common/Tooltip';
-import { formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText } from '../../utils/bodyFormats';
+import {Tip} from '../common/Tooltip';
+import {formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
+
 interface SchemaJsonEditorProps {
     value: string;
     onChange: (val: string) => void;
@@ -12,7 +13,16 @@ interface SchemaJsonEditorProps {
     themeMode?: 'light' | 'dark';
     onCtrlEnter?: () => void;
 }
-export default function SchemaJsonEditor({ value, onChange, schema, componentsSchemas, mediaType = 'application/json', themeMode = 'dark', onCtrlEnter }: SchemaJsonEditorProps) {
+
+export default function SchemaJsonEditor({
+                                             value,
+                                             onChange,
+                                             schema,
+                                             componentsSchemas,
+                                             mediaType = 'application/json',
+                                             themeMode = 'dark',
+                                             onCtrlEnter
+                                         }: SchemaJsonEditorProps) {
     const format = getBodyFormat(mediaType);
     const editorLanguage = getBodyEditorLanguage(value, mediaType);
     const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
@@ -29,13 +39,12 @@ export default function SchemaJsonEditor({ value, onChange, schema, componentsSc
             monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                 validate: format.isJson,
                 schemas: format.isJson && schema ? [{
-                        uri: 'schemas://openapi/schema.json',
-                        fileMatch: ['*'],
-                        schema: { ...schema, definitions: componentsSchemas || {} }
-                    }] : [],
+                    uri: 'schemas://openapi/schema.json',
+                    fileMatch: ['*'],
+                    schema: {...schema, definitions: componentsSchemas || {}}
+                }] : [],
             });
-        }
-        catch {
+        } catch {
         }
     }, [format.isJson, schema, componentsSchemas]);
     useEffect(() => {
@@ -69,105 +78,119 @@ export default function SchemaJsonEditor({ value, onChange, schema, componentsSc
                 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                     validate: true,
                     schemas: [{
-                            uri: 'schemas://openapi/schema.json',
-                            fileMatch: ['*'],
-                            schema: { ...schema, definitions: componentsSchemas || {} }
-                        }],
+                        uri: 'schemas://openapi/schema.json',
+                        fileMatch: ['*'],
+                        schema: {...schema, definitions: componentsSchemas || {}}
+                    }],
                 });
-            }
-            catch {
+            } catch {
             }
         }
     };
     const toggleMinimap = () => {
         const next = !minimapEnabled;
         setMinimapEnabled(next);
-        editorRef.current?.updateOptions({ minimap: { enabled: next } });
+        editorRef.current?.updateOptions({minimap: {enabled: next}});
     };
     const toggleWordWrap = () => {
         const next = !wordWrapEnabled;
         setWordWrapEnabled(next);
-        editorRef.current?.updateOptions({ wordWrap: next ? 'on' : 'off' });
+        editorRef.current?.updateOptions({wordWrap: next ? 'on' : 'off'});
     };
     const toggleLineNumbers = () => {
         const next = !lineNumbersEnabled;
         setLineNumbersEnabled(next);
-        editorRef.current?.updateOptions({ lineNumbers: next ? 'on' : 'off' });
+        editorRef.current?.updateOptions({lineNumbers: next ? 'on' : 'off'});
     };
     const triggerFind = () => {
         editorRef.current?.focus();
         editorRef.current?.getAction('actions.find')?.run();
     };
-    return (<div className="flex flex-col w-full min-w-0 rounded-xl border border-[var(--border)] overflow-hidden shadow-sm bg-[var(--background)]">
+    return (<div
+        className="flex flex-col w-full min-w-0 rounded-xl border border-[var(--border)] overflow-hidden shadow-sm bg-[var(--background)]">
 
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-2.5 py-1.5">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] select-none">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: errorFeedback ? '#ef4444' : '#10b981' }}></span>
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-heading)]">
-                            {errorFeedback ? 'Error' : 'Valid'}
-                        </span>
+        <div
+            className="flex flex-wrap items-center justify-between gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+                <span
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] select-none">
+                    <span className="w-1.5 h-1.5 rounded-full"
+                          style={{backgroundColor: errorFeedback ? '#ef4444' : '#10b981'}}></span>
+                    <span
+                        className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                        {errorFeedback ? 'Error' : 'Valid'}
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{editorLanguage.toUpperCase()} Body</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                    <Tip content="Search (Ctrl+F)">
-                        <SchemaEditorToolButton active onClick={triggerFind} icon="ph-magnifying-glass" label="Find" iconColor="text-sky-500"/>
-                    </Tip>
-                    <Tip content="Toggle line wrapping">
-                        <SchemaEditorToolButton active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t" label="Wrap"/>
-                    </Tip>
-                    <Tip content="Toggle line numbers">
-                        <SchemaEditorToolButton active={lineNumbersEnabled} onClick={toggleLineNumbers} icon="ph-list-numbers" label="Numbers"/>
-                    </Tip>
-                    <Tip content="Toggle code minimap">
-                        <SchemaEditorToolButton active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold" label="Minimap"/>
-                    </Tip>
-                    <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
-                    <Tip content={`Format ${editorLanguage.toUpperCase()}`}>
-                        <button type="button" onClick={handleFormat} className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
-                            <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>
-                            <span className="hidden sm:inline">Prettify</span>
-                        </button>
-                    </Tip>
-                </div>
+                </span>
+                <span
+                    className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">{editorLanguage.toUpperCase()} Body</span>
             </div>
-
-
-            <div className="flex flex-col relative w-full min-w-0 animate-in fade-in" style={{ height: 380 }}>
-                <Editor height="100%" language={editorLanguage} defaultLanguage={editorLanguage} value={value} onChange={(val) => onChange(val || '')} theme={themeMode === 'dark' ? 'vs-dark' : 'light'} onMount={handleEditorDidMount} loading={<div className="flex flex-col items-center justify-center h-full gap-2 text-xs text-[var(--text-muted)]">
-                        <i className="ph ph-spinner animate-spin text-lg text-[var(--primary)]"></i><span>Loading
-                        editor…</span></div>} options={{
-            minimap: { enabled: false },
-            fontSize: 12,
-            fontFamily: 'var(--font-mono), monospace',
-            lineHeight: 20,
-            tabSize: 2,
-            insertSpaces: true,
-            scrollBeyondLastLine: false,
-            wordWrap: 'on',
-            automaticLayout: true,
-            padding: { top: 12, bottom: 12 },
-            cursorBlinking: 'smooth',
-            smoothScrolling: true,
-            roundedSelection: true,
-            renderLineHighlight: 'all',
-            suggestOnTriggerCharacters: true,
-            acceptSuggestionOnEnter: 'on',
-            quickSuggestions: { other: true, comments: false, strings: true },
-            snippetSuggestions: 'top',
-            scrollbar: {
-                verticalScrollbarSize: 8,
-                horizontalScrollbarSize: 8,
-                useShadows: false,
-                alwaysConsumeMouseWheel: false
-            },
-            fixedOverflowWidgets: true,
-        }}/>
+            <div className="flex flex-wrap items-center gap-1">
+                <Tip content="Search (Ctrl+F)">
+                    <SchemaEditorToolButton active onClick={triggerFind} icon="ph-magnifying-glass" label="Find"
+                                            iconColor="text-sky-500"/>
+                </Tip>
+                <Tip content="Toggle line wrapping">
+                    <SchemaEditorToolButton active={wordWrapEnabled} onClick={toggleWordWrap} icon="ph-text-t"
+                                            label="Wrap"/>
+                </Tip>
+                <Tip content="Toggle line numbers">
+                    <SchemaEditorToolButton active={lineNumbersEnabled} onClick={toggleLineNumbers}
+                                            icon="ph-list-numbers" label="Numbers"/>
+                </Tip>
+                <Tip content="Toggle code minimap">
+                    <SchemaEditorToolButton active={minimapEnabled} onClick={toggleMinimap} icon="ph-map-trifold"
+                                            label="Minimap"/>
+                </Tip>
+                <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
+                <Tip content={`Format ${editorLanguage.toUpperCase()}`}>
+                    <button type="button" onClick={handleFormat}
+                            className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95">
+                        <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>
+                        <span className="hidden sm:inline">Prettify</span>
+                    </button>
+                </Tip>
             </div>
+        </div>
 
-            {errorFeedback && (<div className="px-3 py-2 border-t border-[var(--method-delete)]/20 bg-[var(--method-delete)]/5 text-[11px] font-mono text-[var(--method-delete)] break-all leading-normal">
-                    <i className="ph ph-warning mr-1.5 text-[var(--method-delete)]/80"></i>{errorFeedback}
-                </div>)}
-        </div>);
+
+        <div className="flex flex-col relative w-full min-w-0 animate-in fade-in" style={{height: 380}}>
+            <Editor height="100%" language={editorLanguage} defaultLanguage={editorLanguage} value={value}
+                    onChange={(val) => onChange(val || '')} theme={themeMode === 'dark' ? 'vs-dark' : 'light'}
+                    onMount={handleEditorDidMount} loading={<div
+                className="flex flex-col items-center justify-center h-full gap-2 text-xs text-[var(--text-muted)]">
+                <i className="ph ph-spinner animate-spin text-lg text-[var(--primary)]"></i><span>Loading
+                editor…</span></div>} options={{
+                minimap: {enabled: false},
+                fontSize: 12,
+                fontFamily: 'var(--font-mono), monospace',
+                lineHeight: 20,
+                tabSize: 2,
+                insertSpaces: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                automaticLayout: true,
+                padding: {top: 12, bottom: 12},
+                cursorBlinking: 'smooth',
+                smoothScrolling: true,
+                roundedSelection: true,
+                renderLineHighlight: 'all',
+                suggestOnTriggerCharacters: true,
+                acceptSuggestionOnEnter: 'on',
+                quickSuggestions: {other: true, comments: false, strings: true},
+                snippetSuggestions: 'top',
+                scrollbar: {
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                    useShadows: false,
+                    alwaysConsumeMouseWheel: false
+                },
+                fixedOverflowWidgets: true,
+            }}/>
+        </div>
+
+        {errorFeedback && (<div
+            className="px-3 py-2 border-t border-[var(--method-delete)]/20 bg-[var(--method-delete)]/5 text-[11px] font-mono text-[var(--method-delete)] break-all leading-normal">
+            <i className="ph ph-warning mr-1.5 text-[var(--method-delete)]/80"></i>{errorFeedback}
+        </div>)}
+    </div>);
 }
