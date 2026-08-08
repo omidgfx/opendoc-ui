@@ -1,17 +1,10 @@
-import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
-import {applyAuthToRequest} from './auth';
-import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from './bodyFormats';
-import {
-    isJsonMediaType,
-    normalizeParameterValue,
-    queryStringFromPairs,
-    serializeOpenApiParameter
-} from './openapi/serialization';
-import {getMergedParameters, resolveRequestBody} from './openapi';
-
-const REQUEST_TIMEOUT_MS = 30_000;
+import type { ActiveAuth, ExamineResponse, OpenApiSpec, Operation } from '../types';
+import { applyAuthToRequest } from './auth';
+import { appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody } from './bodyFormats';
+import { isJsonMediaType, normalizeParameterValue, queryStringFromPairs, serializeOpenApiParameter } from './openapi/serialization';
+import { getMergedParameters, resolveRequestBody } from './openapi';
+const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-
 export interface RunnerExecutionInput {
     spec: OpenApiSpec;
     path: string;
@@ -25,8 +18,11 @@ export interface RunnerExecutionInput {
     bodyType?: string;
     signal?: AbortSignal;
 }
-
-const readResponseBody = async (response: Response): Promise<{ text: string; bytes: number; truncated: boolean }> => {
+const readResponseBody = async (response: Response): Promise<{
+    text: string;
+    bytes: number;
+    truncated: boolean;
+}> => {
     if (!response.body) {
         const text = await response.text();
         const encoded = new TextEncoder().encode(text);
@@ -42,12 +38,15 @@ const readResponseBody = async (response: Response): Promise<{ text: string; byt
     let truncated = false;
     try {
         while (true) {
-            const {value, done} = await reader.read();
-            if (done) break;
-            if (!value) continue;
+            const { value, done } = await reader.read();
+            if (done)
+                break;
+            if (!value)
+                continue;
             const remaining = MAX_RESPONSE_BYTES - bytes;
             if (value.byteLength > remaining) {
-                if (remaining > 0) chunks.push(value.slice(0, remaining));
+                if (remaining > 0)
+                    chunks.push(value.slice(0, remaining));
                 bytes += Math.max(0, remaining);
                 truncated = true;
                 await reader.cancel();
@@ -56,7 +55,8 @@ const readResponseBody = async (response: Response): Promise<{ text: string; byt
             chunks.push(value);
             bytes += value.byteLength;
         }
-    } finally {
+    }
+    finally {
         reader.releaseLock();
     }
     const merged = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0));
@@ -65,60 +65,62 @@ const readResponseBody = async (response: Response): Promise<{ text: string; byt
         merged.set(chunk, offset);
         offset += chunk.byteLength;
     });
-    return {text: new TextDecoder().decode(merged), bytes, truncated};
+    return { text: new TextDecoder().decode(merged), bytes, truncated };
 };
-
 const buildRequestBody = (body: string | undefined, bodyType: string, headers: Record<string, string>): BodyInit | null => {
-    if (body === undefined || body === '') return null;
+    if (body === undefined || body === '')
+        return null;
     const normalizedType = bodyType.toLowerCase().split(';', 1)[0];
     if (normalizedType === 'application/x-www-form-urlencoded') {
         try {
             headers['Content-Type'] = bodyType;
             return serializeUrlEncodedBody(parseStructuredBody(body, bodyType));
-        } catch {
-            // Keep raw text editable for malformed or non-object form bodies.
+        }
+        catch {
         }
     }
     if (normalizedType === 'multipart/form-data') {
         const form = new FormData();
         try {
             appendMultipartBody(form, parseStructuredBody(body, bodyType));
-        } catch {
-            // An AI action cannot carry a File object. An empty FormData still
-            // gives the browser a correct multipart boundary when no file was
-            // supplied; malformed raw text is intentionally not sent as a
-            // misleading multipart payload.
+        }
+        catch {
         }
         return form;
     }
     headers['Content-Type'] = bodyType;
     return body;
 };
-
 export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise<ExamineResponse> => {
     const startedAt = Date.now();
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();
-    input.signal?.addEventListener('abort', forwardAbort, {once: true});
+    input.signal?.addEventListener('abort', forwardAbort, { once: true });
     let timedOut = false;
     const timeout = window.setTimeout(() => {
         timedOut = true;
         controller.abort();
     }, REQUEST_TIMEOUT_MS);
     let requestUrl = `${input.selectedServer}${input.path}`;
-
     try {
         const pathItem = (input.spec.paths as any)[input.path] || {};
         const mergedParameters = getMergedParameters(pathItem, input.operation, input.spec);
         let processedPath = input.path;
-        const query: Array<{ name: string; value: string; allowReserved?: boolean }> = [];
-        const cookies: Array<{ name: string; value: string }> = [];
+        const query: Array<{
+            name: string;
+            value: string;
+            allowReserved?: boolean;
+        }> = [];
+        const cookies: Array<{
+            name: string;
+            value: string;
+        }> = [];
         const parameterHeaders: Record<string, string> = {};
         const params = input.params || {};
-
         mergedParameters.forEach((parameter: any) => {
             const value = params[parameter.name];
-            if (value === undefined || value === null || value === '' && !parameter.allowEmptyValue) return;
+            if (value === undefined || value === null || value === '' && !parameter.allowEmptyValue)
+                return;
             const serialized = serializeOpenApiParameter(parameter, normalizeParameterValue(parameter, value));
             if (parameter.in === 'path' && serialized.pathValue !== undefined) {
                 processedPath = processedPath.replace(`{${parameter.name}}`, serialized.pathValue);
@@ -127,8 +129,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             Object.assign(parameterHeaders, serialized.headers);
             cookies.push(...serialized.cookies);
         });
-
-        const requestHeaders: Record<string, string> = {Accept: 'application/json', ...parameterHeaders, ...(input.headers || {})};
+        const requestHeaders: Record<string, string> = { Accept: 'application/json', ...parameterHeaders, ...(input.headers || {}) };
         const auth = applyAuthToRequest(input.spec, input.activeAuth, {
             headers: requestHeaders,
             query,
@@ -167,7 +168,8 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             truncated: body.truncated,
             isBinary: binary,
         };
-    } catch (error: any) {
+    }
+    catch (error: any) {
         const cancelled = input.signal?.aborted || controller.signal.aborted && !timedOut;
         const errorKind = cancelled ? 'cancelled' : timedOut ? 'timeout' : 'network';
         const errorMessage = cancelled ? 'Request cancelled by the user.' : error?.message || 'The request failed.';
@@ -182,7 +184,8 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             errorKind,
             errorMessage,
         };
-    } finally {
+    }
+    finally {
         window.clearTimeout(timeout);
         input.signal?.removeEventListener('abort', forwardAbort);
     }

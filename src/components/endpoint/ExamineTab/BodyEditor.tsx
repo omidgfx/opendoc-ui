@@ -1,10 +1,9 @@
-import {useEffect, useState} from 'react';
-import type {OpenApiSpec} from '../../../types';
-import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
-import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
+import { useEffect, useState } from 'react';
+import type { OpenApiSpec } from '../../../types';
+import { resolveReference, resolveRequestBody } from '../../../utils/openapi';
+import { formatBodyText, parseStructuredBody } from '../../../utils/bodyFormats';
 import SchemaJsonEditor from '../../schema/SchemaJsonEditor';
-import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
-
+import RecursiveBodyForm, { type BodyValue, defaultBodyValue } from './RecursiveBodyForm';
 interface BodyEditorProps {
     spec: OpenApiSpec;
     method: string;
@@ -26,94 +25,69 @@ interface BodyEditorProps {
     themeMode: 'light' | 'dark';
     onExecute: () => void;
 }
-
 const topLevelFields = (value: BodyValue): Record<string, string> => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return {};
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, typeof item === 'string' ? item : JSON.stringify(item)]));
 };
-
 const getBodyFormatForForm = (jsonText: string, mediaType: string): string => {
     const formatted = formatBodyText(jsonText, mediaType);
     return formatted.error ? jsonText : formatted.text;
 };
-
 export default function BodyEditor(props: BodyEditorProps) {
-    const {
-        spec, method, path, operation, requestBodyType, bodyEditorMode,
-        requestBodyText, setRequestBodyText, setBodyFields,
-        selectedFile, setSelectedFile, selectedFiles, setSelectedFiles,
-        setPatternToTest, themeMode, onExecute,
-    } = props;
+    const { spec, method, path, operation, requestBodyType, bodyEditorMode, requestBodyText, setRequestBodyText, setBodyFields, selectedFile, setSelectedFile, selectedFiles, setSelectedFiles, setPatternToTest, themeMode, onExecute, } = props;
     const resolvedBody = resolveRequestBody(operation.requestBody, spec);
     const contentSchema = resolvedBody?.content?.[requestBodyType]?.schema;
     const resolvedSchema = contentSchema ? resolveReference(contentSchema, spec) : null;
     const [formValue, setFormValue] = useState<BodyValue>(() => {
         try {
             return parseStructuredBody(requestBodyText, requestBodyType) ?? (resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {});
-        } catch {
+        }
+        catch {
             return resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {};
         }
     });
-
     useEffect(() => {
-        if (bodyEditorMode !== 'form') return;
+        if (bodyEditorMode !== 'form')
+            return;
         try {
             const parsed = parseStructuredBody(requestBodyText, requestBodyType);
             setFormValue(parsed ?? (resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {}));
-        } catch {
+        }
+        catch {
             setFormValue(resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {});
         }
     }, [bodyEditorMode, requestBodyType, resolvedSchema, spec, requestBodyText]);
-
     const handleFormChange = (value: BodyValue) => {
         setFormValue(value);
         setBodyFields(topLevelFields(value));
         const jsonText = JSON.stringify(value, null, 2);
         setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType));
     };
-
     const isTopLevelBinary = resolvedSchema?.type === 'string' && resolvedSchema?.format === 'binary';
     if (bodyEditorMode === 'form' && !resolvedSchema) {
         return <p className="py-2 text-xs italic text-[var(--text-muted)]">No body schema defined for this media type.
             Switch to Raw to edit the payload directly.</p>;
     }
-
     if (bodyEditorMode === 'form' && isTopLevelBinary) {
-        return (
-            <div className="space-y-4 animate-in fade-in">
+        return (<div className="space-y-4 animate-in fade-in">
                 <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center">
                     <input type="file" id="examine-file-uploader" onChange={event => {
-                        const file = event.target.files?.[0] || null;
-                        setSelectedFile(file);
-                        setSelectedFiles({...selectedFiles, file});
-                    }} className="hidden"/>
-                    <label htmlFor="examine-file-uploader"
-                           className="cursor-pointer select-none text-xs font-semibold text-[var(--primary)] hover:underline">
+                const file = event.target.files?.[0] || null;
+                setSelectedFile(file);
+                setSelectedFiles({ ...selectedFiles, file });
+            }} className="hidden"/>
+                    <label htmlFor="examine-file-uploader" className="cursor-pointer select-none text-xs font-semibold text-[var(--primary)] hover:underline">
                         {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to select upload file'}
                     </label>
                     <p className="mt-1 text-[10px] text-[var(--text-muted)]">{selectedFile ? `${Math.round(selectedFile.size / 1024)} KB` : 'Supports drag & drop or manual upload'}</p>
                 </div>
-            </div>
-        );
+            </div>);
     }
-
     if (bodyEditorMode === 'form') {
-        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange}
-                                  setPatternToTest={setPatternToTest} selectedFiles={selectedFiles}
-                                  setSelectedFiles={setSelectedFiles}/>;
+        return <RecursiveBodyForm schema={resolvedSchema} spec={spec} value={formValue} onChange={handleFormChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>;
     }
-
-    return (
-        <div className="animate-in fade-in">
-            <SchemaJsonEditor
-                value={requestBodyText}
-                onChange={setRequestBodyText}
-                schema={contentSchema || {}}
-                componentsSchemas={spec.components?.schemas}
-                mediaType={requestBodyType}
-                themeMode={themeMode}
-                onCtrlEnter={onExecute}
-            />
-        </div>
-    );
+    return (<div className="animate-in fade-in">
+            <SchemaJsonEditor value={requestBodyText} onChange={setRequestBodyText} schema={contentSchema || {}} componentsSchemas={spec.components?.schemas} mediaType={requestBodyType} themeMode={themeMode} onCtrlEnter={onExecute}/>
+        </div>);
 }

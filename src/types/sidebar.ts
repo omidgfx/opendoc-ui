@@ -1,8 +1,7 @@
-import type {Dispatch, SetStateAction} from 'react';
-import type {OpenApiSpec, ParsableConfig, ThemeMode} from '../../../types';
-import type {LocalHistoryEntry} from '../../../utils/localHistory';
-import type {ViewTabKind} from '../../endpoint/EndpointTabs';
-
+import type { Dispatch, SetStateAction } from 'react';
+import type { OpenApiSpec, ParsableConfig, ThemeMode } from '@/src/types';
+import type { LocalHistoryEntry } from '@/src/utils/localHistory';
+import type { ViewTabKind } from '@/src/components/endpoint/EndpointTabs';
 export interface SidebarProps {
     spec: OpenApiSpec | null;
     parsables?: ParsableConfig;
@@ -21,23 +20,39 @@ export interface SidebarProps {
     onlyProtected: boolean | null;
     setOnlyProtected: Dispatch<SetStateAction<boolean | null>>;
     searchQuery: string;
-    selectedEndpoint: { path: string; method: string } | null;
+    selectedEndpoint: {
+        path: string;
+        method: string;
+    } | null;
     onSelectEndpoint: (path: string, method: string) => void;
     getEndpointHref?: (path: string, method: string) => string;
     onMiddleClickEndpoint?: (path: string, method: string) => void;
     onOpenHome: () => void;
     onOpenAbout: () => void;
-    scrollIntent: { type: 'endpoint' | 'view'; id: string } | null;
-    setScrollIntent: (value: { type: 'endpoint' | 'view'; id: string } | null) => void;
+    scrollIntent: {
+        type: 'endpoint' | 'view';
+        id: string;
+    } | null;
+    setScrollIntent: (value: {
+        type: 'endpoint' | 'view';
+        id: string;
+    } | null) => void;
     onOpenViewPermanent: (view: ViewTabKind) => void;
-    onContextAction: (
-        action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai',
-        target: { type: 'endpoint'; path: string; method: string } | { type: 'view'; view: ViewTabKind },
-    ) => void;
+    onContextAction: (action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai', target: {
+        type: 'endpoint';
+        path: string;
+        method: string;
+    } | {
+        type: 'view';
+        view: ViewTabKind;
+    }) => void;
     showHome: boolean;
     showAbout: boolean;
     showAssistant: boolean;
-    assistantContextEndpoints: Array<{ path: string; method: string }>;
+    assistantContextEndpoints: Array<{
+        path: string;
+        method: string;
+    }>;
     hasAIProfile: boolean;
     themeMode: ThemeMode;
     resolvedThemeMode: 'light' | 'dark';

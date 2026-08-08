@@ -1,6 +1,4 @@
-import type {AISkillPack} from '../types';
-
-/** These are operational instructions, not descriptions of the source code. */
+import type { AISkillPack } from '../types';
 export const AI_SKILL_PACK_CONTENT: Record<AISkillPack, string> = {
     openapi: `OpenAPI grounding:
 - Prefer the retrieved operation record and referenced schema records over general knowledge.
@@ -30,7 +28,6 @@ export const AI_SKILL_PACK_CONTENT: Record<AISkillPack, string> = {
 - A request may be opened, its Runner fields populated, or it may be sent only through the OpenDoc UI action bridge described below; never imply an action happened merely because you proposed it.
 - Use the schema's exact body field names and media type. For arrays, send a real array value rather than a comma-joined guess.`,
 };
-
 export const renderAISkillPackContent = (skills: AISkillPack[]): string => {
     const selected = skills.length > 0 ? skills : ['openapi' as AISkillPack];
     return selected.map(skill => AI_SKILL_PACK_CONTENT[skill]).filter(Boolean).join('\n\n');

@@ -1,7 +1,10 @@
 import React from 'react';
 import clsx from 'clsx';
-
-const METHOD_CLASSES: Record<string, { text: string; background: string; contrast: string }> = {
+const METHOD_CLASSES: Record<string, {
+    text: string;
+    background: string;
+    contrast: string;
+}> = {
     get: {
         text: 'text-[var(--method-get)]',
         background: 'bg-[var(--method-get)]',
@@ -48,58 +51,32 @@ const METHOD_CLASSES: Record<string, { text: string; background: string; contras
         contrast: 'text-[var(--method-trace-contrast)]'
     }
 };
-
 const FALLBACK_CLASSES = {
     text: 'text-[var(--text-muted)]',
     background: 'bg-[var(--text-muted)]',
     contrast: 'text-[var(--background)]'
 };
-
 export type MethodBadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 export type MethodBadgeVariant = 'soft' | 'solid' | 'plain';
-
 export interface MethodBadgeProps {
     method: string;
     className?: string;
     size?: MethodBadgeSize;
     variant?: MethodBadgeVariant;
     title?: string;
-    /** Optional visual label while keeping the original method for color mapping. */
     displayLabel?: string;
 }
-
 const SIZE_CLASSES: Record<MethodBadgeSize, string> = {
     xs: 'text-[8px] px-1.5 py-0.5 leading-none',
     sm: 'text-[10px] px-2 py-0.5',
     md: 'text-xs px-2.5 py-1',
     lg: 'text-sm px-3 py-1.5'
 };
-
-export default function MethodBadge({
-                                        method,
-                                        className,
-                                        size = 'sm',
-                                        variant = 'soft',
-                                        title,
-                                        displayLabel,
-                                    }: MethodBadgeProps) {
+export default function MethodBadge({ method, className, size = 'sm', variant = 'soft', title, displayLabel, }: MethodBadgeProps) {
     const normalized = (method || '').toLowerCase().trim();
     const colors = METHOD_CLASSES[normalized] || FALLBACK_CLASSES;
     const label = displayLabel || ((method || '').toUpperCase() || 'UNKNOWN');
-
-    return (
-        <span
-            className={clsx(
-                'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded font-mono font-extrabold uppercase select-none',
-                SIZE_CLASSES[size],
-                variant === 'soft' && [colors.text, 'border border-current/20 bg-current/15'],
-                variant === 'solid' && [colors.background, colors.contrast],
-                variant === 'plain' && colors.text,
-                className
-            )}
-            title={title}
-        >
+    return (<span className={clsx('inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded font-mono font-extrabold uppercase select-none', SIZE_CLASSES[size], variant === 'soft' && [colors.text, 'border border-current/20 bg-current/15'], variant === 'solid' && [colors.background, colors.contrast], variant === 'plain' && colors.text, className)} title={title}>
             {label}
-        </span>
-    );
+        </span>);
 }

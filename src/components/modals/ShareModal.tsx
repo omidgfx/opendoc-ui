@@ -1,9 +1,8 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {useEscClose} from '../../hooks/useEscClose';
-import {useModalTransition} from '../../hooks/useModalTransition';
-import {Tip} from '../common/Tooltip';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useEscClose } from '../../hooks/useEscClose';
+import { useModalTransition } from '../../hooks/useModalTransition';
+import { Tip } from '../common/Tooltip';
 import clsx from 'clsx';
-
 interface ShareModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -11,82 +10,72 @@ interface ShareModalProps {
     title?: string;
     description?: string;
 }
-
-export default function ShareModal({isOpen, onClose, url, title, description}: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, url, title, description }: ShareModalProps) {
     const [copied, setCopied] = useState(false);
     const [copiedChat, setCopiedChat] = useState<'slack' | 'mattermost' | null>(null);
     const [originUrl, setOriginUrl] = useState(url);
     const inputRef = useRef<HTMLInputElement>(null);
-    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
-
+    const { shouldRender, requestClose, backdropClassName } = useModalTransition(isOpen, onClose);
     useEffect(() => {
         setOriginUrl(url);
         setCopied(false);
     }, [url]);
-
-    // Autoselect input on open / url change (once)
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen)
+            return;
         const t = setTimeout(() => {
             const el = inputRef.current;
             if (el) {
-                el.focus({preventScroll: true});
+                el.focus({ preventScroll: true });
                 el.select();
             }
         }, 80);
         return () => clearTimeout(t);
     }, [isOpen, originUrl]);
-
     useEscClose(isOpen, requestClose, isOpen);
-
     const shareText = title || 'Check out this API documentation';
     const shareDesc = description || shareText;
-
     const encodedUrl = encodeURIComponent(originUrl);
     const encodedText = encodeURIComponent(shareText);
     const encodedDesc = encodeURIComponent(shareDesc);
-
     const handleCopy = useCallback(async () => {
         try {
             await navigator.clipboard.writeText(originUrl);
-        } catch {
+        }
+        catch {
             const input = inputRef.current;
             if (input) {
                 input.focus();
                 input.select();
                 try {
                     document.execCommand('copy');
-                } catch {
+                }
+                catch {
                 }
             }
         }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     }, [originUrl]);
-
-    // Slack & Mattermost have no public one-click share intents (their Share
-    // buttons require app registration), so we copy a paste-ready message
-    // instead — paste it into any channel.
     const handleCopyChat = async (target: 'slack' | 'mattermost') => {
         const message = `[${shareText}](${originUrl})`;
         try {
             await navigator.clipboard.writeText(message);
-        } catch {
-            /* clipboard unavailable */
+        }
+        catch {
         }
         setCopiedChat(target);
         setTimeout(() => setCopiedChat(null), 2000);
     };
-
     const handleNativeShare = async () => {
         if ((navigator as any).share) {
             try {
-                await (navigator as any).share({title: shareText, text: shareDesc, url: originUrl});
-            } catch { /* user cancelled */
+                await (navigator as any).share({ title: shareText, text: shareDesc, url: originUrl });
+            }
+            catch {
             }
         }
     };
-
     const shareOptions = [
         {
             name: 'WhatsApp',
@@ -137,23 +126,16 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
             url: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedDesc}`
         },
     ];
-
-    if (!shouldRender) return null;
-
-    return (
-        <div
-            className={`${backdropClassName} fixed inset-0 z-[4000] bg-black/50 backdrop-blur-[3px]`}
-            onMouseDown={(e) => {
-                if (e.target === e.currentTarget) requestClose();
-            }}
-        >
-            <div
-                className="modal-surface w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
-                <div
-                    className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
+    if (!shouldRender)
+        return null;
+    return (<div className={`${backdropClassName} fixed inset-0 z-[4000] bg-black/50 backdrop-blur-[3px]`} onMouseDown={(e) => {
+            if (e.target === e.currentTarget)
+                requestClose();
+        }}>
+            <div className="modal-surface w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <span
-                            className="size-9 rounded-xl flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
+                        <span className="size-9 rounded-xl flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
                             <i className="ph-fill ph-share-network text-[18px]"></i>
                         </span>
                         <div className="min-w-0">
@@ -162,8 +144,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
                         </div>
                     </div>
                     <Tip content="Close">
-                        <button onClick={requestClose}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-muted)] shrink-0">
+                        <button onClick={requestClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-muted)] shrink-0">
                             <i className="ph ph-x"></i>
                         </button>
                     </Tip>
@@ -171,95 +152,64 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
 
                 <div className="modal-scroll-region p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto scrollbar-thin">
                     <div className="space-y-2">
-                        <label
-                            className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Link</label>
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Link</label>
                         <div className="flex items-center gap-2">
                             <div className="flex-1 relative min-w-0">
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={originUrl}
-                                    readOnly
-                                    onFocus={(e) => e.currentTarget.select()}
-                                    onClick={(e) => e.currentTarget.select()}
-                                    className="w-full pl-3 pr-9 py-2.5 text-xs rounded-xl border outline-none font-mono bg-[var(--background)] border-[var(--border)] text-[var(--text)] select-all min-w-0"
-                                    style={{cursor: 'text'}}
-                                />
-                                <span
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
+                                <input ref={inputRef} type="text" value={originUrl} readOnly onFocus={(e) => e.currentTarget.select()} onClick={(e) => e.currentTarget.select()} className="w-full pl-3 pr-9 py-2.5 text-xs rounded-xl border outline-none font-mono bg-[var(--background)] border-[var(--border)] text-[var(--text)] select-all min-w-0" style={{ cursor: 'text' }}/>
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
                                     <i className="ph ph-link text-[14px]"></i>
                                 </span>
                             </div>
                             <Tip content={copied ? 'Copied!' : 'Copy link to clipboard'}>
-                                <button onClick={handleCopy}
-                                        className={clsx('px-3 sm:px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none shrink-0',
-                                            copied ? 'bg-[var(--method-get)] text-white' : 'bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90')}>
+                                <button onClick={handleCopy} className={clsx('px-3 sm:px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none shrink-0', copied ? 'bg-[var(--method-get)] text-white' : 'bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90')}>
                                     <i className={`ph ${copied ? 'ph-check' : 'ph-copy'} text-[14px]`}></i>
                                     <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
                                 </button>
                             </Tip>
                         </div>
-                        {description && (
-                            <p className="text-[11px] leading-relaxed text-[var(--text-muted)] mt-2 line-clamp-3">{description}</p>
-                        )}
+                        {description && (<p className="text-[11px] leading-relaxed text-[var(--text-muted)] mt-2 line-clamp-3">{description}</p>)}
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Share
                             via</label>
                         <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
-                            {shareOptions.map((opt) => (
-                                <Tip key={opt.name} content={`Share on ${opt.name}`} fullWidth wrapperClassName="h-full">
-                                    <a
-                                        href={opt.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex h-[72px] w-full min-w-0 flex-col items-center justify-center gap-1.5 p-2 sm:h-[82px] sm:p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer select-none bg-[var(--background)] border-[var(--border)] hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] group"
-                                    >
-                                        <span
-                                            className="size-8 sm:size-9 rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform"
-                                            style={{backgroundColor: opt.color}}>
+                            {shareOptions.map((opt) => (<Tip key={opt.name} content={`Share on ${opt.name}`} fullWidth wrapperClassName="h-full">
+                                    <a href={opt.url} target="_blank" rel="noopener noreferrer" className="flex h-[72px] w-full min-w-0 flex-col items-center justify-center gap-1.5 p-2 sm:h-[82px] sm:p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer select-none bg-[var(--background)] border-[var(--border)] hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] group">
+                                        <span className="size-8 sm:size-9 rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform" style={{ backgroundColor: opt.color }}>
                                             <i className={`${opt.icon} text-[16px] sm:text-[18px]`}></i>
                                         </span>
-                                        <span
-                                            className="text-[9px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-heading)] text-center leading-tight">
+                                        <span className="text-[9px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-heading)] text-center leading-tight">
                                             {opt.name}
                                         </span>
                                     </a>
-                                </Tip>
-                            ))}
+                                </Tip>))}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                         <Tip content="Copies a paste-ready markdown link for Slack" fullWidth>
-                            <button onClick={() => handleCopyChat('slack')}
-                                    className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                            <button onClick={() => handleCopyChat('slack')} className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                                 <i className={`ph-fill ph-slack-logo text-[15px] ${copiedChat === 'slack' ? 'text-[var(--method-get)]' : 'text-[#611f69]'}`}></i>
                                 {copiedChat === 'slack' ? 'Copied!' : 'Slack'}
                             </button>
                         </Tip>
                         <Tip content="Copies a paste-ready markdown link for Mattermost" fullWidth>
-                            <button onClick={() => handleCopyChat('mattermost')}
-                                    className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                            <button onClick={() => handleCopyChat('mattermost')} className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                                 <i className={`ph-fill ph-chats-circle text-[15px] ${copiedChat === 'mattermost' ? 'text-[var(--method-get)]' : 'text-[var(--primary)]'}`}></i>
                                 {copiedChat === 'mattermost' ? 'Copied!' : 'Mattermost'}
                             </button>
                         </Tip>
                     </div>
 
-                    {(navigator as any).share && (
-                        <div className="pt-2">
-                            <button onClick={handleNativeShare}
-                                    className="w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/15">
+                    {(navigator as any).share && (<div className="pt-2">
+                            <button onClick={handleNativeShare} className="w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/15">
                                 <i className="ph ph-share-network text-[16px]"></i>
                                 More options (System share)
                             </button>
-                        </div>
-                    )}
+                        </div>)}
 
-                    <div
-                        className="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-start gap-2.5">
+                    <div className="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-start gap-2.5">
                         <i className="ph ph-info text-[14px] text-[var(--primary)] mt-0.5"></i>
                         <p className="text-[10.5px] leading-relaxed text-[var(--text-muted)]">
                             Anyone with this link can view the documentation. The link preserves your current selection.
@@ -267,19 +217,15 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
                     </div>
                 </div>
 
-                <div
-                    className="px-4 sm:px-6 py-3 border-t flex justify-end gap-2 shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
-                    <button onClick={requestClose}
-                            className="px-4 py-1.5 text-xs font-semibold rounded-lg border hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-heading)] border-[var(--border)]">
+                <div className="px-4 sm:px-6 py-3 border-t flex justify-end gap-2 shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
+                    <button onClick={requestClose} className="px-4 py-1.5 text-xs font-semibold rounded-lg border hover:bg-[var(--surface-hover)] transition-colors cursor-pointer text-[var(--text-heading)] border-[var(--border)]">
                         Close
                     </button>
-                    <button onClick={handleCopy}
-                            className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5">
+                    <button onClick={handleCopy} className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5">
                         <i className={`ph ${copied ? 'ph-check' : 'ph-copy'}`}></i>
                         {copied ? 'Copied Link' : 'Copy Link'}
                     </button>
                 </div>
             </div>
-        </div>
-    );
+        </div>);
 }

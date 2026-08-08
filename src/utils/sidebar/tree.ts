@@ -1,16 +1,18 @@
-import type {OpenApiSpec} from '../../../types';
-import {specStorage} from '../../../utils/storage';
-
+import type { OpenApiSpec } from '@/src/types';
+import { specStorage } from '@/src/utils/storage';
 export interface TreeNode {
     name: string;
     children: Record<string, TreeNode>;
-    endpoints: Array<{ path: string; method: string; operation: any; isProtected: boolean }>;
+    endpoints: Array<{
+        path: string;
+        method: string;
+        operation: any;
+        isProtected: boolean;
+    }>;
 }
-
 export type SidebarSortBy = 'name' | 'method' | 'route';
 export type SidebarSortDirection = 'asc' | 'desc';
 export type SidebarFolderBehavior = 'multiple' | 'single';
-
 export interface SidebarConfig {
     displayRoutes: boolean;
     flattenTags: boolean;
@@ -23,7 +25,6 @@ export interface SidebarConfig {
     hideProtectedIcon: boolean;
     hideDeprecatedEndpoints: boolean;
 }
-
 const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
     displayRoutes: true,
     flattenTags: false,
@@ -36,10 +37,7 @@ const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
     hideProtectedIcon: false,
     hideDeprecatedEndpoints: false,
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    !!value && typeof value === 'object' && !Array.isArray(value);
-
+const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 export const compactMethodLabel = (method: string): string => {
     const labels: Record<string, string> = {
         delete: 'DEL',
@@ -50,7 +48,6 @@ export const compactMethodLabel = (method: string): string => {
     const normalized = method.toLowerCase();
     return (labels[normalized] || normalized.slice(0, 3)).toUpperCase();
 };
-
 export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | undefined): SidebarConfig {
     const displayRoutes = typeof value?.displayRoutes === 'boolean'
         ? value.displayRoutes
@@ -61,8 +58,6 @@ export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | un
     return {
         displayRoutes,
         flattenTags: typeof value?.flattenTags === 'boolean' ? value.flattenTags : DEFAULT_SIDEBAR_CONFIG.flattenTags,
-        // Only route sorting has no useful meaning while route labels are hidden;
-        // method sorting remains available independently of the route display.
         sortBy: !displayRoutes && requestedSortBy === 'route' ? 'name' : requestedSortBy,
         sortDirection: value?.sortDirection === 'desc' || value?.sortDirection === 'asc'
             ? value.sortDirection
@@ -87,44 +82,46 @@ export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | un
             : DEFAULT_SIDEBAR_CONFIG.hideDeprecatedEndpoints,
     };
 }
-
 export function readSidebarConfig(specKey: string): SidebarConfig {
-    if (!specKey) return DEFAULT_SIDEBAR_CONFIG;
+    if (!specKey)
+        return DEFAULT_SIDEBAR_CONFIG;
     const stored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);
     return normalizeSidebarConfig(stored);
 }
-
 export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): TreeNode {
-    const root: TreeNode = {name: '', children: {}, endpoints: []};
-    if (!spec?.paths) return root;
+    const root: TreeNode = { name: '', children: {}, endpoints: [] };
+    if (!spec?.paths)
+        return root;
     const byTag: Record<string, typeof root.endpoints> = {};
     Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
-        if (!pathItem) return;
+        if (!pathItem)
+            return;
         Object.entries(pathItem).forEach(([methodStr, operation]) => {
-            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(methodStr)) return;
+            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(methodStr))
+                return;
             const op = operation as any;
-            if (!op) return;
+            if (!op)
+                return;
             const tags = op.tags?.length ? op.tags : ['General'];
             const isProtected = !!(op.security?.length || spec.security?.length);
             tags.forEach((tag: string) => {
-                if (!byTag[tag]) byTag[tag] = [];
-                byTag[tag].push({path: pathStr, method: methodStr, operation: op, isProtected});
+                if (!byTag[tag])
+                    byTag[tag] = [];
+                byTag[tag].push({ path: pathStr, method: methodStr, operation: op, isProtected });
             });
         });
     });
     Object.entries(byTag).forEach(([tag, endpoints]) => {
-        // In flattened mode the complete tag is one folder label. Otherwise
-        // slash-separated tags keep their existing nested folder structure.
         const parts = config.flattenTags ? [tag] : tag.split('/').filter(Boolean);
         let node = root;
         for (const part of (parts.length ? parts : ['General'])) {
-            if (!node.children[part]) node.children[part] = {name: part, children: {}, endpoints: []};
+            if (!node.children[part])
+                node.children[part] = { name: part, children: {}, endpoints: [] };
             node = node.children[part];
         }
         node.endpoints.push(...endpoints);
     });
-
-    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {sensitivity: 'base'});
+    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
     const direction = config.sortDirection === 'desc' ? -1 : 1;
     const endpointName = (endpoint: TreeNode['endpoints'][number]) => endpoint.operation?.summary || endpoint.path;
     const compareEndpoints = (a: TreeNode['endpoints'][number], b: TreeNode['endpoints'][number]) => {
@@ -133,30 +130,26 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
             : config.sortBy === 'route'
                 ? compareText(a.path, b.path)
                 : compareText(endpointName(a), endpointName(b));
-        if (primary !== 0) return primary * direction;
-
-        // Stable, predictable tie-breakers keep the list deterministic when
-        // several operations share a summary or HTTP method.
+        if (primary !== 0)
+            return primary * direction;
         const byRoute = compareText(a.path, b.path);
-        if (byRoute !== 0) return byRoute * direction;
+        if (byRoute !== 0)
+            return byRoute * direction;
         return compareText(a.method, b.method) * direction;
     };
-
     const sort = (n: TreeNode): TreeNode => {
         const sorted: Record<string, TreeNode> = {};
         Object.entries(n.children)
             .sort(([a], [b]) => compareText(a, b) * direction)
             .forEach(([key, child]) => {
-                sorted[key] = sort(child);
-            });
+            sorted[key] = sort(child);
+        });
         n.children = sorted;
         n.endpoints = [...n.endpoints].sort(compareEndpoints);
         return n;
     };
     return sort(root);
 }
-
-// Keep only tree branches that still contain endpoints matching the predicate.
 export function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoints'][number]) => boolean): TreeNode {
     const newChildren: Record<string, TreeNode> = {};
     Object.entries(node.children).forEach(([k, child]) => {
@@ -171,5 +164,3 @@ export function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoint
         endpoints: node.endpoints.filter(predicate),
     };
 }
-
-

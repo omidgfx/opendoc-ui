@@ -1,22 +1,12 @@
-import {idbClearPrefix, idbDelete, idbGetAll, idbSet} from './indexedDb';
-
-/**
- * IndexedDB-first synchronous facade. Existing callers can keep their simple
- * get/set API while browser persistence is moved to IndexedDB after the boot
- * hydration step; localStorage is a compatibility fallback and synchronous
- * safety mirror for refresh/page-close boundaries.
- */
+import { idbClearPrefix, idbDelete, idbGetAll, idbSet } from './indexedDb';
 const IDB_STORAGE_PREFIX = 'storage:';
-// Small state is synchronously mirrored so a refresh/page close cannot happen
-// between an in-memory update and its asynchronous IndexedDB transaction.
-// Tombstones provide the same guarantee for removals.
 const LOCAL_DELETE_MARKER = '__opendoc_ui_deleted_v1__';
 const memoryStore = new Map<string, string>();
 let storageHydrated = false;
 let indexedDbEnabled = false;
-
 export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
-    if (storageHydrated) return indexedDbEnabled;
+    if (storageHydrated)
+        return indexedDbEnabled;
     const records = await idbGetAll<string>(IDB_STORAGE_PREFIX);
     if (records === null) {
         storageHydrated = true;
@@ -25,10 +15,6 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
     }
     indexedDbEnabled = true;
     records.forEach(record => memoryStore.set(String(record.key).slice(IDB_STORAGE_PREFIX.length), record.value));
-    // The synchronous mirror wins when both stores contain a key: it may be the
-    // final write made immediately before the previous page was refreshed or
-    // closed. Reconcile it back into IndexedDB but keep the mirror for the next
-    // close/reload boundary.
     try {
         const localKeys = Object.keys(window.localStorage);
         for (const key of localKeys) {
@@ -37,7 +23,8 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
                 continue;
             }
             const value = window.localStorage.getItem(key);
-            if (value === null) continue;
+            if (value === null)
+                continue;
             if (value === LOCAL_DELETE_MARKER) {
                 memoryStore.delete(key);
                 await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
@@ -46,47 +33,34 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
             memoryStore.set(key, value);
             await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
         }
-    } catch {
-        // A blocked localStorage should not prevent the IndexedDB-backed app
-        // from starting.
+    }
+    catch {
     }
     storageHydrated = true;
     return true;
 };
-
-/**
- * Safe browser persistence wrapper.
- *
- * Every read/write in the app goes through this module. After boot hydration,
- * IndexedDB is primary and localStorage mirrors small writes synchronously. The
- * facade guarantees that storage failures do not crash the app, corrupt JSON is
- * self-repaired, and global/per-spec state remains namespaced.
- */
-
 const TEST_KEY = '__opendoc_storage_test__';
-/** Keep large raw documents out of localStorage. IndexedDB is used by the
- * specification cache; this guard protects the remaining synchronous state. */
-const LOCAL_STORAGE_BUDGET_BYTES = 4_500_000;
+const LOCAL_STORAGE_BUDGET_BYTES = 4500000;
 let lastWriteError: string | null = null;
-
 const byteLength = (value: string): number => {
     try {
         return new TextEncoder().encode(value).byteLength;
-    } catch {
+    }
+    catch {
         return value.length * 2;
     }
 };
-
 const readRaw = (key: string): string | null => {
-    if (memoryStore.has(key)) return memoryStore.get(key) || '';
+    if (memoryStore.has(key))
+        return memoryStore.get(key) || '';
     try {
         const value = window.localStorage.getItem(key);
         return value === LOCAL_DELETE_MARKER ? null : value;
-    } catch {
+    }
+    catch {
         return null;
     }
 };
-
 const currentUsageBytes = (): number => {
     try {
         let total = 0;
@@ -95,11 +69,11 @@ const currentUsageBytes = (): number => {
             total += byteLength(key) + byteLength(window.localStorage.getItem(key) || '');
         }
         return total;
-    } catch {
+    }
+    catch {
         return 0;
     }
 };
-
 const writeRaw = (key: string, value: string): boolean => {
     try {
         const previous = window.localStorage.getItem(key) || '';
@@ -112,60 +86,54 @@ const writeRaw = (key: string, value: string): boolean => {
         window.localStorage.setItem(key, value);
         lastWriteError = null;
         return true;
-    } catch (e) {
+    }
+    catch (e) {
         lastWriteError = e instanceof Error ? e.message : 'localStorage is unavailable.';
         console.warn(`localStorage write failed for "${key}"`, e);
         return false;
     }
 };
-
 const deleteRaw = (key: string) => {
     try {
         window.localStorage.removeItem(key);
-    } catch {
-        /* ignore */
+    }
+    catch {
     }
 };
-
 const markRawDeleted = (key: string) => {
     try {
         window.localStorage.setItem(key, LOCAL_DELETE_MARKER);
-    } catch {
-        // The in-memory and IndexedDB deletion paths still remain available.
+    }
+    catch {
     }
 };
-
 export const storage = {
-    /** True when IndexedDB or the localStorage fallback is usable. */
     available(): boolean {
-        if (indexedDbEnabled) return true;
+        if (indexedDbEnabled)
+            return true;
         try {
             window.localStorage.setItem(TEST_KEY, '1');
             window.localStorage.removeItem(TEST_KEY);
             return true;
-        } catch {
+        }
+        catch {
             return false;
         }
     },
-
     isUsingIndexedDb(): boolean {
         return indexedDbEnabled;
     },
-
     get(key: string, fallback = ''): string {
         const value = readRaw(key);
         return value === null ? fallback : value;
     },
-
     set(key: string, value: string): boolean {
         const normalized = String(value);
         if (indexedDbEnabled) {
             memoryStore.set(key, normalized);
-            // Write the small synchronous mirror first. If it does not fit,
-            // remove any older mirror so it cannot override the newer IDB value
-            // during the next hydration.
             const mirrored = writeRaw(key, normalized);
-            if (!mirrored) deleteRaw(key);
+            if (!mirrored)
+                deleteRaw(key);
             void idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized).then(written => {
                 if (!written) {
                     lastWriteError = mirrored
@@ -177,43 +145,32 @@ export const storage = {
         }
         return writeRaw(key, normalized);
     },
-
     remove(key: string) {
         void this.removeAsync(key);
     },
-
     async removeAsync(key: string): Promise<void> {
         memoryStore.delete(key);
         if (indexedDbEnabled) {
-            // Keep a synchronous tombstone until a future write replaces it.
-            // This prevents an interrupted IDB delete from resurrecting state.
             markRawDeleted(key);
             await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
-        } else {
+        }
+        else {
             deleteRaw(key);
         }
     },
-
     usageBytes(): number {
         return currentUsageBytes();
     },
-
     budgetBytes(): number {
         return LOCAL_STORAGE_BUDGET_BYTES;
     },
-
     lastError(): string | null {
         return lastWriteError;
     },
-
-    /**
-     * Read and parse JSON. On any failure (missing, invalid JSON, failed
-     * validation) the bad entry is removed and the fallback is returned —
-     * this is the self-repair path.
-     */
     getJSON<T>(key: string, fallback: T, validate?: (value: any) => boolean): T {
         const raw = readRaw(key);
-        if (raw === null) return fallback;
+        if (raw === null)
+            return fallback;
         try {
             const parsed = JSON.parse(raw);
             if (validate && !validate(parsed)) {
@@ -221,45 +178,43 @@ export const storage = {
                 return fallback;
             }
             return parsed as T;
-        } catch {
+        }
+        catch {
             this.remove(key);
             return fallback;
         }
     },
-
     setJSON(key: string, value: unknown): boolean {
         try {
             return this.set(key, JSON.stringify(value));
-        } catch {
+        }
+        catch {
             lastWriteError = 'Unable to serialize value for persistent storage.';
             return false;
         }
     },
-
     keys(prefix: string): string[] {
         const keys = new Set<string>(memoryStore.keys());
         try {
             Object.keys(window.localStorage).forEach(key => keys.add(key));
-        } catch {
-            // IndexedDB-backed sessions can work without localStorage.
+        }
+        catch {
         }
         return Array.from(keys).filter(key => key.startsWith(prefix) && readRaw(key) !== null);
     },
-
     async clearPrefix(prefix: string): Promise<void> {
         const keys = this.keys(prefix);
         await Promise.all(keys.map(key => this.removeAsync(key)));
-        if (indexedDbEnabled) await idbClearPrefix(`${IDB_STORAGE_PREFIX}${prefix}`);
+        if (indexedDbEnabled)
+            await idbClearPrefix(`${IDB_STORAGE_PREFIX}${prefix}`);
     },
 };
-
-/** Session-only storage for secrets. Unlike localStorage, this is cleared when
- * the browser session ends and is never included in persisted AI profiles. */
 export const sessionStore = {
     get(key: string, fallback = ''): string {
         try {
             return window.sessionStorage.getItem(key) ?? fallback;
-        } catch {
+        }
+        catch {
             return fallback;
         }
     },
@@ -267,22 +222,26 @@ export const sessionStore = {
         try {
             window.sessionStorage.setItem(key, value);
             return true;
-        } catch {
+        }
+        catch {
             return false;
         }
     },
     remove(key: string) {
         try {
             window.sessionStorage.removeItem(key);
-        } catch { /* private mode */
+        }
+        catch {
         }
     },
     getJSON<T>(key: string, fallback: T): T {
         const raw = this.get(key, '');
-        if (!raw) return fallback;
+        if (!raw)
+            return fallback;
         try {
             return JSON.parse(raw) as T;
-        } catch {
+        }
+        catch {
             this.remove(key);
             return fallback;
         }
@@ -290,18 +249,13 @@ export const sessionStore = {
     setJSON(key: string, value: unknown): boolean {
         try {
             return this.set(key, JSON.stringify(value));
-        } catch {
+        }
+        catch {
             return false;
         }
     },
 };
-
-/* ------------------------------------------------------------------ *
- *  Global UI state (not tied to any spec): sidebar, layout, last spec
- * ------------------------------------------------------------------ */
-
 const UI_PREFIX = 'opendoc:ui:';
-
 export const uiStorage = {
     key(name: string) {
         return `${UI_PREFIX}${name}`;
@@ -325,17 +279,8 @@ export const uiStorage = {
         return storage.clearPrefix(UI_PREFIX);
     },
 };
-
-/* ------------------------------------------------------------------ *
- *  Per-spec state: everything that belongs to one spec lives under
- *  `opendoc:spec:<encoded spec key>:<encoded name>` so specs never clash
- *  and orphaned specs can be pruned in one sweep.
- * ------------------------------------------------------------------ */
-
 const SPEC_PREFIX = 'opendoc:spec:';
-
 const encodePart = (value: string) => encodeURIComponent(value);
-
 export const specStorage = {
     key(specKey: string, name: string) {
         return `${SPEC_PREFIX}${encodePart(specKey)}:${encodePart(name)}`;
@@ -362,84 +307,79 @@ export const specStorage = {
     clearAll(): Promise<void> {
         return storage.clearPrefix(SPEC_PREFIX);
     },
-
-    /** Encoded spec key stored inside a `opendoc:spec:` key, or null. */
     specKeyOf(storageKey: string): string | null {
-        if (!storageKey.startsWith(SPEC_PREFIX)) return null;
+        if (!storageKey.startsWith(SPEC_PREFIX))
+            return null;
         const rest = storageKey.slice(SPEC_PREFIX.length);
         const sep = rest.lastIndexOf(':');
-        if (sep <= 0) return null;
+        if (sep <= 0)
+            return null;
         try {
             return decodeURIComponent(rest.slice(0, sep));
-        } catch {
+        }
+        catch {
             return null;
         }
     },
-
-    /**
-     * Self-repair sweep: remove every per-spec entry whose spec no longer
-     * exists in the given set of valid keys.
-     */
     prune(validSpecKeys: string[]) {
-        // specKeyOf() returns decoded keys, so compare against the raw list.
         const valid = new Set(validSpecKeys);
         storage.keys(SPEC_PREFIX).forEach((key) => {
             const specKey = this.specKeyOf(key);
-            if (specKey !== null && !valid.has(specKey)) storage.remove(key);
+            if (specKey !== null && !valid.has(specKey))
+                storage.remove(key);
         });
-        // Conversation history has a dedicated IndexedDB namespace and is not
-        // visible through the synchronous per-spec key sweep.
         void idbGetAll<unknown>('conversations:').then(records => {
-            if (!records) return;
+            if (!records)
+                return;
             records.forEach(record => {
                 const specKey = String(record.key).slice('conversations:'.length);
-                if (!valid.has(specKey)) void idbDelete(String(record.key));
+                if (!valid.has(specKey))
+                    void idbDelete(String(record.key));
             });
         });
     },
 };
-
-/* ------------------------------------------------------------------ *
- *  One-time migration from the pre-namespace keys (v0.1.0 era)
- * ------------------------------------------------------------------ */
-
 const MIGRATED_FLAG = 'opendoc:ui:migration_v1_done';
-
 const moveKey = (from: string, to: string) => {
-    if (storage.get(to) !== '') return;
+    if (storage.get(to) !== '')
+        return;
     const value = readRaw(from);
-    if (value === null) return;
+    if (value === null)
+        return;
     storage.set(to, value);
     storage.remove(from);
 };
-
 const migrateSpecKeys = () => {
-    // legacy: selected_theme_name_<key>, theme_mode_<key>, preferred_tab_<key>, endpoint_tabs_<key>
-    const patterns: Array<{ prefix: string; name: string }> = [
-        {prefix: 'selected_theme_name_', name: 'theme'},
-        {prefix: 'theme_mode_', name: 'theme_mode'},
-        {prefix: 'preferred_tab_', name: 'tab_mode'},
-        {prefix: 'endpoint_tabs_', name: 'tabs'},
+    const patterns: Array<{
+        prefix: string;
+        name: string;
+    }> = [
+        { prefix: 'selected_theme_name_', name: 'theme' },
+        { prefix: 'theme_mode_', name: 'theme_mode' },
+        { prefix: 'preferred_tab_', name: 'tab_mode' },
+        { prefix: 'endpoint_tabs_', name: 'tabs' },
     ];
     storage.keys('').forEach((legacyKey) => {
-        for (const {prefix, name} of patterns) {
-            if (!legacyKey.startsWith(prefix)) continue;
+        for (const { prefix, name } of patterns) {
+            if (!legacyKey.startsWith(prefix))
+                continue;
             const specKey = legacyKey.slice(prefix.length);
-            if (!specKey) continue;
+            if (!specKey)
+                continue;
             const target = specStorage.key(specKey, name);
             if (storage.get(target) === '') {
                 const value = readRaw(legacyKey);
-                if (value !== null) storage.set(target, value);
+                if (value !== null)
+                    storage.set(target, value);
             }
             storage.remove(legacyKey);
             break;
         }
     });
 };
-
-/** Run once per browser session; moves legacy keys into the namespaces. */
 export const migrateLegacyStorage = () => {
-    if (storage.get(MIGRATED_FLAG) === '1') return;
+    if (storage.get(MIGRATED_FLAG) === '1')
+        return;
     moveKey('sidebar_collapsed', uiStorage.key('sidebar_collapsed'));
     moveKey('sidebar_width', uiStorage.key('sidebar_width'));
     moveKey('collapsed_tags', uiStorage.key('collapsed_tags'));

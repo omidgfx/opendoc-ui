@@ -1,10 +1,9 @@
-import {type Dispatch, type SetStateAction, useCallback, useState} from 'react';
-import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
-import {clearAllCachedSpecs, clearCachedSpec} from '../utils/specCache';
-import {specStorage, uiStorage} from '../utils/storage';
-import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/aiStorage';
-import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
-
+import { type Dispatch, type SetStateAction, useCallback, useState } from 'react';
+import type { OpenApiSpec, Parsable, ParsableConfig } from '../types';
+import { clearAllCachedSpecs, clearCachedSpec } from '../utils/specCache';
+import { specStorage, uiStorage } from '../utils/storage';
+import { clearAIConversations, clearAISessionSecrets, clearAllAIConversations } from '../utils/aiStorage';
+import { type LocalSpec, parseSpecDraft } from '../utils/appSpec';
 interface UseSpecificationActionsOptions {
     selectedSpecKey: string;
     parsables: ParsableConfig;
@@ -15,19 +14,8 @@ interface UseSpecificationActionsOptions {
     setLoadedSpecKey: Dispatch<SetStateAction<string>>;
     setLocalOpenError: Dispatch<SetStateAction<string | null>>;
 }
-
-export function useSpecificationActions({
-                                            selectedSpecKey,
-                                            parsables,
-                                            localSpec,
-                                            loadSpec,
-                                            applyLocalSpec,
-                                            setSpec,
-                                            setLoadedSpecKey,
-                                            setLocalOpenError,
-                                        }: UseSpecificationActionsOptions) {
+export function useSpecificationActions({ selectedSpecKey, parsables, localSpec, loadSpec, applyLocalSpec, setSpec, setLoadedSpecKey, setLocalOpenError, }: UseSpecificationActionsOptions) {
     const [isRefreshingSpec, setIsRefreshingSpec] = useState(false);
-
     const refreshSpec = useCallback(async () => {
         setIsRefreshingSpec(true);
         const minimumVisible = new Promise(resolve => setTimeout(resolve, 700));
@@ -35,35 +23,38 @@ export function useSpecificationActions({
             if (selectedSpecKey && parsables[selectedSpecKey]) {
                 await clearAllCachedSpecs();
                 await loadSpec(selectedSpecKey, parsables[selectedSpecKey], true);
-            } else if (localSpec) {
+            }
+            else if (localSpec) {
                 if (localSpec.file) {
                     applyLocalSpec(await localSpec.file.text(), localSpec.fileName, localSpec.file);
-                } else {
+                }
+                else {
                     setSpec(parseSpecDraft(localSpec.raw));
                     setLoadedSpecKey(localSpec.key);
                 }
             }
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Refresh failed', error);
             setLocalOpenError('Could not re-read the specification.');
-        } finally {
+        }
+        finally {
             await minimumVisible;
             setIsRefreshingSpec(false);
         }
     }, [selectedSpecKey, parsables, localSpec, loadSpec, applyLocalSpec, setSpec, setLoadedSpecKey, setLocalOpenError]);
-
     const reloadSpecification = useCallback(async (specKey: string) => {
-        if (specKey === selectedSpecKey) await refreshSpec();
+        if (specKey === selectedSpecKey)
+            await refreshSpec();
     }, [selectedSpecKey, refreshSpec]);
-
     const resetSpecification = useCallback(async (specKey: string) => {
         await clearAIConversations(specKey);
         await specStorage.clear(specKey);
         const source = parsables[specKey];
-        if (source?.url) await clearCachedSpec(source.url);
+        if (source?.url)
+            await clearCachedSpec(source.url);
         window.setTimeout(() => window.location.reload(), 0);
     }, [parsables]);
-
     const resetAllConfigurations = useCallback(async () => {
         await uiStorage.clear();
         clearAISessionSecrets();
@@ -72,7 +63,6 @@ export function useSpecificationActions({
         await clearAllCachedSpecs();
         window.setTimeout(() => window.location.reload(), 0);
     }, []);
-
     return {
         isRefreshingSpec,
         handleRefreshSpec: refreshSpec,

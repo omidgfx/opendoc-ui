@@ -1,5 +1,4 @@
-import {AppTheme} from '../types';
-
+import { AppTheme } from '../types';
 export const THEME_LIST: AppTheme[] = [
     {
         name: "Default Slate",
@@ -992,8 +991,6 @@ export const THEME_LIST: AppTheme[] = [
         }
     }
 ];
-
-/** A warm, high-contrast addition that complements the original theme set. */
 export const VESPER_THEME: AppTheme = {
     name: 'Vesper',
     light: {
@@ -1049,5 +1046,4 @@ export const VESPER_THEME: AppTheme = {
         methodPatch: '#c5a0e6',
     },
 };
-
 THEME_LIST.push(VESPER_THEME);

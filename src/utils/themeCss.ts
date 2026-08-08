@@ -1,9 +1,7 @@
 import type React from 'react';
-import type {ThemeItem} from '../types';
-import {getContrastColor} from './color';
-
+import type { ThemeItem } from '../types';
+import { getContrastColor } from './color';
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const;
-
 export const createThemeCssVariables = (theme: ThemeItem): React.CSSProperties => {
     const variables: Record<string, string> = {
         '--background': theme.background,
@@ -32,7 +30,6 @@ export const createThemeCssVariables = (theme: ThemeItem): React.CSSProperties =
     });
     return variables as React.CSSProperties;
 };
-
 export const applyThemeCssVariables = (theme: ThemeItem, root: HTMLElement = document.documentElement): void => {
     const variables = createThemeCssVariables(theme) as Record<string, string>;
     Object.entries(variables).forEach(([name, value]) => root.style.setProperty(name, value));

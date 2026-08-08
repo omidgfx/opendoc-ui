@@ -1,18 +1,25 @@
-export const TOC_SECTIONS: Array<{ id: string; label: string; icon: string }> = [
-    {id: 'why', label: 'Why', icon: 'ph ph-lightbulb'},
-    {id: 'what', label: 'What it does', icon: 'ph ph-cube'},
-    {id: 'how', label: 'How it works', icon: 'ph ph-gear-six'},
-    {id: 'ai', label: 'AI assistant', icon: 'ph ph-sparkle'},
-    {id: 'keyboard', label: 'Keyboard', icon: 'ph ph-keyboard'},
-    {id: 'mouse', label: 'Mouse', icon: 'ph ph-cursor-click'},
-    {id: 'preview', label: 'Preview', icon: 'ph ph-eye'},
-    {id: 'reading', label: 'Reading', icon: 'ph ph-book-open'},
-    {id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush'},
-    {id: 'about', label: 'About', icon: 'ph ph-info'},
-    {id: 'license', label: 'License', icon: 'ph ph-scroll'},
+export const TOC_SECTIONS: Array<{
+    id: string;
+    label: string;
+    icon: string;
+}> = [
+    { id: 'why', label: 'Why', icon: 'ph ph-lightbulb' },
+    { id: 'what', label: 'What it does', icon: 'ph ph-cube' },
+    { id: 'how', label: 'How it works', icon: 'ph ph-gear-six' },
+    { id: 'ai', label: 'AI assistant', icon: 'ph ph-sparkle' },
+    { id: 'keyboard', label: 'Keyboard', icon: 'ph ph-keyboard' },
+    { id: 'mouse', label: 'Mouse', icon: 'ph ph-cursor-click' },
+    { id: 'preview', label: 'Preview', icon: 'ph ph-eye' },
+    { id: 'reading', label: 'Reading', icon: 'ph ph-book-open' },
+    { id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush' },
+    { id: 'about', label: 'About', icon: 'ph ph-info' },
+    { id: 'license', label: 'License', icon: 'ph ph-scroll' },
 ];
-
-export const FEATURES: Array<{ icon: string; title: string; desc: string }> = [
+export const FEATURES: Array<{
+    icon: string;
+    title: string;
+    desc: string;
+}> = [
     {
         icon: 'ph-fill ph-book-open-text',
         title: 'Documentation Browser',
@@ -49,14 +56,16 @@ export const FEATURES: Array<{ icon: string; title: string; desc: string }> = [
         desc: 'Every endpoint, tab, response and schema modal lives in the URL hash for perfect link sharing.'
     },
 ];
-
-/* ------------------------------------------------------------------ *
- *  Keyboard shortcuts — grouped by the surface they apply to.
- *  `note` explains conditions and edge cases.
- * ------------------------------------------------------------------ */
-type Shortcut = { k: string; d: string; note?: string };
-type ShortcutGroup = { group: string; icon: string; items: Shortcut[] };
-
+type Shortcut = {
+    k: string;
+    d: string;
+    note?: string;
+};
+type ShortcutGroup = {
+    group: string;
+    icon: string;
+    items: Shortcut[];
+};
 export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     {
         group: 'Global',
@@ -144,12 +153,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         ],
     },
 ];
-
-/* ------------------------------------------------------------------ *
- *  Mouse & pointer interactions
- * ------------------------------------------------------------------ */
-type MouseRow = { icon: string; act: string; where: string; desc: string };
-
+type MouseRow = {
+    icon: string;
+    act: string;
+    where: string;
+    desc: string;
+};
 export const MOUSE_ACTIONS: MouseRow[] = [
     {
         icon: 'ph-fill ph-cursor-click',
@@ -218,11 +227,11 @@ export const MOUSE_ACTIONS: MouseRow[] = [
         desc: 'Opens the navigation drawer. The gesture must start within 28px of the screen edge and travel at least 50px horizontally, so it will not fire during ordinary vertical scrolling.',
     },
 ];
-
-/* ------------------------------------------------------------------ *
- *  Preview-tab lifecycle rules
- * ------------------------------------------------------------------ */
-export const PREVIEW_RULES: Array<{ icon: string; title: string; desc: string }> = [
+export const PREVIEW_RULES: Array<{
+    icon: string;
+    title: string;
+    desc: string;
+}> = [
     {
         icon: 'ph-fill ph-eye',
         title: 'One preview tab at a time',
@@ -254,13 +263,11 @@ export const PREVIEW_RULES: Array<{ icon: string; title: string; desc: string }>
         desc: 'Your open tabs, which one is active, each tab’s view mode and its preview state are all saved per specification. Reload the page and you return to the same working set — with the preview tab still parked at the end.',
     },
 ];
-
-export const stagger = {visible: {transition: {staggerChildren: 0.06}}};
+export const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 export const fadeUp = {
-    hidden: {opacity: 0, y: 12},
-    visible: {opacity: 1, y: 0, transition: {duration: 0.4, ease: 'easeOut' as const}},
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
 };
-
 export const MIT_LICENSE = `MIT License
 
 Copyright (c) ${new Date().getFullYear()} Pejman Chatrrouz (OpenDoc UI)

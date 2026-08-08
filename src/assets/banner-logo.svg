@@ -15,22 +15,22 @@
         </filter>
     </defs>
 
-    <!-- Icon mark (rounded square with doc + braces + connected dots) -->
+
     <g transform="translate(60 40)" filter="url(#od-shadow)">
         <rect x="0" y="0" width="240" height="240" rx="56" ry="56" fill="url(#od-g)"/>
-        <!-- Document page -->
+
         <rect x="56" y="44" width="112" height="152" rx="14" fill="white" fill-opacity="0.96"/>
-        <!-- Fold corner -->
+
         <path d="M144 44 L168 68 L144 68 Z" fill="#e0e7ff"/>
-        <!-- Lines -->
+
         <rect x="74" y="92" width="76" height="8" rx="4" fill="#c7d2fe"/>
         <rect x="74" y="112" width="58" height="8" rx="4" fill="#c7d2fe"/>
         <rect x="74" y="132" width="68" height="8" rx="4" fill="#c7d2fe"/>
-        <!-- Braces -->
+
         <text x="120" y="184" text-anchor="middle" font-family="'JetBrains Mono','Fira Code',Consolas,monospace"
               font-weight="800" font-size="36" fill="#4f46e5">{ }
         </text>
-        <!-- Connected endpoint dots around icon -->
+
         <circle cx="32" cy="46" r="8" fill="white" fill-opacity="0.9"/>
         <circle cx="208" cy="46" r="8" fill="white" fill-opacity="0.9"/>
         <circle cx="208" cy="194" r="8" fill="white" fill-opacity="0.9"/>
@@ -45,7 +45,7 @@
               fill="none"/>
     </g>
 
-    <!-- Wordmark -->
+
     <g transform="translate(340 130)">
         <text x="0" y="0" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="900"
               font-size="96" letter-spacing="-2.5" fill="#0f172a">OpenDoc
@@ -53,12 +53,12 @@
         <text x="518" y="0" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="900"
               font-size="96" letter-spacing="-2" fill="url(#od-g2)">UI
         </text>
-        <!-- Tagline -->
+
         <text x="0" y="56" font-family="'Inter','SF Pro Display','Helvetica Neue',Arial,sans-serif" font-weight="500"
               font-size="20" letter-spacing="3.5" fill="#64748b" text-transform="uppercase">OpenAPI Documentation
             Interface
         </text>
-        <!-- Thin rule -->
+
         <rect x="2" y="74" width="120" height="3" rx="1.5" fill="url(#od-g)"/>
     </g>
 </svg>

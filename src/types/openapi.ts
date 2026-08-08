@@ -24,15 +24,12 @@ export interface ThemeItem {
     methodOptions: string;
     methodTrace: string;
 }
-
 export interface AppTheme {
     name: string;
     light: ThemeItem;
     dark: ThemeItem;
 }
-
 export type ThemeMode = 'light' | 'dark' | 'system';
-
 export interface Parsable {
     theme: string;
     url: string;
@@ -40,11 +37,9 @@ export interface Parsable {
     isCustom?: boolean;
     rawSpec?: string;
 }
-
 export interface ParsableConfig {
     [key: string]: Parsable;
 }
-
 export interface SecurityScheme {
     type: string;
     description?: string;
@@ -53,7 +48,6 @@ export interface SecurityScheme {
     scheme?: string;
     flows?: any;
 }
-
 export interface Parameter {
     name: string;
     in: 'path' | 'query' | 'querystring' | 'header' | 'cookie';
@@ -69,7 +63,6 @@ export interface Parameter {
     example?: any;
     examples?: Record<string, any>;
 }
-
 export interface ResponseDefinition {
     description?: string;
     headers?: any;
@@ -82,7 +75,6 @@ export interface ResponseDefinition {
         };
     };
 }
-
 export interface RequestBodyDefinition {
     description?: string;
     required?: boolean;
@@ -95,7 +87,6 @@ export interface RequestBodyDefinition {
         };
     };
 }
-
 export interface Operation {
     tags?: string[];
     summary?: string;
@@ -107,10 +98,11 @@ export interface Operation {
     responses: {
         [statusCode: string]: ResponseDefinition;
     };
-    security?: Array<{ [key: string]: string[] }>;
+    security?: Array<{
+        [key: string]: string[];
+    }>;
     deprecated?: boolean;
 }
-
 export interface PathItem {
     get?: Operation;
     post?: Operation;
@@ -122,7 +114,6 @@ export interface PathItem {
     trace?: Operation;
     parameters?: Parameter[];
 }
-
 export interface OpenApiSpec {
     openapi: string;
     swagger?: string;
@@ -144,7 +135,9 @@ export interface OpenApiSpec {
     paths: {
         [path: string]: PathItem;
     };
-    security?: Array<{ [key: string]: string[] }>;
+    security?: Array<{
+        [key: string]: string[];
+    }>;
     components?: {
         schemas?: {
             [name: string]: any;
@@ -166,17 +159,7 @@ export interface OpenApiSpec {
         };
     };
 }
-
-export type AuthCredentialType =
-    'apiKey'
-    | 'http'
-    | 'oauth2'
-    | 'openIdConnect'
-    | 'cookie'
-    | 'basic'
-    | 'bearer'
-    | 'unknown';
-
+export type AuthCredentialType = 'apiKey' | 'http' | 'oauth2' | 'openIdConnect' | 'cookie' | 'basic' | 'bearer' | 'unknown';
 export interface AuthCredential {
     schemeId: string;
     type: AuthCredentialType;
@@ -188,19 +171,16 @@ export interface AuthCredential {
     password?: string;
     scopes?: string[];
 }
-
 export interface ActiveAuth {
-    /** The selected security-scheme ID. `none` is the public/no-auth choice. */
     activeScheme: string;
-    /** Multiple IDs are used when one OpenAPI security requirement composes schemes. */
     selectedSchemes: string[];
-    /** Values are keyed by the actual OpenAPI security-scheme ID, never by a generic type. */
-    schemeValues: { [schemeId: string]: AuthCredential };
-    /** The selected requirement index, when the document exposes alternatives. */
+    schemeValues: {
+        [schemeId: string]: AuthCredential;
+    };
     requirementIndex?: number;
-
-    // Legacy fields are retained for saved links/code generators from 0.1.x.
-    cookieValues: { [key: string]: string };
+    cookieValues: {
+        [key: string]: string;
+    };
     bearerToken: string;
     apiKeyName: string;
     apiKeyValue: string;

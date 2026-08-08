@@ -1,12 +1,11 @@
-import {useState} from 'react';
-import {ActiveAuth, OpenApiSpec} from '../../types';
+import { useState } from 'react';
+import { ActiveAuth, OpenApiSpec } from '../../types';
 import CodeViewer from '../common/CodeViewer';
-import {Tip} from '../common/Tooltip';
-import {applyAuthToRequest} from '../../utils/auth';
-import {queryStringFromPairs} from '../../utils/openapi/serialization';
-import {useEscClose} from '../../hooks/useEscClose';
-import {useModalTransition} from '../../hooks/useModalTransition';
-
+import { Tip } from '../common/Tooltip';
+import { applyAuthToRequest } from '../../utils/auth';
+import { queryStringFromPairs } from '../../utils/openapi/serialization';
+import { useEscClose } from '../../hooks/useEscClose';
+import { useModalTransition } from '../../hooks/useModalTransition';
 interface CodeGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -16,46 +15,32 @@ interface CodeGeneratorModalProps {
     operation: any;
     activeAuth: ActiveAuth;
 }
-
-export default function CodeGeneratorModal({
-                                               isOpen,
-                                               onClose,
-                                               spec,
-                                               path,
-                                               method,
-                                               operation,
-                                               activeAuth
-                                           }: CodeGeneratorModalProps) {
+export default function CodeGeneratorModal({ isOpen, onClose, spec, path, method, operation, activeAuth }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState('curl');
-    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+    const { shouldRender, requestClose, backdropClassName } = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, requestClose);
-
-    if (!shouldRender) return null;
-
-    // Generate code snippet targets
+    if (!shouldRender)
+        return null;
     const generateSnippet = (lang: string) => {
         const cleanPath = path;
         const cleanMethod = method.toUpperCase();
         const serverUrl = spec.servers?.[0]?.url || "https://api.example.com";
-
         switch (lang) {
             case 'curl': {
-                const auth = applyAuthToRequest(spec, activeAuth, {headers: {}, query: [], cookies: []}, operation);
+                const auth = applyAuthToRequest(spec, activeAuth, { headers: {}, query: [], cookies: [] }, operation);
                 const authHeaders = Object.entries(auth.headers).map(([name, value]) => ` -H "${name}: ${value}" \\\n`).join('');
                 const authQuery = queryStringFromPairs(auth.query);
                 const cookieHint = auth.cookies.length > 0 ? ` -b "${auth.cookies.map(cookie => `${cookie.name}=YOUR_${cookie.name.toUpperCase()}`).join('; ')}" \\\n` : activeAuth.selectedSchemes?.some(id => (spec.components?.securitySchemes as any)?.[id]?.in === 'cookie') ? ' -b "COOKIE_NAME=COOKIE_VALUE" \\\n' : '';
                 return `curl -X ${cleanMethod} "${serverUrl}${cleanPath}${authQuery}" \\\n -H "Accept: application/json" \\\n${authHeaders}${cookieHint} -H "Content-Type: application/json"`;
             }
             case 'laravel':
-                return `// Laravel Route Consumer Code
-use Illuminate\\Support\\Facades\\Http;
+                return `use Illuminate\\Support\\Facades\\Http;
 
 $response = Http::withHeaders([
  'Accept' => 'application/json',
 ])->withCookies([
  'access_token' => 'YOUR_ISOLATED_TOKEN'
 ])->send('${cleanMethod}', '${serverUrl}${cleanPath}', [
- // 'json' => [ ... ]
 ]);
 
 if ($response->successful()) {
@@ -75,7 +60,6 @@ func main() {
  req, _ := http.NewRequest("${cleanMethod}", url, nil)
 
  req.Header.Add("Accept", "application/json")
- // Include Cookie authentication
  req.Header.Add("Cookie", "access_token=YOUR_DECRYPTED_TOKEN")
 
  res, err := http.DefaultClient.Do(req)
@@ -90,7 +74,6 @@ func main() {
 }`;
             case 'php':
                 return `<?php
-// Vanilla PHP (cURL payload)
 $curl = curl_init();
 
 curl_setopt_array($curl, [
@@ -173,7 +156,7 @@ class Program
  {
  var client = new HttpClient();
  var request = new HttpRequestMessage(HttpMethod.${method.toUpperCase() === 'DELETE' ? 'Delete' : method.toUpperCase() === 'POST' ? 'Post' : method.toUpperCase() === 'PUT' ? 'Put' : 'Get'}, "${serverUrl}${cleanPath}");
- 
+
  request.Headers.Add("Accept", "application/json");
  request.Headers.Add("Cookie", "access_token=YOUR_ACCESS_TOKEN");
 
@@ -210,18 +193,12 @@ export class ApiService {
     );
   }
 }
-
-// Usage in a component:
-// this.apiService.callEndpoint().subscribe({
-//   next: (data) => console.log(data),
-//   error: (err) => console.error(err)
-// });`;
+`;
             }
             default:
                 return '';
         }
     };
-
     const getLanguageLabel = (lang: string) => {
         switch (lang) {
             case 'curl':
@@ -241,25 +218,18 @@ export class ApiService {
                 return 'javascript';
         }
     };
-
-    return (
-        <div
-            className={`${backdropClassName} fixed inset-0 z-[2500] bg-black/40 backdrop-blur-[2px]`}
-            onMouseDown={event => {
-                if (event.target === event.currentTarget) requestClose();
-            }}>
-            <div
-                className="modal-surface max-h-[90vh] w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)]">
+    return (<div className={`${backdropClassName} fixed inset-0 z-[2500] bg-black/40 backdrop-blur-[2px]`} onMouseDown={event => {
+            if (event.target === event.currentTarget)
+                requestClose();
+        }}>
+            <div className="modal-surface max-h-[90vh] w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)]">
 
 
-                {/* Modal Header */}
-                <div
-                    className="px-4 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] gap-2 modal-header-mobile-pad">
+                <div className="px-4 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] gap-2 modal-header-mobile-pad">
 
 
                     <div className="flex items-center gap-3 select-none">
-                        <span
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-[var(--primary)]/10 text-[var(--primary)]">
                             <i className="ph ph-code text-lg"></i>
                         </span>
                         <div>
@@ -273,69 +243,53 @@ export class ApiService {
                     </div>
 
                     <Tip content="Close">
-                        <button
-                            onClick={requestClose}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] transition-all cursor-pointer text-[var(--text-muted)]">
+                        <button onClick={requestClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] transition-all cursor-pointer text-[var(--text-muted)]">
                             <i className="ph ph-x"></i>
                         </button>
                     </Tip>
                 </div>
 
-                {/* Modal Body */}
-                <div className="modal-scroll-region min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
-                    <div
-                        className="rounded-2xl border overflow-hidden shadow-sm bg-[var(--surface)] border-[var(--border)]">
 
-                        {/* Language Selection Bar (Horizontal scrollable) */}
-                        <div
-                            className="flex border-b overflow-x-auto scrollbar-thin flex-nowrap border-[var(--border)] bg-[var(--background)]">
+                <div className="modal-scroll-region min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+                    <div className="rounded-2xl border overflow-hidden shadow-sm bg-[var(--surface)] border-[var(--border)]">
+
+
+                        <div className="flex border-b overflow-x-auto scrollbar-thin flex-nowrap border-[var(--border)] bg-[var(--background)]">
 
                             {[
-                                {id: 'curl', name: 'cURL'},
-                                {id: 'js-fetch', name: 'JS Fetch'},
-                                {id: 'js-axios', name: 'Axios'},
-                                {id: 'angular', name: 'Angular'},
-                                {id: 'laravel', name: 'Laravel'},
-                                {id: 'php', name: 'PHP'},
-                                {id: 'python', name: 'Python'},
-                                {id: 'go', name: 'Go'},
-                                {id: 'csharp', name: 'C#'}].map((lang) =>
-                                <button
-                                    key={lang.id}
-                                    onClick={() => setSelectedLang(lang.id)}
-                                    className={`px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                                        selectedLang === lang.id ?
-                                            'border-[var(--primary)] font-bold text-[var(--primary)] bg-[var(--primary)]/5' :
-                                            'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'}`
-                                    }>
+            { id: 'curl', name: 'cURL' },
+            { id: 'js-fetch', name: 'JS Fetch' },
+            { id: 'js-axios', name: 'Axios' },
+            { id: 'angular', name: 'Angular' },
+            { id: 'laravel', name: 'Laravel' },
+            { id: 'php', name: 'PHP' },
+            { id: 'python', name: 'Python' },
+            { id: 'go', name: 'Go' },
+            { id: 'csharp', name: 'C#' }
+        ].map((lang) => <button key={lang.id} onClick={() => setSelectedLang(lang.id)} className={`px-4 py-3 text-xs font-semibold border-b-2 transition-all shrink-0 whitespace-nowrap cursor-pointer ${selectedLang === lang.id ?
+                'border-[var(--primary)] font-bold text-[var(--primary)] bg-[var(--primary)]/5' :
+                'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'}`}>
 
                                     {lang.name}
-                                </button>
-                            )}
+                                </button>)}
                         </div>
 
-                        {/* Generated Code Displaybox */}
+
                         <div className="p-1 bg-transparent">
-                            <CodeViewer
-                                code={generateSnippet(selectedLang)}
-                                language={getLanguageLabel(selectedLang)}
-                                maxHeight="420px"/>
+                            <CodeViewer code={generateSnippet(selectedLang)} language={getLanguageLabel(selectedLang)} maxHeight="420px"/>
 
                         </div>
                     </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div
-                    className="px-6 py-3.5 border-t flex justify-between items-center bg-[var(--background)] text-[11px] border-[var(--border)] text-[var(--text-muted)]">
+
+                <div className="px-6 py-3.5 border-t flex justify-between items-center bg-[var(--background)] text-[11px] border-[var(--border)] text-[var(--text-muted)]">
 
 
                     <span className="font-sans">
                         Authentication parameters fully bound inside code outputs
                     </span>
-                    <button
-                        onClick={requestClose}
-                        className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm active:scale-[0.98] bg-[var(--primary)]">
+                    <button onClick={requestClose} className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm active:scale-[0.98] bg-[var(--primary)]">
 
 
                         Done
@@ -343,5 +297,4 @@ export class ApiService {
                 </div>
             </div>
         </div>);
-
 }
