@@ -11,14 +11,14 @@ interface PatternPreviewProps {
 /** A bounded regex preview with a full-value tooltip when the text is clipped. */
 export default function PatternPreview({pattern, onTest, showLabel = false, className}: PatternPreviewProps) {
     return (
-        <div className={clsx('flex min-w-0 items-center gap-2 py-1 text-[9px] font-mono', className)}>
-            {showLabel && <span className="shrink-0">pattern:</span>}
+        <div className={clsx('flex max-w-full min-w-0 items-center gap-2 overflow-hidden py-1 text-[9px] font-mono', className)}>
+            {showLabel && <span className="inline-block w-auto max-w-[160px] shrink-0 truncate">pattern:</span>}
             <Tip
-                wrapperClassName="min-w-0 w-full max-w-[min(100%,420px)]"
+                wrapperClassName="inline-flex w-auto min-w-0 max-w-[160px] shrink"
                 content={<code className="font-mono text-[10px]">/{pattern}/</code>}
             >
                 <code
-                    className="block min-w-0 max-w-full truncate overflow-hidden whitespace-nowrap text-ellipsis text-[var(--method-put)]">/{pattern}/</code>
+                    className="inline-block w-auto min-w-0 max-w-[160px] truncate overflow-hidden whitespace-nowrap text-ellipsis text-[var(--method-put)]">/{pattern}/</code>
             </Tip>
             {onTest && (
                 <Tip content="Test this regex pattern">

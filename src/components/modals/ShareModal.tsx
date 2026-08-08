@@ -148,7 +148,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
             }}
         >
             <div
-                className="modal-surface w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
+                className="modal-surface w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] flex flex-col max-h-[90vh]">
                 <div
                     className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -209,12 +209,12 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
                             via</label>
                         <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
                             {shareOptions.map((opt) => (
-                                <Tip key={opt.name} content={`Share on ${opt.name}`}>
+                                <Tip key={opt.name} content={`Share on ${opt.name}`} fullWidth wrapperClassName="h-full">
                                     <a
                                         href={opt.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer select-none bg-[var(--background)] border-[var(--border)] hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] group"
+                                        className="flex h-[72px] w-full min-w-0 flex-col items-center justify-center gap-1.5 p-2 sm:h-[82px] sm:p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer select-none bg-[var(--background)] border-[var(--border)] hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] group"
                                     >
                                         <span
                                             className="size-8 sm:size-9 rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform"
@@ -231,17 +231,17 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Tip content="Copies a paste-ready markdown link for Slack">
+                    <div className="grid grid-cols-2 gap-2">
+                        <Tip content="Copies a paste-ready markdown link for Slack" fullWidth>
                             <button onClick={() => handleCopyChat('slack')}
-                                    className="flex-1 py-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                    className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                                 <i className={`ph-fill ph-slack-logo text-[15px] ${copiedChat === 'slack' ? 'text-[var(--method-get)]' : 'text-[#611f69]'}`}></i>
                                 {copiedChat === 'slack' ? 'Copied!' : 'Slack'}
                             </button>
                         </Tip>
-                        <Tip content="Copies a paste-ready markdown link for Mattermost">
+                        <Tip content="Copies a paste-ready markdown link for Mattermost" fullWidth>
                             <button onClick={() => handleCopyChat('mattermost')}
-                                    className="flex-1 py-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
+                                    className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-bold transition-all cursor-pointer bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                                 <i className={`ph-fill ph-chats-circle text-[15px] ${copiedChat === 'mattermost' ? 'text-[var(--method-get)]' : 'text-[var(--primary)]'}`}></i>
                                 {copiedChat === 'mattermost' ? 'Copied!' : 'Mattermost'}
                             </button>

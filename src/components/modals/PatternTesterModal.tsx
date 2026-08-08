@@ -38,7 +38,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
             onClick={requestClose}>
 
             <div
-                className="modal-surface w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)] animate-in zoom-in-95 duration-200"
+                className="modal-surface w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)]"
 
                 onClick={(e) => e.stopPropagation()}>
 

@@ -13,7 +13,9 @@ export default function DetailedThemeView({
                                               currentThemeMode,
                                               resolvedThemeMode,
                                               onSelectTheme,
-                                              onClose
+                                              onClose,
+                                              mobileSidebarOpen,
+                                              onCloseMobileSidebar
                                           }: {
     selectedTheme: AppTheme;
     selectedThemeName: string;
@@ -21,22 +23,23 @@ export default function DetailedThemeView({
     resolvedThemeMode: 'light' | 'dark';
     onSelectTheme: (themeName: string) => void;
     onClose: () => void;
+    mobileSidebarOpen: boolean;
+    onCloseMobileSidebar: () => void;
 }) {
-    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     return (
         <div className="flex h-full min-h-0 relative">
             {/* Mobile theme picker drawer */}
-            {showMobileSidebar && (
+            {mobileSidebarOpen && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/40 md:hidden"
-                         onClick={() => setShowMobileSidebar(false)}/>
+                    <div className="absolute inset-0 z-40 bg-black/40 md:hidden"
+                         onClick={onCloseMobileSidebar}/>
                     <aside
-                        className="fixed left-0 top-0 bottom-0 z-50 w-[78vw] max-w-[280px] overflow-y-auto border-r p-3 md:hidden scrollbar-thin bg-[var(--background)] border-[var(--border)] animate-in slide-in-from-left duration-200">
+                        className="absolute left-0 top-0 bottom-0 z-50 w-[78vw] max-w-[280px] overflow-y-auto border-r p-3 md:hidden scrollbar-thin bg-[var(--background)] border-[var(--border)] animate-in slide-in-from-left duration-200">
                         <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)]">
                             <span
                                 className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">All
                                 themes · {THEME_LIST.length}</span>
-                            <button onClick={() => setShowMobileSidebar(false)}
+                            <button onClick={onCloseMobileSidebar}
                                     className="size-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)]">
                                 <i className="ph ph-x text-[14px]"/>
                             </button>
@@ -48,7 +51,7 @@ export default function DetailedThemeView({
                                 return (
                                     <button type="button" key={theme.name} onClick={() => {
                                         onSelectTheme(theme.name);
-                                        setShowMobileSidebar(false);
+                                        onCloseMobileSidebar();
                                     }} aria-pressed={selected}
                                             className={clsx('flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer',
                                                 selected ? 'font-semibold' : 'border-transparent bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]')}
@@ -121,10 +124,6 @@ export default function DetailedThemeView({
             <main className="modal-scroll-region min-w-0 flex-1 overflow-y-auto p-3 sm:p-4 md:p-5 scrollbar-thin">
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
-                        <button onClick={() => setShowMobileSidebar(true)}
-                                className="md:hidden size-9 rounded-xl border flex items-center justify-center text-[var(--text-heading)] border-[var(--border)] hover:bg-[var(--surface-hover)]">
-                            <i className="ph ph-list text-[16px]"/>
-                        </button>
                         <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Selected
                                 theme</p>

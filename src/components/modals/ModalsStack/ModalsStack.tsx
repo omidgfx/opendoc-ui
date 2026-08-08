@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import {Tip} from '../../common/Tooltip';
 import {generateSingleSchemaFile} from '../../../utils/schemaExport';
 import {useModalTransition} from '../../../hooks/useModalTransition';
+import {useEscClose} from '../../../hooks/useEscClose';
 
 interface ModalsStackProps {
     modals: Array<{ schemaName: string; schema: any; }>;
@@ -38,6 +39,8 @@ export default function ModalsStack({
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
     const [shareModal, setShareModal] = useState<{ url: string; title: string; description?: string } | null>(null);
     const {requestClose, backdropClassName} = useModalTransition(true, onCloseAll);
+    const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
+    useEscClose(!!helpModalContent, helpTransition.requestClose, !!helpModalContent);
 
     // ESC handling for stack: pop one by one, then close
     useEffect(() => {
@@ -615,7 +618,7 @@ export default function ModalsStack({
                 }}
             >
                 <div
-                    className="modal-surface w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-200 bg-[var(--surface)] border-[var(--border)]">
+                    className="modal-surface modal-surface-tall w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
 
                     <div
                         className="px-4 sm:px-6 py-2.5 sm:py-4 flex flex-col gap-2 sm:gap-3 border-b shrink-0 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
@@ -673,7 +676,14 @@ export default function ModalsStack({
                         </div>
 
                         <div
-                            className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none text-xs select-none">
+                            className="schema-breadcrumb-scroll flex items-center gap-2 overflow-x-auto py-1.5 scrollbar-thin text-xs select-none"
+                            onWheel={(event) => {
+                                if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+                                const element = event.currentTarget;
+                                if (element.scrollWidth <= element.clientWidth) return;
+                                event.preventDefault();
+                                element.scrollLeft += event.deltaY;
+                            }}>
                             <span
                                 className="text-[var(--text-muted)] font-semibold flex items-center shrink-0">Path:</span>
                             {modals.map((m, idx) => {
@@ -697,15 +707,7 @@ export default function ModalsStack({
                                             >
                                                 {m.schemaName}
                                             </button>
-                                            {!isLast && (
-                                                <Tip content={`Share ${m.schemaName}`}>
-                                                    <button
-                                                        onClick={() => handleShareSchema(m.schemaName)}
-                                                        className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors cursor-pointer">
-                                                        <i className="ph ph-share-network"></i>
-                                                    </button>
-                                                </Tip>
-                                            )}
+
                                         </div>
                                     </div>);
 
@@ -886,23 +888,23 @@ export default function ModalsStack({
                 </div>
             </div>
 
-            {helpModalContent &&
-                <div className="modal-backdrop fixed inset-0 z-[3000] backdrop-blur-[2px]"
+            {helpTransition.shouldRender && helpModalContent &&
+                <div className={`${helpTransition.backdropClassName} fixed inset-0 z-[3000] backdrop-blur-[2px]`}
                      style={{backgroundColor: 'rgba(0, 0, 0, 0.4)'}}
                      onMouseDown={(e) => {
-                         if (e.target === e.currentTarget) setHelpModalContent(null);
+                         if (e.target === e.currentTarget) helpTransition.requestClose();
                      }}
                 >
                     <div
-                        className="w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface modal-surface-stable w-full max-w-lg rounded-2xl border flex flex-col h-[80vh] max-h-[80vh] overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
 
                         <div
                             className="px-4 sm:px-5 py-2.5 sm:py-4 border-b shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad">
 
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)]">
-                                <i className="ph ph-info mr-1.5 text-[var(--primary)]"></i> {helpModalContent.title}
+                                <i className={helpModalContent.isJson ? "ph ph-eye mr-1.5 text-[var(--primary)]" : "ph ph-info mr-1.5 text-[var(--primary)]"}></i> {helpModalContent.title}
                             </span>
-                            <button onClick={() => setHelpModalContent(null)}
+                            <button onClick={helpTransition.requestClose}
                                     className="w-8 h-8 rounded-lg hover:bg-[var(--surface-hover)] hover:text-[var(--primary-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors text-[var(--text-muted)]">
 
                                 <i className="ph ph-x"></i>
@@ -921,10 +923,10 @@ export default function ModalsStack({
                         </div>
                         <div className="px-5 py-3 border-t text-right border-[var(--border)] bg-[var(--background)]">
 
-                            <button onClick={() => setHelpModalContent(null)}
+                            <button onClick={helpTransition.requestClose}
                                     className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-colors shadow-sm select-none bg-[var(--primary)]">
 
-                                Close Help
+                                {helpModalContent.isJson ? 'Close Example' : 'Close Help'}
                             </button>
                         </div>
                     </div>

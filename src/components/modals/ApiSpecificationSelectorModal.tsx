@@ -120,7 +120,7 @@ export default function ApiSpecificationSelectorModal({
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
             if (confirmAction) {
-                setConfirmAction(null);
+                confirmTransition.requestClose();
                 return;
             }
             requestClose();
@@ -181,7 +181,7 @@ export default function ApiSpecificationSelectorModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="api-specification-selector-title"
-                className="modal-surface flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in"
+                className="modal-surface modal-surface-stable flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl"
             >
                 <header
                     className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 sm:px-5 py-2.5 sm:py-4 shrink-0 modal-header-mobile-pad">
@@ -530,54 +530,29 @@ export default function ApiSpecificationSelectorModal({
                     className={`${confirmTransition.backdropClassName} fixed inset-0 z-[2600] bg-black/55 backdrop-blur-[2px]`}
                     role="presentation"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget && !isConfirming) setConfirmAction(null);
+                        if (event.target === event.currentTarget && !isConfirming) confirmTransition.requestClose();
                     }}
                 >
-                    <div
+                    <section
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="reset-config-confirm-title"
-                        className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl animate-zoom-in"
-                        onMouseDown={(event) => event.stopPropagation()}
-                    >
-                        <div className="flex items-start gap-3">
-                            <span
-                                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-delete)]/10 text-[var(--method-delete)]">
-                                <i className="ph ph-warning text-[18px]"/>
-                            </span>
-                            <div className="min-w-0">
-                                <h3 id="reset-config-confirm-title"
-                                    className="text-sm font-extrabold text-[var(--text-heading)]">
-                                    {confirmAction.kind === 'all' ? 'Reset all configurations?' : 'Reset this specification?'}
-                                </h3>
-                                <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                                    {confirmAction.kind === 'all'
-                                        ? 'This clears saved general UI settings and all per-spec configurations, then reloads the application.'
-                                        : 'This clears the saved settings, tabs, inputs, theme, and navigation preferences for this specification, then reloads it.'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-5 flex justify-end gap-2">
-                            <button
-                                type="button"
-                                disabled={isConfirming}
-                                onClick={confirmTransition.requestClose}
-                                className="rounded-xl border border-[var(--border)] px-3.5 py-2 text-[11px] font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                disabled={isConfirming}
-                                onClick={() => {
-                                    void confirmReset();
-                                }}
-                                className="rounded-xl bg-[var(--method-delete)] px-3.5 py-2 text-[11px] font-bold text-[var(--method-delete-contrast)] transition-colors hover:brightness-110 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                            >
-                                {isConfirming ? 'Resetting…' : 'Confirm reset'}
-                            </button>
-                        </div>
-                    </div>
+                        className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+                        onMouseDown={(event) => event.stopPropagation()}>
+                        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-delete)]/10 text-[var(--method-delete)]"><i className="ph ph-arrow-counter-clockwise text-[18px]"/></span>
+                            <h3 id="reset-config-confirm-title" className="text-sm font-extrabold text-[var(--text-heading)]">{confirmAction.kind === 'all' ? 'Reset all configurations?' : 'Reset this specification?'}</h3>
+                        </header>
+                        <div className="px-4 py-4"><p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{confirmAction.kind === 'all'
+                            ? 'This clears saved general UI settings and all per-spec configurations, then reloads the application.'
+                            : 'This clears the saved settings, tabs, inputs, theme, and navigation preferences for this specification, then reloads it.'}</p></div>
+                        <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <button type="button" disabled={isConfirming} onClick={confirmTransition.requestClose}
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">Cancel</button>
+                            <button type="button" disabled={isConfirming} onClick={() => void confirmReset()}
+                                    className="whitespace-nowrap rounded-xl bg-[var(--method-delete)] px-4 py-2 text-xs font-bold text-[var(--method-delete-contrast)] hover:brightness-110 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">{isConfirming ? 'Resetting…' : 'Reset configuration'}</button>
+                        </footer>
+                    </section>
                 </div>
             )}
         </div>

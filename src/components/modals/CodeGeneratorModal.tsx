@@ -249,7 +249,7 @@ export class ApiService {
                 if (event.target === event.currentTarget) requestClose();
             }}>
             <div
-                className="modal-surface max-h-[90vh] w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 bg-[var(--surface)] border-[var(--border)]">
+                className="modal-surface max-h-[90vh] w-full max-w-3xl rounded-2xl border flex flex-col shadow-2xl overflow-hidden bg-[var(--surface)] border-[var(--border)]">
 
 
                 {/* Modal Header */}

@@ -749,7 +749,7 @@ export default function Sidebar(props: SidebarProps) {
     // before or after the endpoint folders.
     const pageNavigation = (
         <>
-            <Tip content="Overview and statistics">
+            <Tip content="Overview and statistics" fullWidth>
                 <button data-nav-view="view:home" onClick={navTo(onOpenHome)}
                         onContextMenu={(e) => openContextMenu(e, {type: 'view', view: 'home'})}
                         onDoubleClick={(e) => {
@@ -769,7 +769,7 @@ export default function Sidebar(props: SidebarProps) {
                     <span>Overview &amp; Statistics</span>
                 </button>
             </Tip>
-            <Tip content="About OpenDoc UI">
+            <Tip content="About OpenDoc UI" fullWidth>
                 <button data-nav-view="view:about" onClick={navTo(onOpenAbout)}
                         onContextMenu={(e) => openContextMenu(e, {type: 'view', view: 'about'})}
                         onDoubleClick={(e) => {
@@ -789,7 +789,7 @@ export default function Sidebar(props: SidebarProps) {
                     <span>About OpenDoc UI</span>
                 </button>
             </Tip>
-            <Tip content="Browse all schemas and models">
+            <Tip content="Browse all schemas and models" fullWidth>
                 <button data-nav-view="view:schemas" onClick={navTo(onOpenSchemaExplorer)}
                         onContextMenu={(e) => openContextMenu(e, {type: 'view', view: 'schemas'})}
                         onDoubleClick={(e) => {

@@ -801,3 +801,55 @@ body {
         min-height: calc(4rem + env(safe-area-inset-top, 0px));
     }
 }
+
+/* Stable mobile sheets: fixed heights prevent async content from moving the
+   sheet's top edge while its slide animation is running. */
+@media (max-width: 767px) {
+    .modal-surface {
+        overflow: hidden !important;
+    }
+
+    .modal-surface-stable {
+        height: 80dvh !important;
+        max-height: 80dvh !important;
+    }
+
+    .modal-surface-tall {
+        height: 90dvh !important;
+        max-height: 90dvh !important;
+    }
+
+    .modal-surface-model-picker {
+        height: 76dvh !important;
+        max-height: 76dvh !important;
+    }
+
+    .modal-confirm-surface {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+    }
+}
+
+@keyframes mobile-sheet-in {
+    from { transform: translate3d(0, 100%, 0); }
+    to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes mobile-sheet-out {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, 100%, 0); }
+}
+
+.mobile-letter-index {
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.schema-breadcrumb-scroll {
+    width: 100%;
+    min-width: 0;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+}

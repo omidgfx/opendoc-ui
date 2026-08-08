@@ -33,6 +33,7 @@ export default function ThemeSelectorModal({
                                                onSetThemeMode
                                            }: ThemeSelectorModalProps) {
     const [view, setView] = useState<ThemeSelectorView>('gallery');
+    const [focusSidebarOpen, setFocusSidebarOpen] = useState(false);
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, requestClose);
 
@@ -48,11 +49,18 @@ export default function ThemeSelectorModal({
              }}>
 
             <section role="dialog" aria-modal="true" aria-labelledby="theme-selector-title"
-                     className="modal-surface flex h-[92vh] sm:h-[86vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border shadow-2xl animate-zoom-in bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
+                     className="modal-surface modal-surface-stable flex h-[92vh] sm:h-[86vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
 
                 <header
                     className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 modal-header-mobile-pad bg-[var(--background)] border-[var(--border)]">
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                        {view === 'detail' && (
+                            <button type="button" onClick={() => setFocusSidebarOpen(true)}
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] md:hidden"
+                                    aria-label="Open theme list">
+                                <i className="ph ph-list text-[15px]"/>
+                            </button>
+                        )}
                         <span
                             className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl border text-[16px] sm:text-[18px]"
                             style={{
@@ -74,7 +82,10 @@ export default function ThemeSelectorModal({
                     <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                         <Tip content={`Switch to ${view === 'gallery' ? 'focus' : 'gallery'} view`}>
                             <button type="button"
-                                    onClick={() => setView((current) => current === 'gallery' ? 'detail' : 'gallery')}
+                                    onClick={() => {
+                                        setFocusSidebarOpen(false);
+                                        setView((current) => current === 'gallery' ? 'detail' : 'gallery');
+                                    }}
                                     className="inline-flex h-8 sm:h-9 items-center gap-1.5 rounded-xl border px-2 sm:px-3 text-[10px] font-bold transition-all cursor-pointer hover:bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-heading)] bg-[var(--surface)]">
                                 <i className={`ph ${view === 'gallery' ? 'ph-sidebar' : 'ph-squares-four'} text-[14px]`}/>
                                 <span className="hidden sm:inline">View</span>
@@ -129,7 +140,7 @@ export default function ThemeSelectorModal({
                                 <span
                                     className="rounded-full border px-2.5 py-1 text-[9px] font-bold border-[var(--border)] text-[var(--text-muted)] shrink-0">{THEME_LIST.length} themes</span>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
                                 {THEME_LIST.map((theme) =>
                                     <ThemePreviewCard key={theme.name} theme={theme}
                                                       selected={theme.name === selectedThemeName}
@@ -140,7 +151,9 @@ export default function ThemeSelectorModal({
                     ) : (
                         <DetailedThemeView selectedTheme={selectedTheme} selectedThemeName={selectedThemeName}
                                            currentThemeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode}
-                                           onSelectTheme={onSelectTheme} onClose={requestClose}/>
+                                           onSelectTheme={onSelectTheme} onClose={requestClose}
+                                           mobileSidebarOpen={focusSidebarOpen}
+                                           onCloseMobileSidebar={() => setFocusSidebarOpen(false)}/>
                     )}
                 </div>
 

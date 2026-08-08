@@ -22,7 +22,7 @@ export default function TabSwitcherOverlay({
     if (!open || tabs.length <= 1) return null;
     return (
         <div
-            className="modal-backdrop fixed inset-0 z-[6000] !items-start pt-[16vh] bg-black/40 backdrop-blur-[2px]"
+            className="modal-backdrop fixed inset-0 z-[6000] bg-black/40 backdrop-blur-[2px] md:!items-start md:pt-[16vh]"
             onMouseDown={event => {
                 if (event.target === event.currentTarget) onCancel();
             }}

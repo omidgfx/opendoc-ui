@@ -1280,7 +1280,7 @@ export default function ViewTab({
                     if (e.target === e.currentTarget) helpTransition.requestClose();
                 }}>
                     <div
-                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
                         <div
                             className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">
@@ -1315,7 +1315,7 @@ export default function ViewTab({
                     if (e.target === e.currentTarget) exampleTransition.requestClose();
                 }}>
                     <div
-                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl transition-transform animate-in fade-in zoom-in-95 duration-150 bg-[var(--surface)] border-[var(--border)]">
+                        className="modal-surface w-full max-w-lg rounded-2xl border flex flex-col max-h-[80vh] overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
                         <div
                             className="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between border-[var(--border)] bg-[var(--background)] modal-header-mobile-pad shrink-0">
                             <span className="font-bold text-sm tracking-wide text-[var(--text-heading)] truncate">

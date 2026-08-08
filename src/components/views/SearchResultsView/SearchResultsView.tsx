@@ -325,7 +325,7 @@ export default function SearchResultsView({
                         if (e.target === e.currentTarget) filterTransition.requestClose();
                     }}>
                     <div
-                        className="modal-surface w-full sm:max-w-md max-h-[85vh] rounded-t-2xl sm:rounded-2xl border shadow-2xl overflow-hidden flex flex-col bg-[var(--surface)] border-[var(--border)] animate-zoom-in">
+                        className="modal-surface w-full sm:max-w-md max-h-[85vh] rounded-t-2xl sm:rounded-2xl border shadow-2xl overflow-hidden flex flex-col bg-[var(--surface)] border-[var(--border)]">
                         <div
                             className="px-4 py-3 border-b flex items-center justify-between shrink-0 bg-[var(--background)] border-[var(--border)] modal-header-mobile-pad">
                             <h3 className="font-bold text-sm flex items-center gap-2 text-[var(--text-heading)]">

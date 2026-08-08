@@ -71,11 +71,17 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const [profileNameDraft, setProfileNameDraft] = useState('');
     const [renamingProfileId, setRenamingProfileId] = useState('');
     const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+    const [newProfileDialogOpen, setNewProfileDialogOpen] = useState(false);
+    const [newProfileName, setNewProfileName] = useState('');
     const modelPickerTransition = useModalTransition(modelPickerOpen, () => setModelPickerOpen(false));
     const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
+    const newProfileTransition = useModalTransition(newProfileDialogOpen, () => setNewProfileDialogOpen(false));
     const profileMenuRef = useRef<HTMLDivElement | null>(null);
     const profileButtonRef = useRef<HTMLButtonElement | null>(null);
-    useEscClose(isOpen, requestClose, !confirmAction && !modelPickerOpen);
+    useEscClose(isOpen, requestClose, !confirmAction && !modelPickerOpen && !newProfileDialogOpen);
+    useEscClose(modelPickerOpen, modelPickerTransition.requestClose, modelPickerOpen);
+    useEscClose(!!confirmAction, confirmTransition.requestClose, !!confirmAction);
+    useEscClose(newProfileDialogOpen, newProfileTransition.requestClose, newProfileDialogOpen);
 
     const preset = useMemo(() => getProviderPreset(draft.provider), [draft.provider]);
     const hasProfiles = profiles.length > 0;
@@ -181,8 +187,16 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         }));
     };
 
+    const requestCreateProfile = () => {
+        setProfileMenuOpen(false);
+        setNewProfileName(profileName(profiles.length + 1));
+        setNewProfileDialogOpen(true);
+    };
+
     const createProfile = () => {
-        const profile = newAIProfile(profileName(profiles.length + 1), draft);
+        const name = newProfileName.trim();
+        if (!name) return;
+        const profile = newAIProfile(name, draft);
         const next = [profile, ...profiles];
         writeAIProfiles(next);
         writeActiveAIProfileId(profile.id);
@@ -190,7 +204,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setActiveProfileId(profile.id);
         setDraft(profile.settings);
         onSave(profile.settings);
-        setProfileMenuOpen(false);
+        newProfileTransition.requestClose();
     };
 
     const selectProfile = (profile: AIProfile) => {
@@ -249,7 +263,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             writeActiveAIProfileId(confirmAction.profileId);
             setProfiles(next);
             onSave(draft);
-            setConfirmAction(null);
+            confirmTransition.requestClose();
             requestClose();
             return;
         }
@@ -274,6 +288,12 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         confirmTransition.requestClose();
     };
 
+    const confirmPresentation = confirmAction?.kind === 'save'
+        ? {icon: 'ph-floppy-disk', tone: 'primary', label: 'Save changes'}
+        : confirmAction?.kind === 'delete'
+            ? {icon: 'ph-trash', tone: 'danger', label: 'Delete profile'}
+            : {icon: 'ph-trash-simple', tone: 'danger', label: 'Remove all'};
+
     if (!shouldRender) return null;
 
     return (
@@ -283,9 +303,9 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                 if (event.target === event.currentTarget && !confirmAction) requestClose();
             }}>
             <section role="dialog" aria-modal="true" aria-labelledby="ai-settings-title"
-                     className="modal-surface flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl animate-zoom-in">
+                     className="modal-surface modal-surface-stable flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl">
                 <header
-                    className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-3">
+                    className="flex flex-col items-stretch gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
                         <span
                             className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i
@@ -296,25 +316,28 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Global profiles, provider keys,
                                 models, and skills.</p>
                         </div>
+                        <button type="button" onClick={requestClose}
+                                className="ms-auto flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] sm:hidden"
+                                aria-label="Close AI settings"><i className="ph ph-x"/></button>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        {hasProfiles && <div className="relative" ref={profileMenuRef}>
+                    <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                        {hasProfiles && <div className="relative min-w-0 flex-1 sm:flex-none" ref={profileMenuRef}>
                             <button ref={profileButtonRef} type="button"
                                     onClick={() => setProfileMenuOpen(open => !open)}
-                                    className="flex h-9 max-w-[190px] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-left text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                    className="flex h-9 w-full min-w-0 items-center sm:w-auto sm:max-w-[190px] gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-left text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
                                     aria-expanded={profileMenuOpen}>
                                 <i className="ph ph-user-circle text-[14px] text-[var(--primary)]"/><span
                                 className="min-w-0 flex-1 truncate">{activeProfile?.name || 'Select profile'}</span><i
                                 className="ph ph-caret-down text-[10px] text-[var(--text-muted)]"/>
                             </button>
                             {profileMenuOpen && <div
-                                className="absolute end-0 top-[calc(100%+6px)] z-[20] w-[300px] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl animate-fade-in">
+                                className="absolute end-0 top-[calc(100%+6px)] z-[20] w-[min(300px,calc(100vw-2rem))] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl animate-fade-in">
                                 <div
                                     className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Saved
                                     AI profiles
                                 </div>
                                 {profiles.map(profile => <div key={profile.id}
-                                                              className={clsx('flex items-center gap-1 rounded-lg px-2 py-1.5', profile.id === activeProfileId ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
+                                                              className={clsx('mb-1 flex items-center gap-1 rounded-lg px-2 py-1.5 last:mb-0', profile.id === activeProfileId ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
                                     {renamingProfileId === profile.id ? <input autoFocus value={profileNameDraft}
                                                                                onChange={event => setProfileNameDraft(event.target.value)}
                                                                                onKeyDown={event => {
@@ -340,7 +363,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                 <div className="my-1 border-t border-[var(--border)]"/>
                                 <button type="button" onClick={() => {
                                     setProfileMenuOpen(false);
-                                    createProfile();
+                                    requestCreateProfile();
                                 }}
                                         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer">
                                     <i className="ph ph-plus text-[12px]"/>New profile
@@ -352,12 +375,12 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             </div>}
                         </div>}
                         <Tip content="New profile">
-                            <button type="button" onClick={createProfile}
+                            <button type="button" onClick={requestCreateProfile}
                                     className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
                                     aria-label="Create new AI profile"><i className="ph ph-plus text-[14px]"/></button>
                         </Tip>
                         <button type="button" onClick={requestClose}
-                                className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] sm:flex hover:bg-[var(--surface-hover)] cursor-pointer"
                                 aria-label="Close AI settings"><i className="ph ph-x"/></button>
                     </div>
                 </header>
@@ -372,7 +395,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                         <p className="mt-1 max-w-sm text-xs leading-relaxed text-[var(--text-muted)]">Profiles keep
                             provider keys, models, gateway settings, and skill choices together. They are saved globally
                             in this browser.</p>
-                        <button type="button" onClick={createProfile}
+                        <button type="button" onClick={requestCreateProfile}
                                 className="mt-5 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">
                             <i className="ph ph-plus me-1.5"/>Create first profile
                         </button>
@@ -453,7 +476,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                         if (event.target === event.currentTarget) modelPickerTransition.requestClose();
                                     }}>
                                         <div role="dialog" aria-modal="true" aria-labelledby="ai-model-picker-title"
-                                             className="modal-surface flex max-h-[76vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                                             className="modal-surface modal-surface-model-picker flex h-[76vh] max-h-[76vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                                             <header
                                                 className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
                                                 <div className="min-w-0"><h3 id="ai-model-picker-title"
@@ -484,8 +507,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                                 </div>
                                                 <div
                                                     className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--background)] p-1">
-                                                    <span
-                                                        className="px-2 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Tier</span>{(['free', 'premium', 'all'] as const).map(filter =>
+                                                    {(['free', 'premium', 'all'] as const).map(filter =>
                                                     <button key={filter} type="button"
                                                             onClick={() => setModelTierFilter(filter)}
                                                             className={clsx('flex-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer', modelTierFilter === filter ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]')}>{filter}</button>)}
@@ -603,47 +625,81 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                             </div>
                         </div>
                         <footer
-                            className="flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--background)] px-5 py-3">
+                            className="flex flex-col items-stretch gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                             <span className="text-[10px] text-[var(--text-muted)]">Changes are saved to the selected
                                 profile only after confirmation.</span>
-                            <div className="flex gap-2">
+                            <div className="flex shrink-0 justify-end gap-2">
                                 <button type="button" onClick={requestClose}
                                         className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer">Close
                                 </button>
                                 <button type="button" onClick={requestSave}
-                                        className="rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Save
-                                    profile
-                                </button>
+                                        className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Save profile</button>
                             </div>
                         </footer>
                     </>}
             </section>
 
-            {confirmAction && <div
-                className={`${confirmTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
-                onMouseDown={event => {
-                    if (event.target === event.currentTarget) confirmTransition.requestClose();
-                }}>
-                <div
-                    className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
-                    <div className="flex gap-3"><span
-                        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-put)]/10 text-[var(--method-put)]"><i
-                        className="ph ph-warning text-[18px]"/></span>
-                        <div><h3
-                            className="text-sm font-extrabold text-[var(--text-heading)]">{confirmAction.kind === 'save' ? 'Save profile changes?' : confirmAction.kind === 'delete' ? 'Delete profile?' : 'Remove all profiles?'}</h3>
-                            <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-muted)]">{confirmAction.kind === 'save' ? 'The current provider, model, key, gateway, and skill settings will replace the saved profile.' : confirmAction.kind === 'delete' ? 'This profile and its saved credentials will be removed.' : 'All global AI profiles and saved credentials will be removed.'}</p>
+            {newProfileTransition.shouldRender && (
+                <div className={`${newProfileTransition.backdropClassName} fixed inset-0 z-[6200] bg-black/55 backdrop-blur-[2px]`}
+                     onMouseDown={event => {
+                         if (event.target === event.currentTarget) newProfileTransition.requestClose();
+                     }}>
+                    <form className="modal-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+                          onSubmit={event => {
+                              event.preventDefault();
+                              createProfile();
+                          }}>
+                        <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className="ph ph-user-plus text-[17px]"/></span>
+                                <div><h3 className="text-sm font-extrabold text-[var(--text-heading)]">Create assistant profile</h3><p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Choose a name before creating it.</p></div>
+                            </div>
+                            <button type="button" onClick={newProfileTransition.requestClose}
+                                    className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"><i className="ph ph-x"/></button>
+                        </header>
+                        <div className="p-4">
+                            <label className="block space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Profile name</span>
+                                <input autoFocus value={newProfileName} onChange={event => setNewProfileName(event.target.value)}
+                                       placeholder="My assistant profile"
+                                       className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-xs outline-none focus:border-[var(--primary)]"/>
+                            </label>
                         </div>
-                    </div>
-                    <div className="mt-5 flex justify-end gap-2">
-                        <button type="button" onClick={confirmTransition.requestClose}
-                                className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
-                        </button>
-                        <button type="button" onClick={confirmChanges}
-                                className="rounded-xl bg-[var(--method-delete)] px-3 py-2 text-[11px] font-bold text-[var(--method-delete-contrast)] hover:brightness-110 cursor-pointer">Confirm
-                        </button>
-                    </div>
+                        <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <button type="button" onClick={newProfileTransition.requestClose}
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel</button>
+                            <button type="submit" disabled={!newProfileName.trim()}
+                                    className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">Create profile</button>
+                        </footer>
+                    </form>
                 </div>
-            </div>}
+            )}
+
+            {confirmTransition.shouldRender && confirmAction && (
+                <div className={`${confirmTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
+                     onMouseDown={event => {
+                         if (event.target === event.currentTarget) confirmTransition.requestClose();
+                     }}>
+                    <section className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <span className={clsx('flex size-10 shrink-0 items-center justify-center rounded-xl',
+                                confirmPresentation.tone === 'danger' ? 'bg-[var(--method-delete)]/10 text-[var(--method-delete)]' : 'bg-[var(--primary)]/10 text-[var(--primary)]')}>
+                                <i className={`ph ${confirmPresentation.icon} text-[18px]`}/>
+                            </span>
+                            <div className="min-w-0"><h3 className="text-sm font-extrabold text-[var(--text-heading)]">{confirmAction.kind === 'save' ? 'Save profile changes?' : confirmAction.kind === 'delete' ? 'Delete profile?' : 'Remove all profiles?'}</h3></div>
+                        </header>
+                        <div className="px-4 py-4"><p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{confirmAction.kind === 'save' ? 'The current provider, model, key, gateway, and skill settings will replace the saved profile.' : confirmAction.kind === 'delete' ? 'This profile and its saved credentials will be removed.' : 'All global AI profiles and saved credentials will be removed.'}</p></div>
+                        <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <button type="button" onClick={confirmTransition.requestClose}
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel</button>
+                            <button type="button" onClick={confirmChanges}
+                                    className={clsx('whitespace-nowrap rounded-xl px-4 py-2 text-xs font-bold hover:brightness-110 cursor-pointer',
+                                        confirmPresentation.tone === 'danger' ? 'bg-[var(--method-delete)] text-[var(--method-delete-contrast)]' : 'bg-[var(--primary)] text-[var(--primary-contrast)]')}>
+                                {confirmPresentation.label}
+                            </button>
+                        </footer>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

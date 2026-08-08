@@ -9,6 +9,7 @@ import AssistantActions from './assistant/AssistantActions';
 import AssistantCitations from './assistant/AssistantCitations';
 import AIProfileRequiredState from './assistant/AIProfileRequiredState';
 import {useModalTransition} from '../../hooks/useModalTransition';
+import {useBreakpoint} from '../../hooks/useBreakpoint';
 import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens,} from '../../utils/aiContext';
 import {streamAIResponse} from '../../utils/aiProviders';
 import {
@@ -92,6 +93,9 @@ export default function AIAssistantView({
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [conversationsOpen, setConversationsOpen] = useState(true);
+    const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
+    const isCompactLayout = useBreakpoint() !== 'desktop';
+    const mobileConversationsTransition = useModalTransition(mobileConversationsOpen, () => setMobileConversationsOpen(false));
     const [chatChromeCompact, setChatChromeCompact] = useState(false);
     const chatChromeCompactRef = useRef(false);
     const chromeAdjustingRef = useRef(false);
@@ -220,19 +224,10 @@ export default function AIAssistantView({
     };
 
     const handleChatScroll = (event: React.UIEvent<HTMLDivElement>) => {
-        const top = event.currentTarget.scrollTop;
-        if (chromeAdjustingRef.current) {
-            previousScrollTopRef.current = top;
-            return;
-        }
-        const previous = previousScrollTopRef.current;
-        const delta = top - previous;
-        // React to even a small intentional direction change. The old 2px/24px
-        // thresholds made a short upward scroll appear to do nothing, especially
-        // after the header height changed at the bottom of the list.
-        if (top <= 10 || delta < -0.25) setChatChromeMode(false);
-        else if (delta > 0.25 && top > 12) setChatChromeMode(true);
-        previousScrollTopRef.current = top;
+        // Header visibility is user-controlled. Resizing the chrome while the
+        // message viewport is at its bottom can remove the remaining scroll
+        // range and strand the UI in its compact state.
+        previousScrollTopRef.current = event.currentTarget.scrollTop;
     };
 
     useEffect(() => {
@@ -490,6 +485,47 @@ export default function AIAssistantView({
 
     return (
         <div className="flex h-full min-h-0 w-full overflow-hidden bg-[var(--surface)]">
+            {mobileConversationsTransition.shouldRender && (
+                <div className={`${mobileConversationsTransition.backdropClassName} fixed inset-0 z-[5900] bg-black/50 backdrop-blur-[2px] md:hidden`}
+                     onMouseDown={event => {
+                         if (event.target === event.currentTarget) mobileConversationsTransition.requestClose();
+                     }}>
+                    <aside className="modal-surface modal-surface-stable flex w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <div>
+                                <h2 className="text-sm font-extrabold text-[var(--text-heading)]">Conversations</h2>
+                                <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Saved for this specification</p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button type="button" onClick={() => {
+                                    createConversation();
+                                    mobileConversationsTransition.requestClose();
+                                }} className="flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                        aria-label="New conversation"><i className="ph ph-plus"/></button>
+                                <button type="button" onClick={mobileConversationsTransition.requestClose}
+                                        className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                        aria-label="Close conversations"><i className="ph ph-x"/></button>
+                            </div>
+                        </header>
+                        <div className="modal-scroll-region min-h-0 flex-1 space-y-1 overflow-y-auto p-2 scrollbar-thin">
+                            {conversations.length === 0 && <p className="px-3 py-8 text-center text-xs text-[var(--text-muted)]">No saved conversations yet.</p>}
+                            {conversations.map(conversation => (
+                                <div key={conversation.id} className={clsx('flex items-center gap-2 rounded-xl px-2 py-1.5', conversation.id === activeConversation?.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
+                                    <button type="button" onClick={() => {
+                                        setActiveConversationId(conversation.id);
+                                        mobileConversationsTransition.requestClose();
+                                    }} className="min-w-0 flex-1 truncate px-1 py-2 text-left text-xs font-semibold text-[var(--text)] cursor-pointer">
+                                        <i className="ph ph-chat-teardrop-text me-2 text-[var(--primary)]"/>{conversation.title}
+                                    </button>
+                                    <button type="button" onClick={() => setDeleteConfirmation(conversation)}
+                                            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
+                                            aria-label={`Delete ${conversation.title}`}><i className="ph ph-trash"/></button>
+                                </div>
+                            ))}
+                        </div>
+                    </aside>
+                </div>
+            )}
             <aside
                 className={clsx('hidden shrink-0 flex-col border-r border-[var(--border)] bg-[var(--background)] transition-all duration-300 md:flex', conversationsOpen ? 'w-64 opacity-100' : 'w-0 overflow-hidden border-r-0 opacity-0')}>
                 <div
@@ -554,10 +590,10 @@ export default function AIAssistantView({
                 <header
                     className={clsx('flex shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-[var(--border)] bg-[var(--background)] px-3 transition-all duration-300 sm:px-5', chatChromeCompact ? 'h-0 border-b-0 py-0 opacity-0 pointer-events-none' : 'h-14 opacity-100')}>
                     <div className="flex min-w-0 items-center gap-2">
-                        <button type="button" onClick={() => setConversationsOpen(open => !open)}
-                                className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] md:flex"
+                        <button type="button" onClick={() => isCompactLayout ? setMobileConversationsOpen(true) : setConversationsOpen(open => !open)}
+                                className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] md:flex"
                                 aria-label={conversationsOpen ? 'Collapse conversations' : 'Expand conversations'}>
-                            <i className={clsx('ph text-[15px] transition-transform', conversationsOpen ? 'ph-sidebar-simple' : 'ph-list')}/>
+                            <i className={clsx('ph text-[15px] transition-transform', isCompactLayout ? 'ph-chats-circle' : conversationsOpen ? 'ph-sidebar-simple' : 'ph-list')}/>
                         </button>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2"><i
@@ -625,6 +661,20 @@ export default function AIAssistantView({
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
+                        <Tip content="Conversations">
+                            <button type="button" onClick={() => setMobileConversationsOpen(true)}
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer md:hidden"
+                                    aria-label="Open conversations">
+                                <i className="ph ph-chats-circle"/>
+                            </button>
+                        </Tip>
+                        <Tip content={chatChromeCompact ? 'Expand chat headers' : 'Compact chat headers'}>
+                            <button type="button" onClick={() => setChatChromeMode(!chatChromeCompact)}
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
+                                    aria-label={chatChromeCompact ? 'Expand chat headers' : 'Compact chat headers'}>
+                                <i className={chatChromeCompact ? 'ph ph-caret-down' : 'ph ph-caret-up'}/>
+                            </button>
+                        </Tip>
                         {activeConversation && <button type="button" onClick={() => setPermissionsOpen(true)}
                                                        className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer">
                             <i className="ph ph-shield-check text-[12px]"/>Permissions
@@ -804,67 +854,48 @@ export default function AIAssistantView({
             )}
 
             {deleteTransition.shouldRender && deleteConfirmation && (
-                <div
-                    className={`${deleteTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
-                    onMouseDown={event => {
-                        if (event.target === event.currentTarget) deleteTransition.requestClose();
-                    }}>
-                    <div
-                        className="modal-surface w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
-                        <div className="flex gap-3"><span
-                            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-delete)]/10 text-[var(--method-delete)]"><i
-                            className="ph ph-trash text-[18px]"/></span>
-                            <div><h3 className="text-sm font-extrabold text-[var(--text-heading)]">Delete
-                                conversation?</h3><p
-                                className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">“{deleteConfirmation.title}”
-                                and all of its saved messages will be removed from this specification.</p></div>
-                        </div>
-                        <div className="mt-5 flex justify-end gap-2">
+                <div className={`${deleteTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
+                     onMouseDown={event => {
+                         if (event.target === event.currentTarget) deleteTransition.requestClose();
+                     }}>
+                    <section className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-delete)]/10 text-[var(--method-delete)]"><i className="ph ph-trash text-[18px]"/></span>
+                            <h3 className="text-sm font-extrabold text-[var(--text-heading)]">Delete conversation?</h3>
+                        </header>
+                        <div className="px-4 py-4"><p className="text-[11px] leading-relaxed text-[var(--text-muted)]">“{deleteConfirmation.title}” and all of its saved messages will be removed from this specification.</p></div>
+                        <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
                             <button type="button" onClick={deleteTransition.requestClose}
-                                    className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
-                            </button>
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel</button>
                             <button type="button" onClick={() => {
                                 deleteConversation(deleteConfirmation.id);
                                 deleteTransition.requestClose();
-                            }}
-                                    className="rounded-xl bg-[var(--method-delete)] px-3 py-2 text-[11px] font-bold text-[var(--method-delete-contrast)] hover:brightness-110 cursor-pointer">Delete
-                            </button>
-                        </div>
-                    </div>
+                            }} className="whitespace-nowrap rounded-xl bg-[var(--method-delete)] px-4 py-2 text-xs font-bold text-[var(--method-delete-contrast)] hover:brightness-110 cursor-pointer">Delete conversation</button>
+                        </footer>
+                    </section>
                 </div>
             )}
 
             {runnerTransition.shouldRender && runnerConfirmation && (
-                <div
-                    className={`${runnerTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
-                    onMouseDown={event => {
-                        if (event.target === event.currentTarget) runnerTransition.requestClose();
-                    }}>
-                    <div
-                        className="modal-surface w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
-                        <div className="flex gap-3"><span
-                            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-put)]/10 text-[var(--method-put)]"><i
-                            className="ph ph-flask text-[18px]"/></span>
-                            <div><h3 className="text-sm font-extrabold text-[var(--text-heading)]">Prepare API
-                                Runner?</h3><p
-                                className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">This opens the
-                                existing Runner
-                                for <strong>{runnerConfirmation.method.toUpperCase()} {runnerConfirmation.path}</strong>.
-                                No request will be sent until you press Run.</p></div>
-                        </div>
-                        <div className="mt-5 flex justify-end gap-2">
+                <div className={`${runnerTransition.backdropClassName} fixed inset-0 z-[6000] bg-black/55 backdrop-blur-[2px]`}
+                     onMouseDown={event => {
+                         if (event.target === event.currentTarget) runnerTransition.requestClose();
+                     }}>
+                    <section className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+                        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i className="ph ph-flask text-[18px]"/></span>
+                            <h3 className="text-sm font-extrabold text-[var(--text-heading)]">Prepare API Runner?</h3>
+                        </header>
+                        <div className="px-4 py-4"><p className="text-[11px] leading-relaxed text-[var(--text-muted)]">This opens the existing Runner for <strong>{runnerConfirmation.method.toUpperCase()} {runnerConfirmation.path}</strong>. No request will be sent until you press Run.</p></div>
+                        <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
                             <button type="button" onClick={runnerTransition.requestClose}
-                                    className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel
-                            </button>
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold hover:bg-[var(--surface-hover)] cursor-pointer">Cancel</button>
                             <button type="button" onClick={() => {
                                 onOpenRunner(runnerConfirmation.path, runnerConfirmation.method);
                                 runnerTransition.requestClose();
-                            }}
-                                    className="rounded-xl bg-[var(--primary)] px-3 py-2 text-[11px] font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Open
-                                Runner
-                            </button>
-                        </div>
-                    </div>
+                            }} className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Open Runner</button>
+                        </footer>
+                    </section>
                 </div>
             )}
         </div>

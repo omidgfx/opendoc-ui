@@ -136,8 +136,8 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <Tip content="Export all schemas as a zip of TypeScript models">
+                <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:w-auto md:grid-cols-[auto_20rem]">
+                    <Tip content="Export all schemas as a zip of TypeScript models" wrapperClassName="order-2 md:order-1 shrink-0">
                         <button
                             onClick={() => generateAndDownloadZip(schemas as any, parsableKey)}
                             className="h-8 px-3 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none shrink-0 bg-[var(--method-get)] text-[var(--method-get-contrast)] border-[var(--method-get)] hover:opacity-90">
@@ -148,7 +148,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                     </Tip>
 
                     {/* Search */}
-                    <div className="relative w-full md:w-80">
+                    <div className="relative order-1 min-w-0 w-full md:order-2 md:w-80">
                         <input
                             ref={searchInputRef}
                             type="text"
@@ -234,12 +234,12 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                 overlapping; the letters themselves scroll if they don't fit. */}
             <div className="flex-1 min-h-0 flex flex-row">
                 {/* Mobile vertical letter index (iOS contacts style) */}
-                <div className="md:hidden shrink-0 flex flex-col justify-center py-1">
+                <div className="md:hidden min-h-0 shrink-0 self-stretch flex flex-col justify-start overflow-hidden py-1">
                     <div
-                        className="flex flex-col items-center gap-0.5 select-none overflow-y-auto scrollbar-none max-h-full pr-0.5">
+                        className="mobile-letter-index flex h-full min-h-0 flex-col items-center gap-0.5 select-none overflow-y-scroll scrollbar-none pr-0.5">
                         <button type="button"
                                 onClick={() => setLetterFilter(null)}
-                                className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                className={clsx('h-5 w-6 shrink-0 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
                                     letterFilter === null ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : 'text-[var(--text-muted)]')}>
                             All
                         </button>
@@ -248,7 +248,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             return (
                                 <button key={ch} type="button" disabled={!available}
                                         onClick={() => setLetterFilter(letterFilter === ch ? null : ch)}
-                                        className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                        className={clsx('h-5 w-6 shrink-0 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
                                             letterFilter === ch
                                                 ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
                                                 : available ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
@@ -258,13 +258,13 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                         })}
                         <button type="button" disabled={!availableKeys.has('#')}
                                 onClick={() => setLetterFilter(letterFilter === '#' ? null : '#')}
-                                className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                className={clsx('h-5 w-6 shrink-0 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
                                     letterFilter === '#' ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : availableKeys.has('#') ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
                             #
                         </button>
                         <button type="button" disabled={!availableKeys.has('&')}
                                 onClick={() => setLetterFilter(letterFilter === '&' ? null : '&')}
-                                className={clsx('h-5 w-6 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
+                                className={clsx('h-5 w-6 shrink-0 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center',
                                     letterFilter === '&' ? 'bg-[var(--primary)] text-[var(--primary-contrast)]' : availableKeys.has('&') ? 'text-[var(--text-muted)]' : 'text-[var(--text-muted)]/30 cursor-not-allowed')}>
                             &amp;
                         </button>
