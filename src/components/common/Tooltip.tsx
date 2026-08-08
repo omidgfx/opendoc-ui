@@ -30,6 +30,8 @@ interface TipProps {
     variant?: 'default' | 'surface';
     /** Preserve a full-width block trigger such as an endpoint row. */
     fullWidth?: boolean;
+    /** Extra classes for sizing the trigger wrapper. */
+    wrapperClassName?: string;
     /** Render a close button inside the tooltip so users can dismiss it. */
     closable?: boolean;
 }
@@ -119,6 +121,7 @@ export function Tip({
                         interactive = false,
                         variant = 'default',
                         fullWidth = false,
+                        wrapperClassName = '',
                         closable = false,
                     }: TipProps) {
     const {delay: ctxDelay} = useContext(TooltipContext);
@@ -208,7 +211,7 @@ export function Tip({
     const existingDescribedBy = typeof childProps['aria-describedby'] === 'string' ? childProps['aria-describedby'] : '';
     const describedBy = open ? [existingDescribedBy, tooltipId].filter(Boolean).join(' ') : existingDescribedBy || undefined;
     const Wrapper = typeof children.type === 'string' && blockElements.has(children.type) ? 'div' : 'span';
-    const wrapperClassName = fullWidth ? 'relative block w-full' : 'relative inline-flex max-w-full';
+    const wrapperClassNameResolved = `${fullWidth ? 'relative block w-full' : 'relative inline-flex max-w-full'} ${wrapperClassName}`.trim();
     const tooltipThemeClass = variant === 'surface'
         ? 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]'
         : 'bg-[var(--text-heading)] text-[var(--background)]';
@@ -218,7 +221,7 @@ export function Tip({
     return (
         <Wrapper
             ref={setWrapperRef}
-            className={wrapperClassName}
+            className={wrapperClassNameResolved}
             onMouseEnter={show}
             onMouseLeave={hide}
             onFocusCapture={show}

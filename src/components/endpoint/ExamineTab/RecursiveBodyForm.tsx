@@ -1,8 +1,9 @@
-import {useState, type ReactNode} from 'react';
+import {Children, isValidElement, useState, type ReactNode} from 'react';
 import clsx from 'clsx';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference} from '../../../utils/openapi';
 import Markdown from '../../common/Markdown';
+import PatternPreview from '../../common/PatternPreview';
 import {Tip} from '../../common/Tooltip';
 
 export type BodyValue = unknown;
@@ -31,12 +32,16 @@ interface FieldProps {
     setPatternToTest: (pattern: string | null) => void;
     selectedFiles: Record<string, File | null>;
     setSelectedFiles: (value: Record<string, File | null>) => void;
+    focusedPath: PathPart[] | null;
+    setFocusedPath: (path: PathPart[]) => void;
     actions?: ReactNode;
 }
 
 const fieldClass = 'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]';
 const mutedLineClass = 'text-[var(--text-muted)]';
-export const DESCRIPTION_TOOLTIP_THRESHOLD = 160;
+// Match the normal endpoint-parameter presentation: short descriptions stay
+// readable inline, while longer text is shortened and available from Info.
+export const DESCRIPTION_TOOLTIP_THRESHOLD = 80;
 
 export const usesDescriptionTooltip = (description?: string): boolean =>
     !!description && description.trim().length > DESCRIPTION_TOOLTIP_THRESHOLD;
@@ -105,6 +110,11 @@ function FieldHeader({label, required, description, typeLabel, actions}: {
     actions?: ReactNode;
 }) {
     const longDescription = usesDescriptionTooltip(description);
+    const preview = description?.trim()
+        ? longDescription
+            ? `${description.trim().slice(0, DESCRIPTION_TOOLTIP_THRESHOLD)}...`
+            : description
+        : '';
     return (
         <>
             <div className="flex min-h-7 min-w-0 items-center justify-between gap-3">
@@ -117,23 +127,65 @@ function FieldHeader({label, required, description, typeLabel, actions}: {
                 </div>
                 {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
             </div>
-            {!longDescription && description?.trim() && (
-                <Markdown text={description} className="mt-0.5 max-w-3xl text-[10px] leading-relaxed text-[var(--text-muted)]"/>
-            )}
+            {preview && <Markdown text={preview} className="mt-0.5 max-w-3xl text-[10px] leading-relaxed text-[var(--text-muted)]"/>}
         </>
     );
 }
 
-function GuideBranch({children}: {children: ReactNode}) {
+const isPathPrefix = (candidate: PathPart[], target: PathPart[] | null): boolean =>
+    !!target && candidate.length <= target.length && candidate.every((part, index) => part === target[index]);
+
+const childPath = (child: ReactNode): PathPart[] | null => {
+    if (!isValidElement(child)) return null;
+    const props = child.props as Partial<FieldProps>;
+    return Array.isArray(props.path) ? props.path : null;
+};
+
+function GuideBranch({children, focusedPath}: {children: ReactNode; focusedPath: PathPart[] | null}) {
+    const rows = Children.toArray(children);
+    const activeRowIndex = rows.findIndex(child => {
+        const path = childPath(child);
+        return path ? isPathPrefix(path, focusedPath) : false;
+    });
     return (
-        <div className="relative ms-3 min-w-0 ps-5">
-            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 start-0 w-px bg-[var(--border)]/65"/>
-            {children}
+        <div className="relative ms-2 min-w-0 ps-4">
+            {rows.map((child, index) => {
+                const isLast = index === rows.length - 1;
+                const accent = activeRowIndex >= 0 && index <= activeRowIndex;
+                const accentThroughRow = activeRowIndex >= 0 && index < activeRowIndex;
+                return (
+                    <div key={isValidElement(child) && child.key != null ? String(child.key) : index} className="relative min-w-0">
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -start-4 top-0 w-px bg-[var(--text)]/25"
+                            style={isLast ? {height: 21} : {bottom: 0}}
+                        />
+                        {accent && (
+                            <span
+                                aria-hidden="true"
+                                className="pointer-events-none absolute -start-4 top-0 w-px bg-[var(--primary)]"
+                                style={accentThroughRow ? {bottom: 0} : {height: 21}}
+                            />
+                        )}
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -start-4 top-5 h-px w-3 bg-[var(--text)]/25"
+                        />
+                        {index === activeRowIndex && (
+                            <span
+                                aria-hidden="true"
+                                className="pointer-events-none absolute -start-4 top-5 h-px w-3 bg-[var(--primary)]"
+                            />
+                        )}
+                        {child}
+                    </div>
+                );
+            })}
         </div>
     );
 }
 
-function Field({schema, spec, value, label, required, path, depth, onChange, setPatternToTest, selectedFiles, setSelectedFiles, actions}: FieldProps) {
+function Field({schema, spec, value, label, required, path, depth, onChange, setPatternToTest, selectedFiles, setSelectedFiles, focusedPath, setFocusedPath, actions}: FieldProps) {
     const current = resolved(schema, spec);
     const [variantIndex, setVariantIndex] = useState(0);
     const [pendingKey, setPendingKey] = useState('');
@@ -148,13 +200,12 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
         const selectedVariant = Math.min(variantIndex, variants.length - 1);
         return (
             <div className={fieldFrame}>
-                {depth > 0 && <span aria-hidden="true" className="pointer-events-none absolute top-5 h-px w-5 bg-[var(--border)]/65" style={{insetInlineStart: '-20px'}}/>}
                 <FieldHeader label={label} required={required} description={current.description} typeLabel="variant" actions={actions}/>
-                <select value={selectedVariant} onChange={event => {const nextIndex = Number(event.target.value); setVariantIndex(nextIndex); onChange(path, defaultBodyValue(variants[nextIndex], spec));}} className={clsx(fieldClass, 'mt-1')}>
+                <select value={selectedVariant} onFocus={() => setFocusedPath(path)} onChange={event => {const nextIndex = Number(event.target.value); setVariantIndex(nextIndex); onChange(path, defaultBodyValue(variants[nextIndex], spec));}} className={clsx(fieldClass, 'mt-1')}>
                     {variants.map((variant: any, index: number) => <option key={index} value={index}>{resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`}</option>)}
                 </select>
-                <GuideBranch>
-                    <Field schema={variants[selectedVariant]} spec={spec} value={value} label="Value" path={path} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>
+                <GuideBranch focusedPath={focusedPath}>
+                    <Field schema={variants[selectedVariant]} spec={spec} value={value} label="Value" path={path} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
                 </GuideBranch>
             </div>
         );
@@ -165,12 +216,11 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
         const selectedFile = selectedFiles[fileKey] || null;
         return (
             <div className={fieldFrame}>
-                {depth > 0 && <span aria-hidden="true" className="pointer-events-none absolute top-5 h-px w-5 bg-[var(--border)]/65" style={{insetInlineStart: '-20px'}}/>}
                 <FieldHeader label={label} required={required} description={current.description} typeLabel="file" actions={actions}/>
                 <label className="mt-1 flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs hover:border-[var(--primary)]">
                     <span className="min-w-0 truncate text-[var(--text-heading)]">{selectedFile ? selectedFile.name : 'Choose a file'}</span>
                     <span className="shrink-0 text-[10px] font-bold text-[var(--primary)]">Browse</span>
-                    <input type="file" className="hidden" onChange={event => setSelectedFiles({...selectedFiles, [fileKey]: event.target.files?.[0] || null})}/>
+                    <input type="file" className="hidden" onFocus={() => setFocusedPath(path)} onChange={event => setSelectedFiles({...selectedFiles, [fileKey]: event.target.files?.[0] || null})}/>
                 </label>
                 {selectedFile && <span className={clsx('mt-1 block text-[9px]', mutedLineClass)}>{Math.max(1, Math.round(selectedFile.size / 1024))} KB</span>}
             </div>
@@ -192,12 +242,11 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
         };
         return (
             <div className={fieldFrame}>
-                {depth > 0 && <span aria-hidden="true" className="pointer-events-none absolute top-5 h-px w-5 bg-[var(--border)]/65" style={{insetInlineStart: '-20px'}}/>}
                 <FieldHeader label={label} required={required} description={current.description} typeLabel={additionalSchema ? 'object / map' : 'object'} actions={actions}/>
-                <GuideBranch>
-                    <div className="space-y-0">
+                <GuideBranch focusedPath={focusedPath}>
+
                         {Object.entries(properties).map(([key, childSchema]: [string, any]) => (
-                            <Field key={key} schema={childSchema} spec={spec} value={objectValue[key]} label={key} required={Array.isArray(current.required) && current.required.includes(key)} path={[...path, key]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>
+                            <Field key={key} schema={childSchema} spec={spec} value={objectValue[key]} label={key} required={Array.isArray(current.required) && current.required.includes(key)} path={[...path, key]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
                         ))}
                         {extraKeys.map(key => (
                             <Field
@@ -212,17 +261,18 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
                                 setPatternToTest={setPatternToTest}
                                 selectedFiles={selectedFiles}
                                 setSelectedFiles={setSelectedFiles}
+                                focusedPath={focusedPath}
+                                setFocusedPath={setFocusedPath}
                                 actions={<button type="button" onClick={() => {const next = {...objectValue}; delete next[key]; onChange(path, next);}} className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer" aria-label={`Remove ${key}`}><i className="ph ph-trash text-[12px]"/></button>}
                             />
                         ))}
                         {additionalSchema && (
                             <div className="flex gap-2 py-2">
-                                <input type="text" value={pendingKey} onChange={event => setPendingKey(event.target.value)} onKeyDown={event => {if (event.key === 'Enter') {event.preventDefault(); addMapEntry();}}} placeholder="Add map key" className={clsx(fieldClass, 'min-w-0 flex-1')}/>
+                                <input type="text" value={pendingKey} onFocus={() => setFocusedPath(path)} onChange={event => setPendingKey(event.target.value)} onKeyDown={event => {if (event.key === 'Enter') {event.preventDefault(); addMapEntry();}}} placeholder="Add map key" className={clsx(fieldClass, 'min-w-0 flex-1')}/>
                                 <button type="button" onClick={addMapEntry} className="shrink-0 rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer"><i className="ph ph-plus me-1"/>Add key</button>
                             </div>
                         )}
                         {Object.keys(properties).length === 0 && !additionalSchema && <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No defined properties.</p>}
-                    </div>
                 </GuideBranch>
             </div>
         );
@@ -241,18 +291,16 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
         );
         return (
             <div className={fieldFrame}>
-                {depth > 0 && <span aria-hidden="true" className="pointer-events-none absolute top-5 h-px w-5 bg-[var(--border)]/65" style={{insetInlineStart: '-20px'}}/>}
                 <FieldHeader label={label} required={required} description={current.description} typeLabel={`array${itemSchema.type ? `<${itemSchema.type}>` : ''}`} actions={actions}/>
-                <GuideBranch>
-                    <div className="space-y-0">
+                <GuideBranch focusedPath={focusedPath}>
+
                         {items.length === 0 && <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No items. Add one to begin.</p>}
                         {items.map((item, index) => (
-                            <Field key={index} schema={itemSchema} spec={spec} value={item} label={`Item ${index + 1}`} path={[...path, index]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} actions={itemActions(index)}/>
+                            <Field key={index} schema={itemSchema} spec={spec} value={item} label={`Item ${index + 1}`} path={[...path, index]} depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath} actions={itemActions(index)}/>
                         ))}
                         <div className="py-2">
                             <button type="button" disabled={items.length >= maxItems} onClick={() => onChange(path, [...items, defaultBodyValue(itemSchema, spec)])} className="rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"><i className="ph ph-plus me-1"/>Add item</button>
                         </div>
-                    </div>
                 </GuideBranch>
             </div>
         );
@@ -264,26 +312,32 @@ function Field({schema, spec, value, label, required, path, depth, onChange, set
     const inputType = type === 'integer' || type === 'number' ? 'number' : current.format === 'date' || current.format === 'date-time' ? 'datetime-local' : 'text';
     return (
         <div className={fieldFrame}>
-            {depth > 0 && <span aria-hidden="true" className="pointer-events-none absolute top-5 h-px w-5 bg-[var(--border)]/65" style={{insetInlineStart: '-20px'}}/>}
             <FieldHeader label={label} required={required} description={current.description} typeLabel={current.format || type || 'any'} actions={actions}/>
             {enumValues
-                ? <select value={stringValue} onChange={event => onChange(path, event.target.value)} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option>{enumValues.map((item: any) => <option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>
+                ? <select value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, event.target.value)} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option>{enumValues.map((item: any) => <option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>
                 : type === 'boolean'
-                    ? <select value={stringValue} onChange={event => onChange(path, event.target.value === '' ? '' : event.target.value === 'true')} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option><option value="true">true</option><option value="false">false</option></select>
-                    : <input type={inputType} value={stringValue} onChange={event => onChange(path, type === 'number' || type === 'integer' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)} placeholder={current.example !== undefined ? String(current.example) : current.default !== undefined ? String(current.default) : type === 'object' ? 'JSON value' : ''} min={current.minimum} max={current.maximum} className={clsx(fieldClass, 'mt-1', !patternValid && 'border-[var(--method-delete)]')}/>
+                    ? <select value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, event.target.value === '' ? '' : event.target.value === 'true')} className={clsx(fieldClass, 'mt-1')}><option value="">— Select —</option><option value="true">true</option><option value="false">false</option></select>
+                    : <input type={inputType} value={stringValue} onFocus={() => setFocusedPath(path)} onChange={event => onChange(path, type === 'number' || type === 'integer' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)} placeholder={current.example !== undefined ? String(current.example) : current.default !== undefined ? String(current.default) : type === 'object' ? 'JSON value' : ''} min={current.minimum} max={current.maximum} className={clsx(fieldClass, 'mt-1', !patternValid && 'border-[var(--method-delete)]')}/>
             }
-            {pattern && <div className="flex min-w-0 items-center gap-2 py-1 text-[9px]"><code className="min-w-0 max-w-[min(100%,420px)] truncate text-[var(--method-put)]">/{pattern}/</code><button type="button" onClick={() => setPatternToTest(pattern)} className="shrink-0 rounded border border-[var(--primary)]/30 px-1.5 py-0.5 text-[var(--primary)] cursor-pointer">Test</button></div>}
+            {pattern && <PatternPreview pattern={pattern} onTest={() => setPatternToTest(pattern)}/>}
             {nullable && <button type="button" onClick={() => onChange(path, null)} className="py-1 text-[9px] text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer">Set null</button>}
         </div>
     );
 }
 
 export default function RecursiveBodyForm({schema, spec, value, onChange, setPatternToTest, selectedFiles, setSelectedFiles}: RecursiveBodyFormProps) {
+    const [focusedPath, setFocusedPath] = useState<PathPart[] | null>(null);
     const update = (path: PathPart[], nextValue: unknown) => onChange(setAtPath(value, path, nextValue));
     return (
-        <div className="min-w-0 overflow-x-auto scrollbar-thin pb-2">
+        <div
+            className="min-w-0 overflow-x-auto scrollbar-thin pb-2"
+            onBlurCapture={event => {
+                const next = event.relatedTarget;
+                if (!next || typeof Node === 'undefined' || !(next instanceof Node) || !event.currentTarget.contains(next)) setFocusedPath(null);
+            }}
+        >
             <div className="min-w-[640px] space-y-0 animate-in fade-in">
-                <Field schema={schema} spec={spec} value={value} label="Request body" path={[]} depth={0} onChange={update} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}/>
+                <Field schema={schema} spec={spec} value={value} label="Request body" path={[]} depth={0} onChange={update} setPatternToTest={setPatternToTest} selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles} focusedPath={focusedPath} setFocusedPath={setFocusedPath}/>
             </div>
         </div>
     );

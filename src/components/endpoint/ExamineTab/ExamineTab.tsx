@@ -13,6 +13,7 @@ import {appendMultipartBody, bodyEditorModeForMediaType, bodyTypeSupportsForm, p
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
+import PatternPreview from '../../common/PatternPreview';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import ParameterInput from './ParameterInput';
 import BodyEditor from './BodyEditor';
@@ -501,6 +502,7 @@ export default function ExamineTab({
                                             className="text-[var(--accent)] font-semibold">{param.schema?.format || param.format}</span></span>
                                     )}
                                 </div>
+                                {(param.pattern || param.schema?.pattern) && <PatternPreview pattern={param.pattern || param.schema.pattern} onTest={() => setPatternToTest(param.pattern || param.schema.pattern)} className="px-1"/>}
                             </div>
                         </div>
                     ))}

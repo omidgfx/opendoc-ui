@@ -6,6 +6,7 @@ import CodeViewer from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import MethodBadge from '../../common/MethodBadge';
+import PatternPreview from '../../common/PatternPreview';
 import CustomDropdown from '../../common/CustomDropdown';
 import clsx from "clsx";
 import ShareModal from '../../modals/ShareModal';
@@ -943,21 +944,7 @@ export default function ViewTab({
                                                 <td className="px-4 py-3 text-xs">
                                                     <div className="flex flex-col gap-1">
                                                         <div>{renderSchemaButton(param.schema)}</div>
-                                                        {pattern && (
-                                                            <div
-                                                                className="flex items-center gap-1 text-[10px] font-mono flex-wrap">
-                                                                <span>pattern:</span>
-                                                                <code
-                                                                    className="px-1 py-0.5 rounded bg-[var(--background)] text-[var(--method-put)] border border-[var(--border)] select-all text-[9.5px] break-all">{pattern}</code>
-                                                                <Tip content="Test this regex pattern">
-                                                                    <button type="button"
-                                                                            onClick={() => setPatternToTest(pattern)}
-                                                                            className="px-1 py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 hover:underline inline-flex items-center gap-0.5 rounded cursor-pointer transition-colors">
-                                                                        <i className="ph ph-dna text-[7px]"></i> Test
-                                                                    </button>
-                                                                </Tip>
-                                                            </div>
-                                                        )}
+                                                        {pattern && <PatternPreview pattern={pattern} showLabel onTest={() => setPatternToTest(pattern)}/>}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs">
