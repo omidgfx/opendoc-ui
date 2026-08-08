@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {specStorage, uiStorage} from '../../utils/storage';
+import {specStorage, uiStorage} from '../utils/storage';
 
 export function useSidebarController(selectedSpecKey: string, isMobile: boolean) {
     const [sidebarDisplayRoutes, setSidebarDisplayRoutes] = useState(true);

@@ -1,6 +1,6 @@
 import type React from 'react';
 import type {ThemeItem} from '../types';
-import {getContrastColor} from '../utils/color';
+import {getContrastColor} from './color';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const;
 

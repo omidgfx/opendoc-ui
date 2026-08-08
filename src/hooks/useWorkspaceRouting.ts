@@ -1,9 +1,9 @@
 import {type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useState} from 'react';
-import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../../types';
-import type {TabItem, ViewTabKind} from '../../components/endpoint/EndpointTabs';
-import {generateSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../../utils/routing';
-import {specStorage} from '../../utils/storage';
-import {hasExplicitSpecRoute} from '../tabPersistence';
+import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../types';
+import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
+import {generateSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
+import {specStorage} from '../utils/storage';
+import {hasExplicitSpecRoute} from '../utils/tabPersistence';
 
 type Endpoint = { path: string; method: string };
 type ViewMode = 'docs' | 'examine' | 'both';

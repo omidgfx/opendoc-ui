@@ -1,6 +1,6 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '../types';
-import {assertValidOpenApiDocument, normalizeOpenApiSpec} from '../utils/openapi';
+import {assertValidOpenApiDocument, normalizeOpenApiSpec} from './openapi';
 
 export type ConfigSource = 'initial' | 'file' | 'none';
 

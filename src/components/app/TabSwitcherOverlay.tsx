@@ -1,6 +1,6 @@
 import clsx from 'clsx';
-import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../../components/endpoint/EndpointTabs';
-import MethodBadge from '../../components/common/MethodBadge';
+import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../endpoint/EndpointTabs';
+import MethodBadge from '../common/MethodBadge';
 
 interface TabSwitcherOverlayProps {
     open: boolean;

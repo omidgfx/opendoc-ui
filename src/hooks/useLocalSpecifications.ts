@@ -1,13 +1,13 @@
 import {type ChangeEvent, useCallback, useRef, useState} from 'react';
-import type {OpenApiSpec} from '../../types';
+import type {OpenApiSpec} from '../types';
 import {
     clearLocalHistory,
     type LocalHistoryEntry,
     readLocalHistory,
     removeLocalHistoryEntry,
     upsertLocalHistory,
-} from '../../utils/localHistory';
-import {type LocalSpec, parseSpecDraft} from '../spec';
+} from '../utils/localHistory';
+import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
 
 interface AppliedLocalSpec {
     key: string;

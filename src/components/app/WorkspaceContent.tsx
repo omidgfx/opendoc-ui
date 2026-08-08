@@ -1,11 +1,11 @@
 import type {Dispatch, MouseEvent, RefObject, SetStateAction} from 'react';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
-import SearchResultsView from '../../components/views/SearchResultsView/SearchResultsView';
-import AboutView from '../../components/views/AboutView/AboutView';
-import HomeView from '../../components/views/HomeView/HomeView';
-import NoSpecView from '../../components/views/NoSpecView';
-import WelcomeView from '../../components/views/WelcomeView';
-import SchemaExplorer from '../../components/schema/SchemaExplorer';
+import SearchResultsView from '../views/SearchResultsView/SearchResultsView';
+import AboutView from '../views/AboutView/AboutView';
+import HomeView from '../views/HomeView/HomeView';
+import NoSpecView from '../views/NoSpecView';
+import WelcomeView from '../views/WelcomeView';
+import SchemaExplorer from '../schema/SchemaExplorer';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
 

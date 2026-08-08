@@ -1,11 +1,11 @@
 import type {Dispatch, MouseEvent, RefObject, SetStateAction} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
-import ExamineTab from '../../components/endpoint/ExamineTab/ExamineTab';
-import ViewTab from '../../components/endpoint/ViewTab/ViewTab';
-import FocusPane from '../../components/common/FocusPane';
-import MethodBadge from '../../components/common/MethodBadge';
-import {Tip} from '../../components/common/Tooltip';
+import ExamineTab from '../endpoint/ExamineTab/ExamineTab';
+import ViewTab from '../endpoint/ViewTab/ViewTab';
+import FocusPane from '../common/FocusPane';
+import MethodBadge from '../common/MethodBadge';
+import {Tip} from '../common/Tooltip';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';

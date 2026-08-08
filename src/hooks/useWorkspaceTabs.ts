@@ -7,8 +7,8 @@ import {
     useRef,
     useState
 } from 'react';
-import type {OpenApiSpec} from '../../types';
-import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../../components/endpoint/EndpointTabs';
+import type {OpenApiSpec} from '../types';
+import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../components/endpoint/EndpointTabs';
 import {useTabPersistence} from './useTabPersistence';
 import {useTabSwitcher} from './useTabSwitcher';
 

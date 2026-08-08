@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import type {TabItem} from '../../components/endpoint/EndpointTabs';
+import type {TabItem} from '../components/endpoint/EndpointTabs';
 
 interface UseTabSwitcherOptions {
     tabs: TabItem[];

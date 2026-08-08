@@ -1,9 +1,9 @@
 import {type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef, useState} from 'react';
-import type {OpenApiSpec} from '../../types';
-import type {TabItem} from '../../components/endpoint/EndpointTabs';
-import {parseSmartRoute} from '../../utils/routing';
-import {specStorage} from '../../utils/storage';
-import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../tabPersistence';
+import type {OpenApiSpec} from '../types';
+import type {TabItem} from '../components/endpoint/EndpointTabs';
+import {parseSmartRoute} from '../utils/routing';
+import {specStorage} from '../utils/storage';
+import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../utils/tabPersistence';
 
 type ViewMode = 'docs' | 'examine' | 'both';
 

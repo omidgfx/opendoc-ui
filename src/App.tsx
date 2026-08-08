@@ -20,19 +20,19 @@ import {
     type OpenDocUIAction
 } from './utils/aiBridge';
 import {executeRunnerRequest} from './utils/runnerExecution';
-import {type ConfigSource, type EndpointKey} from './app/spec';
-import SpecLoadingState from './app/components/SpecLoadingState';
-import AppModalLayer from './app/components/AppModalLayer';
-import WorkspaceContent from './app/components/WorkspaceContent';
-import {useThemeController} from './app/hooks/useThemeController';
-import {useAISettingsController} from './app/hooks/useAISettingsController';
-import {useSidebarController} from './app/hooks/useSidebarController';
-import {useSpecLoader} from './app/hooks/useSpecLoader';
-import {useLocalSpecifications} from './app/hooks/useLocalSpecifications';
-import {useWorkspaceRouting} from './app/hooks/useWorkspaceRouting';
-import {useConfigBootstrap} from './app/hooks/useConfigBootstrap';
-import {useWorkspaceTabs} from './app/hooks/useWorkspaceTabs';
-import {useSpecificationActions} from './app/hooks/useSpecificationActions';
+import {type ConfigSource, type EndpointKey} from './utils/appSpec';
+import SpecLoadingState from './components/app/SpecLoadingState';
+import AppModalLayer from './components/app/AppModalLayer';
+import WorkspaceContent from './components/app/WorkspaceContent';
+import {useThemeController} from './hooks/useThemeController';
+import {useAISettingsController} from './hooks/useAISettingsController';
+import {useSidebarController} from './hooks/useSidebarController';
+import {useSpecLoader} from './hooks/useSpecLoader';
+import {useLocalSpecifications} from './hooks/useLocalSpecifications';
+import {useWorkspaceRouting} from './hooks/useWorkspaceRouting';
+import {useConfigBootstrap} from './hooks/useConfigBootstrap';
+import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
+import {useSpecificationActions} from './hooks/useSpecificationActions';
 
 declare global {
     interface Window {

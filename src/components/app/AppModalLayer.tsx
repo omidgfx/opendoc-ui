@@ -1,12 +1,12 @@
 import type {Dispatch, SetStateAction} from 'react';
 import type {ActiveAuth, AISettings, OpenApiSpec, ThemeMode} from '../../types';
-import type {TabItem} from '../../components/endpoint/EndpointTabs';
-import ModalsStack from '../../components/modals/ModalsStack/ModalsStack';
-import CodeGeneratorModal from '../../components/modals/CodeGeneratorModal';
-import AuthModal from '../../components/modals/AuthModal';
-import ShareModal from '../../components/modals/ShareModal';
-import ThemeSelectorModal from '../../components/modals/ThemeSelectorModal';
-import AISettingsModal from '../../components/ai/AISettingsModal';
+import type {TabItem} from '../endpoint/EndpointTabs';
+import ModalsStack from '../modals/ModalsStack/ModalsStack';
+import CodeGeneratorModal from '../modals/CodeGeneratorModal';
+import AuthModal from '../modals/AuthModal';
+import ShareModal from '../modals/ShareModal';
+import ThemeSelectorModal from '../modals/ThemeSelectorModal';
+import AISettingsModal from '../ai/AISettingsModal';
 import TabSwitcherOverlay from './TabSwitcherOverlay';
 
 interface ShareTarget {

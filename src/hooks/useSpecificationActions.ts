@@ -1,9 +1,9 @@
 import {type Dispatch, type SetStateAction, useCallback, useState} from 'react';
-import type {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
-import {clearAllCachedSpecs, clearCachedSpec} from '../../utils/specCache';
-import {specStorage, uiStorage} from '../../utils/storage';
-import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../../utils/aiStorage';
-import {type LocalSpec, parseSpecDraft} from '../spec';
+import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
+import {clearAllCachedSpecs, clearCachedSpec} from '../utils/specCache';
+import {specStorage, uiStorage} from '../utils/storage';
+import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/aiStorage';
+import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
 
 interface UseSpecificationActionsOptions {
     selectedSpecKey: string;

@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
-import type {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
-import {fetchSpecText} from '../../utils/specCache';
-import {parseSpecDraft} from '../spec';
+import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
+import {fetchSpecText} from '../utils/specCache';
+import {parseSpecDraft} from '../utils/appSpec';
 
 export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig) {
     const [spec, setSpec] = useState<OpenApiSpec | null>(null);
