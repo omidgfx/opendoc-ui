@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
 import { applyAuthToRequest, isOperationProtected } from '../src/utils/auth';
 import { buildAIContext, buildAISystemPrompt, citationsFromText } from '../src/utils/aiContext';
 import { formatOpenDocUIRunnerResult, parseOpenDocUIActions } from '../src/utils/aiBridge';
@@ -6,7 +10,11 @@ import { allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection 
 import { trimAIConversation } from '../src/utils/aiStorage';
 import { bodyEditorModeForMediaType, bodyTypeSupportsForm, formatBodyText, getBodyEditorLanguage, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText } from '../src/utils/bodyFormats';
 import { DESCRIPTION_TOOLTIP_THRESHOLD, defaultBodyValue, usesDescriptionTooltip } from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
-import { getMergedParameters, getRefName, isJsonMediaType, queryStringFromPairs, resolveJsonPointer, resolveReference, resolveRequestBody, serializeOpenApiParameter, validateOpenApiDocument } from '@/src/utils/openapi';
+import { getMergedParameters, getRefName, isJsonMediaType, normalizeOpenApiSpec, queryStringFromPairs, resolveJsonPointer, resolveReference, resolveRequestBody, serializeOpenApiParameter, validateOpenApiDocument } from '@/src/utils/openapi';
+import {compileBrowserRequest, parameterStateKey} from '@/src/utils/requestPlan';
+import {createTypeNameMap, generateAllTsContent, schemaToTsType, toSafeGeneratedFileName} from '@/src/utils/schemaExport';
+import {sanitizeZipEntryName} from '@/src/utils/zip';
+import {generateValidatedMock} from '@/src/utils/mockGenerator';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -24,6 +32,76 @@ const baseSpec: any = {
         schemas: {},
     },
 };
+test('compiles a permissive request with canonical inputs and advisory diagnostics', () => {
+    const operation: any = {
+        parameters: [
+            {name: 'id', in: 'path', required: true, schema: {type: 'string'}},
+            {name: 'region', in: 'header', required: true, schema: {type: 'string', pattern: '^[A-Z]+$'}},
+        ],
+        requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
+        responses: {'400': {description: 'bad request', content: {'application/problem+json': {}}}},
+        security: [],
+    };
+    const spec: any = {
+        ...baseSpec,
+        paths: {'/users/{id}': {get: operation}},
+        servers: [{url: 'https://api.example.test'}],
+    };
+    const plan = compileBrowserRequest({
+        spec, path: '/users/{id}', method: 'get', operation,
+        selectedServer: 'https://api.example.test',
+        activeAuth: {
+            activeScheme: 'auth', selectedSchemes: ['auth'],
+            schemeValues: {auth: {schemeId: 'auth', type: 'bearer', value: 'must-not-leak'}},
+            cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header',
+            basicUsername: '', basicPassword: '',
+        },
+        parameterValues: {[parameterStateKey('header', 'region')]: 'eu'},
+        body: '{broken json', bodyType: 'application/json',
+    });
+    assert.equal(plan.url, 'https://api.example.test/users/{id}');
+    assert.equal(plan.headers.Authorization, undefined);
+    assert.equal(plan.headers.region, 'eu');
+    assert.equal(plan.headers.Accept, 'application/problem+json');
+    assert.ok(plan.diagnostics.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING'));
+    assert.ok(plan.diagnostics.some(item => item.code === 'RUN_PARAMETER_PATTERN_MISMATCH'));
+    assert.ok(plan.diagnostics.some(item => item.code === 'RUN_BODY_JSON_INVALID'));
+    // GET bodies are a browser limitation, not a semantic validation failure.
+    assert.equal(plan.body, null);
+});
+test('resolves operation server variables ahead of path and root servers', () => {
+    const operation: any = {
+        servers: [{url: 'https://{region}.example.test/{version}', variables: {
+            region: {default: 'eu', enum: ['eu', 'us']}, version: {default: 'v2'},
+        }}],
+        responses: {'200': {description: 'ok'}},
+    };
+    const spec: any = {...baseSpec, servers: [{url: 'https://root.example.test'}], paths: {'/ping': {get: operation}}};
+    const plan = compileBrowserRequest({
+        spec, path: '/ping', method: 'get', operation,
+        selectedServer: 'https://root.example.test', serverVariables: {region: 'us'},
+        activeAuth: {activeScheme: 'none', selectedSchemes: [], schemeValues: {}, cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: ''},
+    });
+    assert.equal(plan.url, 'https://us.example.test/v2/ping');
+    assert.equal(plan.intent.server.source, 'operation');
+});
+test('preserves Swagger 2 collection formats and unspecified media types', () => {
+    const normalized: any = normalizeOpenApiSpec({
+        swagger: '2.0', info: {title: 'Swagger', version: '1'}, host: 'api.example.test', basePath: '/v1',
+        consumes: ['application/json'], produces: ['application/json'], paths: {
+            '/items': {get: {
+                consumes: [], produces: [], schemes: ['http'],
+                parameters: [{name: 'ids', in: 'query', type: 'array', items: {type: 'string'}, collectionFormat: 'tsv'}],
+                responses: {'200': {description: 'ok', schema: {type: 'array', items: {type: 'string'}}}},
+            }},
+        },
+    });
+    const operation = normalized.paths['/items'].get;
+    const serialized = serializeOpenApiParameter(operation.parameters[0], ['a', 'b']);
+    assert.equal(queryStringFromPairs(serialized.query), '?ids=a%09b');
+    assert.deepEqual(operation.servers, [{url: 'http://api.example.test/v1'}]);
+    assert.ok(operation.responses['200'].content['*/*']);
+});
 test('serializes OpenAPI query arrays and objects', () => {
     const repeated = serializeOpenApiParameter({
         name: 'id',
@@ -64,6 +142,10 @@ test('serializes OpenAPI query arrays and objects', () => {
         name: 'coords', in: 'path', style: 'matrix', explode: true, schema: { type: 'object' }
     }, { x: 1, y: 2 });
     assert.equal(matrixObject.pathValue, ';x=1;y=2');
+    const labelObject = serializeOpenApiParameter({
+        name: 'coords', in: 'path', style: 'label', explode: true, schema: {type: 'object'}
+    }, {x: 1, y: 2});
+    assert.equal(labelObject.pathValue, '.x=1.y=2');
 });
 test('resolves JSON pointers, escaped names, and cyclic refs safely', () => {
     const spec: any = {
@@ -197,16 +279,75 @@ test('resolves referenced request bodies and their media entries', () => {
     assert.equal(body.required, true);
     assert.equal(body.content['application/json'].schema.$ref, '#/components/schemas/Login');
 });
+test('generates compiling TypeScript for adversarial schema names and boolean schemas', () => {
+    const schemas: Record<string, any> = {
+        'user-profile': {type: 'object', required: ['friend'], properties: {friend: {$ref: '#/components/schemas/123User'}}},
+        'user_profile': {type: 'string'},
+        '123User': {type: 'object', properties: {'display-name': {type: 'string'}}},
+        'class': false,
+        'Anything': true,
+    };
+    const names = createTypeNameMap(Object.keys(schemas));
+    assert.equal(new Set(Object.values(names).map(name => name.toLowerCase())).size, Object.keys(schemas).length);
+    assert.equal(schemaToTsType(false, schemas), 'never');
+    assert.equal(schemaToTsType(true, schemas), 'unknown');
+    assert.doesNotMatch(toSafeGeneratedFileName('../evil/schema'), /[\\/]/);
+    assert.equal(sanitizeZipEntryName('../../evil\\models.ts'), 'evil/models.ts');
+    const directory = mkdtempSync(join(tmpdir(), 'opendoc-codegen-'));
+    try {
+        writeFileSync(join(directory, 'models.ts'), generateAllTsContent(schemas, 'fixture'));
+        writeFileSync(join(directory, 'tsconfig.json'), JSON.stringify({compilerOptions: {
+            strict: true, noEmit: true, target: 'ES2022', module: 'ESNext', skipLibCheck: true,
+        }, include: ['models.ts']}));
+        const tsc = resolve('node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+        execFileSync(tsc, ['--project', join(directory, 'tsconfig.json')], {stdio: 'pipe'});
+    } finally {
+        rmSync(directory, {recursive: true, force: true});
+    }
+});
+test('generates deterministic mocks that validate for the supported constraint subset', () => {
+    const schema = {
+        type: 'object', required: ['code', 'count', 'tags'], additionalProperties: false,
+        properties: {
+            code: {type: 'string', pattern: '^[0-9]+$', minLength: 3, maxLength: 8},
+            count: {type: 'integer', minimum: 5, maximum: 20, multipleOf: 5},
+            tags: {type: 'array', minItems: 2, maxItems: 2, items: {type: 'string'}},
+        },
+    };
+    const result = generateValidatedMock(schema, baseSpec);
+    assert.equal(result.ok, true, result.diagnostics.map(item => item.message).join('; '));
+    assert.deepEqual(result.value, {code: '12345', count: 5, tags: ['string', 'string']});
+    const impossible = generateValidatedMock(false, baseSpec);
+    assert.equal(impossible.ok, false);
+    assert.equal(impossible.diagnostics[0].code, 'MOCK_GENERATION_IMPOSSIBLE');
+});
 test('detects vendor JSON media types', () => {
     assert.equal(isJsonMediaType('application/problem+json; charset=utf-8'), true);
     assert.equal(isJsonMediaType('application/vnd.company.resource+json'), true);
     assert.equal(isJsonMediaType('application/octet-stream'), false);
 });
-test('validates the OpenAPI envelope before normalization', () => {
+test('validates documents by explicit dialect and accepts pathless OAS 3.1 webhooks', () => {
     assert.equal(validateOpenApiDocument(baseSpec).valid, true);
     const invalid = validateOpenApiDocument({ paths: [] });
     assert.equal(invalid.valid, false);
-    assert.ok(invalid.errors.some(error => error.includes('openapi 3.x')));
+    assert.ok(invalid.errors.some(error => error.includes('declare a supported')));
+    const webhookOnly = validateOpenApiDocument({
+        openapi: '3.1.1', info: {title: 'Webhooks', version: '1'},
+        webhooks: {event: {post: {responses: {'200': {description: 'ok'}}}}},
+    });
+    assert.equal(webhookOnly.valid, true);
+    assert.equal(webhookOnly.version, 'openapi3.1');
+    const future = validateOpenApiDocument({openapi: '3.9.0', info: {title: 'Future', version: '1'}});
+    assert.equal(future.valid, false);
+    assert.ok(future.errors.some(error => error.includes('Unsupported')));
+});
+test('preserves OAS 3.0 nullable semantics during normalization', () => {
+    const normalized: any = normalizeOpenApiSpec({
+        openapi: '3.0.4', info: {title: 'Nullable', version: '1'}, paths: {},
+        components: {schemas: {Value: {type: 'string', nullable: true}}},
+    });
+    assert.equal(normalized.components.schemas.Value.type, 'string');
+    assert.equal(normalized.components.schemas.Value.nullable, true);
 });
 test('trims oversized conversations instead of deleting them', () => {
     const conversation: any = {

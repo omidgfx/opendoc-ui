@@ -19,7 +19,7 @@ import {
 } from './utils/aiBridge';
 import {executeRunnerRequest} from './utils/runnerExecution';
 import {createEmptyAuth} from './utils/auth';
-import {type ConfigSource, type EndpointKey} from './utils/appSpec';
+import {type ConfigSource, endpointKey, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
 import WorkspaceContent from './components/app/WorkspaceContent';
@@ -54,6 +54,7 @@ export default function App() {
         setIsLoadingSpec,
         selectedServer,
         setSelectedServer,
+        specFetchInfo,
         loadSpec,
     } = useSpecLoader(selectedParsableKey, parsables);
     const [searchQuery, setSearchQuery] = useState('');
@@ -123,7 +124,7 @@ export default function App() {
     }, [authScopeKey]);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
-    const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse>>({});
+    const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse[]>>({});
     const {
         selectedEndpoint,
         setSelectedEndpoint,
@@ -197,6 +198,10 @@ export default function App() {
         leftWidth: docsPaneWidth,
         isDragging: isSplitDragging,
         onMouseDown: onSplitResizeMouseDown,
+        onKeyDown: onSplitResizeKeyDown,
+        separatorMin: splitSeparatorMin,
+        separatorMax: splitSeparatorMax,
+        separatorNow: splitSeparatorNow,
     } = useResizableSplit(splitContainerRef, 'opendoc:ui:endpoint_split_width');
     useEffect(() => {
         if (selectedTab === 'both')
@@ -481,7 +486,7 @@ export default function App() {
         const needle = q.trim().toLowerCase();
         for (const [pathStr, item] of Object.entries(spec.paths)) {
             for (const [m, op] of Object.entries(item as any)) {
-                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(m))
+                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(m))
                     continue;
                 const o = op as any;
                 if (sidebarDisplayRoutes && pathStr.toLowerCase().includes(needle))
@@ -655,6 +660,11 @@ export default function App() {
         }).then(result => {
             if (assistantRunnerAbortRef.current === controller)
                 assistantRunnerAbortRef.current = null;
+            const historyKey = endpointKey(action.path, action.method);
+            setExamineResponses(current => ({
+                ...current,
+                [historyKey]: [result, ...(current[historyKey] || [])].slice(0, 10),
+            }));
             dispatchOpenDocUIRunnerResult({
                 actionId,
                 specKey: selectedParsableKey,
@@ -731,7 +741,10 @@ export default function App() {
                                              setActiveSplitPane={setActiveSplitPane}
                                              splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth}
                                              isSplitDragging={isSplitDragging}
-                                             onSplitResizeMouseDown={onSplitResizeMouseDown} isMobile={isMobile}
+                                             onSplitResizeMouseDown={onSplitResizeMouseDown}
+                                             onSplitResizeKeyDown={onSplitResizeKeyDown}
+                                             splitSeparatorMin={splitSeparatorMin} splitSeparatorMax={splitSeparatorMax}
+                                             splitSeparatorNow={splitSeparatorNow} isMobile={isMobile}
                                              activeAuth={activeAuth} resolvedThemeMode={resolvedThemeMode}
                                              activeResponseCode={activeResponseCode}
                                              setActiveResponseCode={setActiveResponseCode}
@@ -770,7 +783,7 @@ export default function App() {
                         onOpenAuthModal={() => setShowAuthModal(true)} searchQuery={searchQuery}
                         onSearchChange={handleSearchChange} onDownloadSpec={handleDownload}
                         title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec}
-                        showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
+                        specFreshness={specFetchInfo} showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
                         onOpenMobileSidebar={() => setMobileOpen(true)} onOpenAssistant={handleOpenAssistant}
                         selectedThemeName={selectedThemeName} onSelectTheme={setSelectedThemeName}
                         onOpenThemeModal={() => setShowThemeModal(true)} isLocalMode={isLocalMode}
@@ -864,10 +877,11 @@ export default function App() {
                     </>)}
                 </div>
 
-                <AppModalLayer spec={spec} specKey={selectedParsableKey} schemaStack={modalsStack}
+                <AppModalLayer spec={spec} specKey={selectedParsableKey} selectedServer={selectedServer} schemaStack={modalsStack}
                                setSchemaStack={setModalsStack} onPopSchema={handlePopSchema}
                                onPushSchema={handlePushSchema} codeEndpoint={codeGenEndpoint}
                                setCodeEndpoint={setCodeGenEndpoint} activeAuth={activeAuth}
+                               authOperation={selectedEndpoint ? (spec?.paths?.[selectedEndpoint.path] as any)?.[selectedEndpoint.method] || null : null}
                                setActiveAuth={setActiveAuth} authOpen={showAuthModal} setAuthOpen={setShowAuthModal}
                                switcherOpen={switcherOpen} tabs={endpointTabs} activeTabId={activeTabId}
                                switcherIndex={switcherIndex} onCancelSwitcher={cancelSwitcher}

@@ -188,7 +188,13 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     }
     if (type === 'array') {
         const values = arrayValues(value);
-        const delimiter = style === 'spaceDelimited' ? ' ' : style === 'pipeDelimited' ? '|' : ',';
+        const swaggerCollectionFormat = String(parameter?.collectionFormat || '');
+        const delimiter = swaggerCollectionFormat === 'ssv' ? ' '
+            : swaggerCollectionFormat === 'tsv' ? '\t'
+                : swaggerCollectionFormat === 'pipes' ? '|'
+                    : style === 'spaceDelimited' ? ' '
+                        : style === 'pipeDelimited' ? '|'
+                            : ',';
         if (location === 'query') {
             if (style === 'deepObject') {
                 values.forEach((item, index) => result.query.push({
@@ -260,7 +266,7 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     } else {
         if (style === 'label') {
             result.pathValue = explode
-                ? `.${entries.map(([key, item]) => `${encodeComponent(key, false)}=${encodeComponent(item, false)}`).join(',')}`
+                ? `.${entries.map(([key, item]) => `${encodeComponent(key, false)}=${encodeComponent(item, false)}`).join('.')}`
                 : `.${entries.flatMap(([key, item]) => [encodeComponent(key, false), encodeComponent(item, false)]).join(',')}`;
         } else if (style === 'matrix') {
             result.pathValue = explode

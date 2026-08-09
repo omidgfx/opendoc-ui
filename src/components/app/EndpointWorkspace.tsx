@@ -1,4 +1,4 @@
-import type {Dispatch, MouseEvent, RefObject, SetStateAction} from 'react';
+import type {Dispatch, KeyboardEvent, MouseEvent, RefObject, SetStateAction} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
 import ExamineTab from '../endpoint/ExamineTab/ExamineTab';
@@ -25,13 +25,17 @@ interface EndpointWorkspaceProps {
     docsPaneWidth: number;
     isSplitDragging: boolean;
     onSplitResizeMouseDown: (event: MouseEvent) => void;
+    onSplitResizeKeyDown: (event: KeyboardEvent) => void;
+    splitSeparatorMin: number;
+    splitSeparatorMax: number;
+    splitSeparatorNow: number;
     isMobile: boolean;
     activeAuth: ActiveAuth;
     selectedServer: string;
     resolvedThemeMode: 'light' | 'dark';
     activeResponseCode: string | null;
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
-    currentResponse: ExamineResponse | null;
+    responseHistory: ExamineResponse[];
     onResponseChange: (response: ExamineResponse) => void;
     onClearResponse: () => void;
     onOpenSchema: (schemaName: string) => void;
@@ -50,13 +54,17 @@ export default function EndpointWorkspace({
                                               docsPaneWidth,
                                               isSplitDragging,
                                               onSplitResizeMouseDown,
+                                              onSplitResizeKeyDown,
+                                              splitSeparatorMin,
+                                              splitSeparatorMax,
+                                              splitSeparatorNow,
                                               isMobile,
                                               activeAuth,
                                               selectedServer,
                                               resolvedThemeMode,
                                               activeResponseCode,
                                               setActiveResponseCode,
-                                              currentResponse,
+                                              responseHistory,
                                               onResponseChange,
                                               onClearResponse,
                                               onOpenSchema,
@@ -75,7 +83,7 @@ export default function EndpointWorkspace({
                  parsableKey={parsableKey} isActive={docsActive}/>);
     const runner = (<ExamineTab spec={spec} path={endpoint.path} method={endpoint.method} operation={operation}
                                 activeAuth={activeAuth} selectedServer={selectedServer} parsableKey={parsableKey}
-                                themeMode={resolvedThemeMode} initialResponse={currentResponse} isActive={runnerActive}
+                                themeMode={resolvedThemeMode} responseHistory={responseHistory} isActive={runnerActive}
                                 onResponseChange={onResponseChange} onClearResponse={onClearResponse}/>);
     return (<div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         <div
@@ -145,8 +153,11 @@ export default function EndpointWorkspace({
                         {docs}
                     </FocusPane>
                 </div>
-                <div onMouseDown={onSplitResizeMouseDown}
-                     className={clsx('w-1.5 shrink-0 h-full rounded-full cursor-col-resize transition-colors select-none', isSplitDragging ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]/60')}/>
+                <div role="separator" aria-label="Resize documentation and API Runner panes"
+                     aria-orientation="vertical" aria-valuemin={splitSeparatorMin}
+                     aria-valuemax={splitSeparatorMax} aria-valuenow={splitSeparatorNow}
+                     tabIndex={0} onMouseDown={onSplitResizeMouseDown} onKeyDown={onSplitResizeKeyDown}
+                     className={clsx('w-1.5 shrink-0 h-full rounded-full cursor-col-resize transition-colors select-none outline-none focus:bg-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/30', isSplitDragging ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]/60')}/>
                 <div className="h-full min-w-0 flex-1 overflow-hidden">
                     <FocusPane active={activeSplitPane === 'examine'} onActivate={() => setActiveSplitPane('examine')}>
                         {runner}

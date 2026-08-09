@@ -294,7 +294,7 @@ export default function ViewTab({
         return props;
     };
     const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null) => {
-        if (!schema)
+        if (schema === undefined || schema === null)
             return null;
         const properties = resolveProperties(schema);
         return (<SchemaPropertiesTable properties={properties} schema={schema} resolveReference={resolveReference}

@@ -5,18 +5,35 @@ import type {PathPart} from '@/src/types/recursiveBody';
 export const DESCRIPTION_TOOLTIP_THRESHOLD = 80;
 export const usesDescriptionTooltip = (description?: string): boolean => !!description && description.trim().length > DESCRIPTION_TOOLTIP_THRESHOLD;
 export const resolved = (schema: any, spec: OpenApiSpec): any => {
-    const source = schema?.$ref ? resolveReference(schema, spec) || schema : schema || {};
+    if (schema === true)
+        return {'x-opendoc-boolean-schema': true};
+    if (schema === false)
+        return {'x-opendoc-boolean-schema': false, title: 'No value satisfies this schema'};
+    const source = schema?.$ref ? resolveReference(schema, spec) || schema : schema ?? {};
     if (!Array.isArray(source.allOf))
         return source;
     const merged: any = {...source, properties: {...(source.properties || {})}, required: [...(source.required || [])]};
     delete merged.allOf;
+    const conflicts: string[] = [];
     source.allOf.forEach((part: any) => {
         const child = resolved(part, spec);
         const {properties, required, ...childMetadata} = child;
-        Object.assign(merged, childMetadata);
-        merged.properties = {...(merged.properties || {}), ...(properties || {})};
+        Object.entries(childMetadata).forEach(([key, value]) => {
+            if (merged[key] === undefined)
+                merged[key] = value;
+            else if (JSON.stringify(merged[key]) !== JSON.stringify(value))
+                conflicts.push(key);
+        });
+        Object.entries(properties || {}).forEach(([key, value]) => {
+            if (merged.properties?.[key] !== undefined && JSON.stringify(merged.properties[key]) !== JSON.stringify(value))
+                conflicts.push(`properties.${key}`);
+            else
+                merged.properties = {...(merged.properties || {}), [key]: value};
+        });
         merged.required = Array.from(new Set([...(merged.required || []), ...(required || [])]));
     });
+    if (conflicts.length > 0)
+        merged['x-opendoc-allOf-conflicts'] = Array.from(new Set(conflicts));
     return merged;
 };
 export const defaultBodyValue = (schema: any, spec: OpenApiSpec): any => {

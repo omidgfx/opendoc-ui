@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import type {ActiveAuth, AuthCredential, OpenApiSpec} from '../../types';
+import type {ActiveAuth, AuthCredential, OpenApiSpec, Operation} from '../../types';
 import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
@@ -10,6 +10,7 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     spec: OpenApiSpec | null;
+    operation?: Operation | null;
     activeAuth: ActiveAuth;
     onSave: (auth: ActiveAuth) => void;
 }
@@ -22,10 +23,10 @@ const legacyOptions = [
     {id: 'legacy:cookie', label: 'Session Cookie', schemeIds: ['legacy:cookie']},
 ];
 const fieldClass = 'w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]';
-export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: AuthModalProps) {
+export default function AuthModal({isOpen, onClose, spec, operation, activeAuth, onSave}: AuthModalProps) {
     const options = useMemo(() => spec?.components?.securitySchemes
-        ? getSecurityRequirementOptions(spec)
-        : legacyOptions, [spec]);
+        ? getSecurityRequirementOptions(spec, operation)
+        : legacyOptions, [spec, operation]);
     const [selectedRequirement, setSelectedRequirement] = useState('none');
     const [credentials, setCredentials] = useState<Record<string, AuthCredential>>({});
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
@@ -187,7 +188,7 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
                                     in: credential.in || scheme?.in
                                 })} readOnly={Boolean(scheme?.name)}/></label>
                             <label className="block space-y-1"><span
-                                className="block text-[10px] font-semibold text-[var(--text-muted)]">{isCookie ? 'Cookie value (agent mode only)' : 'Key value'}</span><input
+                                className="block text-[10px] font-semibold text-[var(--text-muted)]">{isCookie ? 'Cookie value (not sent in browser mode)' : 'Key value'}</span><input
                                 type="password" className={fieldClass} value={credential.value || ''}
                                 onChange={event => updateCredential(id, {value: event.target.value})}
                                 placeholder={isCookie ? 'Not injected by browser fetch' : 'Secret value'}/></label>
@@ -195,7 +196,7 @@ export default function AuthModal({isOpen, onClose, spec, activeAuth, onSave}: A
                                 <p className="rounded-lg border border-[var(--method-put)]/30 bg-[var(--method-put)]/10 p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">Browsers
                                     forbid JavaScript from setting the Cookie request header. Runner browser mode
                                     only sends existing same-site cookies with credentials: include. Use the
-                                    optional gateway/local agent for manual cookie injection.</p>}
+                                    a separate trusted API runner agent for manual cookie injection. The optional AI gateway does not proxy Runner requests.</p>}
                         </>}
                         {(credential.type === 'bearer' || credential.type === 'oauth2' || credential.type === 'openIdConnect') &&
                             <label className="block space-y-1"><span

@@ -2,20 +2,9 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveRequestBody} from '../../../utils/openapi';
-import {
-    isJsonMediaType,
-    normalizeParameterValue,
-    queryStringFromPairs,
-    serializeOpenApiParameter
-} from '../../../utils/openapi/serialization';
-import {applyAuthToRequest} from '../../../utils/auth';
-import {
-    appendMultipartBody,
-    bodyEditorModeForMediaType,
-    bodyTypeSupportsForm,
-    parseStructuredBody,
-    serializeUrlEncodedBody
-} from '../../../utils/bodyFormats';
+import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/bodyFormats';
+import {executeRunnerRequest} from '../../../utils/runnerExecution';
+import {parameterStateKey} from '../../../utils/requestPlan';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/aiBridge';
 import {getMockSnippet} from '../../../utils/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -26,58 +15,6 @@ import BodyEditor from './BodyEditor';
 import ResponsePanel from './ResponsePanel';
 import {specStorage} from '../../../utils/storage';
 
-const REQUEST_TIMEOUT_MS = 30000;
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const readResponseBody = async (response: Response, maxBytes = MAX_RESPONSE_BYTES): Promise<{
-    text: string;
-    bytes: number;
-    truncated: boolean;
-}> => {
-    if (!response.body) {
-        const text = await response.text();
-        const encoded = new TextEncoder().encode(text);
-        return {
-            text: new TextDecoder().decode(encoded.slice(0, maxBytes)),
-            bytes: encoded.byteLength,
-            truncated: encoded.byteLength > maxBytes
-        };
-    }
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let bytes = 0;
-    let truncated = false;
-    try {
-        while (true) {
-            const {value, done} = await reader.read();
-            if (done)
-                break;
-            if (!value)
-                continue;
-            const remaining = maxBytes - bytes;
-            if (value.byteLength > remaining) {
-                if (remaining > 0)
-                    chunks.push(value.slice(0, remaining));
-                bytes += Math.max(0, remaining);
-                truncated = true;
-                await reader.cancel();
-                break;
-            }
-            chunks.push(value);
-            bytes += value.byteLength;
-        }
-    } finally {
-        reader.releaseLock();
-    }
-    const merged = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0));
-    let offset = 0;
-    chunks.forEach(chunk => {
-        merged.set(chunk, offset);
-        offset += chunk.byteLength;
-    });
-    return {text: new TextDecoder().decode(merged), bytes, truncated};
-};
-const authWarningText = 'Troubleshooting: verify the server URL, CORS policy, authentication requirement, and whether browser cookie restrictions apply.';
-
 interface ExamineTabProps {
     spec: OpenApiSpec;
     path: string;
@@ -87,7 +24,7 @@ interface ExamineTabProps {
     selectedServer: string;
     parsableKey?: string;
     themeMode?: 'light' | 'dark';
-    initialResponse?: ExamineResponse | null;
+    responseHistory?: ExamineResponse[];
     onResponseChange?: (resp: ExamineResponse) => void;
     onClearResponse?: () => void;
     isActive?: boolean;
@@ -102,7 +39,7 @@ export default function ExamineTab({
                                        selectedServer,
                                        parsableKey = '',
                                        themeMode = 'dark',
-                                       initialResponse = null,
+                                       responseHistory = [],
                                        onResponseChange,
                                        onClearResponse,
                                        isActive = true,
@@ -122,19 +59,42 @@ export default function ExamineTab({
     const bridgeRunActionIdRef = useRef<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
-    const [response, setResponse] = useState<ExamineResponse | null>(initialResponse);
+    const [response, setResponse] = useState<ExamineResponse | null>(responseHistory[0] || null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    const requestStartedAtRef = useRef(0);
-    const requestUrlRef = useRef(`${selectedServer}${path}`);
-    const timedOutRef = useRef(false);
+    const canonicalizeInputs = useCallback((incomingParams: Record<string, string | string[]> = {}, incomingHeaders: Record<string, string> = {}) => {
+        const pathItem = (spec.paths as any)[path] || {};
+        const parameters = getMergedParameters(pathItem, operation, spec);
+        const values: Record<string, string | string[]> = {};
+        const customHeaders = {...incomingHeaders};
+        Object.entries(incomingParams).forEach(([key, value]) => {
+            if (key.includes(':'))
+                values[key] = value;
+        });
+        parameters.forEach((parameter: any) => {
+            const key = parameterStateKey(parameter.in, parameter.name);
+            if (Object.prototype.hasOwnProperty.call(incomingParams, key))
+                values[key] = incomingParams[key];
+            else if (Object.prototype.hasOwnProperty.call(incomingParams, parameter.name))
+                values[key] = incomingParams[parameter.name];
+            if (parameter.in === 'header') {
+                const headerName = Object.keys(customHeaders).find(name => name.toLowerCase() === String(parameter.name).toLowerCase());
+                if (headerName) {
+                    values[key] = customHeaders[headerName];
+                    delete customHeaders[headerName];
+                }
+            }
+        });
+        return {values, customHeaders};
+    }, [spec, path, operation]);
     useEffect(() => {
-        setResponse(initialResponse || null);
-    }, [initialResponse, path, method]);
+        setResponse(responseHistory[0] || null);
+    }, [responseHistory, path, method]);
     const loadInputs = useCallback(() => {
         const parsed = specStorage.getJSON<any>(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`, null, (v) => !!v && typeof v === 'object');
         if (parsed) {
-            setParams(parsed.params || {});
-            setHeaders(parsed.headers || {});
+            const migrated = canonicalizeInputs(parsed.params || {}, parsed.headers || {});
+            setParams(migrated.values);
+            setHeaders(migrated.customHeaders);
             setRequestBodyText(parsed.bodyText || '');
             setRequestBodyType(parsed.bodyType || 'application/json');
             if (parsed.bodyEditorMode === 'raw' || parsed.bodyEditorMode === 'form')
@@ -153,7 +113,7 @@ export default function ExamineTab({
             return;
         }
         resetToDefaults();
-    }, [storageKey, parsableKey, method, path]);
+    }, [storageKey, parsableKey, method, path, canonicalizeInputs]);
     useEffect(() => {
         loadInputs();
     }, [loadInputs]);
@@ -195,16 +155,16 @@ export default function ExamineTab({
             const isArray = schema.type === 'array' || param.type === 'array';
             if (isArray && (schema.items?.enum || param.items?.enum)) {
                 const values = schema.items?.enum || param.items?.enum;
-                defaultParams[param.name] = [String(values[0] ?? '')];
+                defaultParams[parameterStateKey(param.in, param.name)] = [String(values[0] ?? '')];
                 return;
             }
             const example = param.example ?? schema.example ?? schema.default;
             if (example === undefined) {
-                defaultParams[param.name] = '';
+                defaultParams[parameterStateKey(param.in, param.name)] = '';
             } else if (typeof example === 'object') {
-                defaultParams[param.name] = JSON.stringify(example);
+                defaultParams[parameterStateKey(param.in, param.name)] = JSON.stringify(example);
             } else {
-                defaultParams[param.name] = String(example);
+                defaultParams[parameterStateKey(param.in, param.name)] = String(example);
             }
         });
         setParams(defaultParams);
@@ -242,163 +202,28 @@ export default function ExamineTab({
         if (isRunning)
             return;
         setIsRunning(true);
-        requestStartedAtRef.current = Date.now();
-        timedOutRef.current = false;
         const controller = new AbortController();
         abortControllerRef.current = controller;
-        const timeout = window.setTimeout(() => {
-            timedOutRef.current = true;
-            controller.abort();
-        }, REQUEST_TIMEOUT_MS);
-        const queryParams: Array<{
-            name: string;
-            value: string;
-            allowReserved?: boolean;
-        }> = [];
-        const cookieParams: Array<{
-            name: string;
-            value: string;
-        }> = [];
-        let processedPath = path;
         try {
-            const pathItemObj = (spec.paths as any)[path] || {};
-            const merged = getMergedParameters(pathItemObj, operation, spec);
-            const parameterHeaders: Record<string, string> = {};
-            merged.forEach((param: any) => {
-                const rawValue = params[param.name];
-                if (rawValue === undefined || rawValue === null || rawValue === '' && !param.allowEmptyValue)
-                    return;
-                const serialized = serializeOpenApiParameter(param, normalizeParameterValue(param, rawValue));
-                if (param.in === 'path' && serialized.pathValue !== undefined) {
-                    processedPath = processedPath.replace(`{${param.name}}`, serialized.pathValue);
-                }
-                queryParams.push(...serialized.query);
-                Object.assign(parameterHeaders, serialized.headers);
-                cookieParams.push(...serialized.cookies);
-            });
-            const initialHeaders: Record<string, string> = {Accept: 'application/json', ...parameterHeaders, ...headers};
-            const auth = applyAuthToRequest(spec, activeAuth, {
-                headers: initialHeaders,
-                query: queryParams,
-                cookies: cookieParams
-            }, operation);
-            const queryString = queryStringFromPairs(auth.query);
-            const cleanServer = selectedServer.endsWith('/') ? selectedServer.slice(0, -1) : selectedServer;
-            const fullUrl = `${cleanServer}${processedPath}${queryString}`;
-            requestUrlRef.current = fullUrl;
-            const reqHeaders = auth.headers;
-            let reqBody: any = null;
-            const normalizedMethod = method.toLowerCase();
-            const hasDescribedBody = !!resolveRequestBody(operation.requestBody, spec)?.content;
-            const needsBody = hasDescribedBody && !['get', 'head'].includes(normalizedMethod);
-            if (needsBody) {
-                let activeBody = requestBodyText;
-                if (bodyEditorMode === 'form' && (requestBodyType === 'application/x-www-form-urlencoded' || requestBodyType === 'multipart/form-data')) {
-                    const parsedBase = parseStructuredBody(requestBodyText, requestBodyType);
-                    const payload: Record<string, unknown> = parsedBase && typeof parsedBase === 'object' && !Array.isArray(parsedBase)
-                        ? {...parsedBase as Record<string, unknown>}
-                        : {};
-                    Object.entries(bodyFields).forEach(([key, value]) => {
-                        try {
-                            const text = typeof value === 'string' ? value : String(value || '');
-                            payload[key] = (text.trim().startsWith('{') || text.trim().startsWith('[')) ? JSON.parse(text) : text;
-                        } catch {
-                            payload[key] = value;
-                        }
-                    });
-                    activeBody = JSON.stringify(payload);
-                }
-                const normalizedBodyType = requestBodyType.toLowerCase().split(';', 1)[0];
-                if (normalizedBodyType === 'multipart/form-data') {
-                    const form = new FormData();
-                    const selected = {...selectedFiles};
-                    if (selectedFile && !selected.file)
-                        selected.file = selectedFile;
-                    try {
-                        appendMultipartBody(form, parseStructuredBody(activeBody, requestBodyType), selected);
-                    } catch {
-                        Object.entries(selected).forEach(([key, file]) => {
-                            if (file)
-                                form.append(key, file);
-                        });
-                    }
-                    reqBody = form;
-                } else if (selectedFile && normalizedBodyType === 'application/octet-stream') {
-                    reqBody = selectedFile;
-                } else if (normalizedBodyType === 'application/x-www-form-urlencoded') {
-                    reqHeaders['Content-Type'] = requestBodyType;
-                    try {
-                        reqBody = serializeUrlEncodedBody(parseStructuredBody(activeBody, requestBodyType));
-                    } catch {
-                        reqBody = activeBody;
-                    }
-                } else {
-                    reqHeaders['Content-Type'] = requestBodyType;
-                    reqBody = activeBody;
-                }
-            }
-            const responseObj = await fetch(fullUrl, {
-                method: method.toUpperCase(),
-                headers: reqHeaders,
-                body: reqBody,
-                credentials: auth.credentials,
+            const result = await executeRunnerRequest({
+                spec,
+                path,
+                method,
+                operation,
+                selectedServer,
+                activeAuth,
+                parameterValues: params,
+                headers,
+                body: requestBodyText,
+                bodyType: requestBodyType,
+                selectedFile,
+                selectedFiles,
                 signal: controller.signal,
             });
-            const respHeaders: Record<string, string> = {};
-            responseObj.headers.forEach((value, key) => {
-                respHeaders[key] = value;
-            });
-            const contentType = responseObj.headers.get('Content-Type') || '';
-            const binary = !isJsonMediaType(contentType) && !/^text\//i.test(contentType) && !/javascript|xml|event-stream|graphql/i.test(contentType);
-            const body = await readResponseBody(responseObj);
-            const next: ExamineResponse = {
-                status: responseObj.status,
-                headers: respHeaders,
-                body: binary ? `[Binary response omitted from preview]\nContent-Type: ${contentType || 'unknown'}\nBytes read: ${body.bytes}${body.truncated ? ' (truncated)' : ''}` : body.text,
-                isJson: isJsonMediaType(contentType),
-                timestamp: Date.now(),
-                requestUrl: fullUrl,
-                durationMs: Date.now() - requestStartedAtRef.current,
-                bodyBytes: body.bytes,
-                truncated: body.truncated,
-                isBinary: binary,
-            };
-            setResponse(next);
-            onResponseChange?.(next);
-            publishBridgeResult(next);
-        } catch (error: any) {
-            if (controller.signal.aborted && !timedOutRef.current) {
-                publishBridgeResult({
-                    status: 0,
-                    headers: {},
-                    body: 'Request cancelled by the user.',
-                    isJson: false,
-                    timestamp: Date.now(),
-                    requestUrl: requestUrlRef.current,
-                    durationMs: Date.now() - requestStartedAtRef.current,
-                    errorKind: 'cancelled',
-                    errorMessage: 'Request cancelled by the user.',
-                });
-                return;
-            }
-            const errorKind = timedOutRef.current ? 'timeout' : 'network';
-            const errorMessage = error?.message || 'The request failed.';
-            const next: ExamineResponse = {
-                status: 0,
-                headers: {},
-                body: `${timedOutRef.current ? 'Request timed out after 30 seconds.' : 'Network Error or CORS Blocked:'}\n${errorMessage}\n\n${authWarningText}`,
-                isJson: false,
-                timestamp: Date.now(),
-                requestUrl: requestUrlRef.current,
-                durationMs: Date.now() - requestStartedAtRef.current,
-                errorKind,
-                errorMessage,
-            };
-            setResponse(next);
-            onResponseChange?.(next);
-            publishBridgeResult(next);
+            setResponse(result);
+            onResponseChange?.(result);
+            publishBridgeResult(result);
         } finally {
-            window.clearTimeout(timeout);
             abortControllerRef.current = null;
             setIsRunning(false);
         }
@@ -414,18 +239,19 @@ export default function ExamineTab({
                 return;
             if (action.path !== path || action.method.toLowerCase() !== method.toLowerCase())
                 return;
+            const migrated = canonicalizeInputs(action.params || {}, action.headers || {});
             if (action.clearExisting !== false) {
-                setParams(action.params || {});
-                setHeaders(action.headers || {});
+                setParams(migrated.values);
+                setHeaders(migrated.customHeaders);
                 setRequestBodyText(action.body || '');
                 setBodyFields({});
                 setSelectedFile(null);
                 setSelectedFiles({});
             } else {
-                if (action.params)
-                    setParams(action.params);
+                if (action.params || action.headers)
+                    setParams(current => ({...current, ...migrated.values}));
                 if (action.headers)
-                    setHeaders(action.headers);
+                    setHeaders(current => ({...current, ...migrated.customHeaders}));
                 if (action.body !== undefined)
                     setRequestBodyText(action.body);
             }
@@ -439,7 +265,7 @@ export default function ExamineTab({
         };
         window.addEventListener(OPENDOC_UI_ACTION_EVENT, handleBridgeAction);
         return () => window.removeEventListener(OPENDOC_UI_ACTION_EVENT, handleBridgeAction);
-    }, [method, path]);
+    }, [method, path, canonicalizeInputs]);
     useEffect(() => {
         if (bridgeActionRevision > 0 && bridgeRunPendingRef.current) {
             bridgeRunPendingRef.current = false;
@@ -484,8 +310,12 @@ export default function ExamineTab({
                                 className="text-[10px] font-normal leading-normal mt-0.5 opacity-60 block text-[var(--text-muted)]">{param.description}</span>)}
                         </span>
                         <div className="sm:col-span-3 space-y-1">
-                            <ParameterInput param={param} value={params[param.name] ?? ''}
-                                            onChange={(v) => setParams(prev => ({...prev, [param.name]: v}))}/>
+                            <ParameterInput param={param}
+                                            value={params[parameterStateKey(param.in, param.name)] ?? ''}
+                                            onChange={(v) => setParams(prev => ({
+                                                ...prev,
+                                                [parameterStateKey(param.in, param.name)]: v
+                                            }))}/>
                             <div
                                 className="flex flex-wrap items-center gap-1.5 text-[9.5px] font-mono opacity-65 select-none px-1">
                                 <span
@@ -510,7 +340,7 @@ export default function ExamineTab({
             executeRequest();
     };
     const bodySupportsForm = bodyTypeSupportsForm(requestBodyType);
-    return (<form onSubmit={handleFormSubmit}
+    return (<form onSubmit={handleFormSubmit} noValidate
                   className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0">
 
         <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1}/>
@@ -547,8 +377,11 @@ export default function ExamineTab({
                 {headerParams.map((param: any) => (
                     <div key={param.name} className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center">
                         <span className="text-xs font-semibold">{param.name}</span>
-                        <input type="text" value={headers[param.name] || ''}
-                               onChange={(e) => setHeaders(prev => ({...prev, [param.name]: e.target.value}))}
+                        <input type="text" value={String(params[parameterStateKey(param.in, param.name)] ?? '')}
+                               onChange={(e) => setParams(prev => ({
+                                   ...prev,
+                                   [parameterStateKey(param.in, param.name)]: e.target.value
+                               }))}
                                placeholder={param.description || ''}
                                className="sm:col-span-3 w-full px-3 py-2 border rounded-lg text-xs outline-none focus:border-[var(--primary)] bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]"/>
                     </div>))}
@@ -599,8 +432,8 @@ export default function ExamineTab({
         </div>
 
         <ResponsePanel method={method} selectedServer={selectedServer} path={path} isRunning={isRunning}
-                       response={response} onExecute={executeRequest} onCancel={() => {
-            timedOutRef.current = false;
+                       response={response} responseHistory={responseHistory} onSelectResponse={setResponse}
+                       onExecute={executeRequest} onCancel={() => {
             abortControllerRef.current?.abort();
         }} onClear={() => {
             setResponse(null);

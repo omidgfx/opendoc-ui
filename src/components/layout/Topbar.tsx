@@ -22,6 +22,11 @@ interface TopbarProps {
     title: string;
     showSchemaExplorer: boolean;
     spec: OpenApiSpec | null;
+    specFreshness?: {
+        freshness: 'network' | 'cache' | 'revalidated' | 'stale';
+        fetchedAt: number;
+        refreshError?: string;
+    } | null;
     showHome: boolean;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
@@ -57,6 +62,7 @@ export default function Topbar({
                                    title,
                                    showSchemaExplorer,
                                    spec,
+                                   specFreshness,
                                    selectedThemeName,
                                    onSelectTheme,
                                    isCollapsed,
@@ -201,6 +207,11 @@ export default function Topbar({
                 {!isMobile && (<>
                     <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>
                     {selectorButton}
+                    {specFreshness?.freshness === 'stale' && (<Tip content={`Using cached specification from ${new Date(specFreshness.fetchedAt).toLocaleString()}${specFreshness.refreshError ? ` · Refresh failed: ${specFreshness.refreshError}` : ''}`}>
+                        <span role="status" className="inline-flex items-center gap-1 rounded-md border border-[var(--method-put)]/30 bg-[var(--method-put)]/10 px-2 py-1 text-[9px] font-bold text-[var(--method-put)]">
+                            <i className="ph ph-warning-circle"/> Cached spec
+                        </span>
+                    </Tip>)}
                 </>)}
             </div>
 
@@ -240,7 +251,10 @@ export default function Topbar({
 
 
             {isMobile && !showMobileSearch && (<div className="flex-1 min-w-0 px-2">
-                <div className="text-[11px] text-[var(--text-muted)] font-medium truncate">{title}</div>
+                <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-medium truncate">
+                    <span className="truncate">{title}</span>
+                    {specFreshness?.freshness === 'stale' && <span role="status" title="Using cached specification" className="shrink-0 text-[var(--method-put)]"><i className="ph ph-warning-circle"/></span>}
+                </div>
             </div>)}
 
             <div className="flex items-center gap-1 shrink-0">

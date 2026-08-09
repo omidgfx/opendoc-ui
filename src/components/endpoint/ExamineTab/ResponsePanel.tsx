@@ -8,6 +8,8 @@ interface ResponsePanelProps {
     path: string;
     isRunning: boolean;
     response: ExamineResponse | null;
+    responseHistory: ExamineResponse[];
+    onSelectResponse: (response: ExamineResponse) => void;
     onExecute: () => void;
     onCancel: () => void;
     onClear: () => void;
@@ -27,11 +29,15 @@ export default function ResponsePanel({
                                           path,
                                           isRunning,
                                           response,
+                                          responseHistory,
+                                          onSelectResponse,
                                           onExecute,
                                           onCancel,
                                           onClear
                                       }: ResponsePanelProps) {
     const hasResponse = response && response.status !== null;
+    const selectedHistoryIndex = Math.max(0, responseHistory.findIndex(item => item === response
+        || item.timestamp === response?.timestamp && item.requestUrl === response?.requestUrl));
     const requestUrl = response?.requestUrl || `${selectedServer}${path}`;
     return (<div>
         <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Response
@@ -52,7 +58,17 @@ export default function ResponsePanel({
                         className="text-[10px] font-sans font-bold uppercase opacity-60 tracking-wider">{isRunning ? 'running' : 'ready'}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    {hasResponse && !isRunning && (<Tip content="Clear last response">
+                    {responseHistory.length > 0 && !isRunning && (<label className="flex items-center gap-1.5">
+                        <span className="sr-only">Response history</span>
+                        <select aria-label="Response history" value={selectedHistoryIndex}
+                                onChange={event => onSelectResponse(responseHistory[Number(event.target.value)])}
+                                className="max-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-[10px] font-sans text-[var(--text-heading)] outline-none focus:border-[var(--primary)] cursor-pointer">
+                            {responseHistory.map((item, index) => <option key={`${item.timestamp}-${index}`} value={index}>
+                                {index === 0 ? 'Latest · ' : ''}{item.status === 0 ? item.errorKind || 'Network error' : `HTTP ${item.status}`} · {new Date(item.timestamp).toLocaleTimeString()}
+                            </option>)}
+                        </select>
+                    </label>)}
+                    {hasResponse && !isRunning && (<Tip content="Clear response history">
                         <button type="button" onClick={onClear}
                                 className="py-2 px-2.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--method-delete)] hover:bg-[var(--surface-hover)] rounded-lg transition-all cursor-pointer select-none">
                             <i className="ph ph-trash text-[16px]"></i>
@@ -91,6 +107,16 @@ export default function ResponsePanel({
                             className="text-[10px] font-mono select-none text-[var(--text-muted)]">{response!.durationMs !== undefined ? `${response!.durationMs} ms` : 'Response log console'}{response!.bodyBytes !== undefined ? ` · ${response!.bodyBytes.toLocaleString()} bytes` : ''}{response!.truncated ? ' · truncated at 2 MiB' : ''}</span>
                     </div>
                     <div className="p-4 flex-1 h-full space-y-4">
+                        {response!.diagnostics && response!.diagnostics.length > 0 && (<div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Runner notices</p>
+                            <div className="space-y-1.5 rounded-xl border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-3">
+                                {response!.diagnostics.map((item, index) => <div key={`${item.code}-${index}`}
+                                    className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]">
+                                    <i className={`ph ${item.severity === 'error' ? 'ph-x-circle text-[var(--method-delete)]' : item.severity === 'info' ? 'ph-info text-[var(--primary)]' : 'ph-warning text-[var(--method-put)]'} mt-0.5 shrink-0`}/>
+                                    <span><strong className="font-mono text-[9px]">{item.code}</strong> · {item.message}</span>
+                                </div>)}
+                            </div>
+                        </div>)}
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Response
                                 Headers</p>

@@ -32,7 +32,8 @@ export function useSpecificationActions({
         const minimumVisible = new Promise(resolve => setTimeout(resolve, 700));
         try {
             if (selectedSpecKey && parsables[selectedSpecKey]) {
-                await clearAllCachedSpecs();
+                // Force network revalidation without deleting the last-known-good
+                // entry first; a failed refresh can then fall back visibly.
                 await loadSpec(selectedSpecKey, parsables[selectedSpecKey], true);
             } else if (localSpec) {
                 if (localSpec.file) {

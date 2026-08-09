@@ -62,7 +62,7 @@ interface UseWorkspaceRoutingOptions {
     setTabs: Dispatch<SetStateAction<TabItem[]>>;
     setActiveTabId: Dispatch<SetStateAction<string | null>>;
     setViewModes: Dispatch<SetStateAction<Record<string, ViewMode>>>;
-    setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse>>>;
+    setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     setAssistantContextEndpoints: Dispatch<SetStateAction<Endpoint[]>>;
     openEndpointPreview: (path: string, method: string) => void;
     openEndpointPermanent: (path: string, method: string) => void;

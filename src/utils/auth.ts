@@ -255,16 +255,19 @@ const setAuthHeader = (
     value: string,
     schemeId: string,
     warnings: string[],
+    owners: Record<string, string>,
 ) => {
     const existingName = findHeaderName(headers, name);
+    const ownerKey = name.toLowerCase();
     if (existingName && headers[existingName] !== value) {
-        warnings.push(`Security scheme '${schemeId}' replaced the explicitly configured '${existingName}' header.`);
+        if (owners[ownerKey])
+            warnings.push(`Security schemes '${owners[ownerKey]}' and '${schemeId}' both target '${existingName}'. Browser HTTP can carry only one value here; '${schemeId}' is used.`);
+        else
+            warnings.push(`Security scheme '${schemeId}' replaced the explicitly configured '${existingName}' header.`);
         delete headers[existingName];
     }
-    const conflictingAuthName = findHeaderName(headers, name);
-    if (conflictingAuthName && headers[conflictingAuthName] !== value)
-        warnings.push(`Multiple security schemes target the same '${name}' header; the later scheme value is used.`);
     headers[name] = value;
+    owners[ownerKey] = schemeId;
 };
 
 export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, request: {
@@ -277,6 +280,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
     const cookies = [...(request.cookies || [])];
     const selected = resolveSelectedSecurity(spec, auth, operation);
     const warnings = [...selected.warnings];
+    const authHeaderOwners: Record<string, string> = {};
     let credentials: RequestCredentials = 'same-origin';
     const schemes = spec?.components?.securitySchemes || {};
 
@@ -296,7 +300,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             if (location === 'query' && value)
                 query.push({name, value, allowReserved: false});
             else if (location === 'header' && value)
-                setAuthHeader(headers, name, value, id, warnings);
+                setAuthHeader(headers, name, value, id, warnings, authHeaderOwners);
             else if (location === 'cookie') {
                 credentials = 'include';
                 if (value)
@@ -308,7 +312,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
         const schemeName = String(scheme.scheme || credential.scheme || credential.type || '').toLowerCase();
         if ((scheme.type === 'http' && schemeName === 'basic') || credential.type === 'basic') {
             if (credential.username)
-                setAuthHeader(headers, 'Authorization', `Basic ${basicEncode(credential.username, credential.password || '')}`, id, warnings);
+                setAuthHeader(headers, 'Authorization', `Basic ${basicEncode(credential.username, credential.password || '')}`, id, warnings, authHeaderOwners);
             else
                 warnings.push(`No username is configured for HTTP basic scheme '${id}'. The request will still be sent.`);
             return;
@@ -317,7 +321,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             || ['bearer', 'oauth2', 'openIdConnect'].includes(credential.type)
             || ['oauth2', 'openIdConnect'].includes(scheme.type)) {
             if (credential.value)
-                setAuthHeader(headers, 'Authorization', `Bearer ${credential.value}`, id, warnings);
+                setAuthHeader(headers, 'Authorization', `Bearer ${credential.value}`, id, warnings, authHeaderOwners);
             else
                 warnings.push(`No access token is configured for scheme '${id}'. OpenDoc does not perform an OAuth/OIDC authorization flow; the request will still be sent.`);
             return;

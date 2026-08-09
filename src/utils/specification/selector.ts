@@ -22,7 +22,7 @@ export interface SummaryState {
     message?: string;
 }
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
 export const summarizeSpecification = (spec: OpenApiSpec): SpecificationSummary => {
     let endpointCount = 0;
     let securedEndpointCount = 0;

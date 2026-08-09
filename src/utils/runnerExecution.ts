@@ -1,13 +1,10 @@
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
-import {applyAuthToRequest} from './auth';
-import {appendMultipartBody, parseStructuredBody, serializeUrlEncodedBody} from './bodyFormats';
+import {isJsonMediaType} from './openapi/serialization';
 import {
-    isJsonMediaType,
-    normalizeParameterValue,
-    queryStringFromPairs,
-    serializeOpenApiParameter
-} from './openapi/serialization';
-import {getMergedParameters, resolveRequestBody} from './openapi';
+    compileBrowserRequest,
+    type ParameterValueState,
+    type RunnerInputValue,
+} from './requestPlan';
 
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -18,11 +15,15 @@ export interface RunnerExecutionInput {
     method: string;
     operation: Operation;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     activeAuth: ActiveAuth;
-    params?: Record<string, string | string[]>;
+    parameterValues?: ParameterValueState;
+    params?: Record<string, RunnerInputValue>;
     headers?: Record<string, string>;
     body?: string;
     bodyType?: string;
+    selectedFile?: File | Blob | null;
+    selectedFiles?: Record<string, File | Blob | null>;
     signal?: AbortSignal;
 }
 
@@ -74,84 +75,26 @@ const readResponseBody = async (response: Response): Promise<{
     });
     return {text: new TextDecoder().decode(merged), bytes, truncated};
 };
-const buildRequestBody = (body: string | undefined, bodyType: string, headers: Record<string, string>): BodyInit | null => {
-    if (body === undefined || body === '')
-        return null;
-    const normalizedType = bodyType.toLowerCase().split(';', 1)[0];
-    if (normalizedType === 'application/x-www-form-urlencoded') {
-        try {
-            headers['Content-Type'] = bodyType;
-            return serializeUrlEncodedBody(parseStructuredBody(body, bodyType));
-        } catch {
-        }
-    }
-    if (normalizedType === 'multipart/form-data') {
-        const form = new FormData();
-        try {
-            appendMultipartBody(form, parseStructuredBody(body, bodyType));
-        } catch {
-        }
-        return form;
-    }
-    headers['Content-Type'] = bodyType;
-    return body;
-};
+
 export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise<ExamineResponse> => {
     const startedAt = Date.now();
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();
     input.signal?.addEventListener('abort', forwardAbort, {once: true});
     let timedOut = false;
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
         timedOut = true;
         controller.abort();
     }, REQUEST_TIMEOUT_MS);
-    let requestUrl = `${input.selectedServer}${input.path}`;
+
+    const plan = compileBrowserRequest(input);
+    let requestUrl = plan.url;
     try {
-        const pathItem = (input.spec.paths as any)[input.path] || {};
-        const mergedParameters = getMergedParameters(pathItem, input.operation, input.spec);
-        let processedPath = input.path;
-        const query: Array<{
-            name: string;
-            value: string;
-            allowReserved?: boolean;
-        }> = [];
-        const cookies: Array<{
-            name: string;
-            value: string;
-        }> = [];
-        const parameterHeaders: Record<string, string> = {};
-        const params = input.params || {};
-        mergedParameters.forEach((parameter: any) => {
-            const value = params[parameter.name];
-            if (value === undefined || value === null || value === '' && !parameter.allowEmptyValue)
-                return;
-            const serialized = serializeOpenApiParameter(parameter, normalizeParameterValue(parameter, value));
-            if (parameter.in === 'path' && serialized.pathValue !== undefined) {
-                processedPath = processedPath.replace(`{${parameter.name}}`, serialized.pathValue);
-            }
-            query.push(...serialized.query);
-            Object.assign(parameterHeaders, serialized.headers);
-            cookies.push(...serialized.cookies);
-        });
-        const requestHeaders: Record<string, string> = {Accept: 'application/json', ...parameterHeaders, ...(input.headers || {})};
-        const auth = applyAuthToRequest(input.spec, input.activeAuth, {
-            headers: requestHeaders,
-            query,
-            cookies
-        }, input.operation);
-        const server = input.selectedServer.endsWith('/') ? input.selectedServer.slice(0, -1) : input.selectedServer;
-        requestUrl = `${server}${processedPath}${queryStringFromPairs(auth.query)}`;
-        const resolvedBody = resolveRequestBody(input.operation.requestBody, input.spec);
-        const bodyType = input.bodyType || Object.keys(resolvedBody?.content || {})[0] || 'application/json';
-        const requestBody = buildRequestBody(input.body, bodyType, auth.headers);
-        const normalizedMethod = input.method.toUpperCase();
-        const safeBody = requestBody !== null && !['GET', 'HEAD'].includes(normalizedMethod) ? requestBody : null;
-        const response = await fetch(requestUrl, {
-            method: normalizedMethod,
-            headers: auth.headers,
-            body: safeBody,
-            credentials: auth.credentials,
+        const response = await fetch(plan.url, {
+            method: plan.method,
+            headers: plan.headers,
+            body: plan.body,
+            credentials: plan.fetchCredentials,
             signal: controller.signal,
         });
         const responseHeaders: Record<string, string> = {};
@@ -159,12 +102,16 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             responseHeaders[key] = value;
         });
         const contentType = response.headers.get('Content-Type') || '';
-        const binary = !isJsonMediaType(contentType) && !/^text\//i.test(contentType) && !/javascript|xml|event-stream|graphql/i.test(contentType);
+        const binary = !isJsonMediaType(contentType)
+            && !/^text\//i.test(contentType)
+            && !/javascript|xml|event-stream|graphql/i.test(contentType);
         const body = await readResponseBody(response);
         return {
             status: response.status,
             headers: responseHeaders,
-            body: binary ? `[Binary response omitted from preview]\nContent-Type: ${contentType || 'unknown'}\nBytes read: ${body.bytes}${body.truncated ? ' (truncated)' : ''}` : body.text,
+            body: binary
+                ? `[Binary response omitted from preview]\nContent-Type: ${contentType || 'unknown'}\nBytes read: ${body.bytes}${body.truncated ? ' (truncated)' : ''}`
+                : body.text,
             isJson: isJsonMediaType(contentType),
             timestamp: Date.now(),
             requestUrl,
@@ -172,11 +119,16 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             bodyBytes: body.bytes,
             truncated: body.truncated,
             isBinary: binary,
+            diagnostics: plan.diagnostics,
         };
     } catch (error: any) {
-        const cancelled = input.signal?.aborted || controller.signal.aborted && !timedOut;
+        const cancelled = Boolean(input.signal?.aborted || (controller.signal.aborted && !timedOut));
         const errorKind = cancelled ? 'cancelled' : timedOut ? 'timeout' : 'network';
-        const errorMessage = cancelled ? 'Request cancelled by the user.' : error?.message || 'The request failed.';
+        const errorMessage = cancelled
+            ? 'Request cancelled by the user.'
+            : timedOut
+                ? 'Request timed out after 30 seconds.'
+                : error?.message || 'The request failed.';
         return {
             status: 0,
             headers: {},
@@ -187,9 +139,10 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             durationMs: Date.now() - startedAt,
             errorKind,
             errorMessage,
+            diagnostics: plan.diagnostics,
         };
     } finally {
-        window.clearTimeout(timeout);
+        globalThis.clearTimeout(timeout);
         input.signal?.removeEventListener('abort', forwardAbort);
     }
 };

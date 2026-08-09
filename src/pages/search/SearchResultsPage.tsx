@@ -89,7 +89,7 @@ export default function SearchResultsView({
         if (spec && spec.paths) {
             Object.entries(spec.paths).forEach(([_, pathItem]) => {
                 Object.entries(pathItem).forEach(([method, operation]) => {
-                    if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(method)) {
+                    if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(method)) {
                         methodsSet.add(method.toUpperCase());
                         const op = operation as any;
                         if (op.tags && Array.isArray(op.tags))
@@ -119,7 +119,7 @@ export default function SearchResultsView({
         const terms = query.split(/[\s._-]+/).filter(Boolean);
         Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
             Object.entries(pathItem).forEach(([methodStr, operation]) => {
-                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(methodStr))
+                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(methodStr))
                     return;
                 const op = operation as Operation;
                 const methodUpper = methodStr.toUpperCase();

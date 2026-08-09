@@ -4,7 +4,7 @@ import {getRefName} from '@/src/utils/openapi';
 
 export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
     const getMockSnippet = (schema: any): string => {
-        if (!schema)
+        if (schema === undefined || schema === null)
             return 'null';
         const generateMockFromPattern = (pattern: string): string => {
             if (!pattern)
@@ -221,7 +221,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         return `${indent}<${safeName}>${escapeXml(value)}</${safeName}>`;
     };
     const getSchemaDisplayName = (schema: any, fallback = 'response') => {
-        if (!schema)
+        if (schema === undefined || schema === null)
             return fallback;
         if (schema.xml?.name)
             return schema.xml.name;
@@ -292,7 +292,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         const names = new Set<string>();
         Object.values(resp.content).forEach((contentObj: any) => {
             const schema = contentObj?.schema;
-            if (!schema)
+            if (schema === undefined || schema === null)
                 return;
             if (schema.$ref)
                 names.add(getRefName(schema.$ref));

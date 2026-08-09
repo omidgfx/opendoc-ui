@@ -8,7 +8,7 @@ const SECRET_VALUE = /^(bearer\s+)?[A-Za-z0-9_\-./+=]{20,}$/i;
 const MAX_INCLUDED_ENDPOINTS = 24;
 const MAX_INCLUDED_SCHEMAS = 40;
 const MAX_CONTEXT_CHARS = 140000;
-const METHOD_LIST = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
+const METHOD_LIST = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
 const redactUrl = (value: string): string => {
     try {
         const url = new URL(value);

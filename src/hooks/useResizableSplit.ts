@@ -36,5 +36,35 @@ export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, s
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     };
-    return {leftWidth, isDragging, onMouseDown};
+    const onKeyDown = (event: React.KeyboardEvent) => {
+        const container = containerRef.current;
+        if (!container)
+            return;
+        const maxPx = Math.max(minPx, container.getBoundingClientRect().width - minPx);
+        const current = leftWidth >= 0 ? leftWidth : container.getBoundingClientRect().width / 2;
+        const step = event.shiftKey ? 48 : 16;
+        let next = current;
+        if (event.key === 'ArrowLeft')
+            next = current - step;
+        else if (event.key === 'ArrowRight')
+            next = current + step;
+        else if (event.key === 'Home')
+            next = minPx;
+        else if (event.key === 'End')
+            next = maxPx;
+        else
+            return;
+        event.preventDefault();
+        setLeftWidth(Math.max(minPx, Math.min(maxPx, next)));
+    };
+    const containerWidth = containerRef.current?.clientWidth || 0;
+    return {
+        leftWidth,
+        isDragging,
+        onMouseDown,
+        onKeyDown,
+        separatorMin: minPx,
+        separatorMax: Math.max(minPx, containerWidth - minPx),
+        separatorNow: leftWidth >= 0 ? leftWidth : Math.max(minPx, containerWidth / 2 || minPx),
+    };
 }

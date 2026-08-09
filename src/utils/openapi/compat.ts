@@ -1,7 +1,7 @@
 import type {OpenApiSpec} from '../../types';
 import {assertValidOpenApiDocument} from './validation';
 
-const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
+const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'];
 const isPlainObject = (value: any): value is Record<string, any> => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
@@ -39,9 +39,8 @@ const rewriteRefsDeep = (value: any): any => {
             next[key] = rewriteRefsDeep(child);
         }
     });
-    if (next.nullable === true && typeof next.type === 'string') {
-        next.type = [next.type, 'null'];
-    }
+    // Preserve dialect-specific schema semantics. In particular, OAS 3.0
+    // `nullable` must not be rewritten into an OAS 3.1 JSON Schema type union.
     return next;
 };
 const buildServerUrl = (scheme: string, host: string, basePath = '') => {
@@ -55,7 +54,11 @@ const getSwaggerServers = (doc: any) => {
     const host = doc.host;
     const basePath = doc.basePath || '';
     if (host) {
-        const schemes = Array.isArray(doc.schemes) && doc.schemes.length > 0 ? doc.schemes : ['https'];
+        const schemes = Array.isArray(doc.schemes) && doc.schemes.length > 0 ? doc.schemes : [];
+        if (schemes.length === 0) {
+            const normalizedBase = basePath && basePath !== '/' ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
+            return [{url: `//${host}${normalizedBase}`}];
+        }
         return schemes.map((scheme: string) => ({url: buildServerUrl(scheme, host, basePath)}));
     }
     if (basePath) {
@@ -172,7 +175,7 @@ const convertHeaders = (headers: any): any => {
     });
     return next;
 };
-const convertResponse = (response: any, produces: string[] = ['application/json']): any => {
+const convertResponse = (response: any, produces: string[] = ['*/*']): any => {
     if (!response) {
         return {description: 'Response'};
     }
@@ -186,7 +189,7 @@ const convertResponse = (response: any, produces: string[] = ['application/json'
         next.headers = convertHeaders(next.headers);
     }
     if (schema) {
-        const mediaTypes = produces.length > 0 ? produces : ['application/json'];
+        const mediaTypes = produces.length > 0 ? produces : ['*/*'];
         next.content = next.content || {};
         mediaTypes.forEach((mediaType) => {
             const mediaExample = next.examples?.[mediaType];
@@ -202,7 +205,7 @@ const convertResponse = (response: any, produces: string[] = ['application/json'
     }
     return next;
 };
-const convertResponses = (responses: any, produces: string[] = ['application/json'], doc?: any): any => {
+const convertResponses = (responses: any, produces: string[] = ['*/*'], doc?: any): any => {
     const next: any = {};
     Object.entries(responses || {}).forEach(([code, response]: [
         string,
@@ -219,14 +222,15 @@ const convertResponses = (responses: any, produces: string[] = ['application/jso
     });
     return Object.keys(next).length > 0 ? next : {default: {description: 'Default response'}};
 };
-const contentTypesForBody = (operation: any, doc: any) => {
-    const consumes = operation?.consumes || doc?.consumes;
-    return Array.isArray(consumes) && consumes.length > 0 ? consumes : ['application/json'];
+const inheritedMimeTypes = (operationValue: unknown, rootValue: unknown): string[] => {
+    // Swagger 2 explicitly allows an empty operation array to clear the root
+    // declaration. Absence inherits; an empty effective value means the media
+    // type is unspecified, represented internally as */* rather than JSON.
+    const effective = operationValue !== undefined ? operationValue : rootValue;
+    return Array.isArray(effective) && effective.length > 0 ? effective : ['*/*'];
 };
-const contentTypesForResponse = (operation: any, doc: any) => {
-    const produces = operation?.produces || doc?.produces;
-    return Array.isArray(produces) && produces.length > 0 ? produces : ['application/json'];
-};
+const contentTypesForBody = (operation: any, doc: any) => inheritedMimeTypes(operation?.consumes, doc?.consumes);
+const contentTypesForResponse = (operation: any, doc: any) => inheritedMimeTypes(operation?.produces, doc?.produces);
 const convertBodyParametersToRequestBody = (parameters: any[], operation: any, doc: any): any | undefined => {
     const bodyParams = parameters.filter((p) => p && !p.$ref && p.in === 'body');
     const formParams = parameters.filter((p) => p && !p.$ref && p.in === 'formData');
@@ -288,6 +292,12 @@ const convertSwaggerOperation = (operation: any, pathItem: any, doc: any): any =
     };
     delete next.consumes;
     delete next.produces;
+    if (Array.isArray(op.schemes) && op.schemes.length > 0 && doc.host) {
+        next.servers = op.schemes.map((scheme: string) => ({
+            url: buildServerUrl(scheme, doc.host, doc.basePath || ''),
+        }));
+    }
+    delete next.schemes;
     if (requestBody) {
         next.requestBody = requestBody;
     }
@@ -358,7 +368,7 @@ const convertSwagger2 = (input: any): OpenApiSpec => {
     if (doc.responses) {
         components.responses = {
             ...(components.responses || {}),
-            ...Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value, doc.produces || ['application/json'])]))
+            ...Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value, doc.produces || ['*/*'])]))
         };
     }
     if (doc.securityDefinitions) {
@@ -416,7 +426,7 @@ const normalizeOpenApiLike = (input: any): OpenApiSpec => {
         doc.components.parameters = Object.fromEntries(Object.entries(doc.parameters).map(([key, value]) => [key, normalizeParameter(value)]));
     }
     if (doc.responses && !doc.components.responses) {
-        doc.components.responses = Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value as any, ['application/json'])]));
+        doc.components.responses = Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value as any, ['*/*'])]));
     }
     if (!doc.servers) {
         doc.servers = getSwaggerServers(doc);

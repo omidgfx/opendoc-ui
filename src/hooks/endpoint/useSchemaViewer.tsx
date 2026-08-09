@@ -140,12 +140,16 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         return <span className="font-mono text-xs text-[var(--text)]">{renderTypeName(prop.type, prop.format)}</span>;
     };
     const renderSchemaButton = (schema: any) => {
-        if (!schema)
-            return <span className="text-[var(--text-muted)] italic">any</span>;
+        if (schema === undefined || schema === null)
+            return <span className="text-[var(--text-muted)] italic">schema not provided</span>;
+        if (schema === true)
+            return <span className="text-[var(--text-muted)] italic">any value</span>;
+        if (schema === false)
+            return <span className="text-[var(--method-delete)] italic">no value is valid</span>;
         return <div className="space-y-2">{renderSchemaType(schema)}</div>;
     };
     const isSchemaActive = (sub: any, code: string, viewerSchema: any): boolean => {
-        if (!viewerSchema)
+        if (viewerSchema === undefined || viewerSchema === null)
             return false;
         if (sub.$ref) {
             const subRefName = getRefName(sub.$ref);

@@ -1,4 +1,5 @@
-import type {OpenApiSpec} from '../types';
+import type {Diagnostic, OpenApiSpec} from '../types';
+import {diagnostic} from '../types';
 import {getRefName, resolveSchema} from './openapi';
 
 const mockFromPattern = (pattern: string): string => {
@@ -6,114 +7,293 @@ const mockFromPattern = (pattern: string): string => {
         return 'string';
     if (pattern.includes('uuid'))
         return '123e4567-e89b-12d3-a456-426614174000';
-    if (pattern.includes('^[0-9]+$'))
+    if (/\[0-9\]|\\d/.test(pattern))
         return '12345';
-    if (pattern.includes('^[a-zA-Z0-9]+$'))
+    if (/\[a-zA-Z0-9\]/.test(pattern))
         return 'string123';
     if (pattern.includes('@') || pattern.includes('email'))
         return 'user@example.com';
-    if (pattern.includes('phone'))
+    if (pattern.toLowerCase().includes('phone'))
         return '+1234567890';
-    if (pattern.includes('date'))
-        return '2026-07-03';
+    if (pattern.toLowerCase().includes('date'))
+        return '2026-08-09';
     return 'string';
 };
 
-export function generateMock(s: any, spec: OpenApiSpec | null, depth = 0, visited = new Set<string>()): any {
-    if (!s)
+const schemaType = (schema: any): string | undefined => Array.isArray(schema?.type)
+    ? schema.type.find((item: string) => item !== 'null')
+    : schema?.type;
+
+const constrainedNumber = (schema: any): number => {
+    let value = typeof schema.minimum === 'number' ? schema.minimum : 0;
+    if (typeof schema.exclusiveMinimum === 'number')
+        value = Math.max(value, schema.exclusiveMinimum + (schema.type === 'integer' ? 1 : Number.EPSILON));
+    else if (schema.exclusiveMinimum === true && typeof schema.minimum === 'number')
+        value = schema.minimum + (schema.type === 'integer' ? 1 : Number.EPSILON);
+    if (typeof schema.multipleOf === 'number' && schema.multipleOf > 0)
+        value = Math.ceil(value / schema.multipleOf) * schema.multipleOf;
+    const maximum = typeof schema.exclusiveMaximum === 'number'
+        ? schema.exclusiveMaximum - (schema.type === 'integer' ? 1 : Number.EPSILON)
+        : typeof schema.maximum === 'number'
+            ? schema.maximum - (schema.exclusiveMaximum === true ? (schema.type === 'integer' ? 1 : Number.EPSILON) : 0)
+            : undefined;
+    if (maximum !== undefined)
+        value = Math.min(value, maximum);
+    return schema.type === 'integer' ? Math.round(value) : value;
+};
+
+const constrainedString = (schema: any): string => {
+    let value: string;
+    if (schema.format === 'date-time')
+        value = '2026-08-09T12:00:00.000Z';
+    else if (schema.format === 'date')
+        value = '2026-08-09';
+    else if (schema.format === 'uuid')
+        value = '123e4567-e89b-12d3-a456-426614174000';
+    else if (schema.format === 'uri' || schema.format === 'url')
+        value = 'https://example.com/path';
+    else if (schema.format === 'email')
+        value = 'user@example.com';
+    else if (schema.pattern)
+        value = mockFromPattern(schema.pattern);
+    else
+        value = 'string';
+    const min = typeof schema.minLength === 'number' ? schema.minLength : 0;
+    if (value.length < min)
+        value += 'x'.repeat(min - value.length);
+    if (typeof schema.maxLength === 'number')
+        value = value.slice(0, schema.maxLength);
+    return value;
+};
+
+export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, visited = new Set<string>()): any {
+    if (schema === true)
         return null;
-    if (depth > 1000)
+    if (schema === false)
+        throw new Error('No value can satisfy the boolean schema false.');
+    if (schema === undefined || schema === null)
+        return null;
+    if (depth > 64)
         return {};
-    if (s.$ref) {
-        const refName = getRefName(s.$ref);
+    if (schema.$ref) {
+        const refName = getRefName(schema.$ref);
         if (visited.has(refName))
             return {};
-        visited.add(refName);
+        const nextVisited = new Set(visited);
+        nextVisited.add(refName);
         const refSchema = resolveSchema(refName, spec);
-        if (refSchema)
-            return generateMock(refSchema, spec, depth + 1, visited);
-        return {};
+        return refSchema !== null && refSchema !== undefined
+            ? generateMock(refSchema, spec, depth + 1, nextVisited)
+            : {};
     }
-    if (s.const !== undefined)
-        return s.const;
-    if (s.enum && s.enum.length)
-        return s.enum[0];
-    if (s.example !== undefined)
-        return s.example;
-    if (s.examples && s.examples.length) {
-        const first = s.examples[0];
+    if (schema.const !== undefined)
+        return schema.const;
+    if (Array.isArray(schema.enum) && schema.enum.length)
+        return schema.enum[0];
+    if (schema.example !== undefined)
+        return schema.example;
+    if (Array.isArray(schema.examples) && schema.examples.length) {
+        const first = schema.examples[0];
         return typeof first === 'object' && first !== null && 'value' in first ? first.value : first;
     }
-    if (s.default !== undefined)
-        return s.default;
-    if (s.additionalProperties) {
-        const sample: any = {};
-        if (s.properties) {
-            Object.entries(s.properties).forEach(([k, v]: [
-                string,
-                any
-            ]) => {
-                sample[k] = generateMock(v, spec, depth + 1, new Set(visited));
-            });
-        }
-        sample.key = generateMock(s.additionalProperties, spec, depth + 1, new Set(visited));
-        return sample;
-    }
-    if (s.allOf) {
+    if (schema.default !== undefined)
+        return schema.default;
+    if (Array.isArray(schema.allOf)) {
         let merged: any = {};
-        s.allOf.forEach((sub: any) => {
+        schema.allOf.forEach((sub: any) => {
             const subMock = generateMock(sub, spec, depth + 1, new Set(visited));
-            if (typeof subMock === 'object' && subMock !== null)
+            if (typeof subMock === 'object' && subMock !== null && !Array.isArray(subMock))
                 merged = {...merged, ...subMock};
             else if (subMock !== null)
                 merged = subMock;
         });
         return merged;
     }
-    if (s.oneOf && s.oneOf.length)
-        return generateMock(s.oneOf[0], spec, depth + 1, new Set(visited));
-    if (s.anyOf && s.anyOf.length)
-        return generateMock(s.anyOf[0], spec, depth + 1, new Set(visited));
-    const typeVal = s.type;
-    const resolvedType = Array.isArray(typeVal) ? typeVal.find((t: string) => t !== 'null') : typeVal;
-    if (resolvedType === 'object' || s.properties) {
-        const obj: any = {};
-        if (s.properties) {
-            Object.entries(s.properties).forEach(([k, v]: [
-                string,
-                any
-            ]) => {
-                obj[k] = generateMock(v, spec, depth + 1, new Set(visited));
-            });
-        }
-        return obj;
+    if (Array.isArray(schema.oneOf) && schema.oneOf.length)
+        return generateMock(schema.oneOf[0], spec, depth + 1, new Set(visited));
+    if (Array.isArray(schema.anyOf) && schema.anyOf.length)
+        return generateMock(schema.anyOf[0], spec, depth + 1, new Set(visited));
+
+    const type = schemaType(schema);
+    if (type === 'object' || schema.properties || schema.additionalProperties) {
+        const object: Record<string, unknown> = {};
+        Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
+            object[key] = generateMock(child, spec, depth + 1, new Set(visited));
+        });
+        if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && Object.keys(object).length === 0)
+            object.key = generateMock(schema.additionalProperties, spec, depth + 1, new Set(visited));
+        return object;
     }
-    if (resolvedType === 'array')
-        return [generateMock(s.items || {}, spec, depth + 1, new Set(visited))];
-    if (resolvedType === 'string') {
-        if (s.format === 'date-time' || s.format === 'date')
-            return new Date().toISOString();
-        if (s.format === 'uuid')
-            return '123e4567-e89b-12d3-a456-426614174000';
-        if (s.format === 'uri' || s.format === 'url')
-            return 'https://example.com/path';
-        if (s.format === 'email')
-            return 'user@example.com';
-        if (s.pattern)
-            return mockFromPattern(s.pattern);
-        return s.enum ? s.enum[0] : 'string';
+    if (type === 'array') {
+        const minItems = Math.max(0, typeof schema.minItems === 'number' ? schema.minItems : 1);
+        const count = typeof schema.maxItems === 'number' ? Math.min(minItems, schema.maxItems) : minItems;
+        return Array.from({length: count}, (_, index) => {
+            const item = generateMock(schema.items || {}, spec, depth + 1, new Set(visited));
+            if (schema.uniqueItems && typeof item === 'string')
+                return `${item}${index || ''}`;
+            if (schema.uniqueItems && typeof item === 'number')
+                return item + index;
+            return item;
+        });
     }
-    if (resolvedType === 'integer' || resolvedType === 'number')
-        return 0;
-    if (resolvedType === 'boolean')
+    if (type === 'string')
+        return constrainedString(schema);
+    if (type === 'integer' || type === 'number')
+        return constrainedNumber(schema);
+    if (type === 'boolean')
         return true;
+    if (type === 'null')
+        return null;
     return null;
 }
 
-export const getMockSnippet = (schema: any, spec: OpenApiSpec | null): string => {
+const valueTypeMatches = (type: string, value: unknown): boolean => {
+    if (type === 'null') return value === null;
+    if (type === 'array') return Array.isArray(value);
+    if (type === 'object') return value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (type === 'integer') return typeof value === 'number' && Number.isInteger(value);
+    if (type === 'number') return typeof value === 'number' && Number.isFinite(value);
+    return typeof value === type;
+};
+
+export const validateMockValue = (
+    schema: any,
+    value: unknown,
+    spec: OpenApiSpec | null,
+    path = '$',
+    visited = new Set<string>(),
+): string[] => {
+    if (schema === true || schema === undefined || schema === null)
+        return [];
+    if (schema === false)
+        return [`${path}: boolean schema false rejects every value`];
+    if (schema.$ref) {
+        const name = getRefName(schema.$ref);
+        if (visited.has(name))
+            return [];
+        const resolved = resolveSchema(name, spec);
+        if (resolved === null || resolved === undefined)
+            return [`${path}: unresolved schema reference ${schema.$ref}`];
+        const next = new Set(visited);
+        next.add(name);
+        return validateMockValue(resolved, value, spec, path, next);
+    }
+    if (schema.const !== undefined && !Object.is(schema.const, value))
+        return [`${path}: value does not equal const`];
+    if (Array.isArray(schema.enum) && !schema.enum.some((item: unknown) => Object.is(item, value)))
+        return [`${path}: value is not in enum`];
+    if (Array.isArray(schema.allOf))
+        return schema.allOf.flatMap((part: any) => validateMockValue(part, value, spec, path, new Set(visited)));
+    if (Array.isArray(schema.anyOf) && !schema.anyOf.some((part: any) => validateMockValue(part, value, spec, path, new Set(visited)).length === 0))
+        return [`${path}: value does not satisfy anyOf`];
+    if (Array.isArray(schema.oneOf)) {
+        const matches = schema.oneOf.filter((part: any) => validateMockValue(part, value, spec, path, new Set(visited)).length === 0).length;
+        if (matches !== 1)
+            return [`${path}: value satisfies ${matches} oneOf alternatives instead of exactly one`];
+    }
+    const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
+    if (schema.nullable === true)
+        types.push('null');
+    if (types.length > 0 && !types.some((type: string) => valueTypeMatches(type, value)))
+        return [`${path}: value does not match type ${types.join(' | ')}`];
+
+    const errors: string[] = [];
+    if (typeof value === 'string') {
+        if (typeof schema.minLength === 'number' && value.length < schema.minLength)
+            errors.push(`${path}: shorter than minLength`);
+        if (typeof schema.maxLength === 'number' && value.length > schema.maxLength)
+            errors.push(`${path}: longer than maxLength`);
+        if (schema.pattern) {
+            try {
+                if (!new RegExp(schema.pattern).test(value))
+                    errors.push(`${path}: does not match pattern`);
+            } catch {
+                errors.push(`${path}: schema pattern is invalid`);
+            }
+        }
+    }
+    if (typeof value === 'number') {
+        if (typeof schema.minimum === 'number' && value < schema.minimum)
+            errors.push(`${path}: below minimum`);
+        if (typeof schema.maximum === 'number' && value > schema.maximum)
+            errors.push(`${path}: above maximum`);
+        if (typeof schema.exclusiveMinimum === 'number' && value <= schema.exclusiveMinimum)
+            errors.push(`${path}: not above exclusiveMinimum`);
+        if (schema.exclusiveMinimum === true && typeof schema.minimum === 'number' && value <= schema.minimum)
+            errors.push(`${path}: not above exclusive minimum`);
+        if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum)
+            errors.push(`${path}: not below exclusiveMaximum`);
+        if (schema.exclusiveMaximum === true && typeof schema.maximum === 'number' && value >= schema.maximum)
+            errors.push(`${path}: not below exclusive maximum`);
+        if (typeof schema.multipleOf === 'number' && schema.multipleOf > 0) {
+            const quotient = value / schema.multipleOf;
+            if (Math.abs(quotient - Math.round(quotient)) > 1e-9)
+                errors.push(`${path}: not a multipleOf ${schema.multipleOf}`);
+        }
+    }
+    if (Array.isArray(value)) {
+        if (typeof schema.minItems === 'number' && value.length < schema.minItems)
+            errors.push(`${path}: fewer than minItems`);
+        if (typeof schema.maxItems === 'number' && value.length > schema.maxItems)
+            errors.push(`${path}: more than maxItems`);
+        if (schema.uniqueItems && new Set(value.map(item => JSON.stringify(item))).size !== value.length)
+            errors.push(`${path}: items are not unique`);
+        value.forEach((item, index) => errors.push(...validateMockValue(schema.items || true, item, spec, `${path}[${index}]`, new Set(visited))));
+    }
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const object = value as Record<string, unknown>;
+        (schema.required || []).forEach((key: string) => {
+            if (!Object.prototype.hasOwnProperty.call(object, key))
+                errors.push(`${path}.${key}: required property missing`);
+        });
+        Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
+            if (Object.prototype.hasOwnProperty.call(object, key))
+                errors.push(...validateMockValue(child, object[key], spec, `${path}.${key}`, new Set(visited)));
+        });
+        if (schema.additionalProperties === false) {
+            Object.keys(object).filter(key => !schema.properties?.[key]).forEach(key => errors.push(`${path}.${key}: additional property not allowed`));
+        }
+    }
+    return errors;
+};
+
+export interface MockGenerationResult {
+    ok: boolean;
+    value?: unknown;
+    diagnostics: Diagnostic[];
+}
+
+export const generateValidatedMock = (schema: any, spec: OpenApiSpec | null): MockGenerationResult => {
     try {
-        return JSON.stringify(generateMock(schema, spec), null, 2);
+        const value = generateMock(schema, spec);
+        const errors = validateMockValue(schema, value, spec);
+        if (errors.length > 0) {
+            return {
+                ok: false,
+                value,
+                diagnostics: errors.slice(0, 12).map(message => diagnostic('MOCK_SCHEMA_VALIDATION_FAILED', message, {severity: 'error'})),
+            };
+        }
+        return {ok: true, value, diagnostics: []};
+    } catch (error) {
+        return {
+            ok: false,
+            diagnostics: [diagnostic(
+                'MOCK_GENERATION_IMPOSSIBLE',
+                error instanceof Error ? error.message : 'A valid mock could not be generated.',
+                {severity: 'error'},
+            )],
+        };
+    }
+};
+
+export const getMockSnippet = (schema: any, spec: OpenApiSpec | null): string => {
+    const result = generateValidatedMock(schema, spec);
+    if (!result.ok)
+        return `// Mock unavailable: ${result.diagnostics.map(item => item.message).join('; ')}`;
+    try {
+        return JSON.stringify(result.value, null, 2);
     } catch {
-        return '{}';
+        return '// Mock unavailable: value could not be serialized';
     }
 };

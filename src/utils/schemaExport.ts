@@ -3,15 +3,74 @@ import {createZipBlob, downloadBlob} from './zip';
 export function getRefName(ref: string): string {
     if (!ref)
         return '';
-    return ref.split('/').pop() || '';
+    const raw = ref.split('/').pop() || '';
+    try {
+        return decodeURIComponent(raw).replace(/~1/g, '/').replace(/~0/g, '~');
+    } catch {
+        return raw.replace(/~1/g, '/').replace(/~0/g, '~');
+    }
 }
+
+const TS_RESERVED = new Set([
+    'any', 'boolean', 'break', 'case', 'catch', 'class', 'const', 'constructor',
+    'continue', 'debugger', 'declare', 'default', 'delete', 'do', 'else', 'enum',
+    'export', 'extends', 'false', 'finally', 'for', 'from', 'function', 'get', 'if',
+    'implements', 'import', 'in', 'infer', 'instanceof', 'interface', 'keyof', 'let',
+    'module', 'namespace', 'never', 'new', 'null', 'number', 'object', 'package',
+    'private', 'protected', 'public', 'readonly', 'require', 'return', 'set', 'static',
+    'string', 'super', 'switch', 'symbol', 'this', 'throw', 'true', 'try', 'type',
+    'typeof', 'undefined', 'unique', 'unknown', 'var', 'void', 'while', 'with', 'yield',
+]);
+
+export const toTypeScriptIdentifier = (name: string): string => {
+    const normalized = String(name || 'Schema').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const parts = normalized.split(/[^a-zA-Z0-9_$]+/).filter(Boolean);
+    let identifier = parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') || 'Schema';
+    if (/^\d/.test(identifier))
+        identifier = `Schema${identifier}`;
+    identifier = identifier.replace(/[^a-zA-Z0-9_$]/g, '');
+    if (!identifier)
+        identifier = 'Schema';
+    if (TS_RESERVED.has(identifier.toLowerCase()))
+        identifier = `${identifier}Model`;
+    return identifier;
+};
+
+export const createTypeNameMap = (names: string[]): Record<string, string> => {
+    const result: Record<string, string> = {};
+    const used = new Set<string>();
+    names.forEach(original => {
+        const base = toTypeScriptIdentifier(original);
+        let candidate = base;
+        let suffix = 2;
+        while (used.has(candidate.toLowerCase()))
+            candidate = `${base}${suffix++}`;
+        used.add(candidate.toLowerCase());
+        result[original] = candidate;
+    });
+    return result;
+};
+
+export const toSafeGeneratedFileName = (name: string): string => {
+    const safe = toTypeScriptIdentifier(name)
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+        .replace(/\.{2,}/g, '_')
+        .replace(/[. ]+$/g, '')
+        .slice(0, 100) || 'Schema';
+    const reserved = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(safe) ? `${safe}_model` : safe;
+    return `${reserved}.ts`;
+};
 
 function isPlainObject(v: any) {
     return v && typeof v === 'object' && !Array.isArray(v);
 }
 
 export function generateMockValue(schema: any, allSchemas: Record<string, any> = {}, visited = new Set<string>(), depth = 0): any {
-    if (!schema)
+    if (schema === true)
+        return null;
+    if (schema === false)
+        throw new Error('No value can satisfy the boolean schema false.');
+    if (schema === undefined || schema === null)
         return null;
     if (depth > 12)
         return {};
@@ -117,12 +176,18 @@ function mapPrimitiveType(t: string): string {
     }
 }
 
-export function schemaToTsType(schema: any, allSchemas: Record<string, any>, visited = new Set<string>()): string {
-    if (!schema)
-        return 'any';
+export function schemaToTsType(schema: any, allSchemas: Record<string, any>, visited = new Set<string>(), nameMap: Record<string, string> = createTypeNameMap(Object.keys(allSchemas))): string {
+    if (schema === true)
+        return 'unknown';
+    if (schema === false)
+        return 'never';
+    if (schema === undefined || schema === null)
+        return 'unknown';
+    if (schema.nullable === true)
+        return `${schemaToTsType({...schema, nullable: false}, allSchemas, new Set(visited), nameMap)} | null`;
     if (schema.$ref) {
         const refName = getRefName(schema.$ref);
-        return refName || 'any';
+        return nameMap[refName] || toTypeScriptIdentifier(refName) || 'unknown';
     }
     if (schema.const !== undefined) {
         return JSON.stringify(schema.const);
@@ -131,13 +196,13 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
         return schema.enum.map((v: any) => JSON.stringify(v)).join(' | ') || 'any';
     }
     if (schema.oneOf && Array.isArray(schema.oneOf)) {
-        return schema.oneOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited))).join(' | ') || 'any';
+        return schema.oneOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any';
     }
     if (schema.anyOf && Array.isArray(schema.anyOf)) {
-        return schema.anyOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited))).join(' | ') || 'any';
+        return schema.anyOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any';
     }
     if (schema.allOf && Array.isArray(schema.allOf)) {
-        const parts = schema.allOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited)));
+        const parts = schema.allOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap));
         return parts.join(' & ') || 'any';
     }
     if (Array.isArray(schema.type)) {
@@ -145,7 +210,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
             const mapped: string[] = [];
             for (const t of schema.type) {
                 if (t === 'array') {
-                    const it = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited)) : 'any';
+                    const it = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited), nameMap) : 'any';
                     mapped.push(`${it}[]`);
                 } else {
                     mapped.push(mapPrimitiveType(t));
@@ -156,7 +221,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
         return schema.type.map((t: string) => mapPrimitiveType(t)).join(' | ');
     }
     if (schema.type === 'array') {
-        const itemType = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited)) : 'any';
+        const itemType = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited), nameMap) : 'any';
         if (itemType.includes(' | ') || itemType.includes(' & ')) {
             return `(${itemType})[]`;
         }
@@ -170,14 +235,14 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
                 any
             ]) => {
                 const isReq = req.has(k);
-                const t = schemaToTsType(v, allSchemas, new Set(visited));
+                const t = schemaToTsType(v, allSchemas, new Set(visited), nameMap);
                 return `${JSON.stringify(k)}${isReq ? '' : '?'}: ${t}`;
             });
             return `{ ${props.join('; ')} }`;
         }
         if (schema.additionalProperties) {
             if (isPlainObject(schema.additionalProperties)) {
-                const valType = schemaToTsType(schema.additionalProperties, allSchemas, new Set(visited));
+                const valType = schemaToTsType(schema.additionalProperties, allSchemas, new Set(visited), nameMap);
                 return `Record<string, ${valType}>`;
             }
             return 'Record<string, any>';
@@ -194,7 +259,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
             any
         ]) => {
             const isReq = req.has(k);
-            const t = schemaToTsType(v, allSchemas, new Set(visited));
+            const t = schemaToTsType(v, allSchemas, new Set(visited), nameMap);
             return `${JSON.stringify(k)}${isReq ? '' : '?'}: ${t}`;
         });
         return `{ ${props.join('; ')} }`;
@@ -210,7 +275,7 @@ function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, vi
     let props: Record<string, any> = {};
     let required: string[] = [];
     let description: string | undefined = schema.description;
-    if (!schema)
+    if (schema === undefined || schema === null || typeof schema === 'boolean')
         return {properties: props, required, description};
     if (schema.$ref) {
         const refName = getRefName(schema.$ref);
@@ -390,8 +455,12 @@ function buildFieldDocBlock(prop: any, seeOverride?: string): string {
 function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, parsableKey: string): string {
     const encodedKey = encodeURIComponent(parsableKey);
     const encodedSchema = encodeURIComponent(schemaName);
-    const fullLink = `${window.location.origin}${window.location.pathname}#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`;
-    const description = schema.description || schema.title || `${schemaName} model`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://opendoc.local';
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const fullLink = `${origin}${pathname}#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`;
+    const schemaObject = isPlainObject(schema) ? schema : {};
+    const description = schemaObject.description || schemaObject.title
+        || (schema === true ? `${schemaName}: any value is allowed` : schema === false ? `${schemaName}: no value is allowed` : `${schemaName} model`);
     return buildDocBlock({
         description,
         seeLink: fullLink,
@@ -400,80 +469,106 @@ function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, 
 }
 
 export function generateTsContentForSchema(schemaName: string, schema: any, allSchemas: Record<string, any>, parsableKey: string): string {
-    const exampleValue = generateMockValue(schema, allSchemas);
+    const nameMap = createTypeNameMap(Object.keys(allSchemas));
+    const safeSchemaName = nameMap[schemaName] || toTypeScriptIdentifier(schemaName);
+    let exampleValue: any = undefined;
+    try {
+        exampleValue = generateMockValue(schema, allSchemas);
+    } catch {
+        // An unsatisfiable schema (`false`, contradictory allOf, etc.) has no example.
+    }
     const modelDoc = buildModelDocBlock(schemaName, schema, exampleValue, parsableKey);
+
+    if (schema === true)
+        return `\n\n${modelDoc}\nexport type ${safeSchemaName} = unknown;\n`;
+    if (schema === false)
+        return `\n\n${modelDoc}\nexport type ${safeSchemaName} = never;\n`;
+
     const resolved = resolveAllOfProperties(schema, allSchemas);
     const hasProps = Object.keys(resolved.properties).length > 0;
-    const isObjectType = schema.type === 'object' || hasProps || schema.allOf || (!schema.type && !schema.enum && !schema.const && !schema.oneOf && !schema.anyOf);
+    const isObjectType = schema?.type === 'object' || hasProps || schema?.allOf
+        || (!schema?.type && !schema?.enum && schema?.const === undefined && !schema?.oneOf && !schema?.anyOf);
     let body = '';
-    if (schema.enum) {
-        const tsType = schemaToTsType(schema, allSchemas);
-        body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    } else if (schema.const !== undefined) {
+    if (schema?.enum) {
+        const tsType = schemaToTsType(schema, allSchemas, new Set(), nameMap);
+        body = `${modelDoc}\nexport type ${safeSchemaName} = ${tsType};\n`;
+    } else if (schema?.const !== undefined) {
         const tsType = JSON.stringify(schema.const);
-        body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    } else if (schema.oneOf || schema.anyOf) {
-        const tsType = schemaToTsType(schema, allSchemas);
-        body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
-    } else if (schema.type === 'array' || (Array.isArray(schema.type) && schema.type.includes('array'))) {
-        const tsType = schemaToTsType(schema, allSchemas);
-        body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
+        body = `${modelDoc}\nexport type ${safeSchemaName} = ${tsType};\n`;
+    } else if (schema?.oneOf || schema?.anyOf) {
+        const tsType = schemaToTsType(schema, allSchemas, new Set(), nameMap);
+        body = `${modelDoc}\nexport type ${safeSchemaName} = ${tsType};\n`;
+    } else if (schema?.type === 'array' || (Array.isArray(schema?.type) && schema.type.includes('array'))) {
+        const tsType = schemaToTsType(schema, allSchemas, new Set(), nameMap);
+        body = `${modelDoc}\nexport type ${safeSchemaName} = ${tsType};\n`;
     } else if (isObjectType) {
         const requiredSet = new Set(resolved.required);
         const lines: string[] = [];
-        lines.push(`${modelDoc}`);
-        lines.push(`export interface ${schemaName} {`);
+        lines.push(modelDoc);
+        lines.push(`export interface ${safeSchemaName} {`);
         for (const [propName, propSchema] of Object.entries(resolved.properties)) {
             const prop = propSchema as any;
             const isRequired = requiredSet.has(propName);
-            const tsType = schemaToTsType(prop, allSchemas);
+            const tsType = schemaToTsType(prop, allSchemas, new Set(), nameMap);
             const fieldDoc = buildFieldDocBlock(prop);
-            if (fieldDoc) {
+            if (fieldDoc)
                 lines.push(`  ${fieldDoc.split('\n').join('\n  ')}`);
-            }
             const optional = isRequired ? '' : '?';
             const safePropName = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(propName) ? propName : JSON.stringify(propName);
             lines.push(`  ${safePropName}${optional}: ${tsType};`);
             lines.push('');
         }
-        if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && !hasProps) {
-            const valType = schemaToTsType(schema.additionalProperties, allSchemas);
+        if (schema?.additionalProperties && !hasProps) {
+            const valType = isPlainObject(schema.additionalProperties)
+                ? schemaToTsType(schema.additionalProperties, allSchemas, new Set(), nameMap)
+                : 'unknown';
             lines.push(`  [key: string]: ${valType};`);
         } else if (Object.keys(resolved.properties).length === 0) {
-            lines.push(`  [key: string]: any;`);
+            lines.push('  [key: string]: unknown;');
         }
-        lines.push(`}`);
+        lines.push('}');
         body = lines.join('\n');
     } else {
-        const tsType = schemaToTsType(schema, allSchemas);
-        body = `${modelDoc}\nexport type ${schemaName} = ${tsType};\n`;
+        const tsType = schemaToTsType(schema, allSchemas, new Set(), nameMap);
+        body = `${modelDoc}\nexport type ${safeSchemaName} = ${tsType};\n`;
     }
-    const exampleJson = JSON.stringify(exampleValue, null, 2);
-    const exampleConstLines = [
-        '',
-        '/**',
-        ` * Example of ${schemaName}`,
-        ' * @example',
-        ' * ```json',
-        ...exampleJson.split('\n').map(l => ` * ${l}`),
-        ' * ```',
-        ' */',
-        `export const ${schemaName}Example: ${schemaName} = ${exampleJson};`,
-        ''
-    ];
-    const exampleConst = exampleConstLines.join('\n');
+
     let finalContent = body;
     if (exampleValue !== null && exampleValue !== undefined) {
+        const exampleJson = JSON.stringify(exampleValue, null, 2);
+        const exampleConst = [
+            '', '/**', ` * Example of ${safeSchemaName}`, ' * @example', ' * ```json',
+            ...exampleJson.split('\n').map(line => ` * ${line}`),
+            ' * ```', ' */',
+            `export const ${safeSchemaName}Example: ${safeSchemaName} = ${exampleJson};`,
+            '',
+        ].join('\n');
         finalContent += `\n${exampleConst}`;
     }
-    const header = `\n\n`;
-    return header + finalContent + '\n';
+    return `\n\n${finalContent}\n`;
 }
 
-export function generateSingleSchemaFile(schemaName: string, schema: any, allSchemas: Record<string, any>, parsableKey: string) {
-    const content = generateTsContentForSchema(schemaName, schema, allSchemas, parsableKey);
+export function generateAllTsContent(schemas: Record<string, any>, parsableKey: string, firstSchema?: string): string {
+    const names = Object.keys(schemas);
+    const ordered = firstSchema && names.includes(firstSchema)
+        ? [firstSchema, ...names.filter(name => name !== firstSchema)]
+        : names;
+    const nameMap = createTypeNameMap(names);
+    const mapping = ordered.map(name => `// ${JSON.stringify(name)} -> ${nameMap[name]}`).join('\n');
+    return [
+        '/* Generated by OpenDoc UI. Original schema names are mapped below.',
+        mapping,
+        '*/',
+        ...ordered.map(name => generateTsContentForSchema(name, schemas[name], schemas, parsableKey)),
+    ].join('\n');
+}
+
+export function generateSingleSchemaFile(schemaName: string, _schema: any, allSchemas: Record<string, any>, parsableKey: string) {
+    // Include the schema graph in one module so referenced and cyclic model
+    // names remain resolvable without a fragile generated import graph.
+    const content = generateAllTsContent(allSchemas, parsableKey, schemaName);
     const blob = new Blob([content], {type: 'text/typescript'});
-    downloadBlob(blob, `${schemaName}.ts`);
+    downloadBlob(blob, toSafeGeneratedFileName(`${schemaName}.models`));
 }
 
 export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey: string) {
@@ -481,41 +576,37 @@ export function generateAndDownloadZip(schemas: Record<string, any>, parsableKey
         alert('No schemas to export');
         return;
     }
-    const files: {
-        name: string;
-        content: string;
-    }[] = [];
-    for (const [name, schema] of Object.entries(schemas)) {
-        const content = generateTsContentForSchema(name, schema, schemas, parsableKey);
-        files.push({name: `${name}.ts`, content});
-    }
-    const indexContent = [
-        ``,
-        ``,
-        ...Object.keys(schemas).map((name) => `export * from './${name}';`),
-        ``,
-    ].join('\n');
-    files.push({name: `index.ts`, content: indexContent});
-    const readme = [
-        `# Schemas Export - ${parsableKey}`,
-        ``,
-        `Generated at ${new Date().toISOString()}`,
-        ``,
-        `Total schemas: ${Object.keys(schemas).length}`,
-        ``,
-        `## Usage`,
-        ``,
-        '```ts',
-        `import { ${Object.keys(schemas).slice(0, 3).join(', ')} } from './index';`,
-        '```',
-        ``,
-        `## Source`,
-        ``,
-        `Each file contains TSDoc with @see link to original schema explorer`,
-        ``,
-    ].join('\n');
-    files.push({name: `README.md`, content: readme});
+    const nameMap = createTypeNameMap(Object.keys(schemas));
+    const modelsContent = generateAllTsContent(schemas, parsableKey);
+    const files = [
+        {name: 'models.ts', content: modelsContent},
+        {name: 'index.ts', content: "export * from './models';\n"},
+        {
+            name: 'README.md',
+            content: [
+                `# Schemas Export - ${parsableKey}`,
+                '',
+                `Generated at ${new Date().toISOString()}`,
+                '',
+                `Total schemas: ${Object.keys(schemas).length}`,
+                '',
+                '## Name mapping',
+                '',
+                ...Object.entries(nameMap).map(([original, generated]) => `- \`${original}\` -> \`${generated}\``),
+                '',
+                '## Usage',
+                '',
+                '```ts',
+                `import { ${Object.values(nameMap).slice(0, 3).join(', ')} } from './index';`,
+                '```',
+                '',
+                'All declarations are intentionally emitted into one module so cross-schema and cyclic references compile reliably.',
+                '',
+            ].join('\n'),
+        },
+    ];
     const blob = createZipBlob(files);
     const timestamp = new Date().toISOString().slice(0, 10);
-    downloadBlob(blob, `${parsableKey.replace(/\s+/g, '_')}_schemas_${timestamp}.zip`);
+    const archiveBase = toSafeGeneratedFileName(parsableKey).replace(/\.ts$/i, '');
+    downloadBlob(blob, `${archiveBase}_schemas_${timestamp}.zip`);
 }

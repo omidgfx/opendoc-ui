@@ -1,5 +1,5 @@
 import type {Dispatch, SetStateAction} from 'react';
-import type {ActiveAuth, AISettings, OpenApiSpec, ThemeMode} from '../../types';
+import type {ActiveAuth, AISettings, OpenApiSpec, Operation, ThemeMode} from '../../types';
 import type {TabItem} from '../endpoint/EndpointTabs';
 import ModalsStack from '../modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from '../modals/CodeGeneratorModal';
@@ -18,6 +18,7 @@ interface ShareTarget {
 interface AppModalLayerProps {
     spec: OpenApiSpec | null;
     specKey: string;
+    selectedServer: string;
     schemaStack: string[];
     setSchemaStack: Dispatch<SetStateAction<string[]>>;
     onPopSchema: () => void;
@@ -31,6 +32,7 @@ interface AppModalLayerProps {
         method: string;
     } | null>>;
     activeAuth: ActiveAuth;
+    authOperation?: Operation | null;
     setActiveAuth: Dispatch<SetStateAction<ActiveAuth>>;
     authOpen: boolean;
     setAuthOpen: Dispatch<SetStateAction<boolean>>;
@@ -59,6 +61,7 @@ interface AppModalLayerProps {
 export default function AppModalLayer({
                                           spec,
                                           specKey,
+                                          selectedServer,
                                           schemaStack,
                                           setSchemaStack,
                                           onPopSchema,
@@ -66,6 +69,7 @@ export default function AppModalLayer({
                                           codeEndpoint,
                                           setCodeEndpoint,
                                           activeAuth,
+                                          authOperation,
                                           setActiveAuth,
                                           authOpen,
                                           setAuthOpen,
@@ -102,9 +106,9 @@ export default function AppModalLayer({
             <CodeGeneratorModal isOpen onClose={() => setCodeEndpoint(null)} spec={spec} path={codeEndpoint.path}
                                 method={codeEndpoint.method}
                                 operation={(spec.paths[codeEndpoint.path] as any)?.[codeEndpoint.method] || {}}
-                                activeAuth={activeAuth}/>)}
-        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} spec={spec} activeAuth={activeAuth}
-                   onSave={setActiveAuth}/>
+                                selectedServer={selectedServer} activeAuth={activeAuth}/>)}
+        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} spec={spec} operation={authOperation}
+                   activeAuth={activeAuth} onSave={setActiveAuth}/>
         <TabSwitcherOverlay open={switcherOpen} tabs={tabs} activeTabId={activeTabId} selectedIndex={switcherIndex}
                             onCancel={onCancelSwitcher} onSelect={onSelectSwitcherTab}/>
         {shareTarget && (

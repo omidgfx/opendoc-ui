@@ -32,6 +32,14 @@ export default function Field({
     const enumValues = Array.isArray(current.enum) ? current.enum : null;
     const fileKey = path.map(part => String(part)).join('.');
     const fieldFrame = 'relative min-w-0 py-2';
+    if (current['x-opendoc-boolean-schema'] === false) {
+        return <div className={fieldFrame}>
+            <FieldHeader label={label} required={required} description={current.description} typeLabel="never" actions={actions}/>
+            <p className="mt-1 rounded-lg border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-2 text-[10px] text-[var(--text-muted)]">
+                No value satisfies this schema. Switch to Raw if you still want to send a body and inspect the server response.
+            </p>
+        </div>;
+    }
     if (current.oneOf?.length || current.anyOf?.length) {
         const variants = current.oneOf || current.anyOf;
         const selectedVariant = Math.min(variantIndex, variants.length - 1);
@@ -61,6 +69,16 @@ export default function Field({
             <FieldHeader label={label} required={required} description={current.description} typeLabel="file"
                          actions={actions}/>
             <label
+                onDragOver={event => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={event => {
+                    event.preventDefault();
+                    const file = event.dataTransfer.files?.[0] || null;
+                    if (file)
+                        setSelectedFiles({...selectedFiles, [fileKey]: file});
+                }}
                 className="mt-1 flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs hover:border-[var(--primary)]">
                 <span
                     className="min-w-0 truncate text-[var(--text-heading)]">{selectedFile ? selectedFile.name : 'Choose a file'}</span>
