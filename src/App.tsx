@@ -18,6 +18,7 @@ import {
     type OpenDocUIAction
 } from './utils/aiBridge';
 import {executeRunnerRequest} from './utils/runnerExecution';
+import {createEmptyAuth} from './utils/auth';
 import {type ConfigSource, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
@@ -105,11 +106,21 @@ export default function App() {
         method: string;
     } | null>(null);
     const [activeResponseCode, setActiveResponseCode] = useState<string | null>(null);
-    const [activeAuth, setActiveAuth] = useState<ActiveAuth>({
-        activeScheme: 'none', selectedSchemes: [], schemeValues: {}, requirementIndex: 0,
-        cookieValues: {}, bearerToken: '', apiKeyName: 'X-API-KEY', apiKeyValue: '', apiKeyIn: 'header',
-        basicUsername: '', basicPassword: '',
-    });
+    // Credentials are deliberately scoped to the active specification and kept
+    // in memory only. Reusing a common scheme ID such as `auth` in another
+    // specification can never inherit the first specification's secret.
+    const [authBySpec, setAuthBySpec] = useState<Record<string, ActiveAuth>>({});
+    const authScopeKey = selectedParsableKey || '__no_spec__';
+    const activeAuth = authBySpec[authScopeKey] || createEmptyAuth();
+    const setActiveAuth = useCallback<React.Dispatch<React.SetStateAction<ActiveAuth>>>((next) => {
+        setAuthBySpec(current => {
+            const previous = current[authScopeKey] || createEmptyAuth();
+            const resolved = typeof next === 'function'
+                ? (next as (value: ActiveAuth) => ActiveAuth)(previous)
+                : next;
+            return {...current, [authScopeKey]: resolved};
+        });
+    }, [authScopeKey]);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse>>({});

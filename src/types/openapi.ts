@@ -51,7 +51,21 @@ export interface SecurityScheme {
     name?: string;
     in?: string;
     scheme?: string;
+    bearerFormat?: string;
     flows?: any;
+    openIdConnectUrl?: string;
+}
+
+export interface ServerVariable {
+    default: string;
+    description?: string;
+    enum?: string[];
+}
+
+export interface ServerDefinition {
+    url: string;
+    description?: string;
+    variables?: Record<string, ServerVariable>;
 }
 
 export interface Parameter {
@@ -110,6 +124,7 @@ export interface Operation {
     security?: Array<{
         [key: string]: string[];
     }>;
+    servers?: ServerDefinition[];
     deprecated?: boolean;
 }
 
@@ -122,12 +137,20 @@ export interface PathItem {
     options?: Operation;
     head?: Operation;
     trace?: Operation;
+    /** OpenAPI 3.2 QUERY method. */
+    query?: Operation;
+    /** OpenAPI 3.2 extension point for methods without fixed fields. */
+    additionalOperations?: Record<string, Operation>;
+    servers?: ServerDefinition[];
     parameters?: Parameter[];
 }
 
 export interface OpenApiSpec {
     openapi: string;
     swagger?: string;
+    /** OpenAPI 3.2 document self URI. */
+    $self?: string;
+    jsonSchemaDialect?: string;
     externalDocs?: any;
     info: {
         title: string;
@@ -139,13 +162,11 @@ export interface OpenApiSpec {
             email?: string;
         };
     };
-    servers?: Array<{
-        url: string;
-        description?: string;
-    }>;
+    servers?: ServerDefinition[];
     paths: {
         [path: string]: PathItem;
     };
+    webhooks?: Record<string, PathItem | {$ref: string}>;
     security?: Array<{
         [key: string]: string[];
     }>;

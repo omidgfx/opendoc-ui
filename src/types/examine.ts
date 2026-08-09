@@ -1,3 +1,5 @@
+import type {Diagnostic} from './diagnostics';
+
 export interface ExamineResponse {
     status: number | null;
     headers: {
@@ -13,6 +15,7 @@ export interface ExamineResponse {
     isBinary?: boolean;
     errorKind?: 'validation' | 'network' | 'cors' | 'timeout' | 'http' | 'cancelled';
     errorMessage?: string;
+    diagnostics?: Diagnostic[];
 }
 
 export interface ExamineInputs {

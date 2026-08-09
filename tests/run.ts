@@ -81,6 +81,37 @@ test('resolves JSON pointers, escaped names, and cyclic refs safely', () => {
     assert.equal(typeof resolved, 'object');
     assert.equal(resolved.$ref, '#/components/schemas/A');
 });
+test('never applies configured auth to an explicitly public operation', () => {
+    const operation: any = { security: [], responses: { '200': { description: 'ok' } } };
+    const auth = applyAuthToRequest(baseSpec, {
+        activeScheme: 'auth', selectedSchemes: ['auth'],
+        schemeValues: { auth: { schemeId: 'auth', type: 'bearer', value: 'must-not-leak' } },
+        cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header',
+        basicUsername: '', basicPassword: '',
+    }, { headers: {}, query: [], cookies: [] }, operation);
+    assert.equal(auth.headers.Authorization, undefined);
+    assert.deepEqual(auth.appliedSchemeIds, []);
+});
+test('applies exactly one effective OR alternative and all schemes in an AND requirement', () => {
+    const spec: any = {
+        ...baseSpec,
+        security: [{ clientId: [], tenant: [] }, { auth: [] }],
+    };
+    const auth = applyAuthToRequest(spec, {
+        activeScheme: 'clientId', selectedSchemes: ['clientId', 'tenant'], requirementIndex: 0,
+        schemeValues: {
+            clientId: { schemeId: 'clientId', type: 'apiKey', value: 'client-secret' },
+            tenant: { schemeId: 'tenant', type: 'apiKey', value: 'acme' },
+            auth: { schemeId: 'auth', type: 'bearer', value: 'must-not-be-added' },
+        },
+        cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header',
+        basicUsername: '', basicPassword: '',
+    }, { headers: {}, query: [], cookies: [] }, { responses: { '200': { description: 'ok' } } } as any);
+    assert.equal(auth.headers['X-Client-Id'], 'client-secret');
+    assert.equal(auth.headers.Authorization, undefined);
+    assert.equal(queryStringFromPairs(auth.query), '?tenant=acme');
+    assert.deepEqual(auth.appliedSchemeIds, ['clientId', 'tenant']);
+});
 test('preserves distinct auth scheme IDs and composed requirements', () => {
     const auth = applyAuthToRequest(baseSpec, {
         activeScheme: 'clientId',

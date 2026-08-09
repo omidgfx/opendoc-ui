@@ -9,6 +9,15 @@ import {
 } from '../utils/localHistory';
 import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
 
+const stableTextHash = (text: string): string => {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < text.length; index++) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(36);
+};
+
 interface AppliedLocalSpec {
     key: string;
     document: OpenApiSpec;
@@ -28,7 +37,9 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
     const applyLocalSpec = useCallback((raw: string, fileName: string, file: File | null) => {
         const document = parseSpecDraft(raw);
         const title = document.info?.title || fileName.replace(/\.(json|ya?ml)$/i, '') || fileName;
-        const key = `local:${fileName}`;
+        // The content fingerprint prevents two unrelated local files with the
+        // same filename from sharing tabs, runner inputs, or credentials.
+        const key = `local:${fileName}:${stableTextHash(raw)}`;
         const entry: LocalHistoryEntry = {key, title, fileName, raw, openedAt: Date.now()};
         setLocalSpec({key, title, fileName, raw, file});
         upsertLocalHistory(entry);
