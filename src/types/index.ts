@@ -5,6 +5,8 @@ export type {
     Parsable,
     ParsableConfig,
     SecurityScheme,
+    ServerDefinition,
+    ServerVariable,
     Parameter,
     ResponseDefinition,
     RequestBodyDefinition,
@@ -17,6 +19,8 @@ export type {
 } from './openapi';
 export type {ParsedRoute, EndpointRef} from './route';
 export type {ExamineResponse, ExamineInputs} from './examine';
+export type {Diagnostic, DiagnosticSeverity} from './diagnostics';
+export {diagnostic} from './diagnostics';
 export type {
     AIProviderId,
     AITransport,

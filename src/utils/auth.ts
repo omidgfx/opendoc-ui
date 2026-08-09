@@ -13,9 +13,10 @@ export interface RequestAuthParts {
     cookies: SerializedPair[];
     credentials: RequestCredentials;
     warnings: string[];
+    appliedSchemeIds: string[];
 }
 
-const emptyAuth = (): ActiveAuth => ({
+export const createEmptyAuth = (): ActiveAuth => ({
     activeScheme: 'none',
     selectedSchemes: [],
     schemeValues: {},
@@ -27,8 +28,9 @@ const emptyAuth = (): ActiveAuth => ({
     basicUsername: '',
     basicPassword: '',
 });
+
 export const normalizeActiveAuth = (value: Partial<ActiveAuth> | null | undefined): ActiveAuth => ({
-    ...emptyAuth(),
+    ...createEmptyAuth(),
     ...(value || {}),
     activeScheme: typeof value?.activeScheme === 'string' && value.activeScheme ? value.activeScheme : 'none',
     selectedSchemes: Array.isArray(value?.selectedSchemes) ? value!.selectedSchemes.filter(item => typeof item === 'string') : [],
@@ -36,21 +38,42 @@ export const normalizeActiveAuth = (value: Partial<ActiveAuth> | null | undefine
     cookieValues: value?.cookieValues && typeof value.cookieValues === 'object' ? value.cookieValues : {},
     apiKeyIn: value?.apiKeyIn === 'query' || value?.apiKeyIn === 'cookie' ? value.apiKeyIn : 'header',
 });
-const operationSecurity = (spec: OpenApiSpec | null, operation?: Operation | null): Array<Record<string, string[]>> | undefined => {
+
+/**
+ * OpenAPI security inherits from the root to an operation. Path Item Objects
+ * do not define a standard security field.
+ *
+ * `undefined` means the document declares no requirement and OpenDoc may use
+ * an explicitly selected manual credential. `[]` explicitly disables auth.
+ */
+export const resolveEffectiveSecurity = (
+    spec: OpenApiSpec | null,
+    operation?: Operation | null,
+): Array<Record<string, string[]>> | undefined => {
     if (operation && operation.security !== undefined)
         return operation.security;
     return spec?.security;
 };
+
+export const isOperationProtected = (spec: OpenApiSpec | null, operation?: Operation | null): boolean => {
+    const requirements = resolveEffectiveSecurity(spec, operation);
+    if (!requirements || requirements.length === 0)
+        return false;
+    // An empty requirement object is an anonymous alternative.
+    return !requirements.some(requirement => Object.keys(requirement || {}).length === 0);
+};
+
 export const getSecurityRequirementOptions = (spec: OpenApiSpec | null, operation?: Operation | null): SecurityRequirementOption[] => {
     const schemes = spec?.components?.securitySchemes || {};
-    const requirements = operationSecurity(spec, operation);
-    if (requirements && requirements.length === 0)
+    const requirements = resolveEffectiveSecurity(spec, operation);
+    if (requirements && requirements.length === 0) {
         return [{
             id: 'none',
             label: 'No authentication (public operation)',
             schemeIds: []
         }];
-    if (!requirements || requirements.length === 0) {
+    }
+    if (!requirements) {
         const ids = Object.keys(schemes);
         return ids.length > 0
             ? [{id: 'none', label: 'No authentication (manual)', schemeIds: []}, ...ids.map(id => ({
@@ -71,6 +94,7 @@ export const getSecurityRequirementOptions = (spec: OpenApiSpec | null, operatio
             };
     });
 };
+
 export const getAuthSchemeLabel = (id: string, scheme: SecurityScheme | any): string => {
     if (!scheme)
         return id;
@@ -82,22 +106,101 @@ export const getAuthSchemeLabel = (id: string, scheme: SecurityScheme | any): st
         return `${id} · OAuth2`;
     if (scheme.type === 'openIdConnect')
         return `${id} · OpenID Connect`;
+    if (scheme.type === 'mutualTLS')
+        return `${id} · Mutual TLS`;
     return id;
 };
-const selectedSchemeIds = (auth: ActiveAuth, spec: OpenApiSpec | null): string[] => {
+
+const configuredSchemeIds = (auth: ActiveAuth): string[] => {
     const normalized = normalizeActiveAuth(auth);
     if (normalized.selectedSchemes.length > 0)
-        return normalized.selectedSchemes;
-    if (normalized.activeScheme !== 'none' && spec?.components?.securitySchemes?.[normalized.activeScheme])
-        return [normalized.activeScheme];
+        return Array.from(new Set(normalized.selectedSchemes));
     return normalized.activeScheme === 'none' ? [] : [normalized.activeScheme];
 };
+
+const sameIdSet = (left: string[], right: string[]): boolean => {
+    if (left.length !== right.length)
+        return false;
+    const rightSet = new Set(right);
+    return left.every(id => rightSet.has(id));
+};
+
+interface SelectedSecurity {
+    ids: string[];
+    warnings: string[];
+}
+
+/** Select exactly one effective OR alternative. Extra configured schemes are never attached. */
+export const resolveSelectedSecurity = (
+    spec: OpenApiSpec | null,
+    auth: ActiveAuth,
+    operation?: Operation | null,
+): SelectedSecurity => {
+    const warnings: string[] = [];
+    const configured = configuredSchemeIds(auth);
+    const requirements = resolveEffectiveSecurity(spec, operation);
+    const schemes = spec?.components?.securitySchemes || {};
+
+    if (requirements && requirements.length === 0)
+        return {ids: [], warnings};
+
+    if (requirements === undefined) {
+        const ids = configured.filter(id => {
+            const declared = Boolean(schemes[id]);
+            const legacy = id.startsWith('legacy:');
+            if (!declared && !legacy)
+                warnings.push(`Configured security scheme '${id}' does not exist in this specification and was not applied.`);
+            return declared || legacy;
+        });
+        return {ids, warnings};
+    }
+
+    if (configured.length === 0) {
+        if (requirements.some(requirement => Object.keys(requirement || {}).length === 0))
+            return {ids: [], warnings};
+        warnings.push('This operation declares authentication, but no matching security requirement is selected. The request will still be sent without authentication.');
+        return {ids: [], warnings};
+    }
+
+    let selectedRequirement: Record<string, string[]> | undefined;
+    const preferredIndex = normalizeActiveAuth(auth).requirementIndex;
+    if (preferredIndex !== undefined && requirements[preferredIndex]) {
+        const candidate = requirements[preferredIndex];
+        if (sameIdSet(Object.keys(candidate || {}), configured))
+            selectedRequirement = candidate;
+    }
+    selectedRequirement ||= requirements.find(requirement => sameIdSet(Object.keys(requirement || {}), configured));
+
+    if (!selectedRequirement) {
+        warnings.push(`Configured schemes (${configured.join(' + ')}) do not match any effective security alternative for this operation and were not applied.`);
+        return {ids: [], warnings};
+    }
+
+    const ids = Object.keys(selectedRequirement).filter(id => {
+        if (!schemes[id]) {
+            warnings.push(`Effective security requirement references missing scheme '${id}'; it was not applied.`);
+            return false;
+        }
+        return true;
+    });
+    return {ids, warnings};
+};
+
 const credentialFor = (auth: ActiveAuth, id: string, scheme: any): AuthCredential => {
     const explicit = normalizeActiveAuth(auth).schemeValues[id];
     if (explicit)
         return explicit;
-    const legacyType = id === 'bearer' || id === 'legacy:bearer' ? 'bearer' : id === 'basic' || id === 'legacy:basic' ? 'basic' : id === 'apikey' || id === 'legacy:apikey' ? 'apiKey' : id === 'cookie' || id === 'legacy:cookie' ? 'cookie' : '';
-    const type = legacyType || (scheme?.type === 'apiKey' ? 'apiKey' : scheme?.type === 'oauth2' ? 'oauth2' : scheme?.type === 'openIdConnect' ? 'openIdConnect' : scheme?.scheme === 'basic' ? 'basic' : scheme?.scheme === 'bearer' ? 'bearer' : scheme?.type || 'unknown');
+    const legacyType = id === 'bearer' || id === 'legacy:bearer' ? 'bearer'
+        : id === 'basic' || id === 'legacy:basic' ? 'basic'
+            : id === 'apikey' || id === 'legacy:apikey' ? 'apiKey'
+                : id === 'cookie' || id === 'legacy:cookie' ? 'cookie'
+                    : '';
+    const type = legacyType || (scheme?.type === 'apiKey' ? 'apiKey'
+        : scheme?.type === 'oauth2' ? 'oauth2'
+            : scheme?.type === 'openIdConnect' ? 'openIdConnect'
+                : scheme?.scheme === 'basic' ? 'basic'
+                    : scheme?.scheme === 'bearer' ? 'bearer'
+                        : scheme?.type || 'unknown');
     if (type === 'apiKey')
         return {
             schemeId: id,
@@ -128,18 +231,42 @@ const credentialFor = (auth: ActiveAuth, id: string, scheme: any): AuthCredentia
         };
     return {schemeId: id, type: 'unknown'};
 };
+
 const basicEncode = (username: string, password: string): string => {
     const raw = `${username}:${password}`;
     try {
-        return btoa(raw);
+        const bytes = new TextEncoder().encode(raw);
+        let binary = '';
+        bytes.forEach(byte => {
+            binary += String.fromCharCode(byte);
+        });
+        return btoa(binary);
     } catch {
-        try {
-            return btoa(unescape(encodeURIComponent(raw)));
-        } catch {
-            return raw;
-        }
+        return btoa(raw);
     }
 };
+
+const findHeaderName = (headers: Record<string, string>, requestedName: string): string | undefined => Object.keys(headers)
+    .find(name => name.toLowerCase() === requestedName.toLowerCase());
+
+const setAuthHeader = (
+    headers: Record<string, string>,
+    name: string,
+    value: string,
+    schemeId: string,
+    warnings: string[],
+) => {
+    const existingName = findHeaderName(headers, name);
+    if (existingName && headers[existingName] !== value) {
+        warnings.push(`Security scheme '${schemeId}' replaced the explicitly configured '${existingName}' header.`);
+        delete headers[existingName];
+    }
+    const conflictingAuthName = findHeaderName(headers, name);
+    if (conflictingAuthName && headers[conflictingAuthName] !== value)
+        warnings.push(`Multiple security schemes target the same '${name}' header; the later scheme value is used.`);
+    headers[name] = value;
+};
+
 export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, request: {
     headers?: Record<string, string>;
     query?: SerializedPair[];
@@ -148,59 +275,62 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
     const headers = {...(request.headers || {})};
     const query = [...(request.query || [])];
     const cookies = [...(request.cookies || [])];
-    const warnings: string[] = [];
+    const selected = resolveSelectedSecurity(spec, auth, operation);
+    const warnings = [...selected.warnings];
     let credentials: RequestCredentials = 'same-origin';
     const schemes = spec?.components?.securitySchemes || {};
-    const ids = selectedSchemeIds(auth, spec);
-    ids.forEach(id => {
+
+    selected.ids.forEach(id => {
         const scheme: any = schemes[id] || {};
         const credential = credentialFor(auth, id, scheme);
+        if (scheme.type === 'mutualTLS') {
+            warnings.push(`Mutual TLS scheme '${id}' is controlled by the browser/operating system and cannot be configured by OpenDoc.`);
+            return;
+        }
         if (scheme.type === 'apiKey' || credential.type === 'apiKey') {
             const location = scheme.in || credential.in || 'header';
             const name = scheme.name || credential.name || auth.apiKeyName || 'X-API-KEY';
             const value = credential.value || '';
             if (!value && location !== 'cookie')
-                warnings.push(`No value is configured for API-key scheme '${id}'.`);
+                warnings.push(`No value is configured for API-key scheme '${id}'. The request will still be sent.`);
             if (location === 'query' && value)
                 query.push({name, value, allowReserved: false});
             else if (location === 'header' && value)
-                headers[name] = value;
+                setAuthHeader(headers, name, value, id, warnings);
             else if (location === 'cookie') {
                 credentials = 'include';
                 if (value)
                     cookies.push({name, value});
-                warnings.push(`Browser fetch cannot set a Cookie header for '${id}'; credentials: include only sends an existing same-site cookie. Use the gateway/local agent to inject a value.`);
+                warnings.push(`Browser fetch cannot set a Cookie header for '${id}'. The configured manual value is not transmitted; credentials: include can only send cookies already accepted by the browser.`);
             }
             return;
         }
         const schemeName = String(scheme.scheme || credential.scheme || credential.type || '').toLowerCase();
-        if (scheme.type === 'http' && schemeName === 'basic' || credential.type === 'basic') {
+        if ((scheme.type === 'http' && schemeName === 'basic') || credential.type === 'basic') {
             if (credential.username)
-                headers.Authorization = `Basic ${basicEncode(credential.username, credential.password || '')}`;
+                setAuthHeader(headers, 'Authorization', `Basic ${basicEncode(credential.username, credential.password || '')}`, id, warnings);
             else
-                warnings.push(`No username is configured for HTTP basic scheme '${id}'.`);
+                warnings.push(`No username is configured for HTTP basic scheme '${id}'. The request will still be sent.`);
             return;
         }
-        if (scheme.type === 'http' && schemeName === 'bearer' || ['bearer', 'oauth2', 'openIdConnect'].includes(credential.type) || ['oauth2', 'openIdConnect'].includes(scheme.type)) {
+        if ((scheme.type === 'http' && schemeName === 'bearer')
+            || ['bearer', 'oauth2', 'openIdConnect'].includes(credential.type)
+            || ['oauth2', 'openIdConnect'].includes(scheme.type)) {
             if (credential.value)
-                headers.Authorization = `Bearer ${credential.value}`;
+                setAuthHeader(headers, 'Authorization', `Bearer ${credential.value}`, id, warnings);
             else
-                warnings.push(`No access token is configured for scheme '${id}'. OAuth authorization-code/PKCE is not performed in the browser runner.`);
+                warnings.push(`No access token is configured for scheme '${id}'. OpenDoc does not perform an OAuth/OIDC authorization flow; the request will still be sent.`);
             return;
         }
-        if (scheme.type === 'apiKey' && scheme.in === 'cookie')
-            credentials = 'include';
+        warnings.push(`Security scheme '${id}' has unsupported type '${scheme.type || credential.type}'. The request will still be sent without that credential.`);
     });
+
     if (cookies.length > 0)
         credentials = 'include';
-    if (operationSecurity(spec, operation)?.length && ids.length === 0 && operationSecurity(spec, operation)?.some(item => Object.keys(item).length > 0)) {
-        warnings.push('This operation declares authentication, but no security requirement is selected.');
-    }
-    return {headers, query, cookies, credentials, warnings};
+    return {headers, query, cookies, credentials, warnings, appliedSchemeIds: selected.ids};
 };
-export const authDisplayName = (auth: ActiveAuth, spec: OpenApiSpec | null): string => {
-    const ids = selectedSchemeIds(auth, spec);
-    if (ids.length === 0)
-        return 'none';
-    return ids.join(' + ');
+
+export const authDisplayName = (auth: ActiveAuth, spec: OpenApiSpec | null, operation?: Operation | null): string => {
+    const selected = resolveSelectedSecurity(spec, auth, operation);
+    return selected.ids.length === 0 ? 'none' : selected.ids.join(' + ');
 };
