@@ -130,14 +130,14 @@ const checkPattern = (parameter: any, value: unknown, diagnostics: Diagnostic[])
         if (!new RegExp(pattern).test(String(value))) {
             diagnostics.push(diagnostic(
                 'RUN_PARAMETER_PATTERN_MISMATCH',
-                `Parameter '${parameter.name}' does not match its documented pattern. It will still be sent so the API can return its own response.`,
+                `Parameter '${parameter.name}' does not match its documented pattern.`,
                 {source: {pointer: `/parameters/${parameter.in}:${parameter.name}`}},
             ));
         }
     } catch {
         diagnostics.push(diagnostic(
             'OAS_PARAMETER_PATTERN_INVALID',
-            `The documented pattern for '${parameter.name}' is not a valid JavaScript regular expression. The value will still be sent.`,
+            `The documented pattern for '${parameter.name}' is not a valid regular expression.`,
         ));
     }
 };
@@ -154,14 +154,14 @@ const createBodyIntent = (
     if (media.schema === false) {
         diagnostics.push(diagnostic(
             'RUN_BODY_SCHEMA_IMPOSSIBLE',
-            'The selected media type uses the boolean schema false, so no body can validate. OpenDoc will still send the entered body so the API can respond.',
+            'The selected media type uses the boolean schema false; no body can validate against it.',
         ));
     }
 
     if (requestBody?.required && !text && !input.selectedFile && !Object.values(input.selectedFiles || {}).some(Boolean)) {
         diagnostics.push(diagnostic(
             'RUN_REQUIRED_BODY_MISSING',
-            'The request body is documented as required but is empty. OpenDoc will still send the request so the API can report the error.',
+            'The required request body is empty.',
         ));
     }
 
@@ -186,7 +186,7 @@ const createBodyIntent = (
             if (encoding?.headers && Object.keys(encoding.headers).length > 0) {
                 diagnostics.push(diagnostic(
                     'RUN_MULTIPART_PART_HEADERS_UNSUPPORTED',
-                    `Multipart field '${field}' declares custom part headers. Browser FormData cannot represent them; other fields will still be sent.`,
+                    `Multipart field '${field}' declares custom part headers that browser FormData cannot represent.`,
                     {transport: 'browser'},
                 ));
             }
@@ -204,7 +204,7 @@ const createBodyIntent = (
         } catch (error) {
             diagnostics.push(diagnostic(
                 'RUN_URLENCODED_TEXT_UNPARSED',
-                `The form body could not be parsed (${error instanceof Error ? error.message : 'unknown error'}). The raw text will still be sent.`,
+                `The form body could not be parsed: ${error instanceof Error ? error.message : 'unknown error'}.`,
             ));
         }
         return {kind: 'urlencoded', mediaType, text, value, encoding: media.encoding || {}};
@@ -218,7 +218,7 @@ const createBodyIntent = (
         } catch (error) {
             diagnostics.push(diagnostic(
                 'RUN_BODY_JSON_INVALID',
-                `The body is not valid JSON (${error instanceof Error ? error.message : 'parse error'}). It will still be sent unchanged so the API can respond.`,
+                `The body is not valid JSON: ${error instanceof Error ? error.message : 'parse error'}.`,
             ));
         }
     }
@@ -236,7 +236,7 @@ const unresolvedExternalRefDiagnostics = (value: unknown, seen = new Set<object>
         if (key === '$ref' && typeof child === 'string' && !child.startsWith('#')) {
             diagnostics.push(diagnostic(
                 'OAS_EXTERNAL_REF_UNRESOLVED',
-                `External reference '${child}' remains unresolved. OpenDoc will run the operation fields that are available.`,
+                `External reference '${child}' is unresolved.`,
                 {source: {pointer: child}},
             ));
         } else {
@@ -256,7 +256,7 @@ const unresolvedParameterDiagnostics = (pathItem: any, operation: Operation, spe
         if (parameter?.$ref && resolveParameter(parameter, spec)?.$ref) {
             diagnostics.push(diagnostic(
                 'OAS_PARAMETER_REF_UNRESOLVED',
-                `Parameter reference '${parameter.$ref}' could not be resolved. OpenDoc will run the discoverable portion of the operation.`,
+                `Parameter reference '${parameter.$ref}' could not be resolved.`,
                 {source: {pointer: parameter.$ref}},
             ));
         }
@@ -292,8 +292,11 @@ export const compileRequestIntent = (input: CompileRequestInput): RequestIntent 
             if (parameter.required) {
                 diagnostics.push(diagnostic(
                     'RUN_REQUIRED_PARAMETER_MISSING',
-                    `Required ${parameter.in} parameter '${parameter.name}' is empty. OpenDoc will still try the request so the API or network layer can report the result.`,
-                    {source: {pointer: `/parameters/${parameter.in}:${parameter.name}`}},
+                    `Required ${parameter.in} parameter '${parameter.name}' is empty.`,
+                    {
+                        source: {pointer: `/parameters/${parameter.in}:${parameter.name}`},
+                        blocking: parameter.in === 'path',
+                    },
                 ));
             }
             return;
@@ -315,7 +318,7 @@ export const compileRequestIntent = (input: CompileRequestInput): RequestIntent 
         } catch (error) {
             diagnostics.push(diagnostic(
                 'RUN_PARAMETER_SERIALIZATION_FAILED',
-                `Parameter '${parameter.name}' could not be serialized (${error instanceof Error ? error.message : 'unknown error'}). The request will still be attempted without that parameter.`,
+                `Parameter '${parameter.name}' could not be serialized: ${error instanceof Error ? error.message : 'unknown error'}.`,
             ));
         }
     });
@@ -323,7 +326,8 @@ export const compileRequestIntent = (input: CompileRequestInput): RequestIntent 
     if (/\{[^{}]+}/.test(processedPath)) {
         diagnostics.push(diagnostic(
             'RUN_PATH_PLACEHOLDER_UNRESOLVED',
-            `The path still contains unresolved placeholders: ${processedPath}. It will be passed to browser fetch unchanged.`,
+            `Path contains unresolved placeholders: ${processedPath}.`,
+            {blocking: true},
         ));
     }
 
@@ -513,7 +517,7 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
         if (FORBIDDEN_BROWSER_HEADERS.has(lower) || lower.startsWith('proxy-') || lower.startsWith('sec-')) {
             diagnostics.push(diagnostic(
                 'RUN_BROWSER_FORBIDDEN_HEADER',
-                `Header '${name}' may be removed or rejected by browser fetch. OpenDoc will still attempt the request.`,
+                `Browser fetch may remove or reject header '${name}'.`,
                 {transport: 'browser'},
             ));
         }
@@ -560,7 +564,7 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
     if ((intent.method === 'GET' || intent.method === 'HEAD') && body !== null) {
         diagnostics.push(diagnostic(
             'RUN_BROWSER_METHOD_BODY_UNSUPPORTED',
-            `Browser fetch does not permit a body on ${intent.method}. The request will still run without the body.`,
+            `Browser fetch does not permit a body on ${intent.method}; the body is omitted.`,
             {transport: 'browser'},
         ));
         body = null;

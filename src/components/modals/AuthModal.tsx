@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import type {ActiveAuth, AuthCredential, OpenApiSpec, Operation} from '../../types';
 import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
@@ -29,6 +29,7 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
         : legacyOptions, [spec, operation]);
     const [selectedRequirement, setSelectedRequirement] = useState('none');
     const [credentials, setCredentials] = useState<Record<string, AuthCredential>>({});
+    const credentialsRef = useRef<Record<string, AuthCredential>>({});
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, requestClose);
     const currentOption = options.find(option => option.id === selectedRequirement) || options[0] || legacyOptions[0];
@@ -43,17 +44,20 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
             || options.find(option => option.id === `requirement:${normalized.requirementIndex ?? -1}`)
             || options[0];
         setSelectedRequirement(requirement?.id || 'none');
-        setCredentials({...normalized.schemeValues});
+        credentialsRef.current = {...normalized.schemeValues};
+        setCredentials(credentialsRef.current);
     }, [isOpen, activeAuth, options]);
     const updateCredential = (id: string, patch: Partial<AuthCredential>) => {
-        setCredentials(current => ({
-            ...current,
-            [id]: {schemeId: id, type: current[id]?.type || 'unknown', ...current[id], ...patch},
-        }));
+        setCredentials(current => {
+            const base = current[id] || credentialFor(id);
+            const next = {...current, [id]: {...base, ...patch, schemeId: id}};
+            credentialsRef.current = next;
+            return next;
+        });
     };
-    const credentialFor = (id: string): AuthCredential => {
+    function credentialFor(id: string): AuthCredential {
         const scheme: any = schemes[id];
-        const existing = credentials[id];
+        const existing = credentialsRef.current[id] || credentials[id];
         if (existing)
             return existing;
         if (id === 'legacy:bearer')

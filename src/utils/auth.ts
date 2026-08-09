@@ -158,7 +158,7 @@ export const resolveSelectedSecurity = (
     if (configured.length === 0) {
         if (requirements.some(requirement => Object.keys(requirement || {}).length === 0))
             return {ids: [], warnings};
-        warnings.push('This operation declares authentication, but no matching security requirement is selected. The request will still be sent without authentication.');
+        warnings.push('Authentication is required, but no matching security method is selected.');
         return {ids: [], warnings};
     }
 
@@ -296,7 +296,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             const name = scheme.name || credential.name || auth.apiKeyName || 'X-API-KEY';
             const value = credential.value || '';
             if (!value && location !== 'cookie')
-                warnings.push(`No value is configured for API-key scheme '${id}'. The request will still be sent.`);
+                warnings.push(`API-key scheme '${id}' has no value.`);
             if (location === 'query' && value)
                 query.push({name, value, allowReserved: false});
             else if (location === 'header' && value)
@@ -314,7 +314,7 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             if (credential.username)
                 setAuthHeader(headers, 'Authorization', `Basic ${basicEncode(credential.username, credential.password || '')}`, id, warnings, authHeaderOwners);
             else
-                warnings.push(`No username is configured for HTTP basic scheme '${id}'. The request will still be sent.`);
+                warnings.push(`HTTP basic scheme '${id}' has no username.`);
             return;
         }
         if ((scheme.type === 'http' && schemeName === 'bearer')
@@ -323,15 +323,42 @@ export const applyAuthToRequest = (spec: OpenApiSpec | null, auth: ActiveAuth, r
             if (credential.value)
                 setAuthHeader(headers, 'Authorization', `Bearer ${credential.value}`, id, warnings, authHeaderOwners);
             else
-                warnings.push(`No access token is configured for scheme '${id}'. OpenDoc does not perform an OAuth/OIDC authorization flow; the request will still be sent.`);
+                warnings.push(`Security scheme '${id}' has no access token.`);
             return;
         }
-        warnings.push(`Security scheme '${id}' has unsupported type '${scheme.type || credential.type}'. The request will still be sent without that credential.`);
+        warnings.push(`Security scheme '${id}' has unsupported type '${scheme.type || credential.type}'.`);
     });
 
     if (cookies.length > 0)
         credentials = 'include';
     return {headers, query, cookies, credentials, warnings, appliedSchemeIds: selected.ids};
+};
+
+export const isOperationAuthenticated = (
+    spec: OpenApiSpec | null,
+    auth: ActiveAuth,
+    operation?: Operation | null,
+): boolean => {
+    if (!isOperationProtected(spec, operation))
+        return false;
+    const selected = resolveSelectedSecurity(spec, auth, operation);
+    if (selected.ids.length === 0)
+        return false;
+    const schemes = spec?.components?.securitySchemes || {};
+    return selected.ids.every(id => {
+        const scheme: any = schemes[id] || {};
+        const credential = credentialFor(auth, id, scheme);
+        if (scheme.type === 'apiKey' || credential.type === 'apiKey' || credential.type === 'cookie')
+            return Boolean(credential.value);
+        const schemeName = String(scheme.scheme || credential.scheme || credential.type || '').toLowerCase();
+        if ((scheme.type === 'http' && schemeName === 'basic') || credential.type === 'basic')
+            return Boolean(credential.username);
+        if ((scheme.type === 'http' && schemeName === 'bearer')
+            || ['bearer', 'oauth2', 'openIdConnect'].includes(credential.type)
+            || ['oauth2', 'openIdConnect'].includes(scheme.type))
+            return Boolean(credential.value);
+        return false;
+    });
 };
 
 export const authDisplayName = (auth: ActiveAuth, spec: OpenApiSpec | null, operation?: Operation | null): string => {

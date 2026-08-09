@@ -1,7 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import ShareModal from '@/src/components/modals/ShareModal';
 import {useEscClose} from '@/src/hooks/useEscClose';
-import {OpenApiSpec, Operation} from '@/src/types';
+import {ActiveAuth, OpenApiSpec, Operation} from '@/src/types';
 import Markdown from '@/src/components/common/Markdown';
 import MethodBadge from '@/src/components/common/MethodBadge';
 import clsx from "clsx";
@@ -9,11 +9,12 @@ import {Tip} from '@/src/components/common/Tooltip';
 import {useBreakpoint} from '@/src/hooks/useBreakpoint';
 import FiltersPanel from './FiltersPanel';
 import {useModalTransition} from '@/src/hooks/useModalTransition';
-import {isOperationProtected} from '@/src/utils/auth';
+import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/auth';
 import {getDocumentOperations, getOperation} from '@/src/utils/openapi';
 
 interface SearchResultsViewProps {
     spec: OpenApiSpec | null;
+    activeAuth: ActiveAuth;
     searchQuery: string;
     onSelectEndpoint: (path: string, method: string) => void;
     onMiddleClickEndpoint?: (path: string, method: string) => void;
@@ -30,6 +31,7 @@ interface SearchResultsViewProps {
 
 export default function SearchResultsView({
                                               spec,
+                                              activeAuth,
                                               searchQuery,
                                               onSelectEndpoint,
                                               onMiddleClickEndpoint,
@@ -106,6 +108,7 @@ export default function SearchResultsView({
             method: string;
             operation: Operation;
             isProtected: boolean;
+            isAuthorized: boolean;
             score: number;
         }> = [];
         const query = searchQuery.trim().toLowerCase();
@@ -114,6 +117,7 @@ export default function SearchResultsView({
                 const methodUpper = methodStr.toUpperCase();
                 const opTags = op.tags && op.tags.length > 0 ? op.tags : ['General'];
                 const isProtected = isOperationProtected(spec, op);
+                const isAuthorized = isOperationAuthenticated(spec, activeAuth, op);
                 if (selectedMethods.length > 0 && !selectedMethods.includes(methodUpper))
                     return;
                 if (selectedTags.length > 0 && !opTags.some(t => selectedTags.includes(t)))
@@ -152,10 +156,10 @@ export default function SearchResultsView({
                     });
                 } else
                     score = 1;
-                list.push({path: pathStr, method: methodStr, operation: op, isProtected, score});
+                list.push({path: pathStr, method: methodStr, operation: op, isProtected, isAuthorized, score});
         });
         return list.sort((a, b) => b.score - a.score);
-    }, [spec, searchQuery, selectedMethods, selectedTags, onlyProtected, displayRoutes]);
+    }, [spec, activeAuth, searchQuery, selectedMethods, selectedTags, onlyProtected, displayRoutes]);
     const getBreadcrumbs = (path: string) => {
         const cleanServer = selectedServer.replace(/^https?:\/\//, '');
         const parts = path.split('/').filter(Boolean);
@@ -209,7 +213,8 @@ export default function SearchResultsView({
                                                                                                                               path,
                                                                                                                               method,
                                                                                                                               operation,
-                                                                                                                              isProtected
+                                                                                                                              isProtected,
+                                                                                                                              isAuthorized
                                                                                                                           }) =>
                     <div key={`${method}-${path}`} className="animate-fade-in min-w-0 w-full max-w-lg">
                         <div className="flex items-center gap-2 mb-0.5 group min-w-0 w-fit">
@@ -236,8 +241,10 @@ export default function SearchResultsView({
                                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold text-[var(--method-put)] bg-[var(--method-put)]/10 border-[var(--method-put)]/20 select-none">
                                     <i className="ph ph-warning-circle text-[12px]"></i> Deprecated
                                 </span>)}
-                                {isProtected && (<Tip content="Requires authorization">
-                                    <i className="ph-fill ph-lock-key text-[var(--method-delete)] text-[10px] cursor-help"></i>
+                                {isProtected && (<Tip content={isAuthorized ? 'Authentication configured' : 'Requires authorization'}>
+                                    <i className={clsx('ph-fill text-[10px] cursor-help', isAuthorized
+                                        ? 'ph-lock-key-open text-[var(--method-get)]'
+                                        : 'ph-lock-key text-[var(--method-delete)]')}/>
                                 </Tip>)}
                             </div>
                             <Tip content="Share endpoint">

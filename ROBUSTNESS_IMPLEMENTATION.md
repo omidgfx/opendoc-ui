@@ -12,7 +12,7 @@ This branch implements the selected audit backlog with one governing Runner rule
 - canonical location-qualified input state
 - advisory diagnostics for missing values, patterns, malformed bodies, unsupported refs, browser restrictions, and auth conflicts
 - exact server precedence, variables, relative source handling, and OAS 3.2 `$self`
-- response history capped at ten outcomes per endpoint
+- response history persisted per specification and capped at ten outcomes per endpoint
 - operation-aware `Accept` and body-aware `Content-Type`
 - OAS and Swagger parameter/body serialization matrices
 - Swagger 2 host/basePath/schemes, collection formats, consumes/produces, formData, uploads, and security adaptation
@@ -28,15 +28,18 @@ This branch implements the selected audit backlog with one governing Runner rule
 - real drag/drop, keyboard resizers, modal focus trap/restoration, accessible dropdowns, and icon labels
 - canonical multi-language request snippets with credential placeholders
 - explicit capability registry in `src/utils/openapi/capabilities.ts`
+- one verified `dist/index.js` bundle and shell-independent Windows/macOS/Linux scripts
 
 ## Deliberately advisory, never blocking
 
-- missing required parameters or request bodies
-- unresolved path placeholders
+- missing required non-path parameters or request bodies
 - pattern/type/enum mistakes entered by the consumer
 - malformed JSON entered in Raw mode
 - questionable server URLs
 - unsupported OpenAPI details where a best-effort HTTP request remains physically possible
+
+Required path parameters and unresolved route placeholders are blocking because an incomplete URL
+can target a different backend route.
 
 ## Physical browser limitations
 

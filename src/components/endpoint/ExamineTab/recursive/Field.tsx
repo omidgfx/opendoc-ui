@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import PatternPreview from '../../../common/PatternPreview';
 import FieldHeader from './FieldHeader';
 import GuideBranch from './GuideBranch';
+import CustomDropdown from '../../../common/CustomDropdown';
 import type {FieldProps} from '@/src/types/recursiveBody';
 import {defaultBodyValue, removeAtPath, resolved} from '@/src/utils/runner/recursiveBody';
 
@@ -46,14 +47,15 @@ export default function Field({
         return (<div className={fieldFrame}>
             <FieldHeader label={label} required={required} description={current.description} typeLabel="variant"
                          actions={actions}/>
-            <select value={selectedVariant} onFocus={() => setFocusedPath(path)} onChange={event => {
-                const nextIndex = Number(event.target.value);
+            <CustomDropdown value={String(selectedVariant)} onChange={selected => {
+                const nextIndex = Number(selected);
+                setFocusedPath(path);
                 setVariantIndex(nextIndex);
                 onChange(path, defaultBodyValue(variants[nextIndex], spec));
-            }} className={clsx(fieldClass, 'mt-1')}>
-                {variants.map((variant: any, index: number) => <option key={index}
-                                                                       value={index}>{resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`}</option>)}
-            </select>
+            }} options={variants.map((variant: any, index: number) => ({
+                value: String(index),
+                label: resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`,
+            }))} className="mt-1 w-full"/>
             <GuideBranch focusedPath={focusedPath}>
                 <Field schema={variants[selectedVariant]} spec={spec} value={value} label="Value" path={path}
                        depth={depth + 1} onChange={onChange} setPatternToTest={setPatternToTest}
@@ -216,19 +218,24 @@ export default function Field({
         <FieldHeader label={label} required={required} description={current.description}
                      typeLabel={current.format || type || 'any'} actions={actions}/>
         {enumValues
-            ? <select value={stringValue} onFocus={() => setFocusedPath(path)}
-                      onChange={event => onChange(path, event.target.value)} className={clsx(fieldClass, 'mt-1')}>
-                <option value="">— Select —</option>
-                {enumValues.map((item: any) => <option key={String(item)} value={String(item)}>{String(item)}</option>)}
-            </select>
+            ? <CustomDropdown value={String(Math.max(-1, enumValues.findIndex((item: any) => Object.is(item, value))))}
+                              onChange={selected => {
+                                  setFocusedPath(path);
+                                  const index = Number(selected);
+                                  onChange(path, index >= 0 ? enumValues[index] : '');
+                              }} options={[
+                                  {value: '-1', label: '— Select —'},
+                                  ...enumValues.map((item: any, index: number) => ({value: String(index), label: String(item)})),
+                              ]} className="mt-1 w-full"/>
             : type === 'boolean'
-                ? <select value={stringValue} onFocus={() => setFocusedPath(path)}
-                          onChange={event => onChange(path, event.target.value === '' ? '' : event.target.value === 'true')}
-                          className={clsx(fieldClass, 'mt-1')}>
-                    <option value="">— Select —</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                </select>
+                ? <CustomDropdown value={stringValue} onChange={selected => {
+                    setFocusedPath(path);
+                    onChange(path, selected === '' ? '' : selected === 'true');
+                }} options={[
+                    {value: '', label: '— Select —'},
+                    {value: 'true', label: 'true'},
+                    {value: 'false', label: 'false'},
+                ]} className="mt-1 w-full"/>
                 : <input type={inputType} value={stringValue} onFocus={() => setFocusedPath(path)}
                          onChange={event => onChange(path, type === 'number' || type === 'integer' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)}
                          placeholder={current.example !== undefined ? String(current.example) : current.default !== undefined ? String(current.default) : type === 'object' ? 'JSON value' : ''}

@@ -22,6 +22,7 @@ import TemperatureSlider from './settings/TemperatureSlider';
 import ProfileNameModal from './settings/ProfileNameModal';
 import SettingsConfirmModal from './settings/SettingsConfirmModal';
 import ModelPickerModal from './settings/ModelPickerModal';
+import CustomDropdown from '../common/CustomDropdown';
 
 interface AISettingsModalProps {
     isOpen: boolean;
@@ -392,21 +393,20 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                         <div className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <label className="space-y-1.5"><span
-                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Transport</span><select
-                                    value={draft.transport} onChange={event => {
+                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Transport</span><CustomDropdown
+                                    value={draft.transport} onChange={value => {
                                     setGatewayPolicy(null);
-                                    setDraft({...draft, transport: event.target.value as AISettings['transport']});
-                                }}
-                                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]">
-                                    <option value="direct">Direct browser request</option>
-                                    <option value="gateway">AI gateway / proxy</option>
-                                </select></label>
+                                    setDraft({...draft, transport: value as AISettings['transport']});
+                                }} options={[
+                                    {value: 'direct', label: 'Direct browser request'},
+                                    {value: 'gateway', label: 'AI gateway / proxy'},
+                                ]} className="w-full"/></label>
                                 <label className="space-y-1.5"><span
-                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Provider</span><select
+                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Provider</span><CustomDropdown
                                     value={draft.provider} disabled={draft.transport === 'gateway'}
-                                    onChange={event => updateProvider(event.target.value as AIProviderId)}
-                                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60">{AI_PROVIDER_PRESETS.map(item =>
-                                    <option key={item.id} value={item.id}>{item.label}</option>)}</select><span
+                                    onChange={value => updateProvider(value as AIProviderId)}
+                                    options={AI_PROVIDER_PRESETS.map(item => ({value: item.id, label: item.label}))}
+                                    className="w-full"/><span
                                     className="block text-[10px] text-[var(--text-muted)]">{draft.transport === 'gateway' ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.` : 'Selected by this browser profile.'}</span></label>
                             </div>
 

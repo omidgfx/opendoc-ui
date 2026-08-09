@@ -9,6 +9,7 @@ import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
 import {getOperation} from '../../utils/openapi';
+import {appendResponseHistory, clearResponseHistory, removeResponseHistoryAt} from '../../utils/responseHistory';
 
 interface WorkspaceContentProps {
     spec: OpenApiSpec | null;
@@ -135,7 +136,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
     if (activeTabId === 'view:search') {
         if (resultsQuery.trim().length || hasFilters) {
-            return (<SearchResultsView spec={spec} searchQuery={resultsQuery} onSelectEndpoint={onSearchResult}
+            return (<SearchResultsView spec={spec} activeAuth={activeAuth} searchQuery={resultsQuery} onSelectEndpoint={onSearchResult}
                                        onMiddleClickEndpoint={onOpenEndpointPermanent} selectedServer={selectedServer}
                                        selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
                                        selectedTags={selectedTags} setSelectedTags={setSelectedTags}
@@ -161,12 +162,16 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                                        responseHistory={examineResponses[key] || []}
                                        onResponseChange={response => setExamineResponses(current => ({
                                            ...current,
-                                           [key]: [response, ...(current[key] || [])].slice(0, 10)
-                                       }))} onClearResponse={() => setExamineResponses(current => {
-                const next = {...current};
-                delete next[key];
-                return next;
-            })} onOpenSchema={onOpenSchema} onGenerateCode={() => onGenerateCode(selectedEndpoint)}/>);
+                                           [key]: appendResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method, response, current[key] || [])
+                                       }))}
+                                       onDeleteResponse={index => setExamineResponses(current => ({
+                                           ...current,
+                                           [key]: removeResponseHistoryAt(specKey, selectedEndpoint.path, selectedEndpoint.method, index, current[key] || [])
+                                       }))}
+                                       onClearResponse={() => {
+                                           void clearResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method);
+                                           setExamineResponses(current => ({...current, [key]: []}));
+                                       }} onOpenSchema={onOpenSchema} onGenerateCode={() => onGenerateCode(selectedEndpoint)}/>);
         }
     }
     if (showSchemaExplorer) {

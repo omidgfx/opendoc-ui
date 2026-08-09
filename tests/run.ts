@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import { applyAuthToRequest, isOperationProtected } from '../src/utils/auth';
+import { applyAuthToRequest, isOperationAuthenticated, isOperationProtected } from '../src/utils/auth';
 import { buildAIContext, buildAISystemPrompt, citationsFromText } from '../src/utils/aiContext';
 import { formatOpenDocUIRunnerResult, parseOpenDocUIActions } from '../src/utils/aiBridge';
 import { allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection } from '../server/ai-gateway-policy';
@@ -19,6 +19,7 @@ import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabil
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
+import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -67,7 +68,7 @@ test('compiles a permissive request with canonical inputs and advisory diagnosti
     assert.equal(plan.headers.Authorization, undefined);
     assert.equal(plan.headers.region, 'eu');
     assert.equal(plan.headers.Accept, 'application/problem+json');
-    assert.ok(plan.diagnostics.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING'));
+    assert.ok(plan.diagnostics.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING' && item.blocking));
     assert.ok(plan.diagnostics.some(item => item.code === 'RUN_PARAMETER_PATTERN_MISMATCH'));
     assert.ok(plan.diagnostics.some(item => item.code === 'RUN_BODY_JSON_INVALID'));
     // GET bodies are a browser limitation, not a semantic validation failure.
@@ -172,6 +173,22 @@ test('derives protected indicators from effective security including anonymous a
     assert.equal(isOperationProtected(protectedSpec, {responses: {}} as any), true);
     assert.equal(isOperationProtected(protectedSpec, {security: [], responses: {}} as any), false);
     assert.equal(isOperationProtected({...baseSpec, security: [{}, {auth: []}]}, {responses: {}} as any), false);
+});
+test('marks protected operations authorized only when every selected requirement is configured', () => {
+    const spec: any = {...baseSpec, security: [{clientId: [], tenant: []}]};
+    const operation: any = {responses: {'200': {description: 'ok'}}};
+    const partial: any = {
+        activeScheme: 'clientId', selectedSchemes: ['clientId', 'tenant'], requirementIndex: 0,
+        schemeValues: {
+            clientId: {schemeId: 'clientId', type: 'apiKey', value: 'configured'},
+            tenant: {schemeId: 'tenant', type: 'apiKey', value: ''},
+        },
+        cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: '',
+    };
+    assert.equal(isOperationAuthenticated(spec, partial, operation), false);
+    partial.schemeValues.tenant.value = 'configured';
+    assert.equal(isOperationAuthenticated(spec, partial, operation), true);
+    assert.equal(isOperationAuthenticated(spec, partial, {...operation, security: []}), false);
 });
 test('never applies configured auth to an explicitly public operation', () => {
     const operation: any = { security: [], responses: { '200': { description: 'ok' } } };
@@ -339,6 +356,21 @@ test('applies readOnly and writeOnly semantics to request and response mocks', (
     assert.deepEqual(request.value, {password: 'string', name: 'string'});
     assert.equal(response.ok, true);
     assert.deepEqual(response.value, {id: 'string', name: 'string'});
+});
+test('formats response examples with stable indentation and OAS 3.2 dataValue support', () => {
+    const helpers = createResponseExampleHelpers(baseSpec);
+    const snippet = helpers.getResponseExampleSnippet(
+        {type: 'object'},
+        {examples: {Default: {dataValue: {pet: {id: 7, name: 'Milo'}}}}},
+        'application/json',
+    );
+    assert.equal(snippet, '{\n    "pet": {\n        "id": 7,\n        "name": "Milo"\n    }\n}');
+    const serialized = helpers.getResponseExampleSnippet(
+        {type: 'object'},
+        {examples: {Default: {serializedValue: '{"ok":true}'}}},
+        'application/json',
+    );
+    assert.equal(serialized, '{\n    "ok": true\n}');
 });
 test('detects vendor JSON media types', () => {
     assert.equal(isJsonMediaType('application/problem+json; charset=utf-8'), true);

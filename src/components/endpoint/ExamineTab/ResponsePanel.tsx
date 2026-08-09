@@ -1,6 +1,7 @@
 import CodeViewer from '../../common/CodeViewer';
 import type {ExamineResponse} from '../../../types';
 import {Tip} from '../../common/Tooltip';
+import ResponseHistoryDropdown from './ResponseHistoryDropdown';
 
 interface ResponsePanelProps {
     method: string;
@@ -10,6 +11,7 @@ interface ResponsePanelProps {
     response: ExamineResponse | null;
     responseHistory: ExamineResponse[];
     onSelectResponse: (response: ExamineResponse) => void;
+    onDeleteResponse: (index: number) => void;
     onExecute: () => void;
     onCancel: () => void;
     onClear: () => void;
@@ -31,6 +33,7 @@ export default function ResponsePanel({
                                           response,
                                           responseHistory,
                                           onSelectResponse,
+                                          onDeleteResponse,
                                           onExecute,
                                           onCancel,
                                           onClear
@@ -58,22 +61,9 @@ export default function ResponsePanel({
                         className="text-[10px] font-sans font-bold uppercase opacity-60 tracking-wider">{isRunning ? 'running' : 'ready'}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    {responseHistory.length > 0 && !isRunning && (<label className="flex items-center gap-1.5">
-                        <span className="sr-only">Response history</span>
-                        <select aria-label="Response history" value={selectedHistoryIndex}
-                                onChange={event => onSelectResponse(responseHistory[Number(event.target.value)])}
-                                className="max-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-[10px] font-sans text-[var(--text-heading)] outline-none focus:border-[var(--primary)] cursor-pointer">
-                            {responseHistory.map((item, index) => <option key={`${item.timestamp}-${index}`} value={index}>
-                                {index === 0 ? 'Latest · ' : ''}{item.status === 0 ? item.errorKind || 'Network error' : `HTTP ${item.status}`} · {new Date(item.timestamp).toLocaleTimeString()}
-                            </option>)}
-                        </select>
-                    </label>)}
-                    {hasResponse && !isRunning && (<Tip content="Clear response history">
-                        <button type="button" onClick={onClear}
-                                className="py-2 px-2.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--method-delete)] hover:bg-[var(--surface-hover)] rounded-lg transition-all cursor-pointer select-none">
-                            <i className="ph ph-trash text-[16px]"></i>
-                        </button>
-                    </Tip>)}
+                    {responseHistory.length > 0 && !isRunning && <ResponseHistoryDropdown
+                        history={responseHistory} selectedIndex={selectedHistoryIndex}
+                        onSelect={onSelectResponse} onDelete={onDeleteResponse} onClearAll={onClear}/>}
                     {isRunning ? (<button type="button" onClick={onCancel}
                                           className="py-2 px-3 text-sm font-bold text-[var(--method-delete-contrast)] bg-[var(--method-delete)] hover:brightness-110 rounded-lg shadow-md transition-all shrink-0 flex items-center gap-2 cursor-pointer select-none">
                         <i className="ph ph-stop-circle text-[17px]"></i><span>Cancel request</span>
@@ -97,7 +87,9 @@ export default function ResponsePanel({
                             <span className="text-xs uppercase font-bold text-[var(--text-heading)]">Status:</span>
                             <span
                                 className="px-2.5 py-1 text-[11px] font-mono leading-none rounded-full font-bold bg-black/10">
-                                {response!.status === 0 ? 'Network Error' : response!.status}
+                                {response!.status === 0
+                                    ? response!.errorKind === 'validation' ? 'Input Required' : response!.errorKind === 'timeout' ? 'Timeout' : response!.errorKind === 'cancelled' ? 'Cancelled' : 'Network Error'
+                                    : response!.status}
                             </span>
                             {response!.timestamp && (<span className="text-[10px] text-[var(--text-muted)] font-mono">
                                 {new Date(response!.timestamp).toLocaleTimeString()}

@@ -20,10 +20,16 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         if (contentObj.examples && typeof contentObj.examples === 'object') {
             const first = Object.values(contentObj.examples)[0] as any;
             if (first) {
+                if (first.dataValue !== undefined)
+                    return first.dataValue;
                 if (first.value !== undefined)
                     return first.value;
+                if (first.serializedValue !== undefined)
+                    return first.serializedValue;
                 if (first.externalValue !== undefined)
                     return first.externalValue;
+                if (first.externalDataValue !== undefined)
+                    return first.externalDataValue;
                 return first;
             }
         }
@@ -87,9 +93,9 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             const trimmed = value.trim();
             if (c.includes('json')) {
                 try {
-                    return JSON.stringify(JSON.parse(value), null, 2);
+                    return JSON.stringify(JSON.parse(value), null, 4);
                 } catch {
-                    return JSON.stringify(value, null, 2);
+                    return JSON.stringify(value, null, 4);
                 }
             }
             if (c.includes('xml') || c.includes('html') || c.includes('text') || c.includes('plain'))
@@ -107,12 +113,12 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             return `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, getSchemaDisplayName(schema))}`;
         }
         if (c.includes('html'))
-            return typeof value === 'object' ? `<pre>${escapeXml(JSON.stringify(value, null, 2))}</pre>` : String(value ?? '');
+            return typeof value === 'object' ? `<pre>${escapeXml(JSON.stringify(value, null, 4))}</pre>` : String(value ?? '');
         if (c.includes('yaml') || c.includes('yml'))
             return jsYaml.dump(value);
         if (c.includes('text') || c.includes('plain'))
-            return typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value ?? '');
-        return JSON.stringify(value, null, 2);
+            return typeof value === 'object' ? JSON.stringify(value, null, 4) : String(value ?? '');
+        return JSON.stringify(value, null, 4);
     };
     const humanizeSchemaName = (name: string): string => name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').toLowerCase();
     const getSchemaNamesFromResponse = (resp: any): string[] => {

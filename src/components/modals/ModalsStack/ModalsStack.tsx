@@ -404,13 +404,13 @@ export default function ModalsStack({
                      requestClose();
              }}>
             <div
-                className="modal-surface modal-surface-tall w-full max-w-4xl h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
+                className="modal-surface modal-surface-tall w-full max-w-4xl max-h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
 
                 <SchemaViewerHeader active={activeSchemaObj} stack={modals} schemas={componentsSchemas}
                                     specKey={parsableKey} onShare={handleShareSchema} onPop={onPopSchema}
                                     onClose={requestClose}/>
 
-                <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto flex-1 font-sans scrollbar-thin">
+                <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto max-h-[calc(85vh-8rem)] font-sans scrollbar-thin">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                         <div
                             className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">

@@ -16,8 +16,22 @@ const specText = () => JSON.stringify({
                 summary: 'Send permissive validation request',
                 parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string', pattern: '^[0-9]+$'}}],
                 requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
-                responses: {'400': {description: 'Invalid input', content: {'application/problem+json': {}}}},
+                security: [{bearerAuth: []}],
+                responses: {'400': {description: 'Invalid input', content: {'application/problem+json': {
+                    schema: {$ref: '#/components/schemas/Problem'},
+                    example: {error: 'bad input', details: {field: 'id'}},
+                }}}},
             },
+        },
+    },
+    components: {
+        securitySchemes: {bearerAuth: {type: 'http', scheme: 'bearer'}},
+        schemas: {
+            Problem: {
+                type: 'object',
+                properties: {error: {type: 'string'}, details: {type: 'object', properties: {field: {type: 'string'}}}},
+            },
+            Tiny: {type: 'object', properties: {id: {type: 'integer'}}},
         },
     },
 });
@@ -82,8 +96,74 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
         await runner.getByRole('button', {name: /Send API Request/i}).click();
         await expect(runner.getByText('400', {exact: true})).toBeVisible();
     }
-    await expect(runner.locator('select[aria-label="Response history"] option')).toHaveCount(10);
+    const historyButton = runner.getByRole('button', {name: 'Response history'});
+    await historyButton.click();
+    await expect(page.getByRole('option')).toHaveCount(10);
+    await page.keyboard.press('Escape');
     expect(requestCount).toBeGreaterThanOrEqual(11);
+
+    // Histories are persisted per specification and endpoint.
+    await page.reload();
+    await expect(page.getByText('Browser Runner Fixture', {exact: true}).first()).toBeVisible();
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    const restoredHistory = page.getByRole('button', {name: 'Response history'});
+    await restoredHistory.click();
+    await expect(page.getByRole('option')).toHaveCount(10);
+
+    // Individual deletion is immediate.
+    await page.getByRole('button', {name: /Delete .* from history/i}).first().click();
+    await expect(page.getByRole('option')).toHaveCount(9);
+    await page.keyboard.press('Escape');
+
+    // Clear-all uses the shared confirmation modal and persists the empty state.
+    await restoredHistory.click();
+    await page.getByRole('button', {name: 'Clear all'}).click();
+    await expect(page.getByRole('dialog')).toContainText('Clear response history?');
+    await page.getByRole('button', {name: 'Clear history'}).click();
+    await expect(restoredHistory).toBeHidden();
+    await page.reload();
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    await expect(page.getByRole('button', {name: 'Response history'})).toHaveCount(0);
+});
+
+test('selects response schema by default and formats example indentation', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    const responseCard = page.locator('#response-400');
+    await responseCard.locator('> div').first().click();
+    const schemaTab = responseCard.getByRole('button', {name: /Unified Schema/i});
+    await expect(schemaTab).toHaveAttribute('aria-pressed', 'true');
+    await responseCard.getByRole('button', {name: /Example Representation/i}).click();
+    const example = await responseCard.locator('pre code').last().textContent();
+    expect(example).toContain('\n    "error": "bad input"');
+    expect(example).toContain('\n        "field": "id"');
+});
+
+test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await expect(page.getByText('Protected', {exact: true})).toBeVisible();
+    await page.getByRole('button', {name: /Authorize/i}).click();
+    await page.getByLabel('Access token').fill('browser-test-token');
+    await page.getByRole('button', {name: 'Apply'}).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await page.locator('.app-topbar').getByRole('button', {name: /BEARERAUTH/i}).click();
+    await expect(page.getByLabel('Access token')).toHaveValue('browser-test-token');
+    await page.getByRole('button', {name: 'Cancel'}).click();
+    await expect(page.getByText('Authorized', {exact: true})).toBeVisible();
+    await expect(page.getByText('Authorized', {exact: true})).toHaveClass(/text-\[var\(--method-get\)\]/);
+});
+
+test('keeps a small desktop schema modal content-sized without an empty lower body', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByRole('button', {name: /Schema Explorer/i}).click();
+    await page.getByText('Tiny', {exact: true}).first().click();
+    const modal = page.locator('.modal-surface').last();
+    await expect(modal).toBeVisible();
+    const box = await modal.boundingBox();
+    expect(box?.height || 9999).toBeLessThan(560);
 });
 
 test('traps modal focus and restores it when closed', async ({page}) => {
@@ -93,6 +173,8 @@ test('traps modal focus and restores it when closed', async ({page}) => {
     await trigger.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    await page.waitForTimeout(750);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.keyboard.press('Shift+Tab');
     expect(await dialog.evaluate((element, active) => element.contains(active as Node), await page.evaluateHandle(() => document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
