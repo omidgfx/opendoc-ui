@@ -18,6 +18,7 @@ import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage';
 import {getMergedParameters, getRefName, resolveRequestBody} from '../../../utils/openapi';
+import {isOperationProtected} from '../../../utils/auth';
 
 interface ViewTabProps {
     key: any;
@@ -324,8 +325,7 @@ export default function ViewTab({
     ][];
     const selectedRequestBodyContentType = requestBodyContentType && resolvedRequestBody?.content?.[requestBodyContentType] ? requestBodyContentType : requestBodyContentEntries[0]?.[0] || '';
     const selectedRequestBodyContent = selectedRequestBodyContentType ? resolvedRequestBody?.content?.[selectedRequestBodyContentType] : null;
-    const opSecurity = operation.security;
-    const isProtected = !!(opSecurity && opSecurity.length > 0) || !!(spec?.security && spec.security.length > 0);
+    const isProtected = isOperationProtected(spec, operation);
     return (<div ref={scrollContainerRef}
                  className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
                  style={{maxWidth: '100%'}}>

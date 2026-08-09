@@ -1,5 +1,6 @@
 import type {OpenApiSpec} from '@/src/types';
 import {specStorage} from '@/src/utils/storage';
+import {isOperationProtected} from '@/src/utils/auth';
 
 export interface TreeNode {
     name: string;
@@ -110,7 +111,7 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
             if (!op)
                 return;
             const tags = op.tags?.length ? op.tags : ['General'];
-            const isProtected = !!(op.security?.length || spec.security?.length);
+            const isProtected = isOperationProtected(spec, op);
             tags.forEach((tag: string) => {
                 if (!byTag[tag])
                     byTag[tag] = [];
