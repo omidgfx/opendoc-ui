@@ -1,9 +1,10 @@
-import {useEffect, useState} from 'react';
+import {lazy, Suspense, useEffect, useState} from 'react';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
-import SchemaJsonEditor from '../../schema/SchemaJsonEditor';
 import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
+
+const SchemaJsonEditor = lazy(() => import('../../schema/SchemaJsonEditor'));
 
 interface BodyEditorProps {
     spec: OpenApiSpec;
@@ -57,12 +58,14 @@ export default function BodyEditor(props: BodyEditorProps) {
     } = props;
     const resolvedBody = resolveRequestBody(operation.requestBody, spec);
     const contentSchema = resolvedBody?.content?.[requestBodyType]?.schema;
-    const resolvedSchema = contentSchema ? resolveReference(contentSchema, spec) : null;
+    const resolvedSchema = contentSchema !== undefined
+        ? (resolveReference(contentSchema, spec) ?? contentSchema)
+        : null;
     const [formValue, setFormValue] = useState<BodyValue>(() => {
         try {
-            return parseStructuredBody(requestBodyText, requestBodyType) ?? (resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {});
+            return parseStructuredBody(requestBodyText, requestBodyType) ?? (resolvedSchema !== null ? defaultBodyValue(resolvedSchema, spec) : {});
         } catch {
-            return resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {};
+            return resolvedSchema !== null ? defaultBodyValue(resolvedSchema, spec) : {};
         }
     });
     useEffect(() => {
@@ -70,9 +73,9 @@ export default function BodyEditor(props: BodyEditorProps) {
             return;
         try {
             const parsed = parseStructuredBody(requestBodyText, requestBodyType);
-            setFormValue(parsed ?? (resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {}));
+            setFormValue(parsed ?? (resolvedSchema !== null ? defaultBodyValue(resolvedSchema, spec) : {}));
         } catch {
-            setFormValue(resolvedSchema ? defaultBodyValue(resolvedSchema, spec) : {});
+            setFormValue(resolvedSchema !== null ? defaultBodyValue(resolvedSchema, spec) : {});
         }
     }, [bodyEditorMode, requestBodyType, resolvedSchema, spec, requestBodyText]);
     const handleFormChange = (value: BodyValue) => {
@@ -82,7 +85,7 @@ export default function BodyEditor(props: BodyEditorProps) {
         setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType));
     };
     const isTopLevelBinary = resolvedSchema?.type === 'string' && resolvedSchema?.format === 'binary';
-    if (bodyEditorMode === 'form' && !resolvedSchema) {
+    if (bodyEditorMode === 'form' && resolvedSchema === null) {
         return <p className="py-2 text-xs italic text-[var(--text-muted)]">No body schema defined for this media type.
             Switch to Raw to edit the payload directly.</p>;
     }
@@ -120,8 +123,10 @@ export default function BodyEditor(props: BodyEditorProps) {
                                   setSelectedFiles={setSelectedFiles}/>;
     }
     return (<div className="animate-in fade-in">
-        <SchemaJsonEditor value={requestBodyText} onChange={setRequestBodyText} schema={contentSchema || {}}
-                          componentsSchemas={spec.components?.schemas} mediaType={requestBodyType} themeMode={themeMode}
-                          onCtrlEnter={onExecute}/>
+        <Suspense fallback={<div className="flex min-h-48 items-center justify-center text-xs text-[var(--text-muted)]"><i className="ph ph-spinner animate-spin me-2"/>Loading editor…</div>}>
+            <SchemaJsonEditor value={requestBodyText} onChange={setRequestBodyText} schema={contentSchema ?? {}}
+                              componentsSchemas={spec.components?.schemas} mediaType={requestBodyType} themeMode={themeMode}
+                              onCtrlEnter={onExecute}/>
+        </Suspense>
     </div>);
 }

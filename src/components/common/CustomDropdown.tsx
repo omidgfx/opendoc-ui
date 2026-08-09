@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 
 interface Option {
@@ -24,97 +24,134 @@ export default function CustomDropdown({
                                            placeholder = 'Select...'
                                        }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(0);
     const [position, setPosition] = useState({top: 0, left: 0, width: 0});
-    const triggerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
-    const selected = options.find(o => o.value === value);
+    const listboxId = useId();
+    const selectedIndex = Math.max(0, options.findIndex(option => option.value === value));
+    const selected = options.find(option => option.value === value);
+
     const updatePosition = () => {
-        if (triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            setPosition({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX,
-                width: rect.width,
-            });
-        }
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (rect)
+            setPosition({top: rect.bottom + 4, left: rect.left, width: rect.width});
     };
-    const toggle = () => {
-        if (!isOpen) {
-            updatePosition();
-        }
-        setIsOpen(!isOpen);
+    const open = (index = selectedIndex) => {
+        updatePosition();
+        setActiveIndex(Math.max(0, Math.min(options.length - 1, index)));
+        setIsOpen(true);
     };
+    const close = (restoreFocus = false) => {
+        setIsOpen(false);
+        if (restoreFocus)
+            requestAnimationFrame(() => triggerRef.current?.focus());
+    };
+    const selectIndex = (index: number) => {
+        const option = options[index];
+        if (!option)
+            return;
+        onChange(option.value);
+        close(true);
+    };
+
     useEffect(() => {
         if (!isOpen)
             return;
-        const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as Node;
-            if (triggerRef.current && !triggerRef.current.contains(target) &&
-                menuRef.current && !menuRef.current.contains(target)) {
-                setIsOpen(false);
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target))
+                close(false);
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close(true);
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveIndex(index => Math.min(options.length - 1, index + 1));
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveIndex(index => Math.max(0, index - 1));
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                setActiveIndex(0);
+            } else if (event.key === 'End') {
+                event.preventDefault();
+                setActiveIndex(Math.max(0, options.length - 1));
+            } else if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                selectIndex(activeIndex);
             }
         };
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape')
-                setIsOpen(false);
-        };
-        const handleScrollOrResize = () => setIsOpen(false);
+        const handleViewportChange = () => close(false);
         document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('scroll', handleScrollOrResize, true);
-        window.addEventListener('resize', handleScrollOrResize);
+        document.addEventListener('keydown', handleKeyDown, true);
+        window.addEventListener('scroll', handleViewportChange, true);
+        window.addEventListener('resize', handleViewportChange);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('scroll', handleScrollOrResize, true);
-            window.removeEventListener('resize', handleScrollOrResize);
+            document.removeEventListener('keydown', handleKeyDown, true);
+            window.removeEventListener('scroll', handleViewportChange, true);
+            window.removeEventListener('resize', handleViewportChange);
         };
-    }, [isOpen]);
-    const handleSelect = (opt: Option) => {
-        onChange(opt.value);
-        setIsOpen(false);
-    };
+    }, [isOpen, activeIndex, options]);
+
+    useEffect(() => {
+        if (!isOpen)
+            return;
+        menuRef.current?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)?.scrollIntoView({block: 'nearest'});
+    }, [isOpen, activeIndex]);
+
     const getThemeVars = (): React.CSSProperties => {
         if (!triggerRef.current)
             return {};
-        const themedEl = triggerRef.current.closest('[style*="--background"]') ||
-            triggerRef.current.closest('body') ||
-            document.documentElement;
-        const styles = getComputedStyle(themedEl);
-        const vars: any = {};
-        ['--background', '--surface', '--surface-hover', '--border', '--text', '--text-heading', '--text-muted', '--primary'].forEach(v => {
-            const val = styles.getPropertyValue(v);
-            if (val)
-                vars[v] = val;
+        const themedElement = triggerRef.current.closest('[style*="--background"]')
+            || triggerRef.current.closest('body')
+            || document.documentElement;
+        const styles = getComputedStyle(themedElement);
+        const variables: Record<string, string> = {};
+        ['--background', '--surface', '--surface-hover', '--border', '--text', '--text-heading', '--text-muted', '--primary'].forEach(name => {
+            const property = styles.getPropertyValue(name);
+            if (property)
+                variables[name] = property;
         });
-        return vars;
+        return variables;
     };
-    const menuContent = isOpen && (<div ref={menuRef}
-                                        className="fixed z-[999999] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm min-w-[180px] overflow-hidden text-[var(--text)]"
-                                        style={{
-                                            top: position.top,
-                                            left: position.left,
-                                            width: Math.max(position.width, 180),
-                                            ...getThemeVars(),
-                                        }}>
-        {options.map((opt) => (<div key={opt.value} onClick={(e) => {
-            e.stopPropagation();
-            handleSelect(opt);
-        }}
-                                    className={`px-3 py-2 cursor-pointer hover:bg-[var(--surface-hover)] flex items-center gap-2 text-xs font-mono ${opt.value === value ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-semibold' : ''}`}>
-            {opt.label}
-        </div>))}
-    </div>);
-    return (<div ref={triggerRef} className={`relative ${className}`}>
-        <div onClick={toggle}
-             className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none">
-            <div className="flex items-center gap-2 truncate">
-                {icon && <i className={icon}></i>}
-                <span className="font-mono truncate">{selected?.label || placeholder}</span>
-            </div>
-            <i className={`ph ph-caret-down text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
-        </div>
 
+    const menuContent = isOpen && (<div ref={menuRef} id={listboxId} role="listbox"
+        aria-activedescendant={`${listboxId}-option-${activeIndex}`}
+        className="fixed z-[999999] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm min-w-[180px] max-h-72 overflow-y-auto text-[var(--text)]"
+        style={{top: position.top, left: position.left, width: Math.max(position.width, 180), ...getThemeVars()}}>
+        {options.map((option, index) => <div key={option.value} id={`${listboxId}-option-${index}`}
+            role="option" aria-selected={option.value === value} data-option-index={index}
+            onMouseEnter={() => setActiveIndex(index)} onMouseDown={event => event.preventDefault()}
+            onClick={event => {
+                event.stopPropagation();
+                selectIndex(index);
+            }}
+            className={`px-3 py-2 cursor-pointer hover:bg-[var(--surface-hover)] flex items-center gap-2 text-xs font-mono ${index === activeIndex ? 'outline-none ring-1 ring-inset ring-[var(--primary)]/40' : ''} ${option.value === value ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-semibold' : ''}`}>
+            {option.label}
+        </div>)}
+    </div>);
+
+    return (<div className={`relative ${className}`}>
+        <button ref={triggerRef} type="button" aria-haspopup="listbox" aria-expanded={isOpen}
+            aria-controls={isOpen ? listboxId : undefined}
+            onClick={() => isOpen ? close(false) : open()}
+            onKeyDown={event => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    if (!isOpen)
+                        open(event.key === 'ArrowDown' ? selectedIndex : Math.max(0, selectedIndex));
+                }
+            }}
+            className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40">
+            <span className="flex min-w-0 items-center gap-2 truncate">
+                {icon && <i className={icon}/>}<span className="font-mono truncate">{selected?.label || placeholder}</span>
+            </span>
+            <i className={`ph ph-caret-down text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`}/>
+        </button>
         {typeof window !== 'undefined' && createPortal(menuContent, document.body)}
     </div>);
 }

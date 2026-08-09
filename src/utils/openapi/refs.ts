@@ -102,11 +102,13 @@ export const resolveParameter = (param: any, spec: OpenApiSpec | null): any => {
     if (!resolved || typeof resolved !== 'object')
         return resolved;
     const contentMedia = Object.values(resolved.content || {})[0] as any;
-    const parameterSchema = resolved.schema || contentMedia?.schema;
+    const parameterSchema = resolved.schema ?? contentMedia?.schema;
     if (parameterSchema?.$ref) {
         return {...resolved, schema: resolveReference(parameterSchema, spec)};
     }
-    return parameterSchema && !resolved.schema ? {...resolved, schema: parameterSchema} : resolved;
+    return parameterSchema !== undefined && resolved.schema === undefined
+        ? {...resolved, schema: parameterSchema}
+        : resolved;
 };
 export const resolveRequestBody = (body: any, spec: OpenApiSpec | null): any => {
     const resolved = resolveComponentReference(body, spec, {}, new Set<string>());

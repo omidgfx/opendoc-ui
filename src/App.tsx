@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig,} from './types';
 import {generateSmartRoute, getEndpointId} from './utils/routing';
+import {getDocumentOperations, getOperation} from './utils/openapi';
 import {uiStorage} from './utils/storage';
 import {useBreakpoint} from './hooks/useBreakpoint';
 import Topbar from './components/layout/Topbar';
@@ -19,6 +20,7 @@ import {
 } from './utils/aiBridge';
 import {executeRunnerRequest} from './utils/runnerExecution';
 import {createEmptyAuth} from './utils/auth';
+import {getRawSpecDocument} from './utils/specSource';
 import {type ConfigSource, endpointKey, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
@@ -265,6 +267,7 @@ export default function App() {
         setLocalOpenError,
         hiddenFileInputRef,
         applyLocalSpec,
+        applyLocalBundle,
         handleFileChosen,
         handleSelectHistoryEntry,
         handleRemoveHistoryEntry,
@@ -285,6 +288,7 @@ export default function App() {
         localSpec,
         loadSpec,
         applyLocalSpec,
+        applyLocalBundle,
         setSpec,
         setLoadedSpecKey,
         setLocalOpenError,
@@ -363,7 +367,7 @@ export default function App() {
         description?: string;
     } | null>(null);
     const endpointDeepLink = useCallback((path: string, method: string) => {
-        const op = (spec?.paths?.[path] as any)?.[method] || {};
+        const op = getOperation(spec, path, method) || {};
         const opId = getEndpointId(op, path, method);
         return `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}/api/${encodeURIComponent(opId)}`;
     }, [spec, selectedParsableKey]);
@@ -427,7 +431,7 @@ export default function App() {
                 openEndpointInBrowserTab(path, method);
                 return;
             }
-            const op = (spec?.paths?.[path] as any)?.[method] || {};
+            const op = getOperation(spec, path, method);
             const label = op?.summary || `${method.toUpperCase()} ${path}`;
             const url = endpointDeepLink(path, method);
             if (action === 'copy-link') {
@@ -484,20 +488,15 @@ export default function App() {
         if (!spec?.paths || !q.trim())
             return false;
         const needle = q.trim().toLowerCase();
-        for (const [pathStr, item] of Object.entries(spec.paths)) {
-            for (const [m, op] of Object.entries(item as any)) {
-                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(m))
-                    continue;
-                const o = op as any;
-                if (sidebarDisplayRoutes && pathStr.toLowerCase().includes(needle))
-                    return true;
-                if ((o.summary || '').toLowerCase().includes(needle))
-                    return true;
-                if ((o.description || '').toLowerCase().includes(needle))
-                    return true;
-                if ((o.tags || []).some((t: string) => t.toLowerCase().includes(needle)))
-                    return true;
-            }
+        for (const {path: pathStr, operation} of getDocumentOperations(spec)) {
+            if (sidebarDisplayRoutes && pathStr.toLowerCase().includes(needle))
+                return true;
+            if ((operation.summary || '').toLowerCase().includes(needle))
+                return true;
+            if ((operation.description || '').toLowerCase().includes(needle))
+                return true;
+            if ((operation.tags || []).some((tag: string) => tag.toLowerCase().includes(needle)))
+                return true;
         }
         return false;
     }, [spec, sidebarDisplayRoutes]);
@@ -603,10 +602,13 @@ export default function App() {
     const handleDownload = () => {
         if (!spec)
             return;
-        const d = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(spec, null, 2));
+        const raw = getRawSpecDocument(spec);
+        const text = raw?.text || JSON.stringify(spec, null, 2);
+        const isYaml = raw?.text ? !raw.text.trimStart().startsWith('{') : false;
+        const d = `data:${isYaml ? 'application/yaml' : 'application/json'};charset=utf-8,` + encodeURIComponent(text);
         const a = document.createElement('a');
         a.href = d;
-        a.download = `${selectedParsableKey}-spec.json`;
+        a.download = `${selectedParsableKey}-spec.${isYaml ? 'yaml' : 'json'}`;
         a.click();
     };
     const handlePushSchema = (n: string) => setModalsStack(p => [...p, n]);
@@ -638,7 +640,7 @@ export default function App() {
             window.setTimeout(() => dispatchOpenDocUIAction(action), 50);
             return;
         }
-        const operation = (spec?.paths?.[action.path] as any)?.[action.method];
+        const operation = getOperation(spec, action.path, action.method);
         const actionId = action.id || createOpenDocUIActionId();
         if (!spec || !operation)
             return;
@@ -774,7 +776,7 @@ export default function App() {
             <div style={styleVars}
                  className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
 
-                <input ref={hiddenFileInputRef} type="file"
+                <input ref={hiddenFileInputRef} type="file" multiple
                        accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml" className="hidden"
                        onChange={handleFileChosen}/>
 
@@ -881,7 +883,7 @@ export default function App() {
                                setSchemaStack={setModalsStack} onPopSchema={handlePopSchema}
                                onPushSchema={handlePushSchema} codeEndpoint={codeGenEndpoint}
                                setCodeEndpoint={setCodeGenEndpoint} activeAuth={activeAuth}
-                               authOperation={selectedEndpoint ? (spec?.paths?.[selectedEndpoint.path] as any)?.[selectedEndpoint.method] || null : null}
+                               authOperation={selectedEndpoint ? getOperation(spec, selectedEndpoint.path, selectedEndpoint.method) : null}
                                setActiveAuth={setActiveAuth} authOpen={showAuthModal} setAuthOpen={setShowAuthModal}
                                switcherOpen={switcherOpen} tabs={endpointTabs} activeTabId={activeTabId}
                                switcherIndex={switcherIndex} onCancelSwitcher={cancelSwitcher}

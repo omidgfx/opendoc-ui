@@ -64,6 +64,8 @@ export interface ServerVariable {
 
 export interface ServerDefinition {
     url: string;
+    /** OpenAPI 3.2 stable server identifier. */
+    name?: string;
     description?: string;
     variables?: Record<string, ServerVariable>;
 }
@@ -189,6 +191,9 @@ export interface OpenApiSpec {
         headers?: {
             [name: string]: any;
         };
+        pathItems?: Record<string, PathItem | {$ref: string}>;
+        /** OpenAPI 3.2 reusable Media Type Objects. */
+        mediaTypes?: Record<string, any>;
     };
 }
 

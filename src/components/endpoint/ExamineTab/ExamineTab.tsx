@@ -151,14 +151,20 @@ export default function ExamineTab({
         const merged = getMergedParameters(pathItemObj, operation, spec);
         const defaultParams: Record<string, string | string[]> = {};
         merged.forEach((param: any) => {
-            const schema = param.schema || param;
-            const isArray = schema.type === 'array' || param.type === 'array';
+            const schema = param.schema ?? param;
+            const isArray = schema?.type === 'array' || param.type === 'array';
             if (isArray && (schema.items?.enum || param.items?.enum)) {
                 const values = schema.items?.enum || param.items?.enum;
                 defaultParams[parameterStateKey(param.in, param.name)] = [String(values[0] ?? '')];
                 return;
             }
-            const example = param.example ?? schema.example ?? schema.default;
+            const firstNamedExample = Object.values(param.examples || {})[0] as any;
+            const example = param.example
+                ?? firstNamedExample?.dataValue
+                ?? firstNamedExample?.value
+                ?? firstNamedExample?.serializedValue
+                ?? schema?.example
+                ?? schema?.default;
             if (example === undefined) {
                 defaultParams[parameterStateKey(param.in, param.name)] = '';
             } else if (typeof example === 'object') {
@@ -180,7 +186,7 @@ export default function ExamineTab({
                 if (example !== undefined)
                     setRequestBodyText(typeof example === 'string' ? example : JSON.stringify(example, null, 2));
                 else if (contentObj.schema)
-                    setRequestBodyText(getMockSnippet(contentObj.schema, spec));
+                    setRequestBodyText(getMockSnippet(contentObj.schema, spec, 'request'));
                 else
                     setRequestBodyText('{\n \n}');
             }

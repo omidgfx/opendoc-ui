@@ -1,4 +1,5 @@
 import {createZipBlob, downloadBlob} from './zip';
+import {generateValidatedMock} from './mockGenerator';
 
 export function getRefName(ref: string): string {
     if (!ref)
@@ -65,97 +66,16 @@ function isPlainObject(v: any) {
     return v && typeof v === 'object' && !Array.isArray(v);
 }
 
-export function generateMockValue(schema: any, allSchemas: Record<string, any> = {}, visited = new Set<string>(), depth = 0): any {
-    if (schema === true)
-        return null;
-    if (schema === false)
-        throw new Error('No value can satisfy the boolean schema false.');
-    if (schema === undefined || schema === null)
-        return null;
-    if (depth > 12)
-        return {};
-    if (schema.$ref) {
-        const refName = getRefName(schema.$ref);
-        if (visited.has(refName))
-            return {};
-        visited.add(refName);
-        const refSchema = allSchemas[refName];
-        if (refSchema)
-            return generateMockValue(refSchema, allSchemas, visited, depth + 1);
-        return {};
-    }
-    if (schema.const !== undefined)
-        return schema.const;
-    if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0)
-        return schema.enum[0];
-    if (schema.example !== undefined)
-        return schema.example;
-    if (schema.default !== undefined)
-        return schema.default;
-    if (schema.allOf && Array.isArray(schema.allOf)) {
-        let merged: any = {};
-        schema.allOf.forEach((sub: any) => {
-            const subMock = generateMockValue(sub, allSchemas, new Set(visited), depth + 1);
-            if (isPlainObject(subMock) && isPlainObject(merged)) {
-                merged = {...merged, ...subMock};
-            } else if (subMock !== undefined) {
-                if (isPlainObject(subMock))
-                    merged = {...merged, ...subMock};
-                else if (Object.keys(merged).length === 0)
-                    merged = subMock;
-            }
-        });
-        return merged;
-    }
-    if (schema.oneOf && Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-        return generateMockValue(schema.oneOf[0], allSchemas, new Set(visited), depth + 1);
-    }
-    if (schema.anyOf && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-        return generateMockValue(schema.anyOf[0], allSchemas, new Set(visited), depth + 1);
-    }
-    const typeVal = schema.type;
-    const resolvedType = Array.isArray(typeVal) ? typeVal.find((t) => t !== 'null') : typeVal;
-    if (resolvedType === 'object' || schema.properties) {
-        const obj: any = {};
-        if (schema.properties) {
-            Object.entries(schema.properties).forEach(([k, v]: [
-                string,
-                any
-            ]) => {
-                obj[k] = generateMockValue(v, allSchemas, new Set(visited), depth + 1);
-            });
-        }
-        return obj;
-    }
-    if (resolvedType === 'array') {
-        return [generateMockValue(schema.items || {}, allSchemas, new Set(visited), depth + 1)];
-    }
-    if (resolvedType === 'string') {
-        if (schema.format === 'date-time' || schema.format === 'date')
-            return new Date().toISOString();
-        if (schema.format === 'uuid')
-            return '123e4567-e89b-12d3-a456-426614174000';
-        if (schema.format === 'email')
-            return 'user@example.com';
-        if (schema.format === 'uri')
-            return 'https://example.com/path';
-        return schema.enum ? schema.enum[0] : 'string';
-    }
-    if (resolvedType === 'integer' || resolvedType === 'number')
-        return 0;
-    if (resolvedType === 'boolean')
-        return true;
-    if (schema.properties) {
-        const obj: any = {};
-        Object.entries(schema.properties).forEach(([k, v]: [
-            string,
-            any
-        ]) => {
-            obj[k] = generateMockValue(v, allSchemas, new Set(visited), depth + 1);
-        });
-        return obj;
-    }
-    return null;
+export function generateMockValue(schema: any, allSchemas: Record<string, any> = {}): any {
+    const result = generateValidatedMock(schema, {
+        openapi: '3.1.1',
+        info: {title: 'Generated models', version: '1'},
+        paths: {},
+        components: {schemas: allSchemas},
+    });
+    if (!result.ok)
+        throw new Error(result.diagnostics.map(item => item.message).join('; '));
+    return result.value;
 }
 
 function mapPrimitiveType(t: string): string {

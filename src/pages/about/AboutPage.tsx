@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import {motion} from 'motion/react';
 import pkg from '@/package.json';
 import type {OpenApiSpec} from '@/src/types';
+import {getDocumentOperations} from '@/src/utils/openapi';
 import {
     fadeUp,
     FEATURES,
@@ -23,10 +24,9 @@ interface AboutViewProps {
 export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps) {
     const methodCounts = useMemo(() => {
         const counts: Record<string, number> = {};
-        Object.values(spec?.paths || {}).forEach(pathItem => Object.entries(pathItem || {}).forEach(([method]) => {
-            if (/^(get|post|put|delete|patch|options|head|trace)$/i.test(method))
-                counts[method.toUpperCase()] = (counts[method.toUpperCase()] || 0) + 1;
-        }));
+        getDocumentOperations(spec).forEach(({method}) => {
+            counts[method.toUpperCase()] = (counts[method.toUpperCase()] || 0) + 1;
+        });
         return counts;
     }, [spec]);
     const scrollRef = useRef<HTMLDivElement | null>(null);

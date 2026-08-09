@@ -29,7 +29,10 @@ const firstContentEntry = (parameter: any): {
     ] | undefined;
     return entry ? {mediaType: entry[0], media: entry[1]} : null;
 };
-const schemaOf = (parameter: any): any => parameter?.schema || firstContentEntry(parameter)?.media?.schema || parameter || {};
+const schemaOf = (parameter: any): any => parameter?.schema
+    ?? firstContentEntry(parameter)?.media?.schema
+    ?? parameter
+    ?? {};
 const contentMediaTypeOf = (parameter: any): string => firstContentEntry(parameter)?.mediaType?.toLowerCase().split(';', 1)[0].trim() || '';
 const typeOf = (parameter: any, value: any): string => {
     const schema = schemaOf(parameter);
@@ -47,10 +50,20 @@ const typeOf = (parameter: any, value: any): string => {
     return 'string';
 };
 const encodeComponent = (value: unknown, allowReserved = false): string => {
-    const encoded = encodeURIComponent(String(value));
+    const text = String(value);
     if (!allowReserved)
-        return encoded;
-    return encoded.replace(/%3A|%2F|%3F|%23|%5B|%5D|%40|%21|%24|%26|%27|%28|%29|%2A|%2B|%2C|%3B|%3D/gi, token => decodeURIComponent(token));
+        return encodeURIComponent(text);
+    // Preserve already encoded triples and the reserved characters that are
+    // safe inside one query value. Delimiters with form/query semantics (#,
+    // &, =, +, [, ]) stay encoded so a value cannot become another parameter.
+    const triples: string[] = [];
+    const protectedText = text.replace(/%[0-9A-Fa-f]{2}/g, token => {
+        triples.push(token.toUpperCase());
+        return `__OPENDOC_PERCENT_${triples.length - 1}__`;
+    });
+    return encodeURIComponent(protectedText)
+        .replace(/%3A|%2F|%3F|%40|%21|%24|%27|%28|%29|%2A|%2C|%3B/gi, token => decodeURIComponent(token))
+        .replace(/__OPENDOC_PERCENT_(\d+)__/g, (_match, index) => triples[Number(index)] || '');
 };
 const scalar = (value: unknown): string => {
     if (value === null)
@@ -202,13 +215,13 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     value: item,
                     allowReserved: allowReservedForLocation
                 }));
-            } else if (explode && style === 'form') {
+            } else if (explode && (style === 'form' || style === 'cookie')) {
                 values.forEach(item => result.query.push({name, value: item, allowReserved: allowReservedForLocation}));
             } else {
                 result.query.push({name, value: delimited(values, delimiter), allowReserved: allowReservedForLocation});
             }
         } else if (location === 'cookie') {
-            if (explode && style === 'form')
+            if (explode && (style === 'form' || style === 'cookie'))
                 values.forEach(item => result.cookies.push({name, value: item}));
             else
                 result.cookies.push({name, value: delimited(values, delimiter)});
@@ -234,7 +247,7 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 value: item,
                 allowReserved: allowReservedForLocation
             }));
-        } else if (explode && style === 'form') {
+        } else if (explode && (style === 'form' || style === 'cookie')) {
             entries.forEach(([key, item]) => result.query.push({
                 name: key,
                 value: item,
@@ -252,7 +265,7 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
             result.query.push({name, value: delimited(flattened, ','), allowReserved: allowReservedForLocation});
         }
     } else if (location === 'cookie') {
-        if (explode && style === 'form')
+        if (explode && (style === 'form' || style === 'cookie'))
             entries.forEach(([key, item]) => result.cookies.push({
                 name: key,
                 value: item

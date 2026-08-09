@@ -110,9 +110,13 @@ export default function Field({
         return (<div className={fieldFrame}>
             <FieldHeader label={label} required={required} description={current.description}
                          typeLabel={additionalSchema ? 'object / map' : 'object'} actions={actions}/>
+            {Array.isArray(current['x-opendoc-allOf-conflicts']) && current['x-opendoc-allOf-conflicts'].length > 0 && <p
+                className="mt-1 rounded-lg border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-2 text-[9px] leading-relaxed text-[var(--text-muted)]">
+                This allOf composition contains conflicting constraints ({current['x-opendoc-allOf-conflicts'].join(', ')}). The form shows a conservative merged view; Raw mode can send any test payload to the server.
+            </p>}
             <GuideBranch focusedPath={focusedPath}>
 
-                {Object.entries(properties).map(([key, childSchema]: [
+                {Object.entries(properties).filter(([, childSchema]: [string, any]) => childSchema?.readOnly !== true).map(([key, childSchema]: [
                     string,
                     any
                 ]) => (<Field key={key} schema={childSchema} spec={spec} value={objectValue[key]} label={key}

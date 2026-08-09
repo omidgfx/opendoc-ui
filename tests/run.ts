@@ -10,11 +10,15 @@ import { allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection 
 import { trimAIConversation } from '../src/utils/aiStorage';
 import { bodyEditorModeForMediaType, bodyTypeSupportsForm, formatBodyText, getBodyEditorLanguage, getBodyFormat, parseStructuredBody, serializeUrlEncodedBody, validateBodyText } from '../src/utils/bodyFormats';
 import { DESCRIPTION_TOOLTIP_THRESHOLD, defaultBodyValue, usesDescriptionTooltip } from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
-import { getMergedParameters, getRefName, isJsonMediaType, normalizeOpenApiSpec, queryStringFromPairs, resolveJsonPointer, resolveReference, resolveRequestBody, serializeOpenApiParameter, validateOpenApiDocument } from '@/src/utils/openapi';
+import { getDocumentOperations, getMergedParameters, getOperation, getRefName, isJsonMediaType, normalizeOpenApiSpec, queryStringFromPairs, resolveJsonPointer, resolveReference, resolveRequestBody, serializeOpenApiParameter, validateOpenApiDocument } from '@/src/utils/openapi';
 import {compileBrowserRequest, parameterStateKey} from '@/src/utils/requestPlan';
 import {createTypeNameMap, generateAllTsContent, schemaToTsType, toSafeGeneratedFileName} from '@/src/utils/schemaExport';
 import {sanitizeZipEntryName} from '@/src/utils/zip';
 import {generateValidatedMock} from '@/src/utils/mockGenerator';
+import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
+import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
+import {parseSpecDraft} from '@/src/utils/appSpec';
+import {getRawSpecDocument} from '@/src/utils/specSource';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -133,7 +137,7 @@ test('serializes OpenAPI query arrays and objects', () => {
         allowReserved: true,
         schema: { type: 'string' }
     }, 'https://api.test/a?x=1');
-    assert.equal(queryStringFromPairs(reserved.query), '?next=https://api.test/a?x=1');
+    assert.equal(queryStringFromPairs(reserved.query), '?next=https://api.test/a?x%3D1');
     const labelArray = serializeOpenApiParameter({
         name: 'id', in: 'path', style: 'label', explode: true, schema: { type: 'array', items: { type: 'string' } }
     }, ['a', 'b']);
@@ -321,6 +325,21 @@ test('generates deterministic mocks that validate for the supported constraint s
     assert.equal(impossible.ok, false);
     assert.equal(impossible.diagnostics[0].code, 'MOCK_GENERATION_IMPOSSIBLE');
 });
+test('applies readOnly and writeOnly semantics to request and response mocks', () => {
+    const schema = {
+        type: 'object', required: ['id', 'password'], properties: {
+            id: {type: 'string', readOnly: true},
+            password: {type: 'string', writeOnly: true},
+            name: {type: 'string'},
+        },
+    };
+    const request = generateValidatedMock(schema, baseSpec, 'request');
+    const response = generateValidatedMock(schema, baseSpec, 'response');
+    assert.equal(request.ok, true);
+    assert.deepEqual(request.value, {password: 'string', name: 'string'});
+    assert.equal(response.ok, true);
+    assert.deepEqual(response.value, {id: 'string', name: 'string'});
+});
 test('detects vendor JSON media types', () => {
     assert.equal(isJsonMediaType('application/problem+json; charset=utf-8'), true);
     assert.equal(isJsonMediaType('application/vnd.company.resource+json'), true);
@@ -340,6 +359,77 @@ test('validates documents by explicit dialect and accepts pathless OAS 3.1 webho
     const future = validateOpenApiDocument({openapi: '3.9.0', info: {title: 'Future', version: '1'}});
     assert.equal(future.valid, false);
     assert.ok(future.errors.some(error => error.includes('Unsupported')));
+});
+test('discovers OAS 3.2 QUERY and arbitrary additional operations through one operation model', () => {
+    const spec: any = normalizeOpenApiSpec({
+        openapi: '3.2.0', info: {title: 'OAS 3.2', version: '1'},
+        paths: {'/items': {
+            query: {operationId: 'queryItems', responses: {'200': {description: 'ok'}}},
+            additionalOperations: {
+                PURGE: {operationId: 'purgeItems', responses: {'204': {description: 'purged'}}},
+            },
+        }},
+    });
+    const operations = getDocumentOperations(spec);
+    assert.deepEqual(operations.map(item => item.method), ['query', 'purge']);
+    assert.equal(getOperation(spec, '/items', 'PURGE')?.operationId, 'purgeItems');
+    assert.equal(buildAIContext({spec, specKey: 'oas32'}).sources.some(source => source.id === 'path:PURGE:/items'), true);
+});
+test('keeps the immutable raw document available beside the normalized semantic document', () => {
+    const raw = 'openapi: 3.0.4\ninfo:\n  title: Raw\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    Value:\n      type: string\n      nullable: true\n';
+    const spec = parseSpecDraft(raw);
+    const metadata = getRawSpecDocument(spec);
+    assert.equal(metadata?.text, raw);
+    assert.equal(metadata?.dialect, 'openapi3.0');
+    assert.equal((metadata?.document as any).components.schemas.Value.type, 'string');
+});
+test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {
+    assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'references.local' && item.status === 'supported'));
+    assert.ok(capabilitiesFor('oas3.2', 'execute').some(item => item.id === 'operations.additional'));
+    assert.ok(capabilitiesFor('oas3.1', 'execute').some(item => item.status === 'transport-dependent'));
+});
+test('generates canonical request snippets with placeholders and no live credentials', () => {
+    const operation: any = {
+        parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string'}}],
+        requestBody: {content: {'application/json': {schema: {type: 'object', properties: {name: {type: 'string'}}}}}},
+        responses: {'200': {description: 'ok', content: {'application/json': {}}}},
+        security: [{auth: []}],
+    };
+    const spec: any = {...baseSpec, servers: [{url: 'https://api.example.test/v1'}], paths: {'/users/{id}': {post: operation}}, security: [{auth: []}]};
+    const request = buildCodegenRequest({
+        spec, path: '/users/{id}', method: 'post', operation, selectedServer: 'https://api.example.test/v1',
+        activeAuth: {
+            activeScheme: 'auth', selectedSchemes: ['auth'], requirementIndex: 0,
+            schemeValues: {auth: {schemeId: 'auth', type: 'bearer', value: 'live-secret-token'}},
+            cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: '',
+        },
+    });
+    for (const language of ['curl', 'js-fetch', 'js-axios', 'python', 'go', 'php', 'csharp', 'angular', 'laravel'] as const) {
+        const snippet = generateRequestSnippet(language, request);
+        assert.doesNotMatch(snippet, /live-secret-token/, language);
+        assert.match(snippet, /YOUR_ACCESS_TOKEN/, language);
+        assert.match(snippet, /https:\/\/api\.example\.test\/v1\/users\/YOUR_ID/, language);
+    }
+});
+test('generates transport-correct multipart snippets instead of raw multipart headers', () => {
+    const operation: any = {
+        requestBody: {content: {'multipart/form-data': {
+            schema: {type: 'object', properties: {metadata: {type: 'object'}, file: {type: 'string', format: 'binary'}}},
+            encoding: {metadata: {contentType: 'application/json'}},
+        }}},
+        responses: {'200': {description: 'ok'}},
+    };
+    const spec: any = {...baseSpec, servers: [{url: 'https://upload.example.test'}], paths: {'/upload': {post: operation}}};
+    const request = buildCodegenRequest({spec, path: '/upload', method: 'post', operation, selectedServer: 'https://upload.example.test', activeAuth: {
+        activeScheme: 'none', selectedSchemes: [], schemeValues: {}, cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: '',
+    }});
+    assert.equal(request.bodyKind, 'multipart');
+    assert.match(generateRequestSnippet('curl', request), /--form/);
+    assert.match(generateRequestSnippet('js-fetch', request), /new FormData/);
+    assert.match(generateRequestSnippet('python', request), /files=/);
+    assert.match(generateRequestSnippet('go', request), /multipart\.NewWriter/);
+    assert.match(generateRequestSnippet('csharp', request), /MultipartFormDataContent/);
+    assert.match(generateRequestSnippet('laravel', request), /attach/);
 });
 test('preserves OAS 3.0 nullable semantics during normalization', () => {
     const normalized: any = normalizeOpenApiSpec({

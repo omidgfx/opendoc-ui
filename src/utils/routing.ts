@@ -1,6 +1,7 @@
 import type {EndpointRef, OpenApiSpec, ParsedRoute} from '../types';
+import {getDocumentOperations, getOperation, OAS_FIXED_HTTP_METHODS} from './openapi/operations';
 
-export const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
+export const HTTP_METHODS = [...OAS_FIXED_HTTP_METHODS];
 export const getEndpointId = (operation: any, path: string, method: string): string => {
     if (operation?.operationId)
         return operation.operationId;
@@ -9,14 +10,9 @@ export const getEndpointId = (operation: any, path: string, method: string): str
 export const resolveEndpointFromId = (id: string, spec: OpenApiSpec | null): EndpointRef | null => {
     if (!spec?.paths)
         return null;
-    for (const [path, pathItem] of Object.entries(spec.paths)) {
-        for (const [method, operation] of Object.entries(pathItem)) {
-            if (!HTTP_METHODS.includes(method))
-                continue;
-            if (getEndpointId(operation, path, method) === id) {
-                return {path, method};
-            }
-        }
+    for (const {path, method, operation} of getDocumentOperations(spec)) {
+        if (getEndpointId(operation, path, method) === id)
+            return {path, method};
     }
     return null;
 };
@@ -227,12 +223,9 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     } else if (endpoint) {
         let endpointId = '';
         if (activeSpec) {
-            const pathItem = activeSpec.paths[endpoint.path];
-            if (pathItem) {
-                const op = (pathItem as any)[endpoint.method];
-                if (op)
-                    endpointId = getEndpointId(op, endpoint.path, endpoint.method);
-            }
+            const operation = getOperation(activeSpec, endpoint.path, endpoint.method);
+            if (operation)
+                endpointId = getEndpointId(operation, endpoint.path, endpoint.method);
         }
         if (!endpointId)
             endpointId = `${endpoint.method}-${endpoint.path.replace(/^\//, '').replace(/\//g, '-')}`;

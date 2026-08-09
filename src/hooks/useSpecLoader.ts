@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
 import {fetchSpec, type FetchSpecResult} from '../utils/specCache';
 import {parseSpecDraft} from '../utils/appSpec';
-import {registerSpecDiagnostics, registerSpecSourceUri} from '../utils/specSource';
+import {getRawSpecDocument, registerRawSpecDocument, registerSpecDiagnostics, registerSpecSourceUri} from '../utils/specSource';
 import {processWithOpenApiEngine} from '../utils/openapi/engine';
 
 export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig) {
@@ -26,6 +26,9 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
                 const processed = await processWithOpenApiEngine(parsable.rawSpec, parsed, sourceUri);
                 document = processed.document;
                 if (document) {
+                    const rawMeta = getRawSpecDocument(parsed);
+                    if (rawMeta)
+                        registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
                     registerSpecSourceUri(document, sourceUri);
                     registerSpecDiagnostics(document, processed.diagnostics);
                 }
@@ -38,6 +41,9 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
                 if (parsed) {
                     const processed = await processWithOpenApiEngine(fetchInfo.raw, parsed, parsable.url);
                     document = processed.document;
+                    const rawMeta = getRawSpecDocument(parsed);
+                    if (rawMeta)
+                        registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
                     registerSpecSourceUri(document, parsable.url);
                     registerSpecDiagnostics(document, processed.diagnostics);
                 }

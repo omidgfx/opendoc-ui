@@ -3,6 +3,7 @@ export type LocalHistoryEntry = {
     title: string;
     fileName: string;
     raw: string;
+    bundle?: Record<string, string>;
     openedAt: number;
 };
 const STORAGE_KEY = 'opendoc_local_history';
@@ -17,14 +18,17 @@ export const readLocalHistory = (): LocalHistoryEntry[] => {
         && typeof e.title === 'string'
         && typeof e.fileName === 'string'
         && typeof e.raw === 'string'
+        && (e.bundle === undefined || e.bundle && typeof e.bundle === 'object' && !Array.isArray(e.bundle) && Object.values(e.bundle).every(value => typeof value === 'string'))
         && Number.isFinite(e.openedAt)));
     return parsed.slice(0, MAX_ENTRIES);
 };
 const writeLocalHistory = (list: LocalHistoryEntry[]): boolean => storage.setJSON(STORAGE_KEY, list);
 export const upsertLocalHistory = (entry: LocalHistoryEntry) => {
+    const bundleSize = Object.values(entry.bundle || {}).reduce((total, raw) => total + raw.length, 0);
+    const safeEntry = bundleSize > MAX_RAW_BYTES ? {...entry, bundle: undefined} : entry;
     const list = readLocalHistory();
-    const rest = list.filter((e) => e.key !== entry.key);
-    let next = [entry, ...rest].slice(0, MAX_ENTRIES);
+    const rest = list.filter((e) => e.key !== safeEntry.key);
+    let next = [safeEntry, ...rest].slice(0, MAX_ENTRIES);
     while (next.length > 1 && !writeLocalHistory(next))
         next = next.slice(0, -1);
     if (next.length === 1)

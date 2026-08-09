@@ -1,0 +1,54 @@
+swagger: "2.0"
+info:
+  title: Swagger 2 conformance
+  version: "1"
+host: api.example.test
+basePath: /v2
+schemes: [https]
+consumes: [application/x-www-form-urlencoded]
+produces: [application/json]
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: X-API-Key
+    in: header
+security:
+  - api_key: []
+paths:
+  /items/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      schemes: [http]
+      consumes: [application/x-www-form-urlencoded]
+      parameters:
+        - name: tags
+          in: formData
+          type: array
+          items: {type: string}
+          collectionFormat: pipes
+        - name: queryIds
+          in: query
+          type: array
+          items: {type: string}
+          collectionFormat: multi
+      responses:
+        "200":
+          description: ok
+          schema: {type: object}
+  /raw:
+    post:
+      consumes: []
+      produces: []
+      parameters:
+        - name: payload
+          in: body
+          required: true
+          schema: {type: string}
+      responses:
+        default:
+          description: unspecified media
+          schema: {type: string}

@@ -11,6 +11,7 @@ import type {OpenApiSpec} from '../types';
 import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../components/endpoint/EndpointTabs';
 import {useTabPersistence} from './useTabPersistence';
 import {useTabSwitcher} from './useTabSwitcher';
+import {getOperation} from '../utils/openapi';
 
 export type WorkspaceEndpoint = {
     path: string;
@@ -121,11 +122,7 @@ export function useWorkspaceTabs({
     const getEndpointLabel = useCallback((path: string, method: string): string => {
         if (!spec?.paths)
             return path;
-        const po = spec.paths[path];
-        if (!po)
-            return path;
-        const op = (po as any)[method];
-        return op?.summary || path;
+        return getOperation(spec, path, method)?.summary || path;
     }, [spec]);
     const openEndpointPreview = useCallback((path: string, method: string) => {
         setShowWelcome(false);

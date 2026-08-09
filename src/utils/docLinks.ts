@@ -1,5 +1,6 @@
 import type {OpenApiSpec} from '../types';
-import {getEndpointId, HTTP_METHODS} from './routing';
+import {getEndpointId} from './routing';
+import {getDocumentOperations} from './openapi/operations';
 
 export interface OperationLinkTarget {
     path: string;
@@ -11,30 +12,21 @@ export function buildOperationLinkIndex(spec: OpenApiSpec | null): Record<string
     const index: Record<string, OperationLinkTarget> = {};
     if (!spec?.paths)
         return index;
-    Object.entries(spec.paths).forEach(([path, pathItem]) => {
-        if (!pathItem)
-            return;
-        Object.entries(pathItem).forEach(([method, operation]) => {
-            if (!HTTP_METHODS.includes(method))
-                return;
-            const op = operation as any;
-            if (!op)
-                return;
-            const endpointId = getEndpointId(op, path, method);
-            const target: OperationLinkTarget = {path, method, endpointId};
-            index[endpointId.toLowerCase()] = target;
-            if (op.operationId)
-                index[String(op.operationId).toLowerCase()] = target;
-            if (op.summary) {
-                const slug = String(op.summary)
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-+|-+$/g, '');
-                if (slug)
-                    index[slug] = target;
-            }
-        });
+    getDocumentOperations(spec).forEach(({path, method, operation}) => {
+        const endpointId = getEndpointId(operation, path, method);
+        const target: OperationLinkTarget = {path, method, endpointId};
+        index[endpointId.toLowerCase()] = target;
+        if (operation.operationId)
+            index[String(operation.operationId).toLowerCase()] = target;
+        if (operation.summary) {
+            const slug = String(operation.summary)
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            if (slug)
+                index[slug] = target;
+        }
     });
     return index;
 }

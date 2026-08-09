@@ -8,6 +8,7 @@ import WelcomeView from '@/src/pages/status/WelcomePage';
 import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
+import {getOperation} from '../../utils/openapi';
 
 interface WorkspaceContentProps {
     spec: OpenApiSpec | null;
@@ -144,7 +145,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         return <EmptySearchState/>;
     }
     if (selectedEndpoint) {
-        const operation = (spec.paths[selectedEndpoint.path] as any)?.[selectedEndpoint.method];
+        const operation = getOperation(spec, selectedEndpoint.path, selectedEndpoint.method);
         if (operation) {
             const key = `${selectedEndpoint.method.toLowerCase()}:${selectedEndpoint.path}`;
             return (<EndpointWorkspace spec={spec} endpoint={selectedEndpoint} parsableKey={specKey}

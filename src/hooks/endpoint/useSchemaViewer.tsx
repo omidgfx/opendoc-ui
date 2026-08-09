@@ -109,8 +109,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (<div className="flex flex-col gap-1.5 items-start">
-                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                    Of:</span>
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All Of · every constraint applies:</span>
                 <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
                     {prop.allOf.map((sub: any, sIdx: number) => <button key={sIdx} onClick={() => {
                         const refName = sub.$ref ? getRefName(sub.$ref) : null;
@@ -236,8 +235,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (prop.allOf && Array.isArray(prop.allOf)) {
             const viewerSchema = viewerExampleSchemas[code];
             return (<div className="flex flex-col gap-1.5 items-start">
-                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                    Of:</span>
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All Of · every constraint applies:</span>
                 <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
                     {prop.allOf.map((sub: any, sIdx: number) => {
                         const isActive = isSchemaActive(sub, code, viewerSchema);

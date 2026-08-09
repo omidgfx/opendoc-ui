@@ -8,7 +8,7 @@ interface ParameterInputProps {
 
 export default function ParameterInput({param, value, onChange}: ParameterInputProps) {
     const [pendingItem, setPendingItem] = useState('');
-    const schema = param.schema || param;
+    const schema = param.schema ?? param;
     const itemSchema = schema.items || param.items || {};
     const isArray = schema.type === 'array' || param.type === 'array';
     const selectedValues: string[] = Array.isArray(value)

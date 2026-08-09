@@ -11,6 +11,7 @@ interface UseSpecificationActionsOptions {
     localSpec: LocalSpec | null;
     loadSpec: (key: string, parsable: Parsable, forceRefresh?: boolean) => Promise<void>;
     applyLocalSpec: (raw: string, fileName: string, file: File | null) => OpenApiSpec;
+    applyLocalBundle: (bundle: Record<string, string>, preferredFile?: File | null) => Promise<OpenApiSpec>;
     setSpec: Dispatch<SetStateAction<OpenApiSpec | null>>;
     setLoadedSpecKey: Dispatch<SetStateAction<string>>;
     setLocalOpenError: Dispatch<SetStateAction<string | null>>;
@@ -22,6 +23,7 @@ export function useSpecificationActions({
                                             localSpec,
                                             loadSpec,
                                             applyLocalSpec,
+                                            applyLocalBundle,
                                             setSpec,
                                             setLoadedSpecKey,
                                             setLocalOpenError,
@@ -36,7 +38,9 @@ export function useSpecificationActions({
                 // entry first; a failed refresh can then fall back visibly.
                 await loadSpec(selectedSpecKey, parsables[selectedSpecKey], true);
             } else if (localSpec) {
-                if (localSpec.file) {
+                if (localSpec.bundle && Object.keys(localSpec.bundle).length > 1) {
+                    await applyLocalBundle(localSpec.bundle, localSpec.file);
+                } else if (localSpec.file) {
                     applyLocalSpec(await localSpec.file.text(), localSpec.fileName, localSpec.file);
                 } else {
                     setSpec(parseSpecDraft(localSpec.raw));
@@ -50,7 +54,7 @@ export function useSpecificationActions({
             await minimumVisible;
             setIsRefreshingSpec(false);
         }
-    }, [selectedSpecKey, parsables, localSpec, loadSpec, applyLocalSpec, setSpec, setLoadedSpecKey, setLocalOpenError]);
+    }, [selectedSpecKey, parsables, localSpec, loadSpec, applyLocalSpec, applyLocalBundle, setSpec, setLoadedSpecKey, setLocalOpenError]);
     const reloadSpecification = useCallback(async (specKey: string) => {
         if (specKey === selectedSpecKey)
             await refreshSpec();

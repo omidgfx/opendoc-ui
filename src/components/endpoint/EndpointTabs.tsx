@@ -201,7 +201,7 @@ export default function EndpointTabs({
                                 className={clsx('text-[11px] truncate font-medium inline-block pr-0.5', tab.isPreview && 'italic')}>
                                 {tab.label}
                             </span>
-                            <button
+                            <button type="button" aria-label={`Close ${tab.label}`}
                                 className={clsx('endpoint-tab-close shrink-0 size-4 rounded flex items-center justify-center transition-all cursor-pointer', isHovered || isActive
                                     ? 'opacity-100 hover:bg-[var(--method-delete)]/15 hover:text-[var(--method-delete)]'
                                     : 'opacity-0 pointer-events-none')} onClick={(e) => {

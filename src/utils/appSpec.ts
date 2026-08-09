@@ -1,6 +1,7 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '../types';
-import {assertValidOpenApiDocument, normalizeOpenApiSpec} from './openapi';
+import {assertValidOpenApiDocument, normalizeOpenApiSpec, validateOpenApiDocument} from './openapi';
+import {registerRawSpecDocument} from './specSource';
 
 export type ConfigSource = 'initial' | 'file' | 'none';
 
@@ -10,6 +11,7 @@ export interface LocalSpec {
     fileName: string;
     raw: string;
     file: File | null;
+    bundle?: Record<string, string>;
 }
 
 export type EndpointKey = string;
@@ -20,5 +22,7 @@ export const parseSpecDraft = (text: string): OpenApiSpec => {
         ? JSON.parse(text)
         : jsYaml.load(text);
     assertValidOpenApiDocument(parsed);
-    return normalizeOpenApiSpec(parsed);
+    const normalized = normalizeOpenApiSpec(parsed);
+    registerRawSpecDocument(normalized, text, parsed, validateOpenApiDocument(parsed).version);
+    return normalized;
 };
