@@ -11,6 +11,7 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import {useEscClose} from '../../../hooks/useEscClose';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
+import {getMockSnippet as generateMockSnippet} from '../../../utils/mockGenerator';
 
 interface ModalsStackProps {
     modals: Array<{
@@ -266,8 +267,7 @@ export default function ModalsStack({
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (<div className="flex flex-col gap-1 items-start">
-                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                    Of:</span>
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All Of · every constraint applies:</span>
                 <div className="flex flex-wrap gap-1.5 items-center">
                     {prop.allOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
                         {sIdx > 0 &&
@@ -303,185 +303,12 @@ export default function ModalsStack({
             {renderTypeName(prop.type, prop.format)}
         </span>);
     };
-    const getMockSnippet = (schema: any): string => {
-        if (schema === undefined || schema === null)
-            return 'null';
-        const generateMockFromPattern = (pattern: string): string => {
-            if (!pattern)
-                return 'string';
-            if (pattern.includes('uuid') || pattern.includes('UUID')) {
-                return '123e4567-e89b-12d3-a456-426614174000';
-            }
-            if (pattern.includes('^[0-9]+$') || pattern.includes('^\\d+$')) {
-                return '12345';
-            }
-            if (pattern.includes('^[a-zA-Z0-9]+$')) {
-                return 'string123';
-            }
-            if (pattern.includes('@') || pattern.includes('email')) {
-                return 'user@example.com';
-            }
-            if (pattern.includes('phone') || pattern.includes('^[\\+]?[0-9]')) {
-                return '+1234567890';
-            }
-            if (pattern.includes('date') || pattern.includes('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')) {
-                return '2026-07-03';
-            }
-            let generated = '';
-            let cleaned = pattern.replace(/^\^/, '').replace(/\$$/, '');
-            let i = 0;
-            while (i < cleaned.length) {
-                let char = cleaned[i];
-                if (char === '\\') {
-                    let next = cleaned[i + 1];
-                    if (next === 'd') {
-                        generated += '5';
-                    } else if (next === 'w') {
-                        generated += 'a';
-                    } else if (next === 's') {
-                        generated += ' ';
-                    } else {
-                        generated += next || '';
-                    }
-                    i += 2;
-                } else if (char === '[') {
-                    let endIdx = cleaned.indexOf(']', i);
-                    if (endIdx !== -1) {
-                        let content = cleaned.substring(i + 1, endIdx);
-                        if (content.includes('0-9') || content.includes('\\d')) {
-                            generated += '9';
-                        } else if (content.includes('a-z')) {
-                            generated += 'x';
-                        } else if (content.includes('A-Z')) {
-                            generated += 'X';
-                        } else if (content.length > 0) {
-                            generated += content[0];
-                        } else {
-                            generated += 'a';
-                        }
-                        i = endIdx + 1;
-                    } else {
-                        generated += '[';
-                        i++;
-                    }
-                } else if (cleaned[i] === '{') {
-                    let endIdx = cleaned.indexOf('}', i);
-                    if (endIdx !== -1) {
-                        let countStr = cleaned.substring(i + 1, endIdx);
-                        let count = parseInt(countStr, 10) || 1;
-                        let lastChar = generated[generated.length - 1] || 'a';
-                        for (let k = 0; k < count - 1; k++) {
-                            generated += lastChar;
-                        }
-                        i = endIdx + 1;
-                    } else {
-                        generated += '{';
-                        i++;
-                    }
-                } else if (char === '(' || char === ')' || char === '?' || char === '*' || char === '+') {
-                    i++;
-                } else if (char === '|') {
-                    break;
-                } else {
-                    generated += char;
-                    i++;
-                }
-            }
-            return generated || 'string';
-        };
-        const generateMock = (s: any, depth = 0, visited = new Set<string>()): any => {
-            if (!s)
-                return null;
-            if (depth > 1000)
-                return {};
-            if (s.$ref) {
-                const refName = getRefName(s.$ref);
-                if (visited.has(refName))
-                    return {};
-                visited.add(refName);
-                const refSchema = componentsSchemas?.[refName];
-                if (refSchema) {
-                    return generateMock(refSchema, depth + 1, visited);
-                }
-                return {};
-            }
-            if (s.const !== undefined)
-                return s.const;
-            if (s.enum && Array.isArray(s.enum) && s.enum.length > 0)
-                return s.enum[0];
-            if (s.example !== undefined)
-                return s.example;
-            if (s.default !== undefined)
-                return s.default;
-            if (s.allOf && Array.isArray(s.allOf)) {
-                let merged = {};
-                s.allOf.forEach((sub: any) => {
-                    const subMock = generateMock(sub, depth + 1, new Set(visited));
-                    if (typeof subMock === 'object' && subMock !== null) {
-                        merged = {...merged, ...subMock};
-                    } else if (subMock !== null) {
-                        merged = subMock;
-                    }
-                });
-                return merged;
-            }
-            if (s.oneOf && Array.isArray(s.oneOf) && s.oneOf.length > 0) {
-                return generateMock(s.oneOf[0], depth + 1, new Set(visited));
-            }
-            if (s.anyOf && Array.isArray(s.anyOf) && s.anyOf.length > 0) {
-                return generateMock(s.anyOf[0], depth + 1, new Set(visited));
-            }
-            const typeVal = s.type;
-            const resolvedType = Array.isArray(typeVal) ? typeVal.find((t) => t !== 'null') : typeVal;
-            if (resolvedType === 'object' || s.properties) {
-                const obj: any = {};
-                if (s.properties) {
-                    Object.entries(s.properties).forEach(([k, v]: [
-                        string,
-                        any
-                    ]) => {
-                        obj[k] = generateMock(v, depth + 1, new Set(visited));
-                    });
-                }
-                return obj;
-            }
-            if (resolvedType === 'array') {
-                return [generateMock(s.items || {}, depth + 1, new Set(visited))];
-            }
-            if (resolvedType === 'string') {
-                if (s.format === 'date-time')
-                    return new Date().toISOString();
-                if (s.format === 'uuid')
-                    return '123e4567-e89b-12d3-a456-426614174000';
-                if (s.pattern) {
-                    return generateMockFromPattern(s.pattern);
-                }
-                return s.enum ? s.enum[0] : 'string';
-            }
-            if (resolvedType === 'integer' || resolvedType === 'number') {
-                return 0;
-            }
-            if (resolvedType === 'boolean') {
-                return true;
-            }
-            if (s.properties) {
-                const obj: any = {};
-                Object.entries(s.properties).forEach(([k, v]: [
-                    string,
-                    any
-                ]) => {
-                    obj[k] = generateMock(v, depth + 1, new Set(visited));
-                });
-                return obj;
-            }
-            return null;
-        };
-        try {
-            return JSON.stringify(generateMock(schema), null, 2);
-        } catch {
-            return '{}';
-        }
-    };
+    const getMockSnippet = (schema: any): string => generateMockSnippet(schema, {
+        openapi: '3.1.1',
+        info: {title: 'Schema viewer', version: '1'},
+        paths: {},
+        components: {schemas: componentsSchemas || {}},
+    });
     const escapeXml = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
     const toXml = (value: any, nodeName = 'root', depth = 0): string => {
         const indent = '  '.repeat(depth);
@@ -656,7 +483,15 @@ export default function ModalsStack({
                                 </div>}
                         </div>}
 
-                    {activeTab === 'example' ?
+                    {activeSchemaObj.schema === true ?
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 text-xs">
+                            <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+                            <p className="mt-1 text-[var(--text-muted)]">Any JSON value satisfies this boolean schema.</p>
+                        </div> : activeSchemaObj.schema === false ?
+                        <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-5 text-xs">
+                            <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+                            <p className="mt-1 text-[var(--text-muted)]">No JSON value satisfies this boolean schema.</p>
+                        </div> : activeTab === 'example' ?
                         <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
                             <CodeViewer
                                 code={formatSimulationExample(activeSchemaObj.schema, activeSchemaObj.schemaName, activeExampleEncoding)}

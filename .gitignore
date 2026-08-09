@@ -8,6 +8,5 @@ coverage/
 !.env.example
 .idea
 .vite
-package-lock.json
 public/specs
 public/config.json

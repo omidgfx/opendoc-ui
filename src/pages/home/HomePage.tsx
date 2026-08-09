@@ -4,6 +4,8 @@ import Markdown from '@/src/components/common/Markdown';
 import ShareModal from '@/src/components/modals/ShareModal';
 import {useEscClose} from '@/src/hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
+import {getDocumentOperations, getPathItemOperations} from '@/src/utils/openapi';
+import MethodBadge from '@/src/components/common/MethodBadge';
 
 interface HomeViewProps {
     spec: OpenApiSpec | null;
@@ -62,24 +64,12 @@ export default function HomeView({
             summary: string;
             tags: string[];
         }> = [];
-        if (!spec.paths)
-            return list;
-        Object.entries(spec.paths).forEach(([pStr, pItem]: [
-            string,
-            any
-        ]) => {
-            Object.entries(pItem).forEach(([mStr, op]: [
-                string,
-                any
-            ]) => {
-                if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(mStr.toLowerCase())) {
-                    list.push({
-                        path: pStr,
-                        method: mStr.toLowerCase(),
-                        summary: op.summary || '',
-                        tags: op.tags || ['General']
-                    });
-                }
+        getDocumentOperations(spec).forEach(({path, method, operation}) => {
+            list.push({
+                path,
+                method,
+                summary: operation.summary || '',
+                tags: operation.tags || ['General'],
             });
         });
         return list;
@@ -92,6 +82,10 @@ export default function HomeView({
             ep.summary.toLowerCase().includes(term) ||
             ep.tags.some((t) => t.toLowerCase().includes(term)));
     });
+    const webhookOperations = Object.entries(spec.webhooks || {}).flatMap(([name, pathItem]) =>
+        getPathItemOperations(pathItem).map(entry => ({name, ...entry})));
+    const unresolvedWebhooks = Object.entries(spec.webhooks || {})
+        .filter(([, pathItem]: [string, any]) => Boolean(pathItem?.$ref));
     const renderSecuritySchemes = () => {
         const schemes = spec.components?.securitySchemes;
         if (!schemes || Object.keys(schemes).length === 0) {
@@ -229,6 +223,29 @@ export default function HomeView({
                         </div>
                     </div>}
 
+
+                {(webhookOperations.length > 0 || unresolvedWebhooks.length > 0) && <div className="space-y-3">
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Webhooks</h2>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">Incoming operations initiated by the API provider. They are documented here but are not sent by the API Runner.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {webhookOperations.map(({name, method, operation}) => <div key={`${name}:${method}`}
+                            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                            <div className="flex items-center gap-2">
+                                <MethodBadge method={method} size="xs"/>
+                                <span className="font-mono text-xs font-bold text-[var(--text-heading)]">{name}</span>
+                            </div>
+                            <p className="mt-2 text-[11px] text-[var(--text-muted)]">{operation.summary || operation.description || 'Incoming webhook operation'}</p>
+                            <span className="mt-2 inline-flex rounded bg-[var(--background)] px-2 py-1 text-[9px] font-bold text-[var(--text-muted)]">Documentation only</span>
+                        </div>)}
+                        {unresolvedWebhooks.map(([name, pathItem]: [string, any]) => <div key={name}
+                            className="rounded-xl border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-4 text-xs">
+                            <strong className="text-[var(--text-heading)]">{name}</strong>
+                            <p className="mt-1 text-[10px] text-[var(--text-muted)]">Unresolved reference: <code>{pathItem.$ref}</code></p>
+                        </div>)}
+                    </div>
+                </div>}
 
                 <div className="space-y-3">
                     <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">

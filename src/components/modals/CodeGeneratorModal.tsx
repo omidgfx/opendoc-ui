@@ -2,9 +2,7 @@ import {useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
-import {applyAuthToRequest, createEmptyAuth} from '../../utils/auth';
-import {compileBrowserRequest} from '../../utils/requestPlan';
-import {queryStringFromPairs} from '../../utils/openapi/serialization';
+import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/codeGeneration';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
@@ -34,199 +32,8 @@ export default function CodeGeneratorModal({
     useEscClose(isOpen, requestClose);
     if (!shouldRender)
         return null;
-    const generateSnippet = (lang: string) => {
-        const cleanPath = path;
-        const cleanMethod = method.toUpperCase();
-        const previewPlan = compileBrowserRequest({
-            spec, path, method, operation, selectedServer,
-            activeAuth: createEmptyAuth(),
-        });
-        const serverUrl = previewPlan.intent.server.url;
-        const requestUrl = previewPlan.url;
-        const acceptHeader = previewPlan.headers.Accept || '*/*';
-        const requestMediaType = Object.keys(operation.requestBody?.content || {})[0];
-        switch (lang) {
-            case 'curl': {
-                const auth = applyAuthToRequest(spec, activeAuth, {headers: {}, query: [], cookies: []}, operation);
-                const placeholderHeaderValue = (name: string, value: string) => {
-                    if (name.toLowerCase() === 'authorization')
-                        return value.toLowerCase().startsWith('basic ') ? 'Basic YOUR_BASE64_CREDENTIALS' : 'Bearer YOUR_ACCESS_TOKEN';
-                    return `YOUR_${name.replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase()}_VALUE`;
-                };
-                const authHeaders = Object.entries(auth.headers).map(([name, value]) => ` -H "${name}: ${placeholderHeaderValue(name, value)}" \\\n`).join('');
-                const authQuery = queryStringFromPairs(auth.query.map(pair => ({
-                    ...pair,
-                    value: `YOUR_${pair.name.replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase()}_VALUE`,
-                })));
-                const cookieHint = auth.cookies.length > 0 ? ` -b "${auth.cookies.map(cookie => `${cookie.name}=YOUR_${cookie.name.toUpperCase()}`).join('; ')}" \\\n` : activeAuth.selectedSchemes?.some(id => (spec.components?.securitySchemes as any)?.[id]?.in === 'cookie') ? ' -b "COOKIE_NAME=COOKIE_VALUE" \\\n' : '';
-                return `curl -X ${cleanMethod} "${requestUrl}${authQuery}" \\\n -H "Accept: ${acceptHeader}" \\\n${authHeaders}${cookieHint} -H "Content-Type: application/json"`;
-            }
-            case 'laravel':
-                return `use Illuminate\\Support\\Facades\\Http;
-
-$response = Http::withHeaders([
- 'Accept' => '${acceptHeader}',
-])->withCookies([
- 'access_token' => 'YOUR_ISOLATED_TOKEN'
-])->send('${cleanMethod}', '${requestUrl}', [
-]);
-
-if ($response->successful()) {
- $data = $response->json();
-}`;
-            case 'go':
-                return `package main
-
-import (
- "fmt"
- "net/http"
- "io"
-)
-
-func main() {
- url := "${requestUrl}"
- req, _ := http.NewRequest("${cleanMethod}", url, nil)
-
- req.Header.Add("Accept", "${acceptHeader}")
- req.Header.Add("Cookie", "access_token=YOUR_DECRYPTED_TOKEN")
-
- res, err := http.DefaultClient.Do(req)
- if err != nil {
- fmt.Println(err)
- return
- }
- defer res.Body.Close()
- body, _ := io.ReadAll(res.Body)
-
- fmt.Println(string(body))
-}`;
-            case 'php':
-                return `<?php
-$curl = curl_init();
-
-curl_setopt_array($curl, [
- CURLOPT_URL => "${requestUrl}",
- CURLOPT_RETURNTRANSFER => true,
- CURLOPT_ENCODING => "",
- CURLOPT_MAXREDIRS => 10,
- CURLOPT_TIMEOUT => 30,
- CURLOPT_CUSTOMREQUEST => "${cleanMethod}",
- CURLOPT_HTTPHEADER => [
- "Accept: ${acceptHeader}",
- "Cookie: access_token=YOUR_ACCESS_TOKEN"
- ],
-]);
-
-$response = curl_exec($curl);
-$err = curl_error($curl);
-
-curl_close($curl);
-
-if ($err) {
- echo "cURL Error:" . $err;
-} else {
- echo $response;
-}`;
-            case 'js-fetch':
-                return `// JS standard Fetch client code
-fetch("${requestUrl}", {
- method: "${cleanMethod}",
- headers: {
- "Accept": "${acceptHeader}",
- "Content-Type": "${requestMediaType || 'application/json'}"
- },
- credentials: "include" // crucial for transacting standard cookie authorities
-})
- .then(response => response.json())
- .then(data => console.log(data))
- .catch(error => console.error("Error:", error));`;
-            case 'js-axios':
-                return `// JS Axios consumer client
-import axios from 'axios';
-
-axios({
- method: '${method.toLowerCase()}',
- url: '${requestUrl}',
- headers: {
- 'Accept': '${acceptHeader}'
- },
- withCredentials: true // allows browser to send secure cookies automatically
-})
- .then(response => {
- console.log(response.data);
- })
- .catch(error => {
- console.error(error);
- });`;
-            case 'python':
-                return `# Python Requests Session
-import requests
-
-url = "${requestUrl}"
-headers = {
- "Accept": "${acceptHeader}"
-}
-cookies = {
- "access_token": "YOUR_ACCESS_TOKEN"
-}
-
-response = requests.request("${cleanMethod}", url, headers=headers, cookies=cookies)
-print(response.json())`;
-            case 'csharp':
-                return `// C# HttpClient model
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
-
-class Program
-{
- static async Task Main()
- {
- var client = new HttpClient();
- var request = new HttpRequestMessage(HttpMethod.${method.toUpperCase() === 'DELETE' ? 'Delete' : method.toUpperCase() === 'POST' ? 'Post' : method.toUpperCase() === 'PUT' ? 'Put' : 'Get'}, "${requestUrl}");
-
- request.Headers.Add("Accept", "${acceptHeader}");
- request.Headers.Add("Cookie", "access_token=YOUR_ACCESS_TOKEN");
-
- var response = await client.SendAsync(request);
- response.EnsureSuccessStatusCode();
- string responseBody = await response.Content.ReadAsStringAsync();
- Console.WriteLine(responseBody);
- }
-}`;
-            case 'angular': {
-                const bodySnippet = ['post', 'put', 'patch'].includes(method.toLowerCase()) ? `,
-  body: {} // replace with your request payload` : '';
-                return `// Angular HttpClient example
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-
-@Injectable({ providedIn: 'root' })
-export class ApiService {
-  private baseUrl = '${serverUrl}';
-
-  constructor(private http: HttpClient) {}
-
-  callEndpoint(): Observable<any> {
-    const headers = new HttpHeaders({
-      'Accept': '${acceptHeader}',
-      'Content-Type': '${requestMediaType || 'application/json'}'${activeAuth.activeScheme !== 'none' ? `,
-      'Authorization': 'Bearer YOUR_ACCESS_TOKEN'` : ''}
-    });
-
-    return this.http.${method.toLowerCase()}<any>(
-      \`\${this.baseUrl}${cleanPath}\`${bodySnippet},
-      { headers, withCredentials: true }
-    );
-  }
-}
-`;
-            }
-            default:
-                return '';
-        }
-    };
+    const codegenRequest = buildCodegenRequest({spec, path, method, operation, selectedServer, activeAuth});
+    const generateSnippet = (lang: string) => generateRequestSnippet(lang as CodeLanguage, codegenRequest);
     const getLanguageLabel = (lang: string) => {
         switch (lang) {
             case 'curl':
@@ -325,7 +132,7 @@ export class ApiService {
 
 
                 <span className="font-sans">
-                    Authentication parameters fully bound inside code outputs
+                    Request semantics are shared with Runner; credentials are safe placeholders
                 </span>
                 <button onClick={requestClose}
                         className="px-4 py-1.5 text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer hover:opacity-90 transition-all shadow-sm active:scale-[0.98] bg-[var(--primary)]">

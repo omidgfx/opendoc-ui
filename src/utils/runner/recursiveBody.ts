@@ -49,7 +49,9 @@ export const defaultBodyValue = (schema: any, spec: OpenApiSpec): any => {
     if (current.anyOf?.length)
         return defaultBodyValue(current.anyOf[0], spec);
     if (current.type === 'object' || current.properties) {
-        return Object.fromEntries(Object.entries(current.properties || {}).map(([key, child]) => [key, defaultBodyValue(child, spec)]));
+        return Object.fromEntries(Object.entries(current.properties || {})
+            .filter(([, child]: [string, any]) => child?.readOnly !== true)
+            .map(([key, child]) => [key, defaultBodyValue(child, spec)]));
     }
     if (current.type === 'array')
         return [];

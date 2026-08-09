@@ -284,7 +284,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                         <span
                                             className="px-1 py-0.5 rounded text-[9px] uppercase select-none shrink-0 bg-[var(--background)] text-[var(--text-muted)]">
 
-                                            {schema.type || (isObject ? 'object' : 'any')}
+                                            {schema === true ? 'any' : schema === false ? 'never' : schema.type || (isObject ? 'object' : 'any')}
                                         </span>
                                     </div>
 

@@ -10,6 +10,7 @@ import {useBreakpoint} from '@/src/hooks/useBreakpoint';
 import FiltersPanel from './FiltersPanel';
 import {useModalTransition} from '@/src/hooks/useModalTransition';
 import {isOperationProtected} from '@/src/utils/auth';
+import {getDocumentOperations, getOperation} from '@/src/utils/openapi';
 
 interface SearchResultsViewProps {
     spec: OpenApiSpec | null;
@@ -65,8 +66,7 @@ export default function SearchResultsView({
             e.stopPropagation();
         let endpointId = `${method}-${path.replace(/^\//, '').replace(/\//g, '-')}`;
         try {
-            const pathItem = spec?.paths?.[path] as any;
-            const op = pathItem?.[method];
+            const op = getOperation(spec, path, method);
             if (op?.operationId)
                 endpointId = op.operationId;
         } catch {
@@ -86,20 +86,13 @@ export default function SearchResultsView({
     const {allTags, allMethods} = useMemo(() => {
         const tagsSet = new Set<string>();
         const methodsSet = new Set<string>();
-        if (spec && spec.paths) {
-            Object.entries(spec.paths).forEach(([_, pathItem]) => {
-                Object.entries(pathItem).forEach(([method, operation]) => {
-                    if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(method)) {
-                        methodsSet.add(method.toUpperCase());
-                        const op = operation as any;
-                        if (op.tags && Array.isArray(op.tags))
-                            op.tags.forEach((t: string) => tagsSet.add(t));
-                        else
-                            tagsSet.add('General');
-                    }
-                });
-            });
-        }
+        getDocumentOperations(spec).forEach(({method, operation}) => {
+            methodsSet.add(method.toUpperCase());
+            if (operation.tags && Array.isArray(operation.tags))
+                operation.tags.forEach(tag => tagsSet.add(tag));
+            else
+                tagsSet.add('General');
+        });
         return {allTags: Array.from(tagsSet).sort(), allMethods: Array.from(methodsSet).sort()};
     }, [spec]);
     const handleToggleMethod = (method: string) => setSelectedMethods(prev => prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]);
@@ -117,11 +110,7 @@ export default function SearchResultsView({
         }> = [];
         const query = searchQuery.trim().toLowerCase();
         const terms = query.split(/[\s._-]+/).filter(Boolean);
-        Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
-            Object.entries(pathItem).forEach(([methodStr, operation]) => {
-                if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(methodStr))
-                    return;
-                const op = operation as Operation;
+        getDocumentOperations(spec).forEach(({path: pathStr, method: methodStr, operation: op}) => {
                 const methodUpper = methodStr.toUpperCase();
                 const opTags = op.tags && op.tags.length > 0 ? op.tags : ['General'];
                 const isProtected = isOperationProtected(spec, op);
@@ -164,7 +153,6 @@ export default function SearchResultsView({
                 } else
                     score = 1;
                 list.push({path: pathStr, method: methodStr, operation: op, isProtected, score});
-            });
         });
         return list.sort((a, b) => b.score - a.score);
     }, [spec, searchQuery, selectedMethods, selectedTags, onlyProtected, displayRoutes]);

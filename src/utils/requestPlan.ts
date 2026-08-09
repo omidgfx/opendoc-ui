@@ -190,13 +190,7 @@ const createBodyIntent = (
                     {transport: 'browser'},
                 ));
             }
-            if (encoding?.style || encoding?.explode !== undefined || encoding?.allowReserved !== undefined) {
-                diagnostics.push(diagnostic(
-                    'RUN_MULTIPART_SERIALIZATION_PARTIAL',
-                    `Multipart field '${field}' uses style/explode/allowReserved. OpenDoc applies repeated scalar fields where possible but may not reproduce every encoding rule.`,
-                    {transport: 'browser'},
-                ));
-            }
+
         });
         const files = {...(input.selectedFiles || {})};
         if (input.selectedFile && !files.file)
@@ -395,25 +389,47 @@ const firstContentType = (encoding: any): string | undefined => typeof encoding?
     ? encoding.contentType.split(',')[0].trim() || undefined
     : undefined;
 
+const encodingPairs = (name: string, value: unknown, encoding: any): SerializedPair[] => {
+    const swaggerFormat = encoding?.['x-opendoc-collection-format'];
+    if (swaggerFormat && Array.isArray(value)) {
+        if (swaggerFormat === 'multi')
+            return value.map(item => ({name, value: multipartScalar(item)}));
+        const delimiter = swaggerFormat === 'ssv' ? ' '
+            : swaggerFormat === 'tsv' ? '\t'
+                : swaggerFormat === 'pipes' ? '|'
+                    : ',';
+        return [{name, value: value.map(multipartScalar).join(delimiter)}];
+    }
+    if (!encoding || (!encoding.style && encoding.explode === undefined && encoding.allowReserved === undefined))
+        return [];
+    const serialized = serializeOpenApiParameter({
+        name,
+        in: 'query',
+        schema: {type: Array.isArray(value) ? 'array' : value && typeof value === 'object' ? 'object' : 'string'},
+        style: encoding.style || 'form',
+        explode: encoding.explode,
+        allowReserved: encoding.allowReserved,
+    }, value);
+    return serialized.query;
+};
+
 const appendMultipartValue = (
     form: FormData,
     name: string,
     value: unknown,
     encoding: any,
 ) => {
-    const contentType = firstContentType(encoding);
-    const appendOne = (item: unknown) => {
-        if (contentType && typeof Blob !== 'undefined') {
-            const text = multipartScalar(item);
-            form.append(name, new Blob([text], {type: contentType}));
-        } else {
-            form.append(name, multipartScalar(item));
-        }
-    };
-    if (Array.isArray(value))
-        value.forEach(appendOne);
-    else
-        appendOne(value);
+    const pairs = encodingPairs(name, value, encoding);
+    const contentType = pairs.length > 0 ? undefined : firstContentType(encoding);
+    const values = pairs.length > 0 ? pairs : (Array.isArray(value)
+        ? value.map(item => ({name, value: multipartScalar(item)}))
+        : [{name, value: multipartScalar(value)}]);
+    values.forEach(pair => {
+        if (contentType && typeof Blob !== 'undefined')
+            form.append(pair.name, new Blob([pair.value], {type: contentType}));
+        else
+            form.append(pair.name, pair.value);
+    });
 };
 
 const materializeMultipart = (body: RequestBodyIntent): FormData => {
@@ -456,6 +472,32 @@ const materializeMultipart = (body: RequestBodyIntent): FormData => {
     return form;
 };
 
+const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
+    if (typeof bodyIntent.value === 'string')
+        return bodyIntent.value;
+    if (!bodyIntent.value || typeof bodyIntent.value !== 'object' || Array.isArray(bodyIntent.value))
+        return serializeUrlEncodedBody(bodyIntent.value);
+    const pairs: SerializedPair[] = [];
+    Object.entries(bodyIntent.value as Record<string, unknown>).forEach(([name, value]) => {
+        const encoding = bodyIntent.encoding?.[name];
+        const styled = encodingPairs(name, value, encoding);
+        if (styled.length > 0) {
+            pairs.push(...styled);
+            return;
+        }
+        const contentType = firstContentType(encoding);
+        if (contentType === 'application/json' || contentType?.endsWith('+json')) {
+            pairs.push({name, value: JSON.stringify(value)});
+            return;
+        }
+        if (Array.isArray(value))
+            value.forEach(item => pairs.push({name, value: multipartScalar(item)}));
+        else
+            pairs.push({name, value: multipartScalar(value)});
+    });
+    return queryStringFromPairs(pairs).slice(1);
+};
+
 const FORBIDDEN_BROWSER_HEADERS = new Set([
     'accept-charset', 'accept-encoding', 'access-control-request-headers',
     'access-control-request-method', 'connection', 'content-length', 'cookie',
@@ -492,9 +534,7 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
             setHeader(headers, 'Content-Type', bodyIntent.mediaType, diagnostics, 'Selected request body');
     } else if (bodyIntent.kind === 'urlencoded') {
         try {
-            body = typeof bodyIntent.value === 'string'
-                ? bodyIntent.value
-                : serializeUrlEncodedBody(bodyIntent.value);
+            body = materializeUrlEncoded(bodyIntent);
         } catch {
             body = bodyIntent.text || '';
         }

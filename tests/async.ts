@@ -3,6 +3,9 @@ import { AIStreamError, fetchProviderModelCatalog, streamAIResponse } from '../s
 import { executeRunnerRequest } from '../src/utils/runnerExecution';
 import type { AISettings } from '../src/types';
 import {dereference, validate} from '@scalar/openapi-parser';
+import {processLocalOpenApiBundle} from '../src/utils/openapi/engine';
+import {clearCachedSpec, fetchSpec, writeCachedSpec} from '../src/utils/specCache';
+import {parseSpecDraft} from '../src/utils/appSpec';
 const originalFetch = globalThis.fetch;
 const settings: AISettings = {
     transport: 'direct', gatewayUrl: '', gatewayToken: '', provider: 'custom', model: 'fixture', apiKey: '', baseUrl: 'https://fixture.test/v1', temperature: 0.2, skillPacks: ['openapi'], customInstructions: '',
@@ -72,6 +75,41 @@ try {
     });
     assert.equal(oas32.valid, true);
     console.log('✓ validates OAS 3.2 and resolves a multi-document Path Item graph with the parser engine');
+    const localBundle = await processLocalOpenApiBundle([
+        {
+            name: 'api/root.yaml',
+            raw: 'openapi: 3.1.1\ninfo: {title: Local Bundle, version: "1"}\npaths:\n  /users:\n    $ref: ./paths/users.yaml#/UserPath\n',
+        },
+        {
+            name: 'api/paths/users.yaml',
+            raw: 'UserPath:\n  get:\n    responses:\n      "200":\n        description: resolved locally\n',
+        },
+    ]);
+    assert.equal((localBundle.document.paths as any)['/users']?.get?.responses?.['200']?.description, 'resolved locally');
+    assert.equal(localBundle.externalDocumentsLoaded, true);
+    assert.ok(localBundle.diagnostics.some(item => item.code === 'OAS_LOCAL_BUNDLE_RESOLVED'));
+    console.log('✓ resolves user-approved local multi-file references without network access');
+    const cacheUrl = 'https://cache.example.test/openapi.yaml';
+    const validCached = 'openapi: 3.1.1\ninfo: {title: Cached, version: "1"}\npaths: {}\n';
+    const preCacheWindow = (globalThis as any).window;
+    const memoryStorage = new Map<string, string>();
+    (globalThis as any).window = {localStorage: {
+        getItem: (key: string) => memoryStorage.get(key) ?? null,
+        setItem: (key: string, value: string) => memoryStorage.set(key, value),
+        removeItem: (key: string) => memoryStorage.delete(key),
+    }};
+    writeCachedSpec(cacheUrl, validCached);
+    globalThis.fetch = (async () => new Response('this is not an OpenAPI document', {status: 200})) as typeof fetch;
+    const originalWarn = console.warn;
+    console.warn = () => undefined;
+    const stale = await fetchSpec(cacheUrl, {force: true, validate: raw => parseSpecDraft(raw)});
+    console.warn = originalWarn;
+    assert.equal(stale.freshness, 'stale');
+    assert.equal(stale.raw, validCached);
+    assert.ok(stale.refreshError);
+    await clearCachedSpec(cacheUrl);
+    (globalThis as any).window = preCacheWindow;
+    console.log('✓ preserves and identifies last-known-good cache when a fresh 200 response is malformed');
     const originalWindow = (globalThis as any).window;
     let runnerUrl = '';
     let runnerBody = '';

@@ -241,10 +241,10 @@ export default function ApiSpecificationSelectorModal({
                         <i className="ph-fill ph-folder-plus text-[20px]"/>
                     </span>
                     <span className="mt-3 block text-sm font-extrabold text-[var(--text-heading)]">
-                        Open a specification file
+                        Open specification file(s)
                     </span>
                     <span className="mt-1 block text-[10px] text-[var(--text-muted)]">
-                        Swagger 2.x &amp; OpenAPI 3.x · JSON or YAML · stays on your device
+                        Select one bundled file or all related JSON/YAML files · stays on your device
                     </span>
                 </button>)}
 

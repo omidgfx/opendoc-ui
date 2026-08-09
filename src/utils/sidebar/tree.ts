@@ -1,6 +1,7 @@
 import type {OpenApiSpec} from '@/src/types';
 import {specStorage} from '@/src/utils/storage';
 import {isOperationProtected} from '@/src/utils/auth';
+import {getPathItemOperations} from '@/src/utils/openapi/operations';
 
 export interface TreeNode {
     name: string;
@@ -104,18 +105,13 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
     Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
         if (!pathItem)
             return;
-        Object.entries(pathItem).forEach(([methodStr, operation]) => {
-            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(methodStr))
-                return;
-            const op = operation as any;
-            if (!op)
-                return;
-            const tags = op.tags?.length ? op.tags : ['General'];
-            const isProtected = isOperationProtected(spec, op);
+        getPathItemOperations(pathItem).forEach(({method, operation}) => {
+            const tags = operation.tags?.length ? operation.tags : ['General'];
+            const isProtected = isOperationProtected(spec, operation);
             tags.forEach((tag: string) => {
                 if (!byTag[tag])
                     byTag[tag] = [];
-                byTag[tag].push({path: pathStr, method: methodStr, operation: op, isProtected});
+                byTag[tag].push({path: pathStr, method, operation, isProtected});
             });
         });
     });

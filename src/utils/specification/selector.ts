@@ -1,6 +1,7 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec, Parsable} from '@/src/types';
-import {assertValidOpenApiDocument, normalizeOpenApiSpec} from '@/src/utils/openapi';
+import {assertValidOpenApiDocument, getDocumentOperations, normalizeOpenApiSpec} from '@/src/utils/openapi';
+import {isOperationProtected} from '@/src/utils/auth';
 import {fetchSpecText} from '@/src/utils/specCache';
 
 export interface SpecificationSummary {
@@ -22,31 +23,23 @@ export interface SummaryState {
     message?: string;
 }
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
 export const summarizeSpecification = (spec: OpenApiSpec): SpecificationSummary => {
-    let endpointCount = 0;
     let securedEndpointCount = 0;
     const tags = new Set<string>();
     const methods = new Set<string>();
-    Object.values(spec.paths || {}).forEach(pathItem => {
-        Object.entries(pathItem || {}).forEach(([method, operation]) => {
-            if (!HTTP_METHODS.includes(method.toLowerCase()))
-                return;
-            endpointCount += 1;
-            methods.add(method.toUpperCase());
-            const op = operation as any;
-            (op?.tags || ['General']).forEach((tag: string) => tags.add(tag));
-            const security = op?.security === undefined ? spec.security : op.security;
-            if (Array.isArray(security) && security.length > 0)
-                securedEndpointCount += 1;
-        });
+    const operations = getDocumentOperations(spec);
+    operations.forEach(({method, operation}) => {
+        methods.add(method.toUpperCase());
+        (operation.tags || ['General']).forEach(tag => tags.add(tag));
+        if (isOperationProtected(spec, operation))
+            securedEndpointCount += 1;
     });
     return {
         title: spec.info?.title || 'Untitled API',
         version: spec.info?.version || 'Not specified',
         formatVersion: spec.openapi || spec.swagger || 'OpenAPI',
         description: spec.info?.description || 'No description is provided for this API specification.',
-        endpointCount,
+        endpointCount: operations.length,
         schemaCount: Object.keys(spec.components?.schemas || {}).length,
         tagCount: tags.size,
         serverCount: spec.servers?.length || 0,

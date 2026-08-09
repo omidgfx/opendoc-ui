@@ -4,6 +4,7 @@ import type {TabItem} from '../components/endpoint/EndpointTabs';
 import {parseSmartRoute} from '../utils/routing';
 import {specStorage} from '../utils/storage';
 import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../utils/tabPersistence';
+import {getOperation} from '../utils/openapi';
 
 type ViewMode = 'docs' | 'examine' | 'both';
 
@@ -78,7 +79,7 @@ export function useTabPersistence({
             viewModes?: Record<string, StoredTabViewMode>;
         } | null>(selectedSpecKey, 'tabs', null, isValidTabPersistence);
         const filtered = data?.tabs?.length
-            ? orderTabs(data.tabs.filter(tab => !tab.isPreview)).filter(tab => tab.kind && tab.kind !== 'endpoint' ? true : !!spec.paths?.[tab.path]?.[tab.method])
+            ? orderTabs(data.tabs.filter(tab => !tab.isPreview)).filter(tab => tab.kind && tab.kind !== 'endpoint' ? true : Boolean(getOperation(spec, tab.path, tab.method)))
             : [];
         const restoredTabs = filtered.map(tab => tab.kind && tab.kind !== 'endpoint'
             ? tab

@@ -2,13 +2,13 @@ import type {AIContextInput, AIContextResult, AISettings, AISourceRef} from '../
 import {getEndpointId} from './routing';
 import {OPENDOC_UI_BRIDGE_INSTRUCTIONS} from './aiBridge';
 import {renderAISkillPackContent} from './aiSkills';
+import {getDocumentOperations} from './openapi/operations';
 
 const SECRET_KEY = /(api[-_ ]?key|access[-_ ]?key|secret|token|password|passwd|credential|authorization|cookie|private[-_ ]?key|client[-_ ]?secret)/i;
 const SECRET_VALUE = /^(bearer\s+)?[A-Za-z0-9_\-./+=]{20,}$/i;
 const MAX_INCLUDED_ENDPOINTS = 24;
 const MAX_INCLUDED_SCHEMAS = 40;
 const MAX_CONTEXT_CHARS = 140000;
-const METHOD_LIST = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
 const redactUrl = (value: string): string => {
     try {
         const url = new URL(value);
@@ -72,7 +72,6 @@ const schemaRefs = (value: any, result = new Set<string>(), seen = new WeakSet<o
 const endpointKey = (method: string, path: string) => `path:${method.toUpperCase()}:${path}`;
 export const buildAIContext = (input: AIContextInput): AIContextResult => {
     const sources: AISourceRef[] = [];
-    const paths = input.spec?.paths || {};
     const endpoints: Array<{
         path: string;
         method: string;
@@ -81,28 +80,17 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
         tags: string[];
     }> = [];
     const tags = new Set<string>();
-    Object.entries(paths).forEach(([path, pathItem]: [
-        string,
-        any
-    ]) => {
-        Object.entries(pathItem || {}).forEach(([method, operation]: [
-            string,
-            any
-        ]) => {
-            if (!METHOD_LIST.includes(method.toLowerCase()))
-                return;
-            const op = operation || {};
-            const tagList = Array.isArray(op.tags) && op.tags.length ? op.tags.map(String) : ['General'];
-            tagList.forEach(tag => tags.add(tag));
-            const source: AISourceRef = {
-                id: endpointKey(method, path), kind: 'endpoint',
-                label: `${method.toUpperCase()} ${path}${op.summary ? ` — ${safeText(op.summary, 180)}` : ''}`,
-                path, method: method.toUpperCase(),
-                href: `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(op, path, method))}`,
-            };
-            sources.push(source);
-            endpoints.push({path, method: method.toLowerCase(), operation: op, source, tags: tagList});
-        });
+    getDocumentOperations(input.spec).forEach(({path, method, operation}) => {
+        const tagList = Array.isArray(operation.tags) && operation.tags.length ? operation.tags.map(String) : ['General'];
+        tagList.forEach(tag => tags.add(tag));
+        const source: AISourceRef = {
+            id: endpointKey(method, path), kind: 'endpoint',
+            label: `${method.toUpperCase()} ${path}${operation.summary ? ` — ${safeText(operation.summary, 180)}` : ''}`,
+            path, method: method.toUpperCase(),
+            href: `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(operation, path, method))}`,
+        };
+        sources.push(source);
+        endpoints.push({path, method: method.toLowerCase(), operation, source, tags: tagList});
     });
     Array.from(tags).sort().forEach(tag => sources.push({id: `tag:${tag}`, kind: 'tag', label: `Tag: ${tag}`}));
     Object.keys(input.spec?.components?.schemas || {}).sort().forEach(schemaName => sources.push({

@@ -14,6 +14,7 @@ import ConversationSidebar from './assistant/ConversationSidebar';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
 import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens,} from '../../utils/aiContext';
+import {getOperation} from '../../utils/openapi';
 import {streamAIResponse} from '../../utils/aiProviders';
 import {
     createOpenDocUIActionId,
@@ -464,7 +465,7 @@ export default function AIAssistantView({
         : Boolean(settings.model.trim() && (settings.provider === 'ollama' || settings.provider === 'custom' || settings.apiKey.trim()));
     const primaryEndpoint = selectedEndpoints[0] || null;
     const currentOperation = primaryEndpoint
-        ? (spec.paths[primaryEndpoint.path] as any)?.[primaryEndpoint.method]
+        ? getOperation(spec, primaryEndpoint.path, primaryEndpoint.method)
         : null;
     const suggestions = primaryEndpoint
         ? ['Explain this endpoint', 'List its parameters and examples', 'What responses and errors can it return?', 'Prepare a request for the API Runner']

@@ -66,7 +66,9 @@ const constrainedString = (schema: any): string => {
     return value;
 };
 
-export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, visited = new Set<string>()): any {
+export type MockUsage = 'generic' | 'request' | 'response';
+
+export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, visited = new Set<string>(), usage: MockUsage = 'generic'): any {
     if (schema === true)
         return null;
     if (schema === false)
@@ -83,7 +85,7 @@ export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, v
         nextVisited.add(refName);
         const refSchema = resolveSchema(refName, spec);
         return refSchema !== null && refSchema !== undefined
-            ? generateMock(refSchema, spec, depth + 1, nextVisited)
+            ? generateMock(refSchema, spec, depth + 1, nextVisited, usage)
             : {};
     }
     if (schema.const !== undefined)
@@ -101,7 +103,7 @@ export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, v
     if (Array.isArray(schema.allOf)) {
         let merged: any = {};
         schema.allOf.forEach((sub: any) => {
-            const subMock = generateMock(sub, spec, depth + 1, new Set(visited));
+            const subMock = generateMock(sub, spec, depth + 1, new Set(visited), usage);
             if (typeof subMock === 'object' && subMock !== null && !Array.isArray(subMock))
                 merged = {...merged, ...subMock};
             else if (subMock !== null)
@@ -110,25 +112,29 @@ export function generateMock(schema: any, spec: OpenApiSpec | null, depth = 0, v
         return merged;
     }
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
-        return generateMock(schema.oneOf[0], spec, depth + 1, new Set(visited));
+        return generateMock(schema.oneOf[0], spec, depth + 1, new Set(visited), usage);
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)
-        return generateMock(schema.anyOf[0], spec, depth + 1, new Set(visited));
+        return generateMock(schema.anyOf[0], spec, depth + 1, new Set(visited), usage);
 
     const type = schemaType(schema);
     if (type === 'object' || schema.properties || schema.additionalProperties) {
         const object: Record<string, unknown> = {};
         Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
-            object[key] = generateMock(child, spec, depth + 1, new Set(visited));
+            if (usage === 'request' && child?.readOnly === true)
+                return;
+            if (usage === 'response' && child?.writeOnly === true)
+                return;
+            object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
         });
         if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && Object.keys(object).length === 0)
-            object.key = generateMock(schema.additionalProperties, spec, depth + 1, new Set(visited));
+            object.key = generateMock(schema.additionalProperties, spec, depth + 1, new Set(visited), usage);
         return object;
     }
     if (type === 'array') {
         const minItems = Math.max(0, typeof schema.minItems === 'number' ? schema.minItems : 1);
         const count = typeof schema.maxItems === 'number' ? Math.min(minItems, schema.maxItems) : minItems;
         return Array.from({length: count}, (_, index) => {
-            const item = generateMock(schema.items || {}, spec, depth + 1, new Set(visited));
+            const item = generateMock(schema.items || {}, spec, depth + 1, new Set(visited), usage);
             if (schema.uniqueItems && typeof item === 'string')
                 return `${item}${index || ''}`;
             if (schema.uniqueItems && typeof item === 'number')
@@ -162,6 +168,7 @@ export const validateMockValue = (
     spec: OpenApiSpec | null,
     path = '$',
     visited = new Set<string>(),
+    usage: MockUsage = 'generic',
 ): string[] => {
     if (schema === true || schema === undefined || schema === null)
         return [];
@@ -176,18 +183,18 @@ export const validateMockValue = (
             return [`${path}: unresolved schema reference ${schema.$ref}`];
         const next = new Set(visited);
         next.add(name);
-        return validateMockValue(resolved, value, spec, path, next);
+        return validateMockValue(resolved, value, spec, path, next, usage);
     }
     if (schema.const !== undefined && !Object.is(schema.const, value))
         return [`${path}: value does not equal const`];
     if (Array.isArray(schema.enum) && !schema.enum.some((item: unknown) => Object.is(item, value)))
         return [`${path}: value is not in enum`];
     if (Array.isArray(schema.allOf))
-        return schema.allOf.flatMap((part: any) => validateMockValue(part, value, spec, path, new Set(visited)));
-    if (Array.isArray(schema.anyOf) && !schema.anyOf.some((part: any) => validateMockValue(part, value, spec, path, new Set(visited)).length === 0))
+        return schema.allOf.flatMap((part: any) => validateMockValue(part, value, spec, path, new Set(visited), usage));
+    if (Array.isArray(schema.anyOf) && !schema.anyOf.some((part: any) => validateMockValue(part, value, spec, path, new Set(visited), usage).length === 0))
         return [`${path}: value does not satisfy anyOf`];
     if (Array.isArray(schema.oneOf)) {
-        const matches = schema.oneOf.filter((part: any) => validateMockValue(part, value, spec, path, new Set(visited)).length === 0).length;
+        const matches = schema.oneOf.filter((part: any) => validateMockValue(part, value, spec, path, new Set(visited), usage).length === 0).length;
         if (matches !== 1)
             return [`${path}: value satisfies ${matches} oneOf alternatives instead of exactly one`];
     }
@@ -238,17 +245,26 @@ export const validateMockValue = (
             errors.push(`${path}: more than maxItems`);
         if (schema.uniqueItems && new Set(value.map(item => JSON.stringify(item))).size !== value.length)
             errors.push(`${path}: items are not unique`);
-        value.forEach((item, index) => errors.push(...validateMockValue(schema.items || true, item, spec, `${path}[${index}]`, new Set(visited))));
+        value.forEach((item, index) => errors.push(...validateMockValue(schema.items || true, item, spec, `${path}[${index}]`, new Set(visited), usage)));
     }
     if (value && typeof value === 'object' && !Array.isArray(value)) {
         const object = value as Record<string, unknown>;
         (schema.required || []).forEach((key: string) => {
+            const child = schema.properties?.[key];
+            if (usage === 'request' && child?.readOnly === true)
+                return;
+            if (usage === 'response' && child?.writeOnly === true)
+                return;
             if (!Object.prototype.hasOwnProperty.call(object, key))
                 errors.push(`${path}.${key}: required property missing`);
         });
         Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
+            if (usage === 'request' && child?.readOnly === true)
+                return;
+            if (usage === 'response' && child?.writeOnly === true)
+                return;
             if (Object.prototype.hasOwnProperty.call(object, key))
-                errors.push(...validateMockValue(child, object[key], spec, `${path}.${key}`, new Set(visited)));
+                errors.push(...validateMockValue(child, object[key], spec, `${path}.${key}`, new Set(visited), usage));
         });
         if (schema.additionalProperties === false) {
             Object.keys(object).filter(key => !schema.properties?.[key]).forEach(key => errors.push(`${path}.${key}: additional property not allowed`));
@@ -263,10 +279,10 @@ export interface MockGenerationResult {
     diagnostics: Diagnostic[];
 }
 
-export const generateValidatedMock = (schema: any, spec: OpenApiSpec | null): MockGenerationResult => {
+export const generateValidatedMock = (schema: any, spec: OpenApiSpec | null, usage: MockUsage = 'generic'): MockGenerationResult => {
     try {
-        const value = generateMock(schema, spec);
-        const errors = validateMockValue(schema, value, spec);
+        const value = generateMock(schema, spec, 0, new Set(), usage);
+        const errors = validateMockValue(schema, value, spec, '$', new Set(), usage);
         if (errors.length > 0) {
             return {
                 ok: false,
@@ -287,8 +303,8 @@ export const generateValidatedMock = (schema: any, spec: OpenApiSpec | null): Mo
     }
 };
 
-export const getMockSnippet = (schema: any, spec: OpenApiSpec | null): string => {
-    const result = generateValidatedMock(schema, spec);
+export const getMockSnippet = (schema: any, spec: OpenApiSpec | null, usage: MockUsage = 'generic'): string => {
+    const result = generateValidatedMock(schema, spec, usage);
     if (!result.ok)
         return `// Mock unavailable: ${result.diagnostics.map(item => item.message).join('; ')}`;
     try {

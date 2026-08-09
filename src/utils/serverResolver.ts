@@ -121,7 +121,15 @@ export const resolveEffectiveServer = (input: ResolveServerInput): ResolvedServe
         : null;
     const candidate = matched || customRootSelection || candidates[0]
         || {definition: {url: '/'}, expansion: expandServer({url: '/'}, {})};
-    const sourceUri = input.sourceUri || getSpecSourceUri(input.spec);
+    const loadedSourceUri = input.sourceUri || getSpecSourceUri(input.spec);
+    let sourceUri = loadedSourceUri;
+    if (input.spec.$self) {
+        try {
+            sourceUri = loadedSourceUri ? new URL(input.spec.$self, loadedSourceUri).href : input.spec.$self;
+        } catch {
+            sourceUri = loadedSourceUri;
+        }
+    }
     const relative = resolveRelativeUrl(candidate.expansion.expanded, sourceUri);
     return {
         source,

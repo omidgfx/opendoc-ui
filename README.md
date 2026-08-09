@@ -83,6 +83,8 @@ Type check and unit tests:
 ```bash
 npm run lint
 npm test
+npm run test:browser   # Playwright request/history/accessibility flows
+npm run test:all       # lint + contract + browser + production build
 ```
 
 The documentation build has **no server-side requirement** — `dist/` is plain static files and can
@@ -186,7 +188,8 @@ Run the app with **no** `window.INITIAL_CONFIG` and **no** `public/config.json` 
   *About OpenDoc UI* actions,
 - the **spec selector modal** (opened from the navbar / mobile sidebar) containing a
   folder button for picking files, a drop-zone-style open card and the **recent history**,
-- file support for `.json`, `.yaml` and `.yml` (Swagger 2.x and OpenAPI 3.x).
+- file support for `.json`, `.yaml` and `.yml` (Swagger 2.x and OpenAPI 3.x), including selecting
+  multiple related files for local external `$ref` resolution.
 
 Files are read with the browser's File API — **nothing is uploaded anywhere**. Everything
 stays in your browser. Each opened spec is recorded in the history (see
@@ -244,7 +247,8 @@ including `form`, `simple`, `label`, `matrix`, `deepObject`, `spaceDelimited`, a
 values are mapped during compatibility conversion. The response reader is bounded at 2 MiB,
 detects `application/*+json`, shows the substituted request URL, and supports a Cancel button
 plus a 30-second timeout. Binary bodies are represented as bounded metadata instead of being
-converted to an unbounded text string.
+converted to an unbounded text string. Every endpoint keeps its **last 10 transaction outcomes**
+in memory, including HTTP responses, browser/network failures, timeouts, and cancellations.
 
 Request bodies have two complementary paths: the manual recursive form handles nested objects,
 arrays of objects, arrays of arrays, enums, defaults, examples, and add/remove/reorder controls;
@@ -252,15 +256,25 @@ Raw mode remains available for payloads that need exact text. The raw editor sel
 JavaScript, HTML, or plain-text behavior from the media type and does not apply JSON diagnostics to
 non-JSON bodies.
 
-Authentication keeps actual OpenAPI security-scheme IDs and can apply composed requirements
-simultaneously. Browser mode deliberately cannot inject a `Cookie` header; it can send existing
-same-site cookies with `credentials: include`, while manual cookie values are marked as agent-only.
-OAuth/OIDC flows still require an access token or a trusted gateway; the browser does not silently
-perform an authorization-code or refresh flow.
+The Runner is intentionally **permissive, not a client-side API validator**. Missing required
+parameters, unresolved placeholders, pattern mismatches, and malformed JSON are reported as
+Runner notices but are still sent whenever browser `fetch` can physically send them. This lets the
+real API, gateway, DNS/network layer, or browser return the authoritative error. Browser-imposed
+limitations such as GET/HEAD bodies and forbidden headers are disclosed rather than hidden.
 
-Documents are structurally validated before normalization, and local JSON Pointer references
-support escaped pointer names and cycle guards. External references are resolved only from an
-explicit preloaded document map; the app never fetches arbitrary `$ref` URLs while rendering.
+Authentication keeps actual OpenAPI security-scheme IDs and can apply composed requirements
+simultaneously, with credentials isolated per specification and operation-level security overrides
+honored. Browser mode deliberately cannot inject a `Cookie` header; it can send existing same-site
+cookies with `credentials: include`. A manual cookie requires a separate trusted Runner agent—the
+optional AI gateway does not proxy API requests. OAuth/OIDC flows accept a supplied access token but
+do not silently perform authorization-code or refresh flows.
+
+Documents retain their immutable raw source and dialect alongside the internal semantic document.
+OpenDoc supports Swagger 2.0 and OpenAPI 3.0/3.1/3.2, including OAS 3.2 `QUERY` and
+`additionalOperations`. Same-origin remote external references are loaded with count, size, timeout,
+redirect, and origin limits. For local multi-document APIs, select all related JSON/YAML files in the
+file chooser; they are resolved entirely in memory and remain on the device. Cross-origin references
+must be bundled by the API publisher.
 
 ## Optional AI gateway
 

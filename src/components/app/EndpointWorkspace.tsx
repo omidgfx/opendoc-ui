@@ -6,6 +6,7 @@ import ViewTab from '../endpoint/ViewTab/ViewTab';
 import FocusPane from '../common/FocusPane';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
+import {getOperation} from '../../utils/openapi';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -70,8 +71,7 @@ export default function EndpointWorkspace({
                                               onOpenSchema,
                                               onGenerateCode,
                                           }: EndpointWorkspaceProps) {
-    const pathItem = spec.paths[endpoint.path];
-    const operation = pathItem && (pathItem as any)[endpoint.method];
+    const operation = getOperation(spec, endpoint.path, endpoint.method);
     if (!operation)
         return null;
     const docsActive = selectedTab !== 'both' || activeSplitPane === 'docs';
@@ -122,7 +122,7 @@ export default function EndpointWorkspace({
                 </div>
                 <div className="h-5 w-px bg-[var(--border)] hidden sm:block"/>
                 <Tip content="Generate Fetch/Axios snippets and TypeScript models">
-                    <button onClick={onGenerateCode}
+                    <button onClick={onGenerateCode} aria-label="Generate request code"
                             className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0">
                         <i className="ph ph-code text-[16px]"/>
                     </button>

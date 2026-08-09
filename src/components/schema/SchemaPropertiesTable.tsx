@@ -110,8 +110,7 @@ export default function SchemaPropertiesTable({
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (<div className="flex flex-col gap-1 items-start">
-                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All
-                    Of:</span>
+                <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">All Of · every constraint applies:</span>
                 <div className="flex flex-wrap gap-1.5 items-center">
                     {prop.allOf.map((sub: any, sIdx: number) => <React.Fragment key={sIdx}>
                         {sIdx > 0 &&

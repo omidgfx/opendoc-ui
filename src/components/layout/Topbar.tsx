@@ -192,6 +192,7 @@ export default function Topbar({
                 <Tip content={isMobile ? 'Open menu' : (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
                      placement="bottom">
                     <button onClick={isMobile ? onOpenMobileSidebar : onToggleCollapse}
+                            aria-label={isMobile ? 'Open menu' : (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
                             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0">
                         <i className={`ph ${isMobile ? 'ph-list' : (isCollapsed ? 'ph-list' : 'ph-sidebar-simple')} text-[18px]`}></i>
                     </button>
@@ -259,13 +260,13 @@ export default function Topbar({
 
             <div className="flex items-center gap-1 shrink-0">
                 {hasSpec && (<Tip content="Open AI Assistant" placement="bottom">
-                    <button type="button" onClick={onOpenAssistant}
+                    <button type="button" onClick={onOpenAssistant} aria-label="Open AI Assistant"
                             className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]">
                         <i className="ph-fill ph-sparkle text-[15px]"/>
                     </button>
                 </Tip>)}
                 {hasSpec && !showSchemaExplorer && isMobile && !hideSearch && (<Tip content="Search" placement="bottom">
-                    <button onClick={() => setShowMobileSearch(v => !v)}
+                    <button onClick={() => setShowMobileSearch(v => !v)} aria-label="Search"
                             className="size-8 rounded-lg flex items-center justify-center border cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                         <i className="ph ph-magnifying-glass text-[16px]"></i>
                     </button>
@@ -284,7 +285,7 @@ export default function Topbar({
                     </Tip>
 
                     <Tip content="Download raw specification">
-                        <button onClick={onDownloadSpec}
+                        <button onClick={onDownloadSpec} aria-label="Download raw specification"
                                 className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]">
                             <i className="ph-fill ph-download-simple text-[14px] text-[var(--primary)]"></i>
                         </button>
@@ -330,7 +331,10 @@ export default function Topbar({
         <ApiSpecificationSelectorModal isOpen={showSpecificationModal} specifications={parsables}
                                        selectedKey={selectedParsableKey} activeSpecification={spec}
                                        isLocalMode={isLocalMode} canOpenLocal={canOpenLocal}
-                                       onOpenLocalFile={onOpenLocalFile} onReloadSpecification={onReloadSpecification}
+                                       onOpenLocalFile={() => {
+                                           setShowSpecificationModal(false);
+                                           onOpenLocalFile();
+                                       }} onReloadSpecification={onReloadSpecification}
                                        onResetSpecification={onResetSpecification}
                                        onResetAllConfigurations={onResetAllConfigurations} localHistory={localHistory}
                                        onSelectHistoryEntry={onSelectHistoryEntry}

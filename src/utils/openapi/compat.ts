@@ -247,12 +247,24 @@ const convertBodyParametersToRequestBody = (parameters: any[], operation: any, d
         };
         if (required.length > 0)
             schema.required = required;
+        const encoding: Record<string, any> = {};
         formParams.forEach((param) => {
             schema.properties[param.name] = swaggerSchemaFromParameter(param);
+            if (param.collectionFormat) {
+                const mapped = normalizeParameter(param);
+                encoding[param.name] = {
+                    style: mapped.style || 'form',
+                    explode: mapped.explode,
+                    'x-opendoc-collection-format': param.collectionFormat,
+                };
+            }
         });
         const content: any = {};
         mediaTypes.forEach((mediaType: string) => {
-            content[mediaType] = {schema: rewriteRefsDeep(schema)};
+            content[mediaType] = {
+                schema: rewriteRefsDeep(schema),
+                ...(Object.keys(encoding).length > 0 ? {encoding} : {}),
+            };
         });
         return {
             required: required.length > 0,
@@ -449,6 +461,10 @@ const normalizeOpenApiLike = (input: any): OpenApiSpec => {
                 return;
             pathItem[lowerMethod] = normalizeOpenApiOperation(operation, doc);
         });
+        if (isPlainObject(pathItem.additionalOperations)) {
+            pathItem.additionalOperations = Object.fromEntries(Object.entries(pathItem.additionalOperations)
+                .map(([method, operation]) => [method, normalizeOpenApiOperation(operation, doc)]));
+        }
         doc.paths[pathKey] = pathItem;
     });
     return doc as OpenApiSpec;

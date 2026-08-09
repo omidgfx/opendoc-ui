@@ -338,7 +338,7 @@ export default function ViewTab({
                         <span
                             className="font-mono text-sm font-bold truncate tracking-tight break-all text-[var(--text-heading)]">{path}</span>
                         <Tip content="Copy endpoint path">
-                            <button onClick={() => {
+                            <button aria-label="Copy endpoint path" onClick={() => {
                                 navigator.clipboard.writeText(path);
                                 setCopiedPath(true);
                                 setTimeout(() => setCopiedPath(false), 2000);
@@ -360,7 +360,7 @@ export default function ViewTab({
                         <i className="ph-fill ph-lock-key text-[16px]"></i> Protected
                     </span>)}
                     <Tip content="Share this endpoint">
-                        <button onClick={handleShareEndpoint}
+                        <button onClick={handleShareEndpoint} aria-label="Share this endpoint"
                                 className="w-7 h-7 rounded flex items-center justify-center text-xs transition-colors cursor-pointer select-none text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10">
                             <i className="ph ph-share-network text-[13px]"></i>
                         </button>
@@ -550,7 +550,7 @@ export default function ViewTab({
                                 </div>
                                 <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--text-muted)] shrink-0">
                                     <Tip content="Share link to this response">
-                                        <button onClick={(e) => handleShareResponse(code, resp, e)}
+                                        <button onClick={(e) => handleShareResponse(code, resp, e)} aria-label={`Share response ${code}`}
                                                 className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors cursor-pointer border border-transparent hover:border-[var(--primary)]/20">
                                             <i className="ph ph-share-network text-[12px]"></i>
                                         </button>

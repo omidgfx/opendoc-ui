@@ -62,12 +62,12 @@ export interface OpenDocUIRunnerResult {
 export const createOpenDocUIActionId = (): string => typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `action-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query']);
+const HTTP_METHOD_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,32}$/;
 const isRecord = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const isParams = (value: unknown): value is Record<string, string | string[]> => isRecord(value) && Object.values(value).every(item => typeof item === 'string' || Array.isArray(item) && item.every(part => typeof part === 'string'));
 const isHeaders = (value: unknown): value is Record<string, string> => isRecord(value) && Object.values(value).every(item => typeof item === 'string');
 const normalizeEndpoint = (value: Record<string, any>): OpenDocUIAction | null => {
-    if (typeof value.path !== 'string' || !value.path.startsWith('/') || typeof value.method !== 'string' || !METHODS.has(value.method.toLowerCase()))
+    if (typeof value.path !== 'string' || !value.path.startsWith('/') || typeof value.method !== 'string' || !HTTP_METHOD_TOKEN.test(value.method))
         return null;
     const method = value.method.toLowerCase();
     if (value.action === 'open_endpoint' || value.action === 'open_runner')
