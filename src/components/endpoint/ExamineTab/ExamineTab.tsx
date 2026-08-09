@@ -26,6 +26,7 @@ interface ExamineTabProps {
     themeMode?: 'light' | 'dark';
     responseHistory?: ExamineResponse[];
     onResponseChange?: (resp: ExamineResponse) => void;
+    onDeleteResponse?: (index: number) => void;
     onClearResponse?: () => void;
     isActive?: boolean;
 }
@@ -41,6 +42,7 @@ export default function ExamineTab({
                                        themeMode = 'dark',
                                        responseHistory = [],
                                        onResponseChange,
+                                       onDeleteResponse,
                                        onClearResponse,
                                        isActive = true,
                                    }: ExamineTabProps) {
@@ -439,6 +441,12 @@ export default function ExamineTab({
 
         <ResponsePanel method={method} selectedServer={selectedServer} path={path} isRunning={isRunning}
                        response={response} responseHistory={responseHistory} onSelectResponse={setResponse}
+                       onDeleteResponse={index => {
+                           const remaining = responseHistory.filter((_, itemIndex) => itemIndex !== index);
+                           if (response === responseHistory[index])
+                               setResponse(remaining[0] || null);
+                           onDeleteResponse?.(index);
+                       }}
                        onExecute={executeRequest} onCancel={() => {
             abortControllerRef.current?.abort();
         }} onClear={() => {

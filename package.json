@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node scripts/verify-single-bundle.mjs",
     "preview": "vite preview",
     "ai-gateway": "tsx server/ai-gateway.ts",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "clean": "node scripts/clean.mjs",
+    "lint": "tsc --noEmit && node scripts/verify-ui-contracts.mjs",
     "test": "tsx tests/run.ts && tsx tests/serialization-matrix.ts && tsx tests/swagger2-matrix.ts && tsx tests/async.ts && tsx tests/conformance.ts",
     "test:browser": "playwright test",
     "test:all": "npm run lint && npm test && npm run test:browser && npm run build"

@@ -78,6 +78,23 @@ const readResponseBody = async (response: Response): Promise<{
 
 export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise<ExamineResponse> => {
     const startedAt = Date.now();
+    const plan = compileBrowserRequest(input);
+    const blocking = plan.diagnostics.filter(item => item.blocking);
+    if (blocking.length > 0) {
+        const errorMessage = blocking.map(item => item.message).join('\n');
+        return {
+            status: 0,
+            headers: {},
+            body: errorMessage,
+            isJson: false,
+            timestamp: Date.now(),
+            requestUrl: plan.url,
+            durationMs: Date.now() - startedAt,
+            errorKind: 'validation',
+            errorMessage,
+            diagnostics: plan.diagnostics,
+        };
+    }
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();
     input.signal?.addEventListener('abort', forwardAbort, {once: true});
@@ -87,7 +104,6 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
         controller.abort();
     }, REQUEST_TIMEOUT_MS);
 
-    const plan = compileBrowserRequest(input);
     let requestUrl = plan.url;
     try {
         const response = await fetch(plan.url, {

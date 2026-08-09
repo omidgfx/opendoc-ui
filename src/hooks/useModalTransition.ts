@@ -66,6 +66,7 @@ export function useModalTransition(isOpen: boolean, onClose: () => void, duratio
                 return;
             surface.setAttribute('role', surface.getAttribute('role') || 'dialog');
             surface.setAttribute('aria-modal', 'true');
+            surface.dataset.suppressTooltipsUntil = String(Date.now() + 700);
             if (!surface.hasAttribute('tabindex'))
                 surface.tabIndex = -1;
             const autofocus = surface.querySelector<HTMLElement>('[autofocus]');

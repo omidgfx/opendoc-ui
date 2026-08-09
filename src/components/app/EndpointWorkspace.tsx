@@ -38,6 +38,7 @@ interface EndpointWorkspaceProps {
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
     responseHistory: ExamineResponse[];
     onResponseChange: (response: ExamineResponse) => void;
+    onDeleteResponse: (index: number) => void;
     onClearResponse: () => void;
     onOpenSchema: (schemaName: string) => void;
     onGenerateCode: () => void;
@@ -67,6 +68,7 @@ export default function EndpointWorkspace({
                                               setActiveResponseCode,
                                               responseHistory,
                                               onResponseChange,
+                                              onDeleteResponse,
                                               onClearResponse,
                                               onOpenSchema,
                                               onGenerateCode,
@@ -84,7 +86,8 @@ export default function EndpointWorkspace({
     const runner = (<ExamineTab spec={spec} path={endpoint.path} method={endpoint.method} operation={operation}
                                 activeAuth={activeAuth} selectedServer={selectedServer} parsableKey={parsableKey}
                                 themeMode={resolvedThemeMode} responseHistory={responseHistory} isActive={runnerActive}
-                                onResponseChange={onResponseChange} onClearResponse={onClearResponse}/>);
+                                onResponseChange={onResponseChange} onDeleteResponse={onDeleteResponse}
+                                onClearResponse={onClearResponse}/>);
     return (<div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         <div
             className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">

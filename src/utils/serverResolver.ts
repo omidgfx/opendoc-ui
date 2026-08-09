@@ -47,7 +47,7 @@ const expandServer = (
         if (value === undefined) {
             diagnostics.push(diagnostic(
                 'OAS_SERVER_VARIABLE_MISSING',
-                `Server variable '${name}' has no selected or default value. The placeholder is being sent unchanged.`,
+                `Server variable '${name}' has no selected or default value.`,
                 {source: {pointer: `/servers/url`}},
             ));
             return placeholder;
@@ -56,7 +56,7 @@ const expandServer = (
         if (Array.isArray(variable?.enum) && variable.enum.length > 0 && !variable.enum.includes(String(value))) {
             diagnostics.push(diagnostic(
                 'OAS_SERVER_VARIABLE_OUTSIDE_ENUM',
-                `Server variable '${name}' value '${value}' is outside its documented enum. OpenDoc will still try the request.`,
+                `Server variable '${name}' value '${value}' is outside its documented enum.`,
             ));
         }
         return String(value);
@@ -81,7 +81,7 @@ const resolveRelativeUrl = (expanded: string, sourceUri: string | undefined): {u
             url: expanded,
             diagnostic: diagnostic(
                 'OAS_RELATIVE_SERVER_BASE_UNKNOWN',
-                `Relative server '${expanded}' has no known document base. It is being passed through unchanged.`,
+                `Relative server '${expanded}' has no known document base.`,
             ),
         };
     try {
@@ -98,7 +98,7 @@ const resolveRelativeUrl = (expanded: string, sourceUri: string | undefined): {u
             url: expanded,
             diagnostic: diagnostic(
                 'OAS_SERVER_URL_INVALID',
-                `Server URL '${expanded}' could not be resolved. It is being passed to browser fetch so the runtime error remains visible.`,
+                `Server URL '${expanded}' could not be resolved.`,
             ),
         };
     }

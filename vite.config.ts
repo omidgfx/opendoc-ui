@@ -28,10 +28,15 @@ export default defineConfig(() => {
         },
         build: {
             sourcemap: true,
+            // A single bundle is intentional for the drop-in distribution.
+            chunkSizeWarningLimit: 2000,
             rollupOptions: {
                 output: {
+                    // OpenDoc is distributed as one drop-in JavaScript asset.
+                    // Dynamic imports are inlined intentionally so Windows/static
+                    // deployments never need to copy or rewrite chunk filenames.
+                    inlineDynamicImports: true,
                     entryFileNames: 'index.js',
-                    chunkFileNames: '[name].js',
                     assetFileNames: '[name].[ext]',
                 }
             },

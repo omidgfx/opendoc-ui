@@ -74,9 +74,12 @@ npm run dev        # http://localhost:3000
 Production build and preview:
 
 ```bash
-npm run build      # outputs to dist/
+npm run build      # outputs one JavaScript bundle: dist/index.js
 npm run preview    # serves dist/ locally
 ```
+
+Build and clean scripts are shell-independent and run on Windows, macOS, and Linux. The build fails
+if more than one `.js` bundle is emitted.
 
 Type check and unit tests:
 
@@ -248,7 +251,8 @@ values are mapped during compatibility conversion. The response reader is bounde
 detects `application/*+json`, shows the substituted request URL, and supports a Cancel button
 plus a 30-second timeout. Binary bodies are represented as bounded metadata instead of being
 converted to an unbounded text string. Every endpoint keeps its **last 10 transaction outcomes**
-in memory, including HTTP responses, browser/network failures, timeouts, and cancellations.
+per specification in IndexedDB-backed storage (with localStorage fallback), including HTTP responses,
+browser/network failures, validation outcomes, timeouts, and cancellations.
 
 Request bodies have two complementary paths: the manual recursive form handles nested objects,
 arrays of objects, arrays of arrays, enums, defaults, examples, and add/remove/reorder controls;
@@ -256,11 +260,12 @@ Raw mode remains available for payloads that need exact text. The raw editor sel
 JavaScript, HTML, or plain-text behavior from the media type and does not apply JSON diagnostics to
 non-JSON bodies.
 
-The Runner is intentionally **permissive, not a client-side API validator**. Missing required
-parameters, unresolved placeholders, pattern mismatches, and malformed JSON are reported as
-Runner notices but are still sent whenever browser `fetch` can physically send them. This lets the
-real API, gateway, DNS/network layer, or browser return the authoritative error. Browser-imposed
-limitations such as GET/HEAD bodies and forbidden headers are disclosed rather than hidden.
+The Runner is intentionally **permissive, not a client-side API validator**. Pattern mismatches,
+malformed JSON, missing non-path values, and questionable server values are reported as notices but
+remain testable against the real API. Missing required path parameters are the one strict exception:
+they block execution because an incomplete route can resolve to the wrong backend endpoint.
+Browser-imposed limitations such as GET/HEAD bodies and forbidden headers are disclosed rather than
+hidden.
 
 Authentication keeps actual OpenAPI security-scheme IDs and can apply composed requirements
 simultaneously, with credentials isolated per specification and operation-level security overrides
@@ -466,6 +471,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 | `opendoc:spec:<key>:tab_mode`                               | Last used tab mode (docs / examine / split)       |
 | `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab |
 | `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                  |
+| `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint              |
 | `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                 |
 | `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification     |
 | `opendoc_spec_cache_v2:<url>`                               | Small/legacy fallback copy of a remotely loaded spec; large copies use IndexedDB         |

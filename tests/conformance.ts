@@ -20,6 +20,17 @@ try {
         selectedSchemes: ['auth'],
         schemeValues: {auth: {schemeId: 'auth', type: 'bearer', value: 'must-not-leak'}},
     };
+    const missingPath = await executeRunnerRequest({
+        spec, path: '/users/{id}', method: 'post', operation,
+        selectedServer: recorder.origin, activeAuth: auth,
+        parameterValues: {[parameterStateKey('query', 'code')]: 'wrong-pattern'},
+        body: '{deliberately invalid json', bodyType: 'application/json',
+    });
+    assert.equal(missingPath.status, 0);
+    assert.equal(missingPath.errorKind, 'validation');
+    assert.equal(recorder.requests.length, 0, 'missing route segments must block network execution');
+    assert.ok(missingPath.diagnostics?.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING' && item.blocking));
+
     const result = await executeRunnerRequest({
         spec,
         path: '/users/{id}',
@@ -28,7 +39,7 @@ try {
         selectedServer: recorder.origin,
         activeAuth: auth,
         parameterValues: {
-            // Deliberately omit required path:id. The server must see it.
+            [parameterStateKey('path', 'id')]: 'not-a-number',
             [parameterStateKey('query', 'code')]: 'wrong-pattern',
             [parameterStateKey('header', 'X-Region')]: 'eu',
         },
@@ -38,19 +49,18 @@ try {
 
     assert.equal(result.status, 400);
     assert.match(result.body, /server rejected/);
-    assert.equal(recorder.requests.length, 1, 'advisory validation must never suppress the request');
+    assert.equal(recorder.requests.length, 1);
     const recorded = recorder.requests[0];
     const recordedUrl = new URL(recorded.url, recorder.origin);
-    assert.equal(decodeURIComponent(recordedUrl.pathname), '/users/{id}');
+    assert.equal(decodeURIComponent(recordedUrl.pathname), '/users/not-a-number');
     assert.equal(recordedUrl.searchParams.get('code'), 'wrong-pattern');
     assert.equal(recorded.headers['x-region'], 'eu');
     assert.equal(recorded.headers.authorization, undefined, 'public operation must not receive the configured token');
     assert.equal(recorded.headers.accept, 'application/problem+json');
     assert.equal(recorded.body.toString(), '{deliberately invalid json');
-    assert.ok(result.diagnostics?.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING'));
     assert.ok(result.diagnostics?.some(item => item.code === 'RUN_PARAMETER_PATTERN_MISMATCH'));
     assert.ok(result.diagnostics?.some(item => item.code === 'RUN_BODY_JSON_INVALID'));
-    console.log('✓ sends deliberately invalid inputs to the real HTTP recorder while isolating auth');
+    console.log('✓ blocks missing route segments but sends other invalid inputs to the real HTTP recorder');
 
     const multipartOperation: any = {
         requestBody: {

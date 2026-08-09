@@ -57,6 +57,13 @@ export default function Tip({
             setOpen(true);
         }, delay);
     };
+    const showFromFocus = (event: React.FocusEvent) => {
+        const surface = (event.target as HTMLElement | null)?.closest<HTMLElement>('.modal-surface');
+        const suppressUntil = Number(surface?.dataset.suppressTooltipsUntil || 0);
+        if (suppressUntil > Date.now())
+            return;
+        show();
+    };
     const close = () => {
         clearTimer();
         setOpen(false);
@@ -115,7 +122,7 @@ export default function Tip({
     if (disabled || !content)
         return children;
     return (<Wrapper ref={setWrapperRef} className={wrapperClassNameResolved} onMouseEnter={show} onMouseLeave={hide}
-                     onFocusCapture={show} onBlurCapture={hide}>
+                     onFocusCapture={showFromFocus} onBlurCapture={hide}>
         {React.cloneElement(children as React.ReactElement<any>, {
             title: undefined,
             'aria-describedby': describedBy,

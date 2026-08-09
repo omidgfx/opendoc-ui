@@ -18,7 +18,7 @@ import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage';
 import {getMergedParameters, getRefName, resolveRequestBody} from '../../../utils/openapi';
-import {isOperationProtected} from '../../../utils/auth';
+import {isOperationAuthenticated, isOperationProtected} from '../../../utils/auth';
 
 interface ViewTabProps {
     key: any;
@@ -326,6 +326,7 @@ export default function ViewTab({
     const selectedRequestBodyContentType = requestBodyContentType && resolvedRequestBody?.content?.[requestBodyContentType] ? requestBodyContentType : requestBodyContentEntries[0]?.[0] || '';
     const selectedRequestBodyContent = selectedRequestBodyContentType ? resolvedRequestBody?.content?.[selectedRequestBodyContentType] : null;
     const isProtected = isOperationProtected(spec, operation);
+    const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     return (<div ref={scrollContainerRef}
                  className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
                  style={{maxWidth: '100%'}}>
@@ -356,8 +357,11 @@ export default function ViewTab({
                         <i className="ph ph-warning-circle text-[16px]"></i> Deprecated
                     </span>)}
                     {isProtected && (<span
-                        className="inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border bg-[var(--method-delete)]/10 border-[var(--method-delete)]/20 text-[var(--method-delete)] select-none animate-pulse">
-                        <i className="ph-fill ph-lock-key text-[16px]"></i> Protected
+                        className={clsx('inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border select-none', isAuthorized
+                            ? 'bg-[var(--method-get)]/10 border-[var(--method-get)]/25 text-[var(--method-get)]'
+                            : 'bg-[var(--method-delete)]/10 border-[var(--method-delete)]/20 text-[var(--method-delete)] animate-pulse')}>
+                        <i className={`ph-fill ${isAuthorized ? 'ph-lock-key-open' : 'ph-lock-key'} text-[16px]`}></i>
+                        {isAuthorized ? 'Authorized' : 'Protected'}
                     </span>)}
                     <Tip content="Share this endpoint">
                         <button onClick={handleShareEndpoint} aria-label="Share this endpoint"
@@ -513,7 +517,7 @@ export default function ViewTab({
                     {Object.entries(operation.responses).map(([code, resp]) => {
                         const isCollapsed = collapsedResponses[code] ?? true;
                         const isSuccess = code === 'default' || code.startsWith('2');
-                        const activeResponseTab = responseActiveTab[code] || 'example';
+                        const activeResponseTab = responseActiveTab[code] || 'schema';
                         const responseContentEntries = resp.content ? Object.entries(resp.content) as [
                             string,
                             any
@@ -594,21 +598,21 @@ export default function ViewTab({
                                     <div className="flex items-center justify-between gap-3 flex-wrap">
                                         <div
                                             className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap">
-                                            <button onClick={() => setResponseTab('example')}
+                                            <button onClick={() => setResponseTab('example')} aria-pressed={activeResponseTab === 'example'}
                                                     className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                                 <span className="hidden sm:inline">Example
                                                     Representation</span>
                                                 <span className="sm:hidden">Example</span>
                                             </button>
                                             {(() => {
-                                                const s = resolveReference(viewerExampleSchemas[code] || selectedContentObj?.schema);
+                                                const s = resolveReference(viewerExampleSchemas[code] ?? selectedContentObj?.schema);
                                                 const hasEnum = s?.enum && Array.isArray(s.enum) && s.enum.length > 0;
-                                                return hasEnum ? (<button onClick={() => setResponseTab('enum')}
+                                                return hasEnum ? (<button onClick={() => setResponseTab('enum')} aria-pressed={activeResponseTab === 'enum'}
                                                                           className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'enum' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                                     Enum
                                                 </button>) : null;
                                             })()}
-                                            <button onClick={() => setResponseTab('schema')}
+                                            <button onClick={() => setResponseTab('schema')} aria-pressed={activeResponseTab === 'schema'}
                                                     className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'schema' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}>
                                                 <span className="hidden sm:inline">Unified Schema</span>
                                                 <span className="sm:hidden">Schema</span>
@@ -634,7 +638,7 @@ export default function ViewTab({
                                         {(() => {
                                             const cType = selectedContentType;
                                             const cObj = selectedContentObj;
-                                            const activeSchema = viewerExampleSchemas[code] || cObj.schema;
+                                            const activeSchema = viewerExampleSchemas[code] ?? cObj.schema;
                                             const resolvedSchema = resolveReference(activeSchema);
                                             const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
                                             return (<div key={cType} className="space-y-3 min-w-0">

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig,} from './types';
 import {generateSmartRoute, getEndpointId} from './utils/routing';
@@ -21,6 +21,7 @@ import {
 import {executeRunnerRequest} from './utils/runnerExecution';
 import {createEmptyAuth} from './utils/auth';
 import {getRawSpecDocument} from './utils/specSource';
+import {appendResponseHistory, readResponseHistory} from './utils/responseHistory';
 import {type ConfigSource, endpointKey, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
@@ -114,7 +115,7 @@ export default function App() {
     // specification can never inherit the first specification's secret.
     const [authBySpec, setAuthBySpec] = useState<Record<string, ActiveAuth>>({});
     const authScopeKey = selectedParsableKey || '__no_spec__';
-    const activeAuth = authBySpec[authScopeKey] || createEmptyAuth();
+    const activeAuth = useMemo(() => authBySpec[authScopeKey] || createEmptyAuth(), [authBySpec, authScopeKey]);
     const setActiveAuth = useCallback<React.Dispatch<React.SetStateAction<ActiveAuth>>>((next) => {
         setAuthBySpec(current => {
             const previous = current[authScopeKey] || createEmptyAuth();
@@ -194,6 +195,14 @@ export default function App() {
         setModalStack: setModalsStack,
         modalCount: modalsStack.length,
     });
+    useEffect(() => {
+        if (!selectedEndpoint || !selectedParsableKey)
+            return;
+        const key = endpointKey(selectedEndpoint.path, selectedEndpoint.method);
+        setExamineResponses(current => Object.prototype.hasOwnProperty.call(current, key)
+            ? current
+            : {...current, [key]: readResponseHistory(selectedParsableKey, selectedEndpoint.path, selectedEndpoint.method)});
+    }, [selectedEndpoint, selectedParsableKey]);
     const [activeSplitPane, setActiveSplitPane] = useState<'docs' | 'examine'>('docs');
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
     const {
@@ -665,7 +674,13 @@ export default function App() {
             const historyKey = endpointKey(action.path, action.method);
             setExamineResponses(current => ({
                 ...current,
-                [historyKey]: [result, ...(current[historyKey] || [])].slice(0, 10),
+                [historyKey]: appendResponseHistory(
+                    selectedParsableKey,
+                    action.path,
+                    action.method,
+                    result,
+                    current[historyKey] || readResponseHistory(selectedParsableKey, action.path, action.method),
+                ),
             }));
             dispatchOpenDocUIRunnerResult({
                 actionId,

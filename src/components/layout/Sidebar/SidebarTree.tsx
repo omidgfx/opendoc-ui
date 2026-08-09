@@ -217,8 +217,10 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                     {ep.operation?.deprecated && <Tip content="Deprecated endpoint"><i
                                         className={clsx('ph ph-warning-circle text-[12px] shrink-0', isSelected ? 'text-[var(--primary-contrast)]/80' : 'text-[var(--method-put)]/90')}/></Tip>}
                                     {ep.isProtected && !sidebarConfig.hideProtectedIcon &&
-                                        <Tip content="Requires authentication"><i
-                                            className={clsx('ph-fill ph-lock-key text-[12px] shrink-0', isSelected ? 'text-[var(--primary-contrast)]/80' : 'text-[var(--method-delete)]/80')}/></Tip>}
+                                        <Tip content={ep.isAuthorized ? 'Authentication configured' : 'Requires authentication'}><i
+                                            className={clsx('ph-fill text-[12px] shrink-0', ep.isAuthorized ? 'ph-lock-key-open' : 'ph-lock-key', isSelected
+                                                ? 'text-[var(--primary-contrast)]/90'
+                                                : ep.isAuthorized ? 'text-[var(--method-get)]' : 'text-[var(--method-delete)]/80')}/></Tip>}
                                 </div>
                             </a>
                         </Tip>

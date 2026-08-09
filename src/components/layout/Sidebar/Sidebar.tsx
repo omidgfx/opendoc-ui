@@ -291,7 +291,7 @@ export default function Sidebar(props: SidebarProps) {
             clearSortCloseTimer();
         };
     }, [settingsMenuOpen]);
-    const tagTree = useMemo(() => buildTagTree(spec, sidebarConfig), [spec, sidebarConfig]);
+    const tagTree = useMemo(() => buildTagTree(spec, sidebarConfig, activeAuth), [spec, sidebarConfig, activeAuth]);
     const hasActiveSidebarFilters = !!searchQuery.trim() || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
     const hasEndpointVisibilityFilter = hasActiveSidebarFilters || sidebarConfig.hideDeprecatedEndpoints;
     const visibleTagTree = useMemo(() => {
@@ -629,11 +629,10 @@ export default function Sidebar(props: SidebarProps) {
                         {Object.entries(selectedServerDefinition.variables).map(([name, variable]) => <label key={name}
                             className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-center gap-2 text-[9px] text-[var(--text-muted)]">
                             <span className="truncate font-mono" title={variable.description || name}>{name}</span>
-                            {variable.enum?.length ? <select value={serverVariableValues[name] ?? variable.default}
-                                onChange={event => updateServerVariable(name, event.target.value)}
-                                className="min-w-0 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[9px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]">
-                                {variable.enum.map(value => <option key={value} value={value}>{value}</option>)}
-                            </select> : <input value={serverVariableValues[name] ?? variable.default}
+                            {variable.enum?.length ? <CustomDropdown value={serverVariableValues[name] ?? variable.default}
+                                onChange={value => updateServerVariable(name, value)}
+                                options={variable.enum.map(value => ({value, label: value}))}
+                                className="min-w-0"/> : <input value={serverVariableValues[name] ?? variable.default}
                                 onChange={event => updateServerVariable(name, event.target.value)}
                                 className="min-w-0 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[9px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"/>}
                         </label>)}

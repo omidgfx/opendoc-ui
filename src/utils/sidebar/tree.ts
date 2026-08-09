@@ -1,6 +1,6 @@
-import type {OpenApiSpec} from '@/src/types';
+import type {ActiveAuth, OpenApiSpec} from '@/src/types';
 import {specStorage} from '@/src/utils/storage';
-import {isOperationProtected} from '@/src/utils/auth';
+import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/auth';
 import {getPathItemOperations} from '@/src/utils/openapi/operations';
 
 export interface TreeNode {
@@ -11,6 +11,7 @@ export interface TreeNode {
         method: string;
         operation: any;
         isProtected: boolean;
+        isAuthorized: boolean;
     }>;
 }
 
@@ -97,7 +98,7 @@ export function readSidebarConfig(specKey: string): SidebarConfig {
     return normalizeSidebarConfig(stored);
 }
 
-export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): TreeNode {
+export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig, activeAuth?: ActiveAuth): TreeNode {
     const root: TreeNode = {name: '', children: {}, endpoints: []};
     if (!spec?.paths)
         return root;
@@ -108,10 +109,11 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
         getPathItemOperations(pathItem).forEach(({method, operation}) => {
             const tags = operation.tags?.length ? operation.tags : ['General'];
             const isProtected = isOperationProtected(spec, operation);
+            const isAuthorized = activeAuth ? isOperationAuthenticated(spec, activeAuth, operation) : false;
             tags.forEach((tag: string) => {
                 if (!byTag[tag])
                     byTag[tag] = [];
-                byTag[tag].push({path: pathStr, method, operation, isProtected});
+                byTag[tag].push({path: pathStr, method, operation, isProtected, isAuthorized});
             });
         });
     });

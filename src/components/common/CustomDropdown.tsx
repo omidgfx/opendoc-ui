@@ -13,6 +13,7 @@ interface CustomDropdownProps {
     icon?: string;
     className?: string;
     placeholder?: string;
+    disabled?: boolean;
 }
 
 export default function CustomDropdown({
@@ -21,7 +22,8 @@ export default function CustomDropdown({
                                            options,
                                            icon,
                                            className = '',
-                                           placeholder = 'Select...'
+                                           placeholder = 'Select...',
+                                           disabled = false,
                                        }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -130,23 +132,26 @@ export default function CustomDropdown({
                 event.stopPropagation();
                 selectIndex(index);
             }}
-            className={`px-3 py-2 cursor-pointer hover:bg-[var(--surface-hover)] flex items-center gap-2 text-xs font-mono ${index === activeIndex ? 'outline-none ring-1 ring-inset ring-[var(--primary)]/40' : ''} ${option.value === value ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-semibold' : ''}`}>
-            {option.label}
+            className={`px-3 py-2 cursor-pointer flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}>
+            <span className={`size-2 shrink-0 rounded-full ${index === activeIndex ? 'bg-[var(--primary)]' : option.value === value ? 'bg-[var(--method-get)]' : 'bg-transparent'}`}/>
+            <span className="min-w-0 truncate">{option.label}</span>
         </div>)}
     </div>);
 
     return (<div className={`relative ${className}`}>
-        <button ref={triggerRef} type="button" aria-haspopup="listbox" aria-expanded={isOpen}
+        <button ref={triggerRef} type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={isOpen}
             aria-controls={isOpen ? listboxId : undefined}
-            onClick={() => isOpen ? close(false) : open()}
+            onClick={() => disabled ? undefined : isOpen ? close(false) : open()}
             onKeyDown={event => {
+                if (disabled)
+                    return;
                 if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     event.preventDefault();
                     if (!isOpen)
                         open(event.key === 'ArrowDown' ? selectedIndex : Math.max(0, selectedIndex));
                 }
             }}
-            className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40">
+            className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 disabled:cursor-not-allowed disabled:opacity-60">
             <span className="flex min-w-0 items-center gap-2 truncate">
                 {icon && <i className={icon}/>}<span className="font-mono truncate">{selected?.label || placeholder}</span>
             </span>
