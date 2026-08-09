@@ -9,6 +9,7 @@ import {Tip} from '@/src/components/common/Tooltip';
 import {useBreakpoint} from '@/src/hooks/useBreakpoint';
 import FiltersPanel from './FiltersPanel';
 import {useModalTransition} from '@/src/hooks/useModalTransition';
+import {isOperationProtected} from '@/src/utils/auth';
 
 interface SearchResultsViewProps {
     spec: OpenApiSpec | null;
@@ -123,7 +124,7 @@ export default function SearchResultsView({
                 const op = operation as Operation;
                 const methodUpper = methodStr.toUpperCase();
                 const opTags = op.tags && op.tags.length > 0 ? op.tags : ['General'];
-                const isProtected = op.security ? op.security.length > 0 : !!(spec.security && spec.security.length > 0);
+                const isProtected = isOperationProtected(spec, op);
                 if (selectedMethods.length > 0 && !selectedMethods.includes(methodUpper))
                     return;
                 if (selectedTags.length > 0 && !opTags.some(t => selectedTags.includes(t)))

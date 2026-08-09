@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { applyAuthToRequest } from '../src/utils/auth';
+import { applyAuthToRequest, isOperationProtected } from '../src/utils/auth';
 import { buildAIContext, buildAISystemPrompt, citationsFromText } from '../src/utils/aiContext';
 import { formatOpenDocUIRunnerResult, parseOpenDocUIActions } from '../src/utils/aiBridge';
 import { allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection } from '../server/ai-gateway-policy';
@@ -80,6 +80,12 @@ test('resolves JSON pointers, escaped names, and cyclic refs safely', () => {
     const resolved = resolveReference({ $ref: '#/components/schemas/A' }, spec);
     assert.equal(typeof resolved, 'object');
     assert.equal(resolved.$ref, '#/components/schemas/A');
+});
+test('derives protected indicators from effective security including anonymous alternatives', () => {
+    const protectedSpec: any = {...baseSpec, security: [{auth: []}]};
+    assert.equal(isOperationProtected(protectedSpec, {responses: {}} as any), true);
+    assert.equal(isOperationProtected(protectedSpec, {security: [], responses: {}} as any), false);
+    assert.equal(isOperationProtected({...baseSpec, security: [{}, {auth: []}]}, {responses: {}} as any), false);
 });
 test('never applies configured auth to an explicitly public operation', () => {
     const operation: any = { security: [], responses: { '200': { description: 'ok' } } };
