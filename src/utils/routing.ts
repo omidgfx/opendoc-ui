@@ -1,6 +1,6 @@
 import type {EndpointRef, OpenApiSpec, ParsedRoute} from '../types';
 
-export const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
+export const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'];
 export const getEndpointId = (operation: any, path: string, method: string): string => {
     if (operation?.operationId)
         return operation.operationId;

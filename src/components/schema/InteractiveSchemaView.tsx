@@ -26,8 +26,20 @@ export default function InteractiveSchemaView({
         [combinatorKey: string]: number;
     }>({});
     const [viewMode, setViewMode] = useState<'table' | 'example' | 'enum'>('table');
-    if (!schema) {
+    if (schema === undefined || schema === null) {
         return <p className="text-xs italic opacity-50">No schema provided.</p>;
+    }
+    if (schema === true) {
+        return <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
+            <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+            <p className="mt-1 text-[var(--text-muted)]">Any JSON value is valid.</p>
+        </div>;
+    }
+    if (schema === false) {
+        return <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
+            <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+            <p className="mt-1 text-[var(--text-muted)]">No JSON value can satisfy this schema.</p>
+        </div>;
     }
     const resolved = resolveReference(schema) || schema;
     const isEnum = resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0;
@@ -217,6 +229,30 @@ export default function InteractiveSchemaView({
         }
     };
     const badge = getBadgeStyle();
+    if (combinatorType === 'allOf') {
+        return (<div className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
+            <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3">
+                <span className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}>All Of</span>
+                <div>
+                    <p className="text-xs font-semibold text-[var(--text-heading)]">All constraints below apply together</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">These are composed constraints, not selectable alternatives.</p>
+                </div>
+            </div>
+            {subSchemas.map((sub, index) => <section key={index}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
+                        Constraint {index + 1}: {getSubSchemaLabel(sub, index)}
+                    </span>
+                    {sub?.$ref && <button type="button" onClick={() => onPushSchema(getRefName(sub.$ref))}
+                        className="rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-2 py-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer">
+                        Open schema
+                    </button>}
+                </div>
+                {renderStandardSchema(sub)}
+            </section>)}
+        </div>);
+    }
     return (<div
         className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
 
@@ -230,11 +266,11 @@ export default function InteractiveSchemaView({
                     {badge.label}
                 </span>
                 <span className="text-xs font-semibold text-[var(--text-heading)]">
-                    This schema contains multiple structural definitions
+                    {combinatorType === 'oneOf' ? 'Exactly one alternative must validate' : 'One or more alternatives may validate'}
                 </span>
             </div>
             <p className="text-[10px] text-[var(--text-muted)]">
-                Choose a sub-schema definition to inspect details and simulations.
+                Inspect an alternative; this selection changes only the documentation view.
             </p>
         </div>
 

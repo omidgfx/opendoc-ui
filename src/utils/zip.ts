@@ -43,15 +43,37 @@ export interface ZipFileEntry {
     content: string | Uint8Array;
 }
 
+export const sanitizeZipEntryName = (input: string): string => {
+    const normalized = String(input || 'file').replace(/\\/g, '/').replace(/^\/+/, '');
+    const segments = normalized.split('/')
+        .filter(segment => segment && segment !== '.' && segment !== '..')
+        .map(segment => segment
+            .replace(/[<>:"|?*\u0000-\u001f]/g, '_')
+            .replace(/\.{2,}/g, '_')
+            .replace(/[. ]+$/g, '')
+            .slice(0, 120) || 'file');
+    return segments.join('/') || 'file';
+};
+
 export function createZipBlob(files: ZipFileEntry[]): Blob {
     const encoder = new TextEncoder();
     const now = new Date();
     const {dosDate, dosTime} = toDosDateTime(now);
+    const usedNames = new Set<string>();
     const prepared = files.map((f) => {
-        const nameBytes = encoder.encode(f.name);
+        const sanitized = sanitizeZipEntryName(f.name);
+        const dot = sanitized.lastIndexOf('.');
+        const stem = dot > 0 ? sanitized.slice(0, dot) : sanitized;
+        const extension = dot > 0 ? sanitized.slice(dot) : '';
+        let name = sanitized;
+        let suffix = 2;
+        while (usedNames.has(name.toLowerCase()))
+            name = `${stem}_${suffix++}${extension}`;
+        usedNames.add(name.toLowerCase());
+        const nameBytes = encoder.encode(name);
         const contentBytes = typeof f.content === 'string' ? encoder.encode(f.content) : f.content;
         const crc = crc32Uint8(contentBytes);
-        return {...f, nameBytes, contentBytes, crc};
+        return {...f, name, nameBytes, contentBytes, crc};
     });
     let totalLocalSize = 0;
     let totalCentralSize = 0;

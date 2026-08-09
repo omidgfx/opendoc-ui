@@ -62,7 +62,7 @@ export interface OpenDocUIRunnerResult {
 export const createOpenDocUIActionId = (): string => typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `action-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace']);
+const METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query']);
 const isRecord = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 const isParams = (value: unknown): value is Record<string, string | string[]> => isRecord(value) && Object.values(value).every(item => typeof item === 'string' || Array.isArray(item) && item.every(part => typeof part === 'string'));
 const isHeaders = (value: unknown): value is Record<string, string> => isRecord(value) && Object.values(value).every(item => typeof item === 'string');

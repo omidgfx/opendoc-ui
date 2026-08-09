@@ -105,7 +105,7 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig): T
         if (!pathItem)
             return;
         Object.entries(pathItem).forEach(([methodStr, operation]) => {
-            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(methodStr))
+            if (!['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(methodStr))
                 return;
             const op = operation as any;
             if (!op)

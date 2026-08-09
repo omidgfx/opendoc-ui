@@ -10,10 +10,11 @@
     "ai-gateway": "tsx server/ai-gateway.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/run.ts && tsx tests/async.ts"
+    "test": "tsx tests/run.ts && tsx tests/async.ts && tsx tests/conformance.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@scalar/openapi-parser": "0.24.17",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",

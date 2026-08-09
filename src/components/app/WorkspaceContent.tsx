@@ -1,4 +1,4 @@
-import type {Dispatch, MouseEvent, RefObject, SetStateAction} from 'react';
+import type {Dispatch, KeyboardEvent, MouseEvent, RefObject, SetStateAction} from 'react';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
 import SearchResultsView from '@/src/pages/search/SearchResultsPage';
 import AboutView from '@/src/pages/about/AboutPage';
@@ -40,13 +40,17 @@ interface WorkspaceContentProps {
     docsPaneWidth: number;
     isSplitDragging: boolean;
     onSplitResizeMouseDown: (event: MouseEvent) => void;
+    onSplitResizeKeyDown: (event: KeyboardEvent) => void;
+    splitSeparatorMin: number;
+    splitSeparatorMax: number;
+    splitSeparatorNow: number;
     isMobile: boolean;
     activeAuth: ActiveAuth;
     resolvedThemeMode: 'light' | 'dark';
     activeResponseCode: string | null;
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
-    examineResponses: Record<string, ExamineResponse>;
-    setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse>>>;
+    examineResponses: Record<string, ExamineResponse[]>;
+    setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     showSchemaExplorer: boolean;
     showHome: boolean;
     onOpenAbout: () => void;
@@ -93,6 +97,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         docsPaneWidth,
         isSplitDragging,
         onSplitResizeMouseDown,
+        onSplitResizeKeyDown,
+        splitSeparatorMin,
+        splitSeparatorMax,
+        splitSeparatorNow,
         isMobile,
         activeAuth,
         resolvedThemeMode,
@@ -144,13 +152,15 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                                        activeSplitPane={activeSplitPane} setActiveSplitPane={setActiveSplitPane}
                                        splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth}
                                        isSplitDragging={isSplitDragging} onSplitResizeMouseDown={onSplitResizeMouseDown}
-                                       isMobile={isMobile} activeAuth={activeAuth} selectedServer={selectedServer}
+                                       onSplitResizeKeyDown={onSplitResizeKeyDown}
+                                       splitSeparatorMin={splitSeparatorMin} splitSeparatorMax={splitSeparatorMax}
+                                       splitSeparatorNow={splitSeparatorNow} isMobile={isMobile} activeAuth={activeAuth} selectedServer={selectedServer}
                                        resolvedThemeMode={resolvedThemeMode} activeResponseCode={activeResponseCode}
                                        setActiveResponseCode={setActiveResponseCode}
-                                       currentResponse={examineResponses[key] || null}
+                                       responseHistory={examineResponses[key] || []}
                                        onResponseChange={response => setExamineResponses(current => ({
                                            ...current,
-                                           [key]: response
+                                           [key]: [response, ...(current[key] || [])].slice(0, 10)
                                        }))} onClearResponse={() => setExamineResponses(current => {
                 const next = {...current};
                 delete next[key];

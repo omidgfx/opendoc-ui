@@ -76,7 +76,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
     const getPropertiesCount = (schema: any): number => {
-        if (!schema) {
+        if (schema === undefined || schema === null) {
             return 0;
         }
         let count = 0;

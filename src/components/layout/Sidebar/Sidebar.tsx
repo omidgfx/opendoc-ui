@@ -88,6 +88,23 @@ export default function Sidebar(props: SidebarProps) {
     } = props;
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
+    const selectedServerDefinition = useMemo(() => {
+        const servers = spec.servers || [];
+        return servers.find(server => server.url === selectedServer) || servers[0] || null;
+    }, [spec, selectedServer]);
+    const [serverVariableValues, setServerVariableValues] = useState<Record<string, string>>({});
+    useEffect(() => {
+        setServerVariableValues(Object.fromEntries(Object.entries(selectedServerDefinition?.variables || {})
+            .map(([name, variable]) => [name, String(variable.default ?? '')])));
+    }, [selectedParsableKey, selectedServerDefinition?.url]);
+    const updateServerVariable = (name: string, value: string) => {
+        const next = {...serverVariableValues, [name]: value};
+        setServerVariableValues(next);
+        if (selectedServerDefinition) {
+            const expanded = selectedServerDefinition.url.replace(/\{([^{}]+)}/g, (placeholder, variableName) => next[variableName] ?? placeholder);
+            onSelectServer(expanded);
+        }
+    };
     const [width, setWidth] = useState<number>(() => {
         const saved = uiStorage.getJSON<number>('sidebar_width', 280, (v) => Number.isFinite(v));
         return Math.max(220, Math.min(480, saved));
@@ -118,6 +135,22 @@ export default function Sidebar(props: SidebarProps) {
         setIsDragging(false);
         document.removeEventListener('mousemove', onResizeMove);
         document.removeEventListener('mouseup', onResizeUp);
+    };
+    const onResizeKeyDown = (event: React.KeyboardEvent) => {
+        const step = event.shiftKey ? 48 : 16;
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            setWidth(current => Math.max(220, current - step));
+        } else if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            setWidth(current => Math.min(480, current + step));
+        } else if (event.key === 'Home') {
+            event.preventDefault();
+            setWidth(220);
+        } else if (event.key === 'End') {
+            event.preventDefault();
+            setWidth(480);
+        }
     };
     const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>(() => uiStorage.getJSON<Record<string, boolean>>('collapsed_tags', {}, (v) => !!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(value => typeof value === 'boolean')));
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
@@ -581,7 +614,7 @@ export default function Sidebar(props: SidebarProps) {
             {spec?.servers && spec.servers.length > 0 && (<div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Active
                     Server</label>
-                <CustomDropdown value={selectedServer} onChange={onSelectServer}
+                <CustomDropdown value={selectedServerDefinition?.url || selectedServer} onChange={onSelectServer}
                                 options={spec.servers.map(s => ({value: s.url, label: s.description || s.url}))}
                                 icon="ph ph-hard-drives text-[14px]" className="w-full"/>
                 <Tip content={selectedServer}>
@@ -591,6 +624,21 @@ export default function Sidebar(props: SidebarProps) {
                         <span className="font-mono select-text truncate">{selectedServer}</span>
                     </div>
                 </Tip>
+                {selectedServerDefinition?.variables && Object.keys(selectedServerDefinition.variables).length > 0 && (
+                    <div className="mt-2 grid gap-2">
+                        {Object.entries(selectedServerDefinition.variables).map(([name, variable]) => <label key={name}
+                            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-center gap-2 text-[9px] text-[var(--text-muted)]">
+                            <span className="truncate font-mono" title={variable.description || name}>{name}</span>
+                            {variable.enum?.length ? <select value={serverVariableValues[name] ?? variable.default}
+                                onChange={event => updateServerVariable(name, event.target.value)}
+                                className="min-w-0 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[9px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]">
+                                {variable.enum.map(value => <option key={value} value={value}>{value}</option>)}
+                            </select> : <input value={serverVariableValues[name] ?? variable.default}
+                                onChange={event => updateServerVariable(name, event.target.value)}
+                                className="min-w-0 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[9px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"/>}
+                        </label>)}
+                    </div>
+                )}
             </div>)}
         </div>
 
@@ -676,8 +724,10 @@ export default function Sidebar(props: SidebarProps) {
             </div>
         </div>
 
-        {!isMobile && (<div onMouseDown={onResizeMouseDown}
-                            className={clsx("absolute top-0 right-0 w-[4px] h-full cursor-col-resize transition-colors z-10 select-none", isDragging ? "bg-[var(--primary)]" : "bg-transparent hover:bg-[var(--primary)]")}/>)}
+        {!isMobile && (<div role="separator" aria-label="Resize API navigation sidebar"
+                            aria-orientation="vertical" aria-valuemin={220} aria-valuemax={480} aria-valuenow={Math.round(width)}
+                            tabIndex={0} onMouseDown={onResizeMouseDown} onKeyDown={onResizeKeyDown}
+                            className={clsx("absolute top-0 right-0 w-[4px] h-full cursor-col-resize transition-colors z-10 select-none outline-none focus:bg-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/30", isDragging ? "bg-[var(--primary)]" : "bg-transparent hover:bg-[var(--primary)]")}/>)}
     </div>);
     const mobileSpecModal = isMobile && parsables && onSelectParsable && (
         <ApiSpecificationSelectorModal isOpen={showSpecModal} specifications={parsables}

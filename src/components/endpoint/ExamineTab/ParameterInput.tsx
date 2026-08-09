@@ -71,25 +71,22 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
     }
     const enumValues = Array.isArray(schema.enum) ? schema.enum : null;
     const type = schema.type || param.type;
-    const inputType = type === 'integer' || type === 'number' ? 'number' : type === 'boolean' ? 'text' : type === 'string' && (schema.format === 'date' || schema.format === 'date-time') ? 'datetime-local' : 'text';
     const stringValue = value === undefined || value === null ? '' : String(value);
-    if (enumValues) {
-        return <select value={stringValue} onChange={event => onChange(event.target.value)}
-                       className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]">
-            <option value="">— Select —</option>
-            {enumValues.map(item => <option key={String(item)} value={String(item)}>{String(item)}</option>)}</select>;
-    }
-    if (type === 'boolean') {
-        return <select value={stringValue}
-                       onChange={event => onChange(event.target.value === '' ? '' : event.target.value === 'true')}
-                       className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]">
-            <option value="">— Select —</option>
-            <option value="true">true</option>
-            <option value="false">false</option>
-        </select>;
-    }
-    return <input type={inputType} value={stringValue} onChange={event => onChange(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]"
-                  placeholder={schema.example !== undefined ? String(schema.example) : schema.default !== undefined ? String(schema.default) : type === 'object' ? 'JSON value' : param.description || 'value'}
-                  min={schema.minimum} max={schema.maximum}/>;
+    const suggestions = enumValues || (type === 'boolean' ? [true, false] : []);
+    const listId = `runner-options-${String(param.in || 'value')}-${String(param.name || 'parameter')}`
+        .replace(/[^a-zA-Z0-9_-]/g, '-');
+    // Deliberately use a text input even for numeric/date/boolean schemas. The
+    // Runner is an HTTP client, not a client-side validator: malformed values
+    // must be able to reach the API and produce the API's real error response.
+    return <>
+        <input type="text" inputMode={type === 'integer' || type === 'number' ? 'decimal' : undefined}
+               list={suggestions.length > 0 ? listId : undefined}
+               value={stringValue} onChange={event => onChange(event.target.value)}
+               className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]"
+               placeholder={schema.example !== undefined ? String(schema.example) : schema.default !== undefined ? String(schema.default) : type === 'object' ? 'JSON value' : param.description || 'value'}/>
+        {suggestions.length > 0 && <datalist id={listId}>
+            {suggestions.map((item: any) => <option key={String(item)} value={String(item)}/>)}
+        </datalist>}
+    </>;
+
 }

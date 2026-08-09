@@ -163,7 +163,7 @@ export default function ModalsStack({
     const traverseSchemaProperties = (schema: any, prefix = '', visited = new Set<string>()): {
         [name: string]: any;
     } => {
-        if (!schema)
+        if (schema === undefined || schema === null)
             return {};
         let props: {
             [name: string]: any;
@@ -304,7 +304,7 @@ export default function ModalsStack({
         </span>);
     };
     const getMockSnippet = (schema: any): string => {
-        if (!schema)
+        if (schema === undefined || schema === null)
             return 'null';
         const generateMockFromPattern = (pattern: string): string => {
             if (!pattern)

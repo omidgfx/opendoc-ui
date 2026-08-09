@@ -88,7 +88,19 @@ export default function BodyEditor(props: BodyEditorProps) {
     }
     if (bodyEditorMode === 'form' && isTopLevelBinary) {
         return (<div className="space-y-4 animate-in fade-in">
-            <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center">
+            <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center transition-colors hover:border-[var(--primary)]"
+                 onDragOver={event => {
+                     event.preventDefault();
+                     event.dataTransfer.dropEffect = 'copy';
+                 }}
+                 onDrop={event => {
+                     event.preventDefault();
+                     const file = event.dataTransfer.files?.[0] || null;
+                     if (file) {
+                         setSelectedFile(file);
+                         setSelectedFiles({...selectedFiles, file});
+                     }
+                 }}>
                 <input type="file" id="examine-file-uploader" onChange={event => {
                     const file = event.target.files?.[0] || null;
                     setSelectedFile(file);

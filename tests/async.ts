@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { AIStreamError, fetchProviderModelCatalog, streamAIResponse } from '../src/utils/aiProviders';
 import { executeRunnerRequest } from '../src/utils/runnerExecution';
 import type { AISettings } from '../src/types';
+import {dereference, validate} from '@scalar/openapi-parser';
 const originalFetch = globalThis.fetch;
 const settings: AISettings = {
     transport: 'direct', gatewayUrl: '', gatewayToken: '', provider: 'custom', model: 'fixture', apiKey: '', baseUrl: 'https://fixture.test/v1', temperature: 0.2, skillPacks: ['openapi'], customInstructions: '',
@@ -48,6 +49,29 @@ try {
     assert.equal(catalog.gateway?.clientModelSelection, false);
     assert.deepEqual(catalog.models.map(model => model.id), ['approved/model']);
     console.log('✓ discovers gateway-owned provider and model policy without submitting a client provider');
+    const filesystem: any = [
+        {
+            dir: '', filename: 'root.yaml', isEntrypoint: true, references: ['paths.yaml'],
+            specification: {
+                openapi: '3.1.1', info: {title: 'External', version: '1'},
+                paths: {'/users': {$ref: 'paths.yaml#/UserPath'}},
+            },
+        },
+        {
+            dir: '', filename: 'paths.yaml', isEntrypoint: false, references: [],
+            specification: {UserPath: {get: {responses: {'200': {description: 'ok'}}}}},
+        },
+    ];
+    const engineValidation = await validate(filesystem);
+    assert.equal(engineValidation.valid, true);
+    const resolvedGraph = dereference(filesystem);
+    assert.equal((resolvedGraph.schema as any)?.paths?.['/users']?.get?.responses?.['200']?.description, 'ok');
+    const oas32 = await validate({
+        openapi: '3.2.0', info: {title: 'Query', version: '1'},
+        paths: {'/search': {query: {responses: {'200': {description: 'ok'}}}}},
+    });
+    assert.equal(oas32.valid, true);
+    console.log('✓ validates OAS 3.2 and resolves a multi-document Path Item graph with the parser engine');
     const originalWindow = (globalThis as any).window;
     let runnerUrl = '';
     let runnerBody = '';

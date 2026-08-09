@@ -72,7 +72,7 @@ export default function HomeView({
                 string,
                 any
             ]) => {
-                if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'].includes(mStr.toLowerCase())) {
+                if (['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace', 'query'].includes(mStr.toLowerCase())) {
                     list.push({
                         path: pStr,
                         method: mStr.toLowerCase(),

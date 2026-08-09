@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
-import {applyAuthToRequest} from '../../utils/auth';
+import {applyAuthToRequest, createEmptyAuth} from '../../utils/auth';
+import {compileBrowserRequest} from '../../utils/requestPlan';
 import {queryStringFromPairs} from '../../utils/openapi/serialization';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
@@ -14,6 +15,7 @@ interface CodeGeneratorModalProps {
     path: string;
     method: string;
     operation: any;
+    selectedServer: string;
     activeAuth: ActiveAuth;
 }
 
@@ -24,6 +26,7 @@ export default function CodeGeneratorModal({
                                                path,
                                                method,
                                                operation,
+                                               selectedServer,
                                                activeAuth
                                            }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState('curl');
@@ -34,23 +37,38 @@ export default function CodeGeneratorModal({
     const generateSnippet = (lang: string) => {
         const cleanPath = path;
         const cleanMethod = method.toUpperCase();
-        const serverUrl = spec.servers?.[0]?.url || "https://api.example.com";
+        const previewPlan = compileBrowserRequest({
+            spec, path, method, operation, selectedServer,
+            activeAuth: createEmptyAuth(),
+        });
+        const serverUrl = previewPlan.intent.server.url;
+        const requestUrl = previewPlan.url;
+        const acceptHeader = previewPlan.headers.Accept || '*/*';
+        const requestMediaType = Object.keys(operation.requestBody?.content || {})[0];
         switch (lang) {
             case 'curl': {
                 const auth = applyAuthToRequest(spec, activeAuth, {headers: {}, query: [], cookies: []}, operation);
-                const authHeaders = Object.entries(auth.headers).map(([name, value]) => ` -H "${name}: ${value}" \\\n`).join('');
-                const authQuery = queryStringFromPairs(auth.query);
+                const placeholderHeaderValue = (name: string, value: string) => {
+                    if (name.toLowerCase() === 'authorization')
+                        return value.toLowerCase().startsWith('basic ') ? 'Basic YOUR_BASE64_CREDENTIALS' : 'Bearer YOUR_ACCESS_TOKEN';
+                    return `YOUR_${name.replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase()}_VALUE`;
+                };
+                const authHeaders = Object.entries(auth.headers).map(([name, value]) => ` -H "${name}: ${placeholderHeaderValue(name, value)}" \\\n`).join('');
+                const authQuery = queryStringFromPairs(auth.query.map(pair => ({
+                    ...pair,
+                    value: `YOUR_${pair.name.replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase()}_VALUE`,
+                })));
                 const cookieHint = auth.cookies.length > 0 ? ` -b "${auth.cookies.map(cookie => `${cookie.name}=YOUR_${cookie.name.toUpperCase()}`).join('; ')}" \\\n` : activeAuth.selectedSchemes?.some(id => (spec.components?.securitySchemes as any)?.[id]?.in === 'cookie') ? ' -b "COOKIE_NAME=COOKIE_VALUE" \\\n' : '';
-                return `curl -X ${cleanMethod} "${serverUrl}${cleanPath}${authQuery}" \\\n -H "Accept: application/json" \\\n${authHeaders}${cookieHint} -H "Content-Type: application/json"`;
+                return `curl -X ${cleanMethod} "${requestUrl}${authQuery}" \\\n -H "Accept: ${acceptHeader}" \\\n${authHeaders}${cookieHint} -H "Content-Type: application/json"`;
             }
             case 'laravel':
                 return `use Illuminate\\Support\\Facades\\Http;
 
 $response = Http::withHeaders([
- 'Accept' => 'application/json',
+ 'Accept' => '${acceptHeader}',
 ])->withCookies([
  'access_token' => 'YOUR_ISOLATED_TOKEN'
-])->send('${cleanMethod}', '${serverUrl}${cleanPath}', [
+])->send('${cleanMethod}', '${requestUrl}', [
 ]);
 
 if ($response->successful()) {
@@ -66,10 +84,10 @@ import (
 )
 
 func main() {
- url := "${serverUrl}${cleanPath}"
+ url := "${requestUrl}"
  req, _ := http.NewRequest("${cleanMethod}", url, nil)
 
- req.Header.Add("Accept", "application/json")
+ req.Header.Add("Accept", "${acceptHeader}")
  req.Header.Add("Cookie", "access_token=YOUR_DECRYPTED_TOKEN")
 
  res, err := http.DefaultClient.Do(req)
@@ -87,14 +105,14 @@ func main() {
 $curl = curl_init();
 
 curl_setopt_array($curl, [
- CURLOPT_URL => "${serverUrl}${cleanPath}",
+ CURLOPT_URL => "${requestUrl}",
  CURLOPT_RETURNTRANSFER => true,
  CURLOPT_ENCODING => "",
  CURLOPT_MAXREDIRS => 10,
  CURLOPT_TIMEOUT => 30,
  CURLOPT_CUSTOMREQUEST => "${cleanMethod}",
  CURLOPT_HTTPHEADER => [
- "Accept: application/json",
+ "Accept: ${acceptHeader}",
  "Cookie: access_token=YOUR_ACCESS_TOKEN"
  ],
 ]);
@@ -111,11 +129,11 @@ if ($err) {
 }`;
             case 'js-fetch':
                 return `// JS standard Fetch client code
-fetch("${serverUrl}${cleanPath}", {
+fetch("${requestUrl}", {
  method: "${cleanMethod}",
  headers: {
- "Accept": "application/json",
- "Content-Type": "application/json"
+ "Accept": "${acceptHeader}",
+ "Content-Type": "${requestMediaType || 'application/json'}"
  },
  credentials: "include" // crucial for transacting standard cookie authorities
 })
@@ -128,9 +146,9 @@ import axios from 'axios';
 
 axios({
  method: '${method.toLowerCase()}',
- url: '${serverUrl}${cleanPath}',
+ url: '${requestUrl}',
  headers: {
- 'Accept': 'application/json'
+ 'Accept': '${acceptHeader}'
  },
  withCredentials: true // allows browser to send secure cookies automatically
 })
@@ -144,9 +162,9 @@ axios({
                 return `# Python Requests Session
 import requests
 
-url = "${serverUrl}${cleanPath}"
+url = "${requestUrl}"
 headers = {
- "Accept": "application/json"
+ "Accept": "${acceptHeader}"
 }
 cookies = {
  "access_token": "YOUR_ACCESS_TOKEN"
@@ -165,9 +183,9 @@ class Program
  static async Task Main()
  {
  var client = new HttpClient();
- var request = new HttpRequestMessage(HttpMethod.${method.toUpperCase() === 'DELETE' ? 'Delete' : method.toUpperCase() === 'POST' ? 'Post' : method.toUpperCase() === 'PUT' ? 'Put' : 'Get'}, "${serverUrl}${cleanPath}");
+ var request = new HttpRequestMessage(HttpMethod.${method.toUpperCase() === 'DELETE' ? 'Delete' : method.toUpperCase() === 'POST' ? 'Post' : method.toUpperCase() === 'PUT' ? 'Put' : 'Get'}, "${requestUrl}");
 
- request.Headers.Add("Accept", "application/json");
+ request.Headers.Add("Accept", "${acceptHeader}");
  request.Headers.Add("Cookie", "access_token=YOUR_ACCESS_TOKEN");
 
  var response = await client.SendAsync(request);
@@ -192,9 +210,9 @@ export class ApiService {
 
   callEndpoint(): Observable<any> {
     const headers = new HttpHeaders({
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'${activeAuth.activeScheme === 'bearer' && activeAuth.bearerToken ? `,
-      'Authorization': 'Bearer ${activeAuth.bearerToken}'` : ''}
+      'Accept': '${acceptHeader}',
+      'Content-Type': '${requestMediaType || 'application/json'}'${activeAuth.activeScheme !== 'none' ? `,
+      'Authorization': 'Bearer YOUR_ACCESS_TOKEN'` : ''}
     });
 
     return this.http.${method.toLowerCase()}<any>(

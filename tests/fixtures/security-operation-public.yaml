@@ -1,0 +1,44 @@
+openapi: 3.1.1
+info:
+  title: Public operation regression
+  version: "1.0"
+servers:
+  - url: http://127.0.0.1:{port}
+paths:
+  /users/{id}:
+    post:
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Z]+$"
+        - name: X-Region
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "400":
+          description: Server validation response
+          content:
+            application/problem+json: {}
+components:
+  securitySchemes:
+    auth:
+      type: http
+      scheme: bearer
+security:
+  - auth: []
