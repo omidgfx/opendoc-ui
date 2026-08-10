@@ -1,6 +1,6 @@
 import {type Dispatch, type SetStateAction, useEffect} from 'react';
 import type {AISettings, ParsableConfig} from '../types';
-import {findLocalHistoryEntry} from '../utils/localHistory';
+import {findLocalHistoryEntry, readLocalHistory} from '../utils/localHistory';
 import {parseSmartRoute} from '../utils/routing';
 import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage';
 import type {ConfigSource} from '../utils/appSpec';
@@ -13,6 +13,7 @@ interface UseConfigBootstrapOptions {
     setSelectedSpecKey: Dispatch<SetStateAction<string>>;
     setInitialLoadComplete: Dispatch<SetStateAction<boolean>>;
     applyLocalSpec: (raw: string, fileName: string, file: File | null) => unknown;
+    applyLocalBundle: (bundle: Record<string, string>, preferredFile?: File | null) => Promise<unknown>;
 }
 
 export function useConfigBootstrap({
@@ -23,6 +24,7 @@ export function useConfigBootstrap({
     setSelectedSpecKey,
     setInitialLoadComplete,
     applyLocalSpec,
+    applyLocalBundle,
 }: UseConfigBootstrapOptions): void {
     useEffect(() => {
         let cancelled = false;
@@ -46,6 +48,8 @@ export function useConfigBootstrap({
                 }
             }
             if (cancelled) return;
+            if (source !== 'none' && data?.allowLocalSpecifications === true) source = 'hybrid';
+            const canOpenLocal = source === 'none' || source === 'hybrid';
             setConfigSource(source);
             if (data?.ai && typeof data.ai === 'object' && storage.get(uiStorage.key('ai_settings')) === '') {
                 setAISettings(current => ({
@@ -70,21 +74,40 @@ export function useConfigBootstrap({
             setParsables(loaded);
             if (Object.keys(loaded).length > 0) {
                 const route = parseSmartRoute(window.location.hash);
-                let initialKey = '';
-                if (route.parsableKey && loaded[route.parsableKey]) initialKey = route.parsableKey;
-                else {
-                    const savedKey = uiStorage.get('last_parsable');
-                    initialKey = savedKey && loaded[savedKey] ? savedKey : Object.keys(loaded)[0] || '';
+                let restoredLocalSpecification = false;
+                if (canOpenLocal && route.parsableKey && !loaded[route.parsableKey]) {
+                    const entry = findLocalHistoryEntry(route.parsableKey);
+                    if (entry) {
+                        try {
+                            if (entry.bundle && Object.keys(entry.bundle).length > 1)
+                                await applyLocalBundle(entry.bundle, null);
+                            else applyLocalSpec(entry.raw, entry.fileName, null);
+                            restoredLocalSpecification = true;
+                        } catch {}
+                    }
                 }
-                if (initialKey) setSelectedSpecKey(initialKey);
-                specStorage.prune(Object.keys(loaded));
+                if (!restoredLocalSpecification) {
+                    let initialKey = '';
+                    if (route.parsableKey && loaded[route.parsableKey]) initialKey = route.parsableKey;
+                    else {
+                        const savedKey = uiStorage.get('last_parsable');
+                        initialKey = savedKey && loaded[savedKey] ? savedKey : Object.keys(loaded)[0] || '';
+                    }
+                    if (initialKey) setSelectedSpecKey(initialKey);
+                }
+                const retainedKeys = canOpenLocal
+                    ? [...Object.keys(loaded), ...readLocalHistory().map(entry => entry.key)]
+                    : Object.keys(loaded);
+                specStorage.prune(retainedKeys);
             } else if (window.location.hash) {
                 const route = parseSmartRoute(window.location.hash);
                 if (route.parsableKey) {
                     const entry = findLocalHistoryEntry(route.parsableKey);
                     if (entry) {
                         try {
-                            applyLocalSpec(entry.raw, entry.fileName, null);
+                            if (entry.bundle && Object.keys(entry.bundle).length > 1)
+                                await applyLocalBundle(entry.bundle, null);
+                            else applyLocalSpec(entry.raw, entry.fileName, null);
                         } catch {}
                     }
                 }

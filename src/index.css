@@ -609,49 +609,6 @@ body {
     padding-top: env(safe-area-inset-top, 0px);
 }
 
-.ai-nav-button {
-    position: relative;
-    isolation: isolate;
-    background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 9%, transparent), transparent 70%);
-}
-
-.ai-nav-button::after {
-    position: absolute;
-    z-index: -1;
-    inset: 2px;
-    border-radius: 0.45rem;
-    background: color-mix(in srgb, var(--primary) 13%, transparent);
-    content: '';
-    opacity: 0.35;
-    animation: ai-nav-breathe 3.2s ease-in-out infinite;
-}
-
-.ai-nav-sparkle {
-    animation: ai-nav-float 2.8s ease-in-out infinite;
-}
-
-@keyframes ai-nav-breathe {
-    0%,
-    100% {
-        opacity: 0.22;
-        transform: scale(0.9);
-    }
-    50% {
-        opacity: 0.48;
-        transform: scale(1);
-    }
-}
-
-@keyframes ai-nav-float {
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg);
-    }
-    50% {
-        transform: translateY(-0.5px) rotate(4deg);
-    }
-}
-
 .modal-backdrop {
     display: flex;
     align-items: center;
@@ -804,9 +761,7 @@ body {
     .modal-backdrop,
     .modal-surface,
     .modal-backdrop.modal-closing,
-    .modal-backdrop.modal-closing .modal-surface,
-    .ai-nav-button::after,
-    .ai-nav-sparkle {
+    .modal-backdrop.modal-closing .modal-surface {
         animation-duration: 1ms !important;
         animation-iteration-count: 1 !important;
     }

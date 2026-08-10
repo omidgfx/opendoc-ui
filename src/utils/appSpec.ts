@@ -3,7 +3,7 @@ import type {OpenApiSpec} from '../types';
 import {assertValidOpenApiDocument, normalizeOpenApiSpec, validateOpenApiDocument} from './openapi';
 import {registerRawSpecDocument} from './specSource';
 
-export type ConfigSource = 'initial' | 'file' | 'none';
+export type ConfigSource = 'initial' | 'file' | 'hybrid' | 'none';
 
 export interface LocalSpec {
     key: string;

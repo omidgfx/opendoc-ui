@@ -62,6 +62,7 @@ export default function ApiSpecificationSelectorModal({
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
     const entries = useMemo(() => Object.entries(specifications), [specifications]);
+    const isHybridMode = canOpenLocal && !isLocalMode;
     const prevActiveSpecRef = useRef<OpenApiSpec | null>(null);
     useEffect(() => {
         if (!isOpen) return;
@@ -188,12 +189,14 @@ export default function ApiSpecificationSelectorModal({
                             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
                                 {isLocalMode
                                     ? 'Open a JSON or YAML descriptor from your device, or pick one from your history.'
-                                    : 'Choose a specification and review its contents before opening it.'}
+                                    : isHybridMode
+                                      ? 'Choose a configured specification or open your own JSON/YAML files.'
+                                      : 'Choose a specification and review its contents before opening it.'}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {isLocalMode && canOpenLocal && (
+                        {canOpenLocal && (
                             <Tip content="Open JSON / YAML from your device">
                                 <button
                                     type="button"
@@ -348,6 +351,99 @@ export default function ApiSpecificationSelectorModal({
                 ) : (
                     <>
                         <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                            {isHybridMode && (
+                                <div className="mb-5 space-y-3">
+                                    {localOpenError && (
+                                        <div className="flex items-center gap-2 rounded-xl border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/5 px-3.5 py-2.5 text-[11px] text-[var(--method-delete)]">
+                                            <i className="ph ph-warning-circle text-[14px]" />
+                                            <span className="flex-1">{localOpenError}</span>
+                                            <button
+                                                type="button"
+                                                onClick={onDismissLocalError}
+                                                className="cursor-pointer hover:opacity-70"
+                                                aria-label="Dismiss local specification error"
+                                            >
+                                                <i className="ph ph-x text-[12px]" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={onOpenLocalFile}
+                                        className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-left transition-all cursor-pointer hover:border-[var(--primary)]/60 hover:bg-[var(--primary)]/5 group"
+                                    >
+                                        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] group-hover:border-[var(--primary)]/40">
+                                            <i className="ph-fill ph-folder-plus text-[18px]" />
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-xs font-extrabold text-[var(--text-heading)]">
+                                                Open your own specification
+                                            </span>
+                                            <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">
+                                                Select JSON/YAML files from your device · nothing is uploaded
+                                            </span>
+                                        </span>
+                                        <i className="ph ph-caret-right text-[12px] text-[var(--text-muted)]" />
+                                    </button>
+
+                                    {localHistory.length > 0 && (
+                                        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)]">
+                                            <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                                                    Recent local specifications
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={onClearHistory}
+                                                    className="rounded-lg px-2 py-1 text-[9px] font-semibold text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                            <div className="divide-y divide-[var(--border)]">
+                                                {localHistory.map(entry => (
+                                                    <div
+                                                        key={entry.key}
+                                                        className="flex items-center gap-2 px-2 py-1.5"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                onSelectHistoryEntry(entry);
+                                                                requestClose();
+                                                            }}
+                                                            className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-[var(--surface-hover)] cursor-pointer"
+                                                        >
+                                                            <i className="ph-fill ph-file-code shrink-0 text-[14px] text-[var(--primary)]" />
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate text-[11px] font-bold text-[var(--text-heading)]">
+                                                                    {entry.title}
+                                                                </span>
+                                                                <span className="block truncate text-[9px] text-[var(--text-muted)]">
+                                                                    {entry.fileName} ·{' '}
+                                                                    {formatRelativeTime(entry.openedAt)}
+                                                                </span>
+                                                            </span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onRemoveHistoryEntry(entry.key)}
+                                                            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
+                                                            aria-label={`Remove ${entry.title} from history`}
+                                                        >
+                                                            <i className="ph ph-x text-[12px]" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                                Configured specifications
+                            </div>
                             <div className="space-y-3">
                                 {entries.map(([key, item]) => {
                                     const state = summaries[key] || {status: 'loading'};
@@ -528,6 +624,10 @@ export default function ApiSpecificationSelectorModal({
                     {isLocalMode ? (
                         <span>
                             {localHistory.length} spec{localHistory.length === 1 ? '' : 's'} in local history
+                        </span>
+                    ) : isHybridMode ? (
+                        <span>
+                            {entries.length} configured · {localHistory.length} local
                         </span>
                     ) : (
                         <span>

@@ -19,6 +19,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Configuration](#configuration)
   - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
   - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+  - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
   - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
@@ -144,6 +145,9 @@ the path the app fetches on boot). The file describes every spec the deployment 
   // Theme used for every spec in this file ("default" falls back to the first built-in theme)
   "theme": "default",
 
+  // Optional: keep configured specs and also let visitors open local files
+  "allowLocalSpecifications": true,
+
   "parsables": {
     "Player API": {
       "theme": "default", // optional, per-spec theme
@@ -197,11 +201,18 @@ configuration must be baked into the HTML itself.
 **Precedence:** if `window.INITIAL_CONFIG` exists it is used and `/config.json` is never
 fetched. Otherwise the app fetches `/config.json`; a 404 means local mode.
 
-> ⚠️ **Important:** when _either_ pre-defined source exists, local file loading is disabled.
-> There is no "Open" button, no folder button in the modal and no way to load a spec from
-> disk. Pre-defined deployments are locked to their configured specs — this is intentional,
-> so a hosted instance can never be bypassed with a local file. If you want the local
-> experience, deploy without any config source.
+> By default, pre-defined deployments remain locked to their configured specifications. Local
+> file loading is enabled only when the configuration explicitly opts into hybrid mode.
+
+### Hybrid option — configured and local specs
+
+Set `"allowLocalSpecifications": true` in either configuration source to keep the configured
+spec selector while also allowing visitors to open local JSON/YAML files. Hybrid mode includes
+recent local-file history, preserves deep links to those files, and always keeps the configured
+specifications available for switching back. Files remain entirely in the visitor's browser.
+
+The GitHub Pages demo uses this mode: it opens the bundled Petstore specification immediately,
+but visitors can still try OpenDoc UI with their own specifications.
 
 ### Mode 3 — No configuration (local mode)
 
@@ -556,7 +567,7 @@ Enable it once:
 
 The committed app remains in local mode during normal development. The workflow copies
 `public/demo/config.pages.json` to `public/config.json` only inside the disposable Actions runner,
-so the hosted demonstration opens the bundled Petstore demo automatically.
+so the hosted demonstration opens the bundled Petstore demo automatically while hybrid mode still lets visitors open local specifications.
 
 For a custom domain, set `VITE_BASE_PATH` to `/` in `pages.yml`. For a renamed repository, the
 existing workflow automatically uses `/${{ github.event.repository.name }}/`.
@@ -571,8 +582,8 @@ That's the local experience — you can open spec files from disk. To use pre-de
 add a `config.json` to the public folder.
 
 **There is no Open button / I can't load local files.**
-Your deployment has a config source (a `config.json` or `window.INITIAL_CONFIG`), which
-disables local loading by design. Remove the config to enable local mode.
+Pre-defined deployments disable local loading by default. Either remove the configuration to use
+local mode, or add `"allowLocalSpecifications": true` to enable hybrid mode.
 
 **The spec selector shows an entry that fails to load.**
 Check the URL in `config.json` — relative paths are resolved against the site root, and

@@ -158,6 +158,9 @@ export default function Topbar({
         return () => window.removeEventListener('keydown', handler);
     }, [isMobile, hideSearch]);
     const authConnected = activeAuth.activeScheme && activeAuth.activeScheme !== 'none';
+    const selectedSpecificationIsLocal = !!selectedParsableKey && !parsables[selectedParsableKey];
+    const selectedSpecificationTitle =
+        parsables[selectedParsableKey]?.title || spec?.info?.title || selectedParsableKey || 'API Specifications';
     const selectorButton = isLocalMode ? (
         canOpenLocal && (
             <Tip content="Open a specification from your device">
@@ -179,10 +182,13 @@ export default function Topbar({
                 onClick={() => setShowSpecificationModal(true)}
                 className="flex h-8 w-44 xl:w-56 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]"
             >
-                <i className="ph-fill ph-files shrink-0 text-[14px] text-[var(--primary)]" />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-                    {parsables[selectedParsableKey]?.title || selectedParsableKey || 'API Specifications'}
-                </span>
+                <i
+                    className={clsx(
+                        'ph-fill shrink-0 text-[14px] text-[var(--primary)]',
+                        selectedSpecificationIsLocal ? 'ph-file-code' : 'ph-files',
+                    )}
+                />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{selectedSpecificationTitle}</span>
                 {hasSpec && (
                     <span
                         role="button"
@@ -330,9 +336,9 @@ export default function Topbar({
                                 type="button"
                                 onClick={onOpenAssistant}
                                 aria-label="Open AI Assistant"
-                                className="ai-nav-button size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
+                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
                             >
-                                <i className="ai-nav-sparkle ph-fill ph-sparkle text-[15px]" />
+                                <i className="ph-fill ph-sparkle text-[15px]" />
                             </button>
                         </Tip>
                     )}
