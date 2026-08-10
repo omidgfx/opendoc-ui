@@ -74,6 +74,11 @@ export default function App() {
             method: string;
         }>
     >([]);
+    const [assistantNewConversationRequest, setAssistantNewConversationRequest] = useState<{
+        id: string;
+        path: string;
+        method: string;
+    } | null>(null);
     const showAssistantRef = useRef(showAssistant);
     showAssistantRef.current = showAssistant;
     const {
@@ -251,6 +256,7 @@ export default function App() {
             setShowAbout(false);
             setShowAssistant(false);
             setAssistantContextEndpoints([]);
+            setAssistantNewConversationRequest(null);
             setSearchQuery('');
             setResultsQuery('');
             setActiveResponseCode(null);
@@ -424,6 +430,20 @@ export default function App() {
             closeMobileIfNeeded();
         },
         [openViewTab, isMobile, showAssistant],
+    );
+    const askAIAboutEndpointInNewConversation = useCallback(
+        (path: string, method: string) => {
+            const endpoint = {path, method: method.toLowerCase()};
+            setAssistantContextEndpoints([endpoint]);
+            setAssistantNewConversationRequest({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                ...endpoint,
+            });
+            setAssistantUnread(false);
+            openViewTab('assistant');
+            closeMobileIfNeeded();
+        },
+        [openViewTab, isMobile],
     );
     const handleContextAction = useCallback(
         (
@@ -615,9 +635,6 @@ export default function App() {
     };
     const handleOpenAssistant = () => {
         setAssistantUnread(false);
-        if (!showAssistant) {
-            setAssistantContextEndpoints(selectedEndpoint ? [selectedEndpoint] : []);
-        }
         openViewTab('assistant');
         closeMobileIfNeeded();
     };
@@ -753,6 +770,7 @@ export default function App() {
         setShowAbout(false);
         setShowAssistant(false);
         setAssistantContextEndpoints([]);
+        setAssistantNewConversationRequest(null);
         setSearchQuery('');
         setResultsQuery('');
         setActiveResponseCode(null);
@@ -826,6 +844,7 @@ export default function App() {
             onOpenEndpointPermanent={openEndpointPermanent}
             onOpenEndpointPreview={openEndpointPreview}
             onGenerateCode={setCodeGenEndpoint}
+            onAskAINewConversation={askAIAboutEndpointInNewConversation}
             onHidePageViews={() => {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
@@ -1021,6 +1040,12 @@ export default function App() {
                                                 settings={aiSettings}
                                                 hasAIProfile={hasAIProfile}
                                                 isVisible={assistantTabActive}
+                                                newConversationRequest={assistantNewConversationRequest}
+                                                onNewConversationRequestHandled={id =>
+                                                    setAssistantNewConversationRequest(current =>
+                                                        current?.id === id ? null : current,
+                                                    )
+                                                }
                                                 onOpenSettings={() => setShowAISettings(true)}
                                                 onClearEndpointContext={() => setAssistantContextEndpoints([])}
                                                 onRemoveEndpointContext={(path, method) =>

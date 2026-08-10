@@ -169,6 +169,22 @@ export default function Sidebar(props: SidebarProps) {
                 Object.values(v).every(value => typeof value === 'boolean'),
         ),
     );
+    const [sidebarFilterOpen, setSidebarFilterOpen] = useState(false);
+    const [sidebarFilterQuery, setSidebarFilterQuery] = useState('');
+    const sidebarFilterButtonRef = useRef<HTMLButtonElement | null>(null);
+    const sidebarFilterInputRef = useRef<HTMLInputElement | null>(null);
+    const openSidebarFilter = () => {
+        setSettingsMenuOpen(false);
+        setSortMenuOpen(false);
+        setFolderBehaviorMenuOpen(false);
+        setSidebarFilterOpen(true);
+        requestAnimationFrame(() => sidebarFilterInputRef.current?.focus());
+    };
+    const closeSidebarFilter = (restoreFocus = true) => {
+        setSidebarFilterQuery('');
+        setSidebarFilterOpen(false);
+        if (restoreFocus) requestAnimationFrame(() => sidebarFilterButtonRef.current?.focus());
+    };
     const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
     const [sortMenuOpen, setSortMenuOpen] = useState(false);
     const [folderBehaviorMenuOpen, setFolderBehaviorMenuOpen] = useState(false);
@@ -192,7 +208,21 @@ export default function Sidebar(props: SidebarProps) {
         setSettingsMenuOpen(false);
         setSortMenuOpen(false);
         setFolderBehaviorMenuOpen(false);
+        setSidebarFilterOpen(false);
+        setSidebarFilterQuery('');
     }, [selectedParsableKey]);
+    useEffect(() => {
+        if (!sidebarFilterOpen) return;
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            setSidebarFilterQuery('');
+            setSidebarFilterOpen(false);
+            requestAnimationFrame(() => sidebarFilterButtonRef.current?.focus());
+        };
+        document.addEventListener('keydown', closeOnEscape, true);
+        return () => document.removeEventListener('keydown', closeOnEscape, true);
+    }, [sidebarFilterOpen]);
     useEffect(() => {
         if (selectedParsableKey) onDisplayRoutesChange?.(sidebarConfig.displayRoutes);
     }, [sidebarConfig.displayRoutes, selectedParsableKey, onDisplayRoutesChange]);
@@ -304,12 +334,13 @@ export default function Sidebar(props: SidebarProps) {
         };
     }, [settingsMenuOpen]);
     const tagTree = useMemo(() => buildTagTree(spec, sidebarConfig, activeAuth), [spec, sidebarConfig, activeAuth]);
+    const effectiveSidebarQuery = [searchQuery.trim(), sidebarFilterQuery.trim()].filter(Boolean).join(' ');
     const hasActiveSidebarFilters =
-        !!searchQuery.trim() || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
+        !!effectiveSidebarQuery || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
     const hasEndpointVisibilityFilter = hasActiveSidebarFilters || sidebarConfig.hideDeprecatedEndpoints;
     const visibleTagTree = useMemo(() => {
         if (!hasEndpointVisibilityFilter) return tagTree;
-        const query = searchQuery.trim().toLowerCase();
+        const query = effectiveSidebarQuery.toLowerCase();
         const terms = query.split(/[\s._-]+/).filter(Boolean);
         const predicate = (ep: TreeNode['endpoints'][number]) => {
             if (sidebarConfig.hideDeprecatedEndpoints && ep.operation?.deprecated) return false;
@@ -338,7 +369,7 @@ export default function Sidebar(props: SidebarProps) {
     }, [
         tagTree,
         hasEndpointVisibilityFilter,
-        searchQuery,
+        effectiveSidebarQuery,
         selectedMethods,
         selectedTags,
         onlyProtected,
@@ -538,7 +569,7 @@ export default function Sidebar(props: SidebarProps) {
         <SidebarTree
             node={node}
             nodePath={nodePath}
-            collapsedNodes={collapsedNodes}
+            collapsedNodes={sidebarFilterQuery.trim() ? {} : collapsedNodes}
             countEndpoints={countEndpoints}
             ancestorNodePaths={ancestorNodePaths}
             selectedEndpoint={selectedEndpoint}
@@ -548,7 +579,7 @@ export default function Sidebar(props: SidebarProps) {
             showAbout={showAbout}
             showAssistant={showAssistant}
             assistantContextEndpoints={assistantContextEndpoints}
-            searchQuery={searchQuery}
+            searchQuery={effectiveSidebarQuery}
             config={sidebarConfig}
             endpointRefs={endpointRefs}
             onToggleNode={toggleNode}
@@ -740,56 +771,110 @@ export default function Sidebar(props: SidebarProps) {
                 )}
             </div>
 
-            <div className="relative z-20 px-3 pt-1 pb-0 flex items-center justify-between gap-2 shrink-0">
-                <label className="block min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    API Navigation
-                </label>
-                <div className="flex items-center gap-0.5 shrink-0">
-                    {sidebarConfig.folderBehavior === 'multiple' && (
-                        <>
-                            <Tip content="Collapse all folders">
+            <div className="relative z-20 min-h-7 px-3 pt-1 pb-0 flex items-center justify-between gap-2 shrink-0">
+                {sidebarFilterOpen ? (
+                    <div className="flex w-full min-w-0 items-center gap-1">
+                        <div className="relative min-w-0 flex-1">
+                            <i className="ph ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-muted)]" />
+                            <input
+                                ref={sidebarFilterInputRef}
+                                autoFocus
+                                type="text"
+                                value={sidebarFilterQuery}
+                                onChange={event => setSidebarFilterQuery(event.target.value)}
+                                aria-label="Filter sidebar endpoints"
+                                placeholder="Filter endpoints…"
+                                className="h-7 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-7 pr-7 text-[10px] text-[var(--text-heading)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--primary)]"
+                            />
+                            {sidebarFilterQuery && (
                                 <button
                                     type="button"
-                                    aria-label="Collapse all folders"
-                                    disabled={folderPaths.length === 0}
-                                    onClick={() => setAllFoldersCollapsed(true)}
-                                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
+                                    aria-label="Clear endpoint filter"
+                                    onClick={() => {
+                                        setSidebarFilterQuery('');
+                                        sidebarFilterInputRef.current?.focus();
+                                    }}
+                                    className="absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer"
                                 >
-                                    <FolderTreeActionIcon direction="collapse" />
+                                    <i className="ph ph-x text-[10px]" />
                                 </button>
-                            </Tip>
-                            <Tip content="Expand all folders">
-                                <button
-                                    type="button"
-                                    aria-label="Expand all folders"
-                                    disabled={folderPaths.length === 0}
-                                    onClick={() => setAllFoldersCollapsed(false)}
-                                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
-                                >
-                                    <FolderTreeActionIcon direction="expand" />
-                                </button>
-                            </Tip>
-                        </>
-                    )}
-                    <Tip content="Navigation settings">
-                        <button
-                            ref={settingsButtonRef}
-                            type="button"
-                            aria-label="Navigation settings"
-                            aria-expanded={settingsMenuOpen}
-                            aria-haspopup="menu"
-                            onClick={toggleSettingsMenu}
-                            className={clsx(
-                                'w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer',
-                                settingsMenuOpen
-                                    ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
-                                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
                             )}
-                        >
-                            <i className="ph ph-gear-six text-[13px]" />
-                        </button>
-                    </Tip>
-                </div>
+                        </div>
+                        <Tip content="Close endpoint filter">
+                            <button
+                                type="button"
+                                aria-label="Close endpoint filter"
+                                onClick={() => closeSidebarFilter()}
+                                className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer"
+                            >
+                                <i className="ph ph-x text-[13px]" />
+                            </button>
+                        </Tip>
+                    </div>
+                ) : (
+                    <>
+                        <label className="block min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            API Navigation
+                        </label>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                            <Tip content="Filter sidebar endpoints">
+                                <button
+                                    ref={sidebarFilterButtonRef}
+                                    type="button"
+                                    aria-label="Filter sidebar endpoints"
+                                    onClick={openSidebarFilter}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
+                                >
+                                    <i className="ph ph-magnifying-glass text-[12px]" />
+                                </button>
+                            </Tip>
+                            {sidebarConfig.folderBehavior === 'multiple' && (
+                                <>
+                                    <Tip content="Collapse all folders">
+                                        <button
+                                            type="button"
+                                            aria-label="Collapse all folders"
+                                            disabled={folderPaths.length === 0}
+                                            onClick={() => setAllFoldersCollapsed(true)}
+                                            className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
+                                        >
+                                            <FolderTreeActionIcon direction="collapse" />
+                                        </button>
+                                    </Tip>
+                                    <Tip content="Expand all folders">
+                                        <button
+                                            type="button"
+                                            aria-label="Expand all folders"
+                                            disabled={folderPaths.length === 0}
+                                            onClick={() => setAllFoldersCollapsed(false)}
+                                            className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
+                                        >
+                                            <FolderTreeActionIcon direction="expand" />
+                                        </button>
+                                    </Tip>
+                                </>
+                            )}
+                            <Tip content="Navigation settings">
+                                <button
+                                    ref={settingsButtonRef}
+                                    type="button"
+                                    aria-label="Navigation settings"
+                                    aria-expanded={settingsMenuOpen}
+                                    aria-haspopup="menu"
+                                    onClick={toggleSettingsMenu}
+                                    className={clsx(
+                                        'w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer',
+                                        settingsMenuOpen
+                                            ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
+                                    )}
+                                >
+                                    <i className="ph ph-gear-six text-[13px]" />
+                                </button>
+                            </Tip>
+                        </div>
+                    </>
+                )}
             </div>
 
             <SidebarSettingsMenu

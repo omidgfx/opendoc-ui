@@ -42,6 +42,7 @@ interface EndpointWorkspaceProps {
     onClearResponse: () => void;
     onOpenSchema: (schemaName: string) => void;
     onGenerateCode: () => void;
+    onAskAINewConversation: () => void;
 }
 
 export default function EndpointWorkspace({
@@ -72,6 +73,7 @@ export default function EndpointWorkspace({
     onClearResponse,
     onOpenSchema,
     onGenerateCode,
+    onAskAINewConversation,
 }: EndpointWorkspaceProps) {
     const operation = getOperation(spec, endpoint.path, endpoint.method);
     if (!operation) return null;
@@ -178,6 +180,16 @@ export default function EndpointWorkspace({
                             className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0"
                         >
                             <i className="ph ph-code text-[16px]" />
+                        </button>
+                    </Tip>
+                    <Tip content="Ask AI about this endpoint in a new conversation">
+                        <button
+                            type="button"
+                            onClick={onAskAINewConversation}
+                            aria-label="Ask AI in a new conversation"
+                            className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] shrink-0"
+                        >
+                            <i className="ph-fill ph-sparkle text-[15px]" />
                         </button>
                     </Tip>
                 </div>

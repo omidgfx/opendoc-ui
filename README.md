@@ -78,6 +78,8 @@ This release focuses on predictable request execution and portable deployment:
 - local and constrained remote multi-document reference resolution;
 - deterministic mock validation and compile-checked TypeScript exports;
 - keyboard-accessible custom dropdowns, modal focus handling, and resizers;
+- an independent sidebar endpoint filter and embedded Apple-style emoji in rendered Markdown;
+- explicit authentication logout and endpoint-scoped AI actions that start new conversations;
 - one-file JavaScript builds with Windows-compatible scripts;
 - automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
 

@@ -222,7 +222,7 @@ export default function Topbar({
                         </button>
                     </Tip>
 
-                    <div className="flex items-center gap-2 hover:opacity-80 transition-all cursor-pointer select-none shrink-0">
+                    <div className="flex items-center gap-2 select-none shrink-0">
                         <span className="size-8 sm:size-9 overflow-hidden">
                             <Logo className="size-full" />
                         </span>
@@ -330,9 +330,9 @@ export default function Topbar({
                                 type="button"
                                 onClick={onOpenAssistant}
                                 aria-label="Open AI Assistant"
-                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
+                                className="ai-nav-button size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
                             >
-                                <i className="ph-fill ph-sparkle text-[15px]" />
+                                <i className="ai-nav-sparkle ph-fill ph-sparkle text-[15px]" />
                             </button>
                         </Tip>
                     )}
@@ -397,7 +397,7 @@ export default function Topbar({
                                 <span className="hidden xl:block min-w-0 flex-1 truncate text-xs font-semibold">
                                     {selectedThemeName}
                                 </span>
-                                <i className="hidden xl:block ph ph-squares-four shrink-0 text-[12px] text-[var(--text-muted)]/60"></i>
+                                <i className="hidden xl:block ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]"></i>
                             </button>
                         </Tip>
                     )}

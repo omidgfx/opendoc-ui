@@ -64,6 +64,7 @@ interface WorkspaceContentProps {
     onOpenEndpointPermanent: (path: string, method: string) => void;
     onOpenEndpointPreview: (path: string, method: string) => void;
     onGenerateCode: (endpoint: {path: string; method: string}) => void;
+    onAskAINewConversation: (path: string, method: string) => void;
     onHidePageViews: () => void;
 }
 
@@ -118,6 +119,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         onOpenEndpointPermanent,
         onOpenEndpointPreview,
         onGenerateCode,
+        onAskAINewConversation,
         onHidePageViews,
     } = props;
     if (!spec) {
@@ -219,6 +221,9 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     }}
                     onOpenSchema={onOpenSchema}
                     onGenerateCode={() => onGenerateCode(selectedEndpoint)}
+                    onAskAINewConversation={() =>
+                        onAskAINewConversation(selectedEndpoint.path, selectedEndpoint.method)
+                    }
                 />
             );
         }

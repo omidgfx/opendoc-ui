@@ -50,6 +50,7 @@ import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabil
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
+import {parseEmojis} from '@/src/data/emoji';
 import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
@@ -968,6 +969,12 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {
         tags: ['one', 'two'],
     });
+});
+test('renders supported native and shortcode emoji with embedded Apple-style images', () => {
+    const parsed = parseEmojis('Launch 🚀 :fire: and keep unknown :not_an_emoji:');
+    assert.match(parsed, /<img class="emoji" alt="🚀" src="data:image\/png;base64,/);
+    assert.match(parsed, /<img class="emoji" alt=":fire:" src="data:image\/png;base64,/);
+    assert.match(parsed, /:not_an_emoji:/);
 });
 test('uses inline descriptions until the tooltip threshold', () => {
     assert.equal(usesDescriptionTooltip('Short field description'), false);
