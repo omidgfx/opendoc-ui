@@ -7,6 +7,21 @@ const MAX_EXTERNAL_DOCUMENTS = 16;
 const MAX_EXTERNAL_BYTES = 5 * 1024 * 1024;
 const EXTERNAL_TIMEOUT_MS = 10_000;
 
+/** Parser versions do not always agree on whether an error path is an array or string. */
+export const formatEngineErrorPath = (path: unknown): string | undefined => {
+    if (Array.isArray(path))
+        return path.map(part => String(part)).join('/');
+    if (typeof path === 'string')
+        return path;
+    if (path === undefined || path === null)
+        return undefined;
+    try {
+        return String(path);
+    } catch {
+        return undefined;
+    }
+};
+
 const containsExternalRef = (value: unknown, visited = new Set<object>()): boolean => {
     if (!value || typeof value !== 'object')
         return false;
@@ -78,31 +93,50 @@ export const processWithOpenApiEngine = async (
     sourceUri?: string,
 ): Promise<OpenApiEngineResult> => {
     const diagnostics: Diagnostic[] = [];
+    let parser: typeof import('@scalar/openapi-parser');
     try {
-        const {validate, load, dereference} = await import('@scalar/openapi-parser');
-        const validation = await validate(raw);
+        parser = await import('@scalar/openapi-parser');
+    } catch (error) {
+        diagnostics.push(diagnostic(
+            'OAS_ENGINE_UNAVAILABLE',
+            error instanceof Error ? error.message : 'The optional OpenAPI parser could not be loaded.',
+            {severity: 'warning', source: sourceUri ? {uri: sourceUri} : undefined},
+        ));
+        return {document: parsed, diagnostics, externalDocumentsLoaded: false};
+    }
+
+    try {
+        const validation = await parser.validate(raw);
         (validation.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_ENGINE_${error.code}` : 'OAS_ENGINE_VALIDATION',
             error.message,
-            {severity: 'warning', source: {pointer: error.path?.join('/')}},
+            {severity: 'warning', source: {pointer: formatEngineErrorPath(error.path)}},
         )));
+    } catch (error) {
+        diagnostics.push(diagnostic(
+            'OAS_ENGINE_VALIDATION_FAILED',
+            error instanceof Error ? error.message : 'Additional OpenAPI validation failed.',
+            {severity: 'warning', source: sourceUri ? {uri: sourceUri} : undefined},
+        ));
+    }
 
-        if (!containsExternalRef(parsed))
-            return {document: parsed, diagnostics, externalDocumentsLoaded: false};
+    if (!containsExternalRef(parsed))
+        return {document: parsed, diagnostics, externalDocumentsLoaded: false};
 
-        if (!sourceUri) {
-            diagnostics.push(diagnostic(
-                'OAS_EXTERNAL_REF_LOCAL_FILES_REQUIRED',
-                'This local/inline specification contains external references. Open all related files through a bundled document; a browser cannot read sibling files without explicit selection.',
-            ));
-            return {document: parsed, diagnostics, externalDocumentsLoaded: false};
-        }
+    if (!sourceUri) {
+        diagnostics.push(diagnostic(
+            'OAS_EXTERNAL_REF_LOCAL_FILES_REQUIRED',
+            'This local/inline specification contains external references. Select all related files or use a bundled document.',
+        ));
+        return {document: parsed, diagnostics, externalDocumentsLoaded: false};
+    }
 
+    try {
         const {fetchUrls} = await import('@scalar/openapi-parser/plugins/fetch-urls');
         const absoluteSource = typeof window !== 'undefined'
             ? new URL(sourceUri, window.location.href).href
             : new URL(sourceUri).href;
-        const loaded = await load(raw, {
+        const loaded = await parser.load(raw, {
             filename: absoluteSource,
             plugins: [fetchUrls({
                 limit: MAX_EXTERNAL_DOCUMENTS,
@@ -112,13 +146,13 @@ export const processWithOpenApiEngine = async (
         (loaded.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_EXTERNAL_${error.code}` : 'OAS_EXTERNAL_REF_FAILED',
             error.message,
-            {source: {uri: absoluteSource, pointer: error.path?.join('/')}},
+            {source: {uri: absoluteSource, pointer: formatEngineErrorPath(error.path)}},
         )));
-        const resolved = dereference(loaded.filesystem);
+        const resolved = parser.dereference(loaded.filesystem);
         (resolved.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_REF_${error.code}` : 'OAS_REF_RESOLUTION_FAILED',
             error.message,
-            {source: {uri: absoluteSource, pointer: error.path?.join('/')}},
+            {source: {uri: absoluteSource, pointer: formatEngineErrorPath(error.path)}},
         )));
         if (!resolved.schema)
             return {document: parsed, diagnostics, externalDocumentsLoaded: false};
@@ -140,9 +174,9 @@ export const processWithOpenApiEngine = async (
         return {document, diagnostics, externalDocumentsLoaded: true};
     } catch (error) {
         diagnostics.push(diagnostic(
-            'OAS_ENGINE_PROCESSING_FAILED',
-            `${error instanceof Error ? error.message : 'OpenAPI engine failed'}. The original parseable document remains available; unresolved features will be reported where encountered.`,
-            {severity: 'warning', source: sourceUri ? {uri: sourceUri} : undefined},
+            'OAS_EXTERNAL_REF_PROCESSING_FAILED',
+            error instanceof Error ? error.message : 'External reference processing failed.',
+            {severity: 'warning', source: {uri: sourceUri}},
         ));
         return {document: parsed, diagnostics, externalDocumentsLoaded: false};
     }
@@ -245,13 +279,13 @@ export const processLocalOpenApiBundle = async (
         (validation.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_ENGINE_${error.code}` : 'OAS_ENGINE_VALIDATION',
             error.message,
-            {severity: 'warning', source: {uri: error.path?.join('/')}},
+            {severity: 'warning', source: {pointer: formatEngineErrorPath(error.path)}},
         )));
         const resolved = dereference(filesystem as any);
         (resolved.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_REF_${error.code}` : 'OAS_REF_RESOLUTION_FAILED',
             error.message,
-            {source: {pointer: error.path?.join('/')}},
+            {source: {pointer: formatEngineErrorPath(error.path)}},
         )));
         const resolvedRoot = resolved.schema || root.specification;
         const document = String((resolvedRoot as any).swagger || '').startsWith('2.')
