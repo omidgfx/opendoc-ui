@@ -28,10 +28,12 @@ interface AppModalLayerProps {
         path: string;
         method: string;
     } | null;
-    setCodeEndpoint: Dispatch<SetStateAction<{
-        path: string;
-        method: string;
-    } | null>>;
+    setCodeEndpoint: Dispatch<
+        SetStateAction<{
+            path: string;
+            method: string;
+        } | null>
+    >;
     activeAuth: ActiveAuth;
     authOperation?: Operation | null;
     setActiveAuth: Dispatch<SetStateAction<ActiveAuth>>;
@@ -60,66 +62,111 @@ interface AppModalLayerProps {
 }
 
 export default function AppModalLayer({
-                                          spec,
-                                          specKey,
-                                          selectedServer,
-                                          schemaStack,
-                                          setSchemaStack,
-                                          onPopSchema,
-                                          onPushSchema,
-                                          codeEndpoint,
-                                          setCodeEndpoint,
-                                          activeAuth,
-                                          authOperation,
-                                          setActiveAuth,
-                                          authOpen,
-                                          setAuthOpen,
-                                          switcherOpen,
-                                          tabs,
-                                          activeTabId,
-                                          switcherIndex,
-                                          onCancelSwitcher,
-                                          onSelectSwitcherTab,
-                                          shareTarget,
-                                          setShareTarget,
-                                          themeOpen,
-                                          setThemeOpen,
-                                          selectedThemeName,
-                                          setSelectedThemeName,
-                                          currentThemeMode,
-                                          setCurrentThemeMode,
-                                          resolvedThemeMode,
-                                          toggleThemeMode,
-                                          aiSettingsOpen,
-                                          setAISettingsOpen,
-                                          aiSettings,
-                                          onSaveAISettings,
-                                      }: AppModalLayerProps) {
-    return (<>
-        {spec?.components?.schemas && (<ModalsStack modals={schemaStack.map(name => ({
-            schemaName: name,
-            schema: spec.components!.schemas![name] ?? {},
-        })).filter(item => item.schema !== undefined && item.schema !== null)} onPopSchema={onPopSchema} onPushSchema={onPushSchema}
-                                                    onCloseAll={() => setSchemaStack([])}
-                                                    componentsSchemas={spec.components.schemas}
-                                                    parsableKey={specKey}/>)}
-        {codeEndpoint && spec && (
-            <CodeGeneratorModal isOpen onClose={() => setCodeEndpoint(null)} spec={spec} path={codeEndpoint.path}
-                                method={codeEndpoint.method}
-                                operation={getOperation(spec, codeEndpoint.path, codeEndpoint.method) || {}}
-                                selectedServer={selectedServer} activeAuth={activeAuth}/>)}
-        <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} spec={spec} operation={authOperation}
-                   activeAuth={activeAuth} onSave={setActiveAuth}/>
-        <TabSwitcherOverlay open={switcherOpen} tabs={tabs} activeTabId={activeTabId} selectedIndex={switcherIndex}
-                            onCancel={onCancelSwitcher} onSelect={onSelectSwitcherTab}/>
-        {shareTarget && (
-            <ShareModal isOpen onClose={() => setShareTarget(null)} url={shareTarget.url} title={shareTarget.title}
-                        description={shareTarget.description}/>)}
-        <ThemeSelectorModal isOpen={themeOpen} selectedThemeName={selectedThemeName} currentThemeMode={currentThemeMode}
-                            resolvedThemeMode={resolvedThemeMode} onSelectTheme={setSelectedThemeName}
-                            onToggleThemeMode={toggleThemeMode} onSetThemeMode={setCurrentThemeMode}
-                            onClose={() => setThemeOpen(false)}/>
-        <AISettingsModal isOpen={aiSettingsOpen} settings={aiSettings} onSave={onSaveAISettings}
-                         onClose={() => setAISettingsOpen(false)}/>
-    </>);
+    spec,
+    specKey,
+    selectedServer,
+    schemaStack,
+    setSchemaStack,
+    onPopSchema,
+    onPushSchema,
+    codeEndpoint,
+    setCodeEndpoint,
+    activeAuth,
+    authOperation,
+    setActiveAuth,
+    authOpen,
+    setAuthOpen,
+    switcherOpen,
+    tabs,
+    activeTabId,
+    switcherIndex,
+    onCancelSwitcher,
+    onSelectSwitcherTab,
+    shareTarget,
+    setShareTarget,
+    themeOpen,
+    setThemeOpen,
+    selectedThemeName,
+    setSelectedThemeName,
+    currentThemeMode,
+    setCurrentThemeMode,
+    resolvedThemeMode,
+    toggleThemeMode,
+    aiSettingsOpen,
+    setAISettingsOpen,
+    aiSettings,
+    onSaveAISettings,
+}: AppModalLayerProps) {
+    return (
+        <>
+            {spec?.components?.schemas && (
+                <ModalsStack
+                    modals={schemaStack
+                        .map(name => ({
+                            schemaName: name,
+                            schema: spec.components!.schemas![name] ?? {},
+                        }))
+                        .filter(item => item.schema !== undefined && item.schema !== null)}
+                    onPopSchema={onPopSchema}
+                    onPushSchema={onPushSchema}
+                    onCloseAll={() => setSchemaStack([])}
+                    componentsSchemas={spec.components.schemas}
+                    parsableKey={specKey}
+                />
+            )}
+            {codeEndpoint && spec && (
+                <CodeGeneratorModal
+                    isOpen
+                    onClose={() => setCodeEndpoint(null)}
+                    spec={spec}
+                    path={codeEndpoint.path}
+                    method={codeEndpoint.method}
+                    operation={getOperation(spec, codeEndpoint.path, codeEndpoint.method) || {}}
+                    selectedServer={selectedServer}
+                    activeAuth={activeAuth}
+                />
+            )}
+            <AuthModal
+                isOpen={authOpen}
+                onClose={() => setAuthOpen(false)}
+                spec={spec}
+                operation={authOperation}
+                activeAuth={activeAuth}
+                onSave={setActiveAuth}
+            />
+            <TabSwitcherOverlay
+                open={switcherOpen}
+                tabs={tabs}
+                activeTabId={activeTabId}
+                selectedIndex={switcherIndex}
+                onCancel={onCancelSwitcher}
+                onSelect={onSelectSwitcherTab}
+            />
+            {shareTarget && (
+                <ShareModal
+                    isOpen
+                    onClose={() => setShareTarget(null)}
+                    url={shareTarget.url}
+                    title={shareTarget.title}
+                    description={shareTarget.description}
+                />
+            )}
+            <ThemeSelectorModal
+                isOpen={themeOpen}
+                selectedThemeName={selectedThemeName}
+                currentThemeMode={currentThemeMode}
+                resolvedThemeMode={resolvedThemeMode}
+                onSelectTheme={setSelectedThemeName}
+                onToggleThemeMode={toggleThemeMode}
+                onSetThemeMode={setCurrentThemeMode}
+                onClose={() => setThemeOpen(false)}
+            />
+            <AISettingsModal
+                isOpen={aiSettingsOpen}
+                settings={aiSettings}
+                onSave={onSaveAISettings}
+                onClose={() => setAISettingsOpen(false)}
+            />
+        </>
+    );
 }

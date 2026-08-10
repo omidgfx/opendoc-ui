@@ -10,11 +10,9 @@ async function walk(url) {
             await walk(child);
             continue;
         }
-        if (!['.tsx', '.jsx'].includes(extname(entry.name)))
-            continue;
+        if (!['.tsx', '.jsx'].includes(extname(entry.name))) continue;
         const text = await readFile(child, 'utf8');
-        if (text.includes('<select'))
-            nativeSelects.push(join(child.pathname));
+        if (text.includes('<select')) nativeSelects.push(join(child.pathname));
     }
 }
 await walk(root);

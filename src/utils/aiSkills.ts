@@ -31,5 +31,8 @@ export const AI_SKILL_PACK_CONTENT: Record<AISkillPack, string> = {
 };
 export const renderAISkillPackContent = (skills: AISkillPack[]): string => {
     const selected = skills.length > 0 ? skills : ['openapi' as AISkillPack];
-    return selected.map(skill => AI_SKILL_PACK_CONTENT[skill]).filter(Boolean).join('\n\n');
+    return selected
+        .map(skill => AI_SKILL_PACK_CONTENT[skill])
+        .filter(Boolean)
+        .join('\n\n');
 };

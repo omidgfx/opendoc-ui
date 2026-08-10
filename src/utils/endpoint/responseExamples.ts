@@ -13,75 +13,60 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         }
     };
     const getFirstExplicitExample = (contentObj: any): any => {
-        if (!contentObj)
-            return undefined;
-        if (contentObj.example !== undefined)
-            return contentObj.example;
+        if (!contentObj) return undefined;
+        if (contentObj.example !== undefined) return contentObj.example;
         if (contentObj.examples && typeof contentObj.examples === 'object') {
             const first = Object.values(contentObj.examples)[0] as any;
             if (first) {
-                if (first.dataValue !== undefined)
-                    return first.dataValue;
-                if (first.value !== undefined)
-                    return first.value;
-                if (first.serializedValue !== undefined)
-                    return first.serializedValue;
-                if (first.externalValue !== undefined)
-                    return first.externalValue;
-                if (first.externalDataValue !== undefined)
-                    return first.externalDataValue;
+                if (first.dataValue !== undefined) return first.dataValue;
+                if (first.value !== undefined) return first.value;
+                if (first.serializedValue !== undefined) return first.serializedValue;
+                if (first.externalValue !== undefined) return first.externalValue;
+                if (first.externalDataValue !== undefined) return first.externalDataValue;
                 return first;
             }
         }
         return undefined;
     };
-    const escapeXml = (value: any) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    const escapeXml = (value: any) =>
+        String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
     const toXml = (value: any, nodeName = 'response', depth = 0): string => {
         const indent = '  '.repeat(depth);
         const safeName = String(nodeName || 'item').replace(/[^A-Za-z0-9_.:-]/g, '_') || 'item';
-        if (value === null || value === undefined)
-            return `${indent}<${safeName} />`;
+        if (value === null || value === undefined) return `${indent}<${safeName} />`;
         if (Array.isArray(value)) {
-            if (value.length === 0)
-                return `${indent}<${safeName}></${safeName}>`;
+            if (value.length === 0) return `${indent}<${safeName}></${safeName}>`;
             return value.map(item => toXml(item, safeName, depth)).join('\n');
         }
         if (typeof value === 'object') {
             const entries = Object.entries(value);
-            if (entries.length === 0)
-                return `${indent}<${safeName}></${safeName}>`;
+            if (entries.length === 0) return `${indent}<${safeName}></${safeName}>`;
             const children = entries.map(([key, child]) => toXml(child, key, depth + 1)).join('\n');
             return `${indent}<${safeName}>\n${children}\n${indent}</${safeName}>`;
         }
         return `${indent}<${safeName}>${escapeXml(value)}</${safeName}>`;
     };
     const getSchemaDisplayName = (schema: any, fallback = 'response') => {
-        if (schema === undefined || schema === null)
-            return fallback;
-        if (schema.xml?.name)
-            return schema.xml.name;
-        if (schema.$ref)
-            return getRefName(schema.$ref);
-        if (schema.items?.$ref)
-            return getRefName(schema.items.$ref);
-        if (schema.title)
-            return schema.title;
+        if (schema === undefined || schema === null) return fallback;
+        if (schema.xml?.name) return schema.xml.name;
+        if (schema.$ref) return getRefName(schema.$ref);
+        if (schema.items?.$ref) return getRefName(schema.items.$ref);
+        if (schema.title) return schema.title;
         return fallback;
     };
     const getLanguageForContentType = (contentType: string): string => {
         const c = contentType.toLowerCase();
-        if (c.includes('json'))
-            return 'json';
-        if (c.includes('yaml') || c.includes('yml'))
-            return 'yaml';
-        if (c.includes('xml'))
-            return 'xml';
-        if (c.includes('html'))
-            return 'html';
-        if (c.includes('javascript'))
-            return 'javascript';
-        if (c.includes('x-www-form-urlencoded'))
-            return 'http';
+        if (c.includes('json')) return 'json';
+        if (c.includes('yaml') || c.includes('yml')) return 'yaml';
+        if (c.includes('xml')) return 'xml';
+        if (c.includes('html')) return 'html';
+        if (c.includes('javascript')) return 'javascript';
+        if (c.includes('x-www-form-urlencoded')) return 'http';
         return 'text';
     };
     const getResponseExampleSnippet = (schema: any, contentObj: any, contentType: string): string => {
@@ -98,8 +83,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                     return JSON.stringify(value, null, 4);
                 }
             }
-            if (c.includes('xml') || c.includes('html') || c.includes('text') || c.includes('plain'))
-                return value;
+            if (c.includes('xml') || c.includes('html') || c.includes('text') || c.includes('plain')) return value;
             if (c.includes('yaml') || c.includes('yml'))
                 return trimmed.startsWith('{') || trimmed.startsWith('[') ? jsYaml.dump(JSON.parse(value)) : value;
             return value;
@@ -113,60 +97,61 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             return `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, getSchemaDisplayName(schema))}`;
         }
         if (c.includes('html'))
-            return typeof value === 'object' ? `<pre>${escapeXml(JSON.stringify(value, null, 4))}</pre>` : String(value ?? '');
-        if (c.includes('yaml') || c.includes('yml'))
-            return jsYaml.dump(value);
+            return typeof value === 'object'
+                ? `<pre>${escapeXml(JSON.stringify(value, null, 4))}</pre>`
+                : String(value ?? '');
+        if (c.includes('yaml') || c.includes('yml')) return jsYaml.dump(value);
         if (c.includes('text') || c.includes('plain'))
             return typeof value === 'object' ? JSON.stringify(value, null, 4) : String(value ?? '');
         return JSON.stringify(value, null, 4);
     };
-    const humanizeSchemaName = (name: string): string => name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').toLowerCase();
+    const humanizeSchemaName = (name: string): string =>
+        name
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+            .toLowerCase();
     const getSchemaNamesFromResponse = (resp: any): string[] => {
-        if (!resp?.content)
-            return [];
+        if (!resp?.content) return [];
         const names = new Set<string>();
         Object.values(resp.content).forEach((contentObj: any) => {
             const schema = contentObj?.schema;
-            if (schema === undefined || schema === null)
-                return;
-            if (schema.$ref)
-                names.add(getRefName(schema.$ref));
+            if (schema === undefined || schema === null) return;
+            if (schema.$ref) names.add(getRefName(schema.$ref));
             if (schema.oneOf && Array.isArray(schema.oneOf))
                 schema.oneOf.forEach((sub: any) => {
-                    if (sub.$ref)
-                        names.add(getRefName(sub.$ref));
-                    if (sub.title)
-                        names.add(sub.title);
+                    if (sub.$ref) names.add(getRefName(sub.$ref));
+                    if (sub.title) names.add(sub.title);
                 });
             if (schema.anyOf && Array.isArray(schema.anyOf))
                 schema.anyOf.forEach((sub: any) => {
-                    if (sub.$ref)
-                        names.add(getRefName(sub.$ref));
-                    if (sub.title)
-                        names.add(sub.title);
+                    if (sub.$ref) names.add(getRefName(sub.$ref));
+                    if (sub.title) names.add(sub.title);
                 });
             if (schema.allOf && Array.isArray(schema.allOf))
                 schema.allOf.forEach((sub: any) => {
-                    if (sub.$ref)
-                        names.add(getRefName(sub.$ref));
-                    if (sub.title)
-                        names.add(sub.title);
+                    if (sub.$ref) names.add(getRefName(sub.$ref));
+                    if (sub.title) names.add(sub.title);
                 });
-            if (schema.title)
-                names.add(schema.title);
+            if (schema.title) names.add(schema.title);
         });
         return Array.from(names);
     };
     const truncateText = (text: string, maxLength = 80) => {
-        if (!text)
-            return '';
-        if (text.length <= maxLength)
-            return text;
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     };
     return {
-        getMockSnippet, getMockValue, getFirstExplicitExample, escapeXml, toXml,
-        getSchemaDisplayName, getLanguageForContentType, getResponseExampleSnippet,
-        humanizeSchemaName, getSchemaNamesFromResponse, truncateText,
+        getMockSnippet,
+        getMockValue,
+        getFirstExplicitExample,
+        escapeXml,
+        toXml,
+        getSchemaDisplayName,
+        getLanguageForContentType,
+        getResponseExampleSnippet,
+        humanizeSchemaName,
+        getSchemaNamesFromResponse,
+        truncateText,
     };
 };

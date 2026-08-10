@@ -2,7 +2,12 @@ import {useEffect, useRef, useState} from 'react';
 import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
 import {fetchSpec, type FetchSpecResult} from '../utils/specCache';
 import {parseSpecDraft} from '../utils/appSpec';
-import {getRawSpecDocument, registerRawSpecDocument, registerSpecDiagnostics, registerSpecSourceUri} from '../utils/specSource';
+import {
+    getRawSpecDocument,
+    registerRawSpecDocument,
+    registerSpecDiagnostics,
+    registerSpecSourceUri,
+} from '../utils/specSource';
 import {processWithOpenApiEngine} from '../utils/openapi/engine';
 
 export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig) {
@@ -27,8 +32,7 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
                 document = processed.document;
                 if (document) {
                     const rawMeta = getRawSpecDocument(parsed);
-                    if (rawMeta)
-                        registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
+                    if (rawMeta) registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
                     registerSpecSourceUri(document, sourceUri);
                     registerSpecDiagnostics(document, processed.diagnostics);
                 }
@@ -42,37 +46,30 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
                     const processed = await processWithOpenApiEngine(fetchInfo.raw, parsed, parsable.url);
                     document = processed.document;
                     const rawMeta = getRawSpecDocument(parsed);
-                    if (rawMeta)
-                        registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
+                    if (rawMeta) registerRawSpecDocument(document, rawMeta.text, rawMeta.document, rawMeta.dialect);
                     registerSpecSourceUri(document, parsable.url);
                     registerSpecDiagnostics(document, processed.diagnostics);
                 }
             }
-            if (sequence !== loadSequenceRef.current)
-                return;
+            if (sequence !== loadSequenceRef.current) return;
             setSpecFetchInfo(fetchInfo);
             setSpec(document);
             setLoadedSpecKey(document ? specKey : '');
-            if (document)
-                setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
+            if (document) setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
         } catch (error) {
-            if (sequence !== loadSequenceRef.current)
-                return;
+            if (sequence !== loadSequenceRef.current) return;
             console.error(`Failed to load spec '${specKey}'`, error);
             setLoadedSpecKey('');
             setSpecFetchInfo(null);
             setSpec(null);
         } finally {
-            if (sequence === loadSequenceRef.current)
-                setIsLoadingSpec(false);
+            if (sequence === loadSequenceRef.current) setIsLoadingSpec(false);
         }
     };
     useEffect(() => {
-        if (!selectedSpecKey)
-            return;
+        if (!selectedSpecKey) return;
         const parsable = parsables[selectedSpecKey];
-        if (parsable)
-            void loadSpec(selectedSpecKey, parsable);
+        if (parsable) void loadSpec(selectedSpecKey, parsable);
     }, [selectedSpecKey, parsables]);
     return {
         spec,

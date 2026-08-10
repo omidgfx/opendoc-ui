@@ -33,32 +33,32 @@ interface TabPersistenceResult {
 }
 
 export function useTabPersistence({
-                                      selectedSpecKey,
-                                      loadedSpecKey,
-                                      spec,
-                                      tabs,
-                                      activeTabId,
-                                      viewModes,
-                                      selectedViewMode,
-                                      orderTabs,
-                                      getEndpointLabel,
-                                      applyTabViewState,
-                                      setTabs,
-                                      setActiveTabId,
-                                      setViewModes,
-                                      setSelectedViewMode,
-                                      setShowWelcome,
-                                  }: UseTabPersistenceOptions): TabPersistenceResult {
+    selectedSpecKey,
+    loadedSpecKey,
+    spec,
+    tabs,
+    activeTabId,
+    viewModes,
+    selectedViewMode,
+    orderTabs,
+    getEndpointLabel,
+    applyTabViewState,
+    setTabs,
+    setActiveTabId,
+    setViewModes,
+    setSelectedViewMode,
+    setShowWelcome,
+}: UseTabPersistenceOptions): TabPersistenceResult {
     const [tabsRestoredForKey, setTabsRestoredForKey] = useState('');
     const tabsRestoreDoneRef = useRef('');
     const specRouteReadyRef = useRef('');
     useEffect(() => {
-        if (!selectedSpecKey || loadedSpecKey !== selectedSpecKey || tabsRestoredForKey !== selectedSpecKey)
-            return;
+        if (!selectedSpecKey || loadedSpecKey !== selectedSpecKey || tabsRestoredForKey !== selectedSpecKey) return;
         const persistable = tabs.filter(tab => !tab.isPreview);
-        const activeId = activeTabId && tabs.some(tab => tab.id === activeTabId && !tab.isPreview)
-            ? activeTabId
-            : persistable[persistable.length - 1]?.id || '';
+        const activeId =
+            activeTabId && tabs.some(tab => tab.id === activeTabId && !tab.isPreview)
+                ? activeTabId
+                : persistable[persistable.length - 1]?.id || '';
         if (persistable.length === 0) {
             void specStorage.remove(selectedSpecKey, 'tabs');
             return;
@@ -79,28 +79,28 @@ export function useTabPersistence({
             viewModes?: Record<string, StoredTabViewMode>;
         } | null>(selectedSpecKey, 'tabs', null, isValidTabPersistence);
         const filtered = data?.tabs?.length
-            ? orderTabs(data.tabs.filter(tab => !tab.isPreview)).filter(tab => tab.kind && tab.kind !== 'endpoint' ? true : Boolean(getOperation(spec, tab.path, tab.method)))
+            ? orderTabs(data.tabs.filter(tab => !tab.isPreview)).filter(tab =>
+                  tab.kind && tab.kind !== 'endpoint' ? true : Boolean(getOperation(spec, tab.path, tab.method)),
+              )
             : [];
-        const restoredTabs = filtered.map(tab => tab.kind && tab.kind !== 'endpoint'
-            ? tab
-            : {...tab, label: getEndpointLabel(tab.path, tab.method)});
+        const restoredTabs = filtered.map(tab =>
+            tab.kind && tab.kind !== 'endpoint' ? tab : {...tab, label: getEndpointLabel(tab.path, tab.method)},
+        );
         const restoredModes = data?.viewModes
-            ? Object.fromEntries(Object.entries(data.viewModes)
-                .filter(([id]) => restoredTabs.some(tab => tab.id === id))) as Record<string, ViewMode>
+            ? (Object.fromEntries(
+                  Object.entries(data.viewModes).filter(([id]) => restoredTabs.some(tab => tab.id === id)),
+              ) as Record<string, ViewMode>)
             : {};
-        const restoredActiveTab = restoredTabs.find(tab => tab.id === data?.activeTabId)
-            || restoredTabs[restoredTabs.length - 1]
-            || null;
+        const restoredActiveTab =
+            restoredTabs.find(tab => tab.id === data?.activeTabId) || restoredTabs[restoredTabs.length - 1] || null;
         setTabs(restoredTabs);
         setViewModes(restoredModes);
         setActiveTabId(restoredActiveTab?.id || null);
         applyTabViewState(restoredActiveTab);
         const restoredMode = restoredActiveTab ? restoredModes[restoredActiveTab.id] : undefined;
-        if (restoredMode)
-            setSelectedViewMode(restoredMode);
+        if (restoredMode) setSelectedViewMode(restoredMode);
         const route = parseSmartRoute(window.location.hash);
-        if (hasExplicitSpecRoute(route, window.location.hash))
-            setShowWelcome(false);
+        if (hasExplicitSpecRoute(route, window.location.hash)) setShowWelcome(false);
         tabsRestoreDoneRef.current = selectedSpecKey;
         setTabsRestoredForKey(selectedSpecKey);
     }, [
@@ -135,17 +135,15 @@ export function useTabPersistence({
         }
     }, [activeTabId]);
     useEffect(() => {
-        if (!activeTabId)
-            return;
+        if (!activeTabId) return;
         const restoring = restoringModeRef.current;
         if (restoring?.tabId === activeTabId) {
-            if (restoring.mode === selectedViewMode)
-                restoringModeRef.current = null;
+            if (restoring.mode === selectedViewMode) restoringModeRef.current = null;
             return;
         }
-        setViewModes(current => current[activeTabId] === selectedViewMode
-            ? current
-            : {...current, [activeTabId]: selectedViewMode});
+        setViewModes(current =>
+            current[activeTabId] === selectedViewMode ? current : {...current, [activeTabId]: selectedViewMode},
+        );
     }, [selectedViewMode, activeTabId, setViewModes]);
     return {tabsRestoredForKey, tabsRestoreDoneRef, specRouteReadyRef};
 }

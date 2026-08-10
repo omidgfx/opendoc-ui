@@ -5,17 +5,19 @@ export const MAX_ENDPOINT_RESPONSE_HISTORY = 10;
 const MAX_PERSISTED_BODY_CHARS = 256 * 1024;
 
 const storageName = (path: string, method: string) => `response_history:${method.toLowerCase()}:${path}`;
-const isResponse = (value: any): value is ExamineResponse => value
-    && typeof value === 'object'
-    && (typeof value.status === 'number' || value.status === null)
-    && value.headers && typeof value.headers === 'object' && !Array.isArray(value.headers)
-    && typeof value.body === 'string'
-    && typeof value.isJson === 'boolean'
-    && Number.isFinite(value.timestamp);
+const isResponse = (value: any): value is ExamineResponse =>
+    value &&
+    typeof value === 'object' &&
+    (typeof value.status === 'number' || value.status === null) &&
+    value.headers &&
+    typeof value.headers === 'object' &&
+    !Array.isArray(value.headers) &&
+    typeof value.body === 'string' &&
+    typeof value.isJson === 'boolean' &&
+    Number.isFinite(value.timestamp);
 
 const persistableResponse = (response: ExamineResponse): ExamineResponse => {
-    if (response.body.length <= MAX_PERSISTED_BODY_CHARS)
-        return response;
+    if (response.body.length <= MAX_PERSISTED_BODY_CHARS) return response;
     return {
         ...response,
         body: `${response.body.slice(0, MAX_PERSISTED_BODY_CHARS)}\n\n[Persisted history preview truncated at 256 KiB]`,
@@ -24,9 +26,15 @@ const persistableResponse = (response: ExamineResponse): ExamineResponse => {
     };
 };
 
-export const readResponseHistory = (specKey: string, path: string, method: string): ExamineResponse[] => specStorage
-    .getJSON<ExamineResponse[]>(specKey, storageName(path, method), [], value => Array.isArray(value) && value.every(isResponse))
-    .slice(0, MAX_ENDPOINT_RESPONSE_HISTORY);
+export const readResponseHistory = (specKey: string, path: string, method: string): ExamineResponse[] =>
+    specStorage
+        .getJSON<ExamineResponse[]>(
+            specKey,
+            storageName(path, method),
+            [],
+            value => Array.isArray(value) && value.every(isResponse),
+        )
+        .slice(0, MAX_ENDPOINT_RESPONSE_HISTORY);
 
 export const writeResponseHistory = (
     specKey: string,
@@ -45,12 +53,8 @@ export const appendResponseHistory = (
     method: string,
     response: ExamineResponse,
     current?: ExamineResponse[],
-): ExamineResponse[] => writeResponseHistory(
-    specKey,
-    path,
-    method,
-    [response, ...(current || readResponseHistory(specKey, path, method))],
-);
+): ExamineResponse[] =>
+    writeResponseHistory(specKey, path, method, [response, ...(current || readResponseHistory(specKey, path, method))]);
 
 export const removeResponseHistoryAt = (
     specKey: string,
@@ -58,7 +62,13 @@ export const removeResponseHistoryAt = (
     method: string,
     index: number,
     current: ExamineResponse[],
-): ExamineResponse[] => writeResponseHistory(specKey, path, method, current.filter((_, itemIndex) => itemIndex !== index));
+): ExamineResponse[] =>
+    writeResponseHistory(
+        specKey,
+        path,
+        method,
+        current.filter((_, itemIndex) => itemIndex !== index),
+    );
 
 export const clearResponseHistory = async (specKey: string, path: string, method: string): Promise<void> => {
     await specStorage.remove(specKey, storageName(path, method));

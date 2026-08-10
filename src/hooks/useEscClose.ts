@@ -2,10 +2,8 @@ import {useEffect} from 'react';
 
 export function useEscClose(isOpen: boolean, onClose: () => void, enabled = true) {
     useEffect(() => {
-        if (!isOpen)
-            return;
-        if (!enabled)
-            return;
+        if (!isOpen) return;
+        if (!enabled) return;
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 onClose();
@@ -16,12 +14,16 @@ export function useEscClose(isOpen: boolean, onClose: () => void, enabled = true
     }, [isOpen, onClose, enabled]);
 }
 
-export function useEscStack(isOpen: boolean, stackLength: number, onPop: () => void, onCloseAll: () => void, enabled = true) {
+export function useEscStack(
+    isOpen: boolean,
+    stackLength: number,
+    onPop: () => void,
+    onCloseAll: () => void,
+    enabled = true,
+) {
     useEffect(() => {
-        if (!isOpen)
-            return;
-        if (!enabled)
-            return;
+        if (!isOpen) return;
+        if (!enabled) return;
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 e.preventDefault();

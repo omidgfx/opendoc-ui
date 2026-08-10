@@ -2,8 +2,7 @@ import {createZipBlob, downloadBlob} from './zip';
 import {generateValidatedMock} from './mockGenerator';
 
 export function getRefName(ref: string): string {
-    if (!ref)
-        return '';
+    if (!ref) return '';
     const raw = ref.split('/').pop() || '';
     try {
         return decodeURIComponent(raw).replace(/~1/g, '/').replace(/~0/g, '~');
@@ -13,27 +12,85 @@ export function getRefName(ref: string): string {
 }
 
 const TS_RESERVED = new Set([
-    'any', 'boolean', 'break', 'case', 'catch', 'class', 'const', 'constructor',
-    'continue', 'debugger', 'declare', 'default', 'delete', 'do', 'else', 'enum',
-    'export', 'extends', 'false', 'finally', 'for', 'from', 'function', 'get', 'if',
-    'implements', 'import', 'in', 'infer', 'instanceof', 'interface', 'keyof', 'let',
-    'module', 'namespace', 'never', 'new', 'null', 'number', 'object', 'package',
-    'private', 'protected', 'public', 'readonly', 'require', 'return', 'set', 'static',
-    'string', 'super', 'switch', 'symbol', 'this', 'throw', 'true', 'try', 'type',
-    'typeof', 'undefined', 'unique', 'unknown', 'var', 'void', 'while', 'with', 'yield',
+    'any',
+    'boolean',
+    'break',
+    'case',
+    'catch',
+    'class',
+    'const',
+    'constructor',
+    'continue',
+    'debugger',
+    'declare',
+    'default',
+    'delete',
+    'do',
+    'else',
+    'enum',
+    'export',
+    'extends',
+    'false',
+    'finally',
+    'for',
+    'from',
+    'function',
+    'get',
+    'if',
+    'implements',
+    'import',
+    'in',
+    'infer',
+    'instanceof',
+    'interface',
+    'keyof',
+    'let',
+    'module',
+    'namespace',
+    'never',
+    'new',
+    'null',
+    'number',
+    'object',
+    'package',
+    'private',
+    'protected',
+    'public',
+    'readonly',
+    'require',
+    'return',
+    'set',
+    'static',
+    'string',
+    'super',
+    'switch',
+    'symbol',
+    'this',
+    'throw',
+    'true',
+    'try',
+    'type',
+    'typeof',
+    'undefined',
+    'unique',
+    'unknown',
+    'var',
+    'void',
+    'while',
+    'with',
+    'yield',
 ]);
 
 export const toTypeScriptIdentifier = (name: string): string => {
-    const normalized = String(name || 'Schema').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const normalized = String(name || 'Schema')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '');
     const parts = normalized.split(/[^a-zA-Z0-9_$]+/).filter(Boolean);
     let identifier = parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') || 'Schema';
-    if (/^\d/.test(identifier))
-        identifier = `Schema${identifier}`;
+    if (/^\d/.test(identifier)) identifier = `Schema${identifier}`;
     identifier = identifier.replace(/[^a-zA-Z0-9_$]/g, '');
-    if (!identifier)
-        identifier = 'Schema';
-    if (TS_RESERVED.has(identifier.toLowerCase()))
-        identifier = `${identifier}Model`;
+    if (!identifier) identifier = 'Schema';
+    if (TS_RESERVED.has(identifier.toLowerCase())) identifier = `${identifier}Model`;
     return identifier;
 };
 
@@ -44,8 +101,7 @@ export const createTypeNameMap = (names: string[]): Record<string, string> => {
         const base = toTypeScriptIdentifier(original);
         let candidate = base;
         let suffix = 2;
-        while (used.has(candidate.toLowerCase()))
-            candidate = `${base}${suffix++}`;
+        while (used.has(candidate.toLowerCase())) candidate = `${base}${suffix++}`;
         used.add(candidate.toLowerCase());
         result[original] = candidate;
     });
@@ -53,11 +109,12 @@ export const createTypeNameMap = (names: string[]): Record<string, string> => {
 };
 
 export const toSafeGeneratedFileName = (name: string): string => {
-    const safe = toTypeScriptIdentifier(name)
-        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-        .replace(/\.{2,}/g, '_')
-        .replace(/[. ]+$/g, '')
-        .slice(0, 100) || 'Schema';
+    const safe =
+        toTypeScriptIdentifier(name)
+            .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+            .replace(/\.{2,}/g, '_')
+            .replace(/[. ]+$/g, '')
+            .slice(0, 100) || 'Schema';
     const reserved = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(safe) ? `${safe}_model` : safe;
     return `${reserved}.ts`;
 };
@@ -73,8 +130,7 @@ export function generateMockValue(schema: any, allSchemas: Record<string, any> =
         paths: {},
         components: {schemas: allSchemas},
     });
-    if (!result.ok)
-        throw new Error(result.diagnostics.map(item => item.message).join('; '));
+    if (!result.ok) throw new Error(result.diagnostics.map(item => item.message).join('; '));
     return result.value;
 }
 
@@ -96,13 +152,15 @@ function mapPrimitiveType(t: string): string {
     }
 }
 
-export function schemaToTsType(schema: any, allSchemas: Record<string, any>, visited = new Set<string>(), nameMap: Record<string, string> = createTypeNameMap(Object.keys(allSchemas))): string {
-    if (schema === true)
-        return 'unknown';
-    if (schema === false)
-        return 'never';
-    if (schema === undefined || schema === null)
-        return 'unknown';
+export function schemaToTsType(
+    schema: any,
+    allSchemas: Record<string, any>,
+    visited = new Set<string>(),
+    nameMap: Record<string, string> = createTypeNameMap(Object.keys(allSchemas)),
+): string {
+    if (schema === true) return 'unknown';
+    if (schema === false) return 'never';
+    if (schema === undefined || schema === null) return 'unknown';
     if (schema.nullable === true)
         return `${schemaToTsType({...schema, nullable: false}, allSchemas, new Set(visited), nameMap)} | null`;
     if (schema.$ref) {
@@ -116,10 +174,14 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
         return schema.enum.map((v: any) => JSON.stringify(v)).join(' | ') || 'any';
     }
     if (schema.oneOf && Array.isArray(schema.oneOf)) {
-        return schema.oneOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any';
+        return (
+            schema.oneOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any'
+        );
     }
     if (schema.anyOf && Array.isArray(schema.anyOf)) {
-        return schema.anyOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any';
+        return (
+            schema.anyOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap)).join(' | ') || 'any'
+        );
     }
     if (schema.allOf && Array.isArray(schema.allOf)) {
         const parts = schema.allOf.map((s: any) => schemaToTsType(s, allSchemas, new Set(visited), nameMap));
@@ -130,7 +192,9 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
             const mapped: string[] = [];
             for (const t of schema.type) {
                 if (t === 'array') {
-                    const it = schema.items ? schemaToTsType(schema.items, allSchemas, new Set(visited), nameMap) : 'any';
+                    const it = schema.items
+                        ? schemaToTsType(schema.items, allSchemas, new Set(visited), nameMap)
+                        : 'any';
                     mapped.push(`${it}[]`);
                 } else {
                     mapped.push(mapPrimitiveType(t));
@@ -150,10 +214,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
     if (schema.type === 'object' || schema.properties) {
         if (schema.properties && Object.keys(schema.properties).length > 0) {
             const req = new Set(schema.required || []);
-            const props = Object.entries(schema.properties).map(([k, v]: [
-                string,
-                any
-            ]) => {
+            const props = Object.entries(schema.properties).map(([k, v]: [string, any]) => {
                 const isReq = req.has(k);
                 const t = schemaToTsType(v, allSchemas, new Set(visited), nameMap);
                 return `${JSON.stringify(k)}${isReq ? '' : '?'}: ${t}`;
@@ -174,10 +235,7 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
     }
     if (schema.properties) {
         const req = new Set(schema.required || []);
-        const props = Object.entries(schema.properties).map(([k, v]: [
-            string,
-            any
-        ]) => {
+        const props = Object.entries(schema.properties).map(([k, v]: [string, any]) => {
             const isReq = req.has(k);
             const t = schemaToTsType(v, allSchemas, new Set(visited), nameMap);
             return `${JSON.stringify(k)}${isReq ? '' : '?'}: ${t}`;
@@ -187,7 +245,11 @@ export function schemaToTsType(schema: any, allSchemas: Record<string, any>, vis
     return 'any';
 }
 
-function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, visited = new Set<string>()): {
+function resolveAllOfProperties(
+    schema: any,
+    allSchemas: Record<string, any>,
+    visited = new Set<string>(),
+): {
     properties: Record<string, any>;
     required: string[];
     description?: string;
@@ -199,16 +261,14 @@ function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, vi
         return {properties: props, required, description};
     if (schema.$ref) {
         const refName = getRefName(schema.$ref);
-        if (visited.has(refName))
-            return {properties: props, required, description};
+        if (visited.has(refName)) return {properties: props, required, description};
         visited.add(refName);
         const refSchema = allSchemas[refName];
         if (refSchema) {
             const resolved = resolveAllOfProperties(refSchema, allSchemas, visited);
             props = {...props, ...resolved.properties};
             required = [...required, ...resolved.required];
-            if (!description && resolved.description)
-                description = resolved.description;
+            if (!description && resolved.description) description = resolved.description;
         }
         return {properties: props, required, description};
     }
@@ -217,8 +277,7 @@ function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, vi
             const subResolved = resolveAllOfProperties(sub, allSchemas, new Set(visited));
             props = {...props, ...subResolved.properties};
             required = [...required, ...subResolved.required];
-            if (!description && subResolved.description)
-                description = subResolved.description;
+            if (!description && subResolved.description) description = subResolved.description;
         });
     }
     if (schema.properties) {
@@ -231,8 +290,7 @@ function resolveAllOfProperties(schema: any, allSchemas: Record<string, any>, vi
 }
 
 function sanitizeDoc(text: string): string {
-    if (!text)
-        return '';
+    if (!text) return '';
     return text.replace(/\*\//g, '*\\/');
 }
 
@@ -249,36 +307,29 @@ function buildDocBlock(opts: {
     const {description, deprecated, example, seeLink, defaultValue, format, pattern} = opts;
     if (description) {
         const descLines = sanitizeDoc(description).split('\n');
-        descLines.forEach((l) => lines.push(l.trim() ? l : ''));
+        descLines.forEach(l => lines.push(l.trim() ? l : ''));
     }
     const remarks: string[] = [];
-    if (format)
-        remarks.push(`Format: ${format}`);
-    if (pattern)
-        remarks.push(`Pattern: ${pattern}`);
+    if (format) remarks.push(`Format: ${format}`);
+    if (pattern) remarks.push(`Pattern: ${pattern}`);
     if (remarks.length > 0) {
-        if (lines.length > 0)
-            lines.push('');
+        if (lines.length > 0) lines.push('');
         lines.push(...remarks);
     }
     if (deprecated) {
-        if (lines.length > 0 && lines[lines.length - 1] !== '')
-            lines.push('');
+        if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push('');
         lines.push('@deprecated');
     }
     if (defaultValue !== undefined) {
-        if (lines.length > 0)
-            lines.push('');
+        if (lines.length > 0) lines.push('');
         lines.push(`@defaultValue ${JSON.stringify(defaultValue)}`);
     }
     if (seeLink) {
-        if (lines.length > 0)
-            lines.push('');
+        if (lines.length > 0) lines.push('');
         lines.push(`@see {@link ${seeLink}}`);
     }
     if (example !== undefined) {
-        if (lines.length > 0)
-            lines.push('');
+        if (lines.length > 0) lines.push('');
         lines.push('@example');
         let exampleStr: string;
         if (typeof example === 'string') {
@@ -297,7 +348,7 @@ function buildDocBlock(opts: {
         }
         if (example !== null && typeof example === 'object') {
             lines.push('```json');
-            exampleStr.split('\n').forEach((l) => lines.push(l));
+            exampleStr.split('\n').forEach(l => lines.push(l));
             lines.push('```');
         } else {
             if (typeof example === 'string') {
@@ -311,46 +362,39 @@ function buildDocBlock(opts: {
             }
         }
     }
-    if (lines.length === 0)
-        return '';
-    const blockLines = ['/**', ...lines.map((l) => ` * ${l}`.trimEnd()), ' */'];
+    if (lines.length === 0) return '';
+    const blockLines = ['/**', ...lines.map(l => ` * ${l}`.trimEnd()), ' */'];
     return blockLines.join('\n');
 }
 
 function buildFieldDocBlock(prop: any, seeOverride?: string): string {
-    if (!prop)
-        return '';
+    if (!prop) return '';
     const description = prop.description;
     const lines: string[] = [];
     if (description) {
-        sanitizeDoc(description).split('\n').forEach((l) => lines.push(l));
+        sanitizeDoc(description)
+            .split('\n')
+            .forEach(l => lines.push(l));
     }
     if (prop.deprecated) {
-        if (lines.length)
-            lines.push('');
+        if (lines.length) lines.push('');
         lines.push('@deprecated');
     }
     if (prop.format || prop.pattern) {
-        if (lines.length)
-            lines.push('');
-        if (prop.format)
-            lines.push(`Format: ${prop.format}`);
-        if (prop.pattern)
-            lines.push(`Pattern: ${prop.pattern}`);
+        if (lines.length) lines.push('');
+        if (prop.format) lines.push(`Format: ${prop.format}`);
+        if (prop.pattern) lines.push(`Pattern: ${prop.pattern}`);
     }
     if (prop.default !== undefined) {
-        if (lines.length)
-            lines.push('');
+        if (lines.length) lines.push('');
         lines.push(`@defaultValue ${JSON.stringify(prop.default)}`);
     }
     if (seeOverride) {
-        if (lines.length)
-            lines.push('');
+        if (lines.length) lines.push('');
         lines.push(`@see {@link ${seeOverride}}`);
     }
     if (prop.example !== undefined) {
-        if (lines.length)
-            lines.push('');
+        if (lines.length) lines.push('');
         lines.push('@example');
         let exStr: string;
         try {
@@ -360,15 +404,14 @@ function buildFieldDocBlock(prop: any, seeOverride?: string): string {
         }
         if (typeof prop.example === 'object' && prop.example !== null) {
             lines.push('```json');
-            exStr.split('\n').forEach((l) => lines.push(l));
+            exStr.split('\n').forEach(l => lines.push(l));
             lines.push('```');
         } else {
             lines.push(exStr);
         }
     }
-    if (lines.length === 0)
-        return '';
-    const block = ['/**', ...lines.map((l) => ` * ${l}`.trimEnd()), ' */'].join('\n');
+    if (lines.length === 0) return '';
+    const block = ['/**', ...lines.map(l => ` * ${l}`.trimEnd()), ' */'].join('\n');
     return block;
 }
 
@@ -379,8 +422,14 @@ function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, 
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
     const fullLink = `${origin}${pathname}#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`;
     const schemaObject = isPlainObject(schema) ? schema : {};
-    const description = schemaObject.description || schemaObject.title
-        || (schema === true ? `${schemaName}: any value is allowed` : schema === false ? `${schemaName}: no value is allowed` : `${schemaName} model`);
+    const description =
+        schemaObject.description ||
+        schemaObject.title ||
+        (schema === true
+            ? `${schemaName}: any value is allowed`
+            : schema === false
+              ? `${schemaName}: no value is allowed`
+              : `${schemaName} model`);
     return buildDocBlock({
         description,
         seeLink: fullLink,
@@ -388,7 +437,12 @@ function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, 
     });
 }
 
-export function generateTsContentForSchema(schemaName: string, schema: any, allSchemas: Record<string, any>, parsableKey: string): string {
+export function generateTsContentForSchema(
+    schemaName: string,
+    schema: any,
+    allSchemas: Record<string, any>,
+    parsableKey: string,
+): string {
     const nameMap = createTypeNameMap(Object.keys(allSchemas));
     const safeSchemaName = nameMap[schemaName] || toTypeScriptIdentifier(schemaName);
     let exampleValue: any = undefined;
@@ -399,15 +453,16 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
     }
     const modelDoc = buildModelDocBlock(schemaName, schema, exampleValue, parsableKey);
 
-    if (schema === true)
-        return `\n\n${modelDoc}\nexport type ${safeSchemaName} = unknown;\n`;
-    if (schema === false)
-        return `\n\n${modelDoc}\nexport type ${safeSchemaName} = never;\n`;
+    if (schema === true) return `\n\n${modelDoc}\nexport type ${safeSchemaName} = unknown;\n`;
+    if (schema === false) return `\n\n${modelDoc}\nexport type ${safeSchemaName} = never;\n`;
 
     const resolved = resolveAllOfProperties(schema, allSchemas);
     const hasProps = Object.keys(resolved.properties).length > 0;
-    const isObjectType = schema?.type === 'object' || hasProps || schema?.allOf
-        || (!schema?.type && !schema?.enum && schema?.const === undefined && !schema?.oneOf && !schema?.anyOf);
+    const isObjectType =
+        schema?.type === 'object' ||
+        hasProps ||
+        schema?.allOf ||
+        (!schema?.type && !schema?.enum && schema?.const === undefined && !schema?.oneOf && !schema?.anyOf);
     let body = '';
     if (schema?.enum) {
         const tsType = schemaToTsType(schema, allSchemas, new Set(), nameMap);
@@ -431,8 +486,7 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
             const isRequired = requiredSet.has(propName);
             const tsType = schemaToTsType(prop, allSchemas, new Set(), nameMap);
             const fieldDoc = buildFieldDocBlock(prop);
-            if (fieldDoc)
-                lines.push(`  ${fieldDoc.split('\n').join('\n  ')}`);
+            if (fieldDoc) lines.push(`  ${fieldDoc.split('\n').join('\n  ')}`);
             const optional = isRequired ? '' : '?';
             const safePropName = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(propName) ? propName : JSON.stringify(propName);
             lines.push(`  ${safePropName}${optional}: ${tsType};`);
@@ -457,9 +511,14 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
     if (exampleValue !== null && exampleValue !== undefined) {
         const exampleJson = JSON.stringify(exampleValue, null, 2);
         const exampleConst = [
-            '', '/**', ` * Example of ${safeSchemaName}`, ' * @example', ' * ```json',
+            '',
+            '/**',
+            ` * Example of ${safeSchemaName}`,
+            ' * @example',
+            ' * ```json',
             ...exampleJson.split('\n').map(line => ` * ${line}`),
-            ' * ```', ' */',
+            ' * ```',
+            ' */',
             `export const ${safeSchemaName}Example: ${safeSchemaName} = ${exampleJson};`,
             '',
         ].join('\n');
@@ -470,9 +529,10 @@ export function generateTsContentForSchema(schemaName: string, schema: any, allS
 
 export function generateAllTsContent(schemas: Record<string, any>, parsableKey: string, firstSchema?: string): string {
     const names = Object.keys(schemas);
-    const ordered = firstSchema && names.includes(firstSchema)
-        ? [firstSchema, ...names.filter(name => name !== firstSchema)]
-        : names;
+    const ordered =
+        firstSchema && names.includes(firstSchema)
+            ? [firstSchema, ...names.filter(name => name !== firstSchema)]
+            : names;
     const nameMap = createTypeNameMap(names);
     const mapping = ordered.map(name => `// ${JSON.stringify(name)} -> ${nameMap[name]}`).join('\n');
     return [
@@ -483,7 +543,12 @@ export function generateAllTsContent(schemas: Record<string, any>, parsableKey: 
     ].join('\n');
 }
 
-export function generateSingleSchemaFile(schemaName: string, _schema: any, allSchemas: Record<string, any>, parsableKey: string) {
+export function generateSingleSchemaFile(
+    schemaName: string,
+    _schema: any,
+    allSchemas: Record<string, any>,
+    parsableKey: string,
+) {
     // Include the schema graph in one module so referenced and cyclic model
     // names remain resolvable without a fragile generated import graph.
     const content = generateAllTsContent(allSchemas, parsableKey, schemaName);

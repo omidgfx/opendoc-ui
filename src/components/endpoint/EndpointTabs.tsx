@@ -26,18 +26,18 @@ type ContextMenuState = {
     tabId: string;
 } | null;
 export default function EndpointTabs({
-                                         tabs,
-                                         activeTabId,
-                                         onSelectTab,
-                                         onCloseTab,
-                                         onDoubleClickTab,
-                                         onCloseAllLeft,
-                                         onCloseAllRight,
-                                         onCloseOthers,
-                                         onReorderTabs,
-                                         onOpenSwitcher,
-                                         assistantUnread = false,
-                                     }: EndpointTabsProps) {
+    tabs,
+    activeTabId,
+    onSelectTab,
+    onCloseTab,
+    onDoubleClickTab,
+    onCloseAllLeft,
+    onCloseAllRight,
+    onCloseOthers,
+    onReorderTabs,
+    onOpenSwitcher,
+    assistantUnread = false,
+}: EndpointTabsProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
     const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -47,23 +47,20 @@ export default function EndpointTabs({
         side: 'left' | 'right';
     } | null>(null);
     useEffect(() => {
-        if (!contextMenu)
-            return;
+        if (!contextMenu) return;
         const handler = () => setContextMenu(null);
         window.addEventListener('click', handler);
         return () => window.removeEventListener('click', handler);
     }, [contextMenu]);
     useEffect(() => {
-        if (!contextMenu)
-            return;
+        if (!contextMenu) return;
         const handler = () => setContextMenu(null);
         window.addEventListener('scroll', handler, true);
         return () => window.removeEventListener('scroll', handler, true);
     }, [contextMenu]);
     useEffect(() => {
         const el = scrollRef.current;
-        if (!el)
-            return;
+        if (!el) return;
         const handleWheel = (e: WheelEvent) => {
             if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                 e.preventDefault();
@@ -78,16 +75,18 @@ export default function EndpointTabs({
         e.stopPropagation();
         setContextMenu({x: e.clientX, y: e.clientY, tabId});
     }, []);
-    const handleMiddleClick = useCallback((e: React.MouseEvent, tabId: string) => {
-        if (e.button === 1) {
-            e.preventDefault();
-            e.stopPropagation();
-            onCloseTab(tabId);
-        }
-    }, [onCloseTab]);
+    const handleMiddleClick = useCallback(
+        (e: React.MouseEvent, tabId: string) => {
+            if (e.button === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+                onCloseTab(tabId);
+            }
+        },
+        [onCloseTab],
+    );
     const scrollToActive = useCallback(() => {
-        if (!scrollRef.current || !activeTabId)
-            return;
+        if (!scrollRef.current || !activeTabId) return;
         const activeEl = scrollRef.current.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement;
         if (activeEl) {
             activeEl.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
@@ -111,156 +110,236 @@ export default function EndpointTabs({
         setDraggedIndex(null);
         setDropTarget(null);
     }, []);
-    const sideForTarget = useCallback((from: number, to: number): 'left' | 'right' => (to > from ? 'right' : 'left'), []);
-    const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (draggedIndex === null || draggedIndex === index) {
-            setDropTarget(null);
-            return;
-        }
-        setDropTarget({index, side: sideForTarget(draggedIndex, index)});
-    }, [draggedIndex, sideForTarget]);
+    const sideForTarget = useCallback(
+        (from: number, to: number): 'left' | 'right' => (to > from ? 'right' : 'left'),
+        [],
+    );
+    const handleDragOver = useCallback(
+        (e: React.DragEvent, index: number) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedIndex === null || draggedIndex === index) {
+                setDropTarget(null);
+                return;
+            }
+            setDropTarget({index, side: sideForTarget(draggedIndex, index)});
+        },
+        [draggedIndex, sideForTarget],
+    );
     const handleDragLeave = useCallback((e: React.DragEvent) => {
         const next = e.relatedTarget as Node | null;
-        if (next && e.currentTarget.contains(next))
-            return;
+        if (next && e.currentTarget.contains(next)) return;
         setDropTarget(null);
     }, []);
-    const commitDrop = useCallback((fromIndex: number, toIndex: number) => {
-        if (isNaN(fromIndex) || fromIndex === toIndex)
-            return;
-        const draggedTab = tabs[fromIndex];
-        if (draggedTab?.isPreview) {
-            onDoubleClickTab(draggedTab.id);
-        }
-        onReorderTabs(fromIndex, toIndex);
-    }, [onReorderTabs, tabs, onDoubleClickTab]);
-    const handleDrop = useCallback((e: React.DragEvent, toIndex: number) => {
-        e.preventDefault();
-        commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), toIndex);
-        setDraggedIndex(null);
-        setDropTarget(null);
-    }, [commitDrop]);
-    const handleTrailingDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (draggedIndex === null)
-            return;
-        const last = tabs.length - 1;
-        setDropTarget(draggedIndex === last ? null : {index: last, side: 'right'});
-    }, [draggedIndex, tabs.length]);
-    const handleTrailingDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), tabs.length - 1);
-        setDraggedIndex(null);
-        setDropTarget(null);
-    }, [commitDrop, tabs.length]);
-    if (tabs.length === 0)
-        return null;
+    const commitDrop = useCallback(
+        (fromIndex: number, toIndex: number) => {
+            if (isNaN(fromIndex) || fromIndex === toIndex) return;
+            const draggedTab = tabs[fromIndex];
+            if (draggedTab?.isPreview) {
+                onDoubleClickTab(draggedTab.id);
+            }
+            onReorderTabs(fromIndex, toIndex);
+        },
+        [onReorderTabs, tabs, onDoubleClickTab],
+    );
+    const handleDrop = useCallback(
+        (e: React.DragEvent, toIndex: number) => {
+            e.preventDefault();
+            commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), toIndex);
+            setDraggedIndex(null);
+            setDropTarget(null);
+        },
+        [commitDrop],
+    );
+    const handleTrailingDragOver = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedIndex === null) return;
+            const last = tabs.length - 1;
+            setDropTarget(draggedIndex === last ? null : {index: last, side: 'right'});
+        },
+        [draggedIndex, tabs.length],
+    );
+    const handleTrailingDrop = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), tabs.length - 1);
+            setDraggedIndex(null);
+            setDropTarget(null);
+        },
+        [commitDrop, tabs.length],
+    );
+    if (tabs.length === 0) return null;
     const tabIndex = (id: string) => tabs.findIndex(t => t.id === id);
-    return (<>
-        <div
-            className="endpoint-tabs-bar border-b bg-[var(--background)] border-[var(--border)] shrink-0 select-none flex items-stretch">
-            <div ref={scrollRef} className="endpoint-tabs-scroll scrollbar-thin">
-                {tabs.map((tab, index) => {
-                    if (!tab || typeof tab !== 'object' || typeof tab.id !== 'string')
-                        return null;
-                    const isActive = tab.id === activeTabId;
-                    const isHovered = tab.id === hoveredTabId;
-                    const isDragging = draggedIndex === index;
-                    const isDropTarget = dropTarget?.index === index && draggedIndex !== index;
-                    const showLeftIndicator = isDropTarget && dropTarget?.side === 'left';
-                    const showRightIndicator = isDropTarget && dropTarget?.side === 'right';
-                    const viewTab = isViewTab(tab) ? VIEW_TAB_META[tab.kind as ViewTabKind] : null;
-                    return (<Tip key={tab.id} content={viewTab ? tab.label : `${tab.method.toUpperCase()} ${tab.path}`}
-                                 placement="bottom">
-                        <div data-tab-id={tab.id} draggable onDragStart={(e) => handleDragStart(e, index)}
-                             onDragEnd={handleDragEnd} onDragOver={(e) => handleDragOver(e, index)}
-                             onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, index)}
-                             className={clsx('endpoint-tab group relative shrink-0 flex items-center gap-1.5 px-2 py-1.5 cursor-default transition-all border-r border-[var(--border)] min-w-0 max-w-[200px]', isActive
-                                 ? 'bg-[var(--surface)] text-[var(--text-heading)]'
-                                 : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]', isDragging && 'dragging cursor-grabbing', !isDragging && 'cursor-pointer')}
-                             onClick={() => onSelectTab(tab.id)} onDoubleClick={() => {
-                            if (tab.isPreview)
-                                onDoubleClickTab(tab.id);
-                        }} onMouseDown={(e) => handleMiddleClick(e, tab.id)}
-                             onContextMenu={(e) => handleContextMenu(e, tab.id)}
-                             onMouseEnter={() => setHoveredTabId(tab.id)} onMouseLeave={() => setHoveredTabId(null)}>
-                            {showLeftIndicator && (<span className="endpoint-tab-drop-indicator left"/>)}
-                            {showRightIndicator && (<span className="endpoint-tab-drop-indicator right"/>)}
-                            {isActive && (<span className="endpoint-tab-active-indicator"/>)}
-                            {tab.kind === 'assistant' && assistantUnread && (<span
-                                className="absolute end-1 top-0.5 z-[4] size-1.5 animate-pulse rounded-full bg-[var(--method-delete)] shadow-[0_0_0_2px_var(--background)]"
-                                title="New AI response" aria-label="New AI response"/>)}
-                            {viewTab ? (<span
-                                className={clsx('shrink-0 w-8 h-3.5 flex items-center justify-center text-[13px]', tab.kind === 'assistant' && assistantUnread ? 'text-[var(--method-delete)]' : 'text-[var(--primary)]')}>
-                                <i className={clsx(viewTab.icon, tab.kind === 'assistant' && assistantUnread && 'animate-pulse')}/>
-                            </span>) : (<MethodBadge method={tab.method} size="xs" className="shrink-0 w-8 h-3.5"/>)}
-                            <span
-                                className={clsx('text-[11px] truncate font-medium inline-block pr-0.5', tab.isPreview && 'italic')}>
-                                {tab.label}
-                            </span>
-                            <button type="button" aria-label={`Close ${tab.label}`}
-                                className={clsx('endpoint-tab-close shrink-0 size-4 rounded flex items-center justify-center transition-all cursor-pointer', isHovered || isActive
-                                    ? 'opacity-100 hover:bg-[var(--method-delete)]/15 hover:text-[var(--method-delete)]'
-                                    : 'opacity-0 pointer-events-none')} onClick={(e) => {
-                                e.stopPropagation();
-                                onCloseTab(tab.id);
-                            }}>
-                                <i className="ph ph-x text-[10px]"/>
-                            </button>
-                        </div>
-                    </Tip>);
-                })}
+    return (
+        <>
+            <div className="endpoint-tabs-bar border-b bg-[var(--background)] border-[var(--border)] shrink-0 select-none flex items-stretch">
+                <div ref={scrollRef} className="endpoint-tabs-scroll scrollbar-thin">
+                    {tabs.map((tab, index) => {
+                        if (!tab || typeof tab !== 'object' || typeof tab.id !== 'string') return null;
+                        const isActive = tab.id === activeTabId;
+                        const isHovered = tab.id === hoveredTabId;
+                        const isDragging = draggedIndex === index;
+                        const isDropTarget = dropTarget?.index === index && draggedIndex !== index;
+                        const showLeftIndicator = isDropTarget && dropTarget?.side === 'left';
+                        const showRightIndicator = isDropTarget && dropTarget?.side === 'right';
+                        const viewTab = isViewTab(tab) ? VIEW_TAB_META[tab.kind as ViewTabKind] : null;
+                        return (
+                            <Tip
+                                key={tab.id}
+                                content={viewTab ? tab.label : `${tab.method.toUpperCase()} ${tab.path}`}
+                                placement="bottom"
+                            >
+                                <div
+                                    data-tab-id={tab.id}
+                                    draggable
+                                    onDragStart={e => handleDragStart(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={e => handleDragOver(e, index)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={e => handleDrop(e, index)}
+                                    className={clsx(
+                                        'endpoint-tab group relative shrink-0 flex items-center gap-1.5 px-2 py-1.5 cursor-default transition-all border-r border-[var(--border)] min-w-0 max-w-[200px]',
+                                        isActive
+                                            ? 'bg-[var(--surface)] text-[var(--text-heading)]'
+                                            : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]',
+                                        isDragging && 'dragging cursor-grabbing',
+                                        !isDragging && 'cursor-pointer',
+                                    )}
+                                    onClick={() => onSelectTab(tab.id)}
+                                    onDoubleClick={() => {
+                                        if (tab.isPreview) onDoubleClickTab(tab.id);
+                                    }}
+                                    onMouseDown={e => handleMiddleClick(e, tab.id)}
+                                    onContextMenu={e => handleContextMenu(e, tab.id)}
+                                    onMouseEnter={() => setHoveredTabId(tab.id)}
+                                    onMouseLeave={() => setHoveredTabId(null)}
+                                >
+                                    {showLeftIndicator && <span className="endpoint-tab-drop-indicator left" />}
+                                    {showRightIndicator && <span className="endpoint-tab-drop-indicator right" />}
+                                    {isActive && <span className="endpoint-tab-active-indicator" />}
+                                    {tab.kind === 'assistant' && assistantUnread && (
+                                        <span
+                                            className="absolute end-1 top-0.5 z-[4] size-1.5 animate-pulse rounded-full bg-[var(--method-delete)] shadow-[0_0_0_2px_var(--background)]"
+                                            title="New AI response"
+                                            aria-label="New AI response"
+                                        />
+                                    )}
+                                    {viewTab ? (
+                                        <span
+                                            className={clsx(
+                                                'shrink-0 w-8 h-3.5 flex items-center justify-center text-[13px]',
+                                                tab.kind === 'assistant' && assistantUnread
+                                                    ? 'text-[var(--method-delete)]'
+                                                    : 'text-[var(--primary)]',
+                                            )}
+                                        >
+                                            <i
+                                                className={clsx(
+                                                    viewTab.icon,
+                                                    tab.kind === 'assistant' && assistantUnread && 'animate-pulse',
+                                                )}
+                                            />
+                                        </span>
+                                    ) : (
+                                        <MethodBadge method={tab.method} size="xs" className="shrink-0 w-8 h-3.5" />
+                                    )}
+                                    <span
+                                        className={clsx(
+                                            'text-[11px] truncate font-medium inline-block pr-0.5',
+                                            tab.isPreview && 'italic',
+                                        )}
+                                    >
+                                        {tab.label}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        aria-label={`Close ${tab.label}`}
+                                        className={clsx(
+                                            'endpoint-tab-close shrink-0 size-4 rounded flex items-center justify-center transition-all cursor-pointer',
+                                            isHovered || isActive
+                                                ? 'opacity-100 hover:bg-[var(--method-delete)]/15 hover:text-[var(--method-delete)]'
+                                                : 'opacity-0 pointer-events-none',
+                                        )}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onCloseTab(tab.id);
+                                        }}
+                                    >
+                                        <i className="ph ph-x text-[10px]" />
+                                    </button>
+                                </div>
+                            </Tip>
+                        );
+                    })}
 
-                <div className="endpoint-tabs-trailing" onDragOver={handleTrailingDragOver}
-                     onDragLeave={handleDragLeave} onDrop={handleTrailingDrop} aria-hidden="true"/>
+                    <div
+                        className="endpoint-tabs-trailing"
+                        onDragOver={handleTrailingDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleTrailingDrop}
+                        aria-hidden="true"
+                    />
+                </div>
+
+                {onOpenSwitcher && tabs.length > 1 && (
+                    <Tip content="Tab switcher (Ctrl+`)">
+                        <button
+                            type="button"
+                            onClick={onOpenSwitcher}
+                            className="endpoint-tabs-switcher-btn shrink-0 w-8 border-l border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                            aria-label="Open tab switcher"
+                        >
+                            <i className="ph ph-squares-four text-[14px]"></i>
+                        </button>
+                    </Tip>
+                )}
             </div>
 
-
-            {onOpenSwitcher && tabs.length > 1 && (<Tip content="Tab switcher (Ctrl+`)">
-                <button type="button" onClick={onOpenSwitcher}
-                        className="endpoint-tabs-switcher-btn shrink-0 w-8 border-l border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
-                        aria-label="Open tab switcher">
-                    <i className="ph ph-squares-four text-[14px]"></i>
-                </button>
-            </Tip>)}
-        </div>
-
-
-        {contextMenu && (<div
-            className="fixed z-[5000] min-w-[180px] rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in"
-            style={{top: contextMenu.y, left: contextMenu.x}} onClick={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.preventDefault()}>
-            <button
-                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                    onCloseAllLeft(contextMenu.tabId);
-                    setContextMenu(null);
-                }} disabled={tabIndex(contextMenu.tabId) === 0}>
-                <i className="ph ph-arrow-left text-[12px] text-[var(--text-muted)]"/>
-                Close All to the Left
-            </button>
-            <button
-                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                    onCloseAllRight(contextMenu.tabId);
-                    setContextMenu(null);
-                }} disabled={tabIndex(contextMenu.tabId) === tabs.length - 1}>
-                <i className="ph ph-arrow-right text-[12px] text-[var(--text-muted)]"/>
-                Close All to the Right
-            </button>
-            <div className="my-1 border-t border-[var(--border)]"/>
-            <button
-                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => {
-                    onCloseOthers(contextMenu.tabId);
-                    setContextMenu(null);
-                }} disabled={tabs.length <= 1}>
-                <i className="ph ph-x-circle text-[12px] text-[var(--method-delete)]"/>
-                Close Others
-            </button>
-        </div>)}
-    </>);
+            {contextMenu && (
+                <div
+                    className="fixed z-[5000] min-w-[180px] rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in"
+                    style={{top: contextMenu.y, left: contextMenu.x}}
+                    onClick={e => e.stopPropagation()}
+                    onContextMenu={e => e.preventDefault()}
+                >
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() => {
+                            onCloseAllLeft(contextMenu.tabId);
+                            setContextMenu(null);
+                        }}
+                        disabled={tabIndex(contextMenu.tabId) === 0}
+                    >
+                        <i className="ph ph-arrow-left text-[12px] text-[var(--text-muted)]" />
+                        Close All to the Left
+                    </button>
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() => {
+                            onCloseAllRight(contextMenu.tabId);
+                            setContextMenu(null);
+                        }}
+                        disabled={tabIndex(contextMenu.tabId) === tabs.length - 1}
+                    >
+                        <i className="ph ph-arrow-right text-[12px] text-[var(--text-muted)]" />
+                        Close All to the Right
+                    </button>
+                    <div className="my-1 border-t border-[var(--border)]" />
+                    <button
+                        className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() => {
+                            onCloseOthers(contextMenu.tabId);
+                            setContextMenu(null);
+                        }}
+                        disabled={tabs.length <= 1}
+                    >
+                        <i className="ph ph-x-circle text-[12px] text-[var(--method-delete)]" />
+                        Close Others
+                    </button>
+                </div>
+            )}
+        </>
+    );
 }

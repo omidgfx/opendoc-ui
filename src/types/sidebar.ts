@@ -34,19 +34,26 @@ export interface SidebarProps {
         type: 'endpoint' | 'view';
         id: string;
     } | null;
-    setScrollIntent: (value: {
-        type: 'endpoint' | 'view';
-        id: string;
-    } | null) => void;
+    setScrollIntent: (
+        value: {
+            type: 'endpoint' | 'view';
+            id: string;
+        } | null,
+    ) => void;
     onOpenViewPermanent: (view: ViewTabKind) => void;
-    onContextAction: (action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai', target: {
-        type: 'endpoint';
-        path: string;
-        method: string;
-    } | {
-        type: 'view';
-        view: ViewTabKind;
-    }) => void;
+    onContextAction: (
+        action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai',
+        target:
+            | {
+                  type: 'endpoint';
+                  path: string;
+                  method: string;
+              }
+            | {
+                  type: 'view';
+                  view: ViewTabKind;
+              },
+    ) => void;
     showHome: boolean;
     showAbout: boolean;
     showAssistant: boolean;

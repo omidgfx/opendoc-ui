@@ -15,10 +15,11 @@ export interface TooltipPosition {
 const TOOLTIP_GAP = 8;
 const TOOLTIP_EDGE = 8;
 export const INITIAL_TOOLTIP_SIZE: TooltipSize = {width: 320, height: 48};
-export const samePosition = (left: TooltipPosition, right: TooltipPosition): boolean => left.top === right.top
-    && left.left === right.left
-    && left.transform === right.transform
-    && left.placement === right.placement;
+export const samePosition = (left: TooltipPosition, right: TooltipPosition): boolean =>
+    left.top === right.top &&
+    left.left === right.left &&
+    left.transform === right.transform &&
+    left.placement === right.placement;
 const clampCenter = (value: number, size: number, viewport: number): number => {
     const min = Math.min(TOOLTIP_EDGE + size / 2, viewport / 2);
     const max = Math.max(viewport - TOOLTIP_EDGE - size / 2, viewport / 2);
@@ -45,8 +46,9 @@ export const positionFor = (rect: DOMRect, requested: TooltipPlacement, size: To
         left: ['left', 'right', 'bottom', 'top'],
         right: ['right', 'left', 'bottom', 'top'],
     };
-    const resolved = fallbackOrder[requested].find(side => available[side] >= required[side])
-        || fallbackOrder[requested].slice().sort((a, b) => available[b] - available[a])[0];
+    const resolved =
+        fallbackOrder[requested].find(side => available[side] >= required[side]) ||
+        fallbackOrder[requested].slice().sort((a, b) => available[b] - available[a])[0];
     const centerX = clampCenter(rect.left + rect.width / 2, size.width, viewportWidth);
     const centerY = clampCenter(rect.top + rect.height / 2, size.height, viewportHeight);
     if (resolved === 'bottom')
@@ -54,26 +56,26 @@ export const positionFor = (rect: DOMRect, requested: TooltipPlacement, size: To
             top: rect.bottom + TOOLTIP_GAP,
             left: centerX,
             transform: 'translateX(-50%)',
-            placement: resolved
+            placement: resolved,
         };
     if (resolved === 'left')
         return {
             top: centerY,
             left: Math.max(TOOLTIP_EDGE, rect.left - TOOLTIP_GAP),
             transform: 'translate(-100%, -50%)',
-            placement: resolved
+            placement: resolved,
         };
     if (resolved === 'right')
         return {
             top: centerY,
             left: Math.min(viewportWidth - TOOLTIP_EDGE, rect.right + TOOLTIP_GAP),
             transform: 'translateY(-50%)',
-            placement: resolved
+            placement: resolved,
         };
     return {
         top: Math.max(TOOLTIP_EDGE, rect.top - TOOLTIP_GAP),
         left: centerX,
         transform: 'translate(-50%, -100%)',
-        placement: resolved
+        placement: resolved,
     };
 };

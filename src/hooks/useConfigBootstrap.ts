@@ -16,14 +16,14 @@ interface UseConfigBootstrapOptions {
 }
 
 export function useConfigBootstrap({
-                                       setConfigSource,
-                                       setAISettings,
-                                       setAISettingsReady,
-                                       setParsables,
-                                       setSelectedSpecKey,
-                                       setInitialLoadComplete,
-                                       applyLocalSpec,
-                                   }: UseConfigBootstrapOptions): void {
+    setConfigSource,
+    setAISettings,
+    setAISettingsReady,
+    setParsables,
+    setSelectedSpecKey,
+    setInitialLoadComplete,
+    applyLocalSpec,
+}: UseConfigBootstrapOptions): void {
     useEffect(() => {
         let cancelled = false;
         const bootstrap = async () => {
@@ -45,8 +45,7 @@ export function useConfigBootstrap({
                     console.warn('config.json unreachable, running in local mode.', error);
                 }
             }
-            if (cancelled)
-                return;
+            if (cancelled) return;
             setConfigSource(source);
             if (data?.ai && typeof data.ai === 'object' && storage.get(uiStorage.key('ai_settings')) === '') {
                 setAISettings(current => ({
@@ -58,10 +57,7 @@ export function useConfigBootstrap({
             setAISettingsReady(true);
             const loaded: ParsableConfig = {};
             if (data?.parsables && typeof data.parsables === 'object') {
-                Object.entries(data.parsables).forEach(([key, value]: [
-                    string,
-                    any
-                ]) => {
+                Object.entries(data.parsables).forEach(([key, value]: [string, any]) => {
                     loaded[key] = {
                         theme: value.theme || 'Default Slate',
                         url: value.url || '',
@@ -75,14 +71,12 @@ export function useConfigBootstrap({
             if (Object.keys(loaded).length > 0) {
                 const route = parseSmartRoute(window.location.hash);
                 let initialKey = '';
-                if (route.parsableKey && loaded[route.parsableKey])
-                    initialKey = route.parsableKey;
+                if (route.parsableKey && loaded[route.parsableKey]) initialKey = route.parsableKey;
                 else {
                     const savedKey = uiStorage.get('last_parsable');
                     initialKey = savedKey && loaded[savedKey] ? savedKey : Object.keys(loaded)[0] || '';
                 }
-                if (initialKey)
-                    setSelectedSpecKey(initialKey);
+                if (initialKey) setSelectedSpecKey(initialKey);
                 specStorage.prune(Object.keys(loaded));
             } else if (window.location.hash) {
                 const route = parseSmartRoute(window.location.hash);
@@ -91,8 +85,7 @@ export function useConfigBootstrap({
                     if (entry) {
                         try {
                             applyLocalSpec(entry.raw, entry.fileName, null);
-                        } catch {
-                        }
+                        } catch {}
                     }
                 }
             }

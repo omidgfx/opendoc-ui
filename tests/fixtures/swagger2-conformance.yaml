@@ -1,7 +1,7 @@
-swagger: "2.0"
+swagger: '2.0'
 info:
   title: Swagger 2 conformance
-  version: "1"
+  version: '1'
 host: api.example.test
 basePath: /v2
 schemes: [https]
@@ -36,7 +36,7 @@ paths:
           items: {type: string}
           collectionFormat: multi
       responses:
-        "200":
+        '200':
           description: ok
           schema: {type: object}
   /raw:

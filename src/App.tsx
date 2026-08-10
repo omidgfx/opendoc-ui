@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig,} from './types';
+import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from './types';
 import {generateSmartRoute, getEndpointId} from './utils/routing';
 import {getDocumentOperations, getOperation} from './utils/openapi';
 import {uiStorage} from './utils/storage';
@@ -16,7 +16,7 @@ import {
     createOpenDocUIActionId,
     dispatchOpenDocUIAction,
     dispatchOpenDocUIRunnerResult,
-    type OpenDocUIAction
+    type OpenDocUIAction,
 } from './utils/aiBridge';
 import {executeRunnerRequest} from './utils/runnerExecution';
 import {createEmptyAuth} from './utils/auth';
@@ -68,10 +68,12 @@ export default function App() {
     const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
-    const [assistantContextEndpoints, setAssistantContextEndpoints] = useState<Array<{
-        path: string;
-        method: string;
-    }>>([]);
+    const [assistantContextEndpoints, setAssistantContextEndpoints] = useState<
+        Array<{
+            path: string;
+            method: string;
+        }>
+    >([]);
     const showAssistantRef = useRef(showAssistant);
     showAssistantRef.current = showAssistant;
     const {
@@ -116,15 +118,17 @@ export default function App() {
     const [authBySpec, setAuthBySpec] = useState<Record<string, ActiveAuth>>({});
     const authScopeKey = selectedParsableKey || '__no_spec__';
     const activeAuth = useMemo(() => authBySpec[authScopeKey] || createEmptyAuth(), [authBySpec, authScopeKey]);
-    const setActiveAuth = useCallback<React.Dispatch<React.SetStateAction<ActiveAuth>>>((next) => {
-        setAuthBySpec(current => {
-            const previous = current[authScopeKey] || createEmptyAuth();
-            const resolved = typeof next === 'function'
-                ? (next as (value: ActiveAuth) => ActiveAuth)(previous)
-                : next;
-            return {...current, [authScopeKey]: resolved};
-        });
-    }, [authScopeKey]);
+    const setActiveAuth = useCallback<React.Dispatch<React.SetStateAction<ActiveAuth>>>(
+        next => {
+            setAuthBySpec(current => {
+                const previous = current[authScopeKey] || createEmptyAuth();
+                const resolved =
+                    typeof next === 'function' ? (next as (value: ActiveAuth) => ActiveAuth)(previous) : next;
+                return {...current, [authScopeKey]: resolved};
+            });
+        },
+        [authScopeKey],
+    );
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse[]>>({});
@@ -196,12 +200,16 @@ export default function App() {
         modalCount: modalsStack.length,
     });
     useEffect(() => {
-        if (!selectedEndpoint || !selectedParsableKey)
-            return;
+        if (!selectedEndpoint || !selectedParsableKey) return;
         const key = endpointKey(selectedEndpoint.path, selectedEndpoint.method);
-        setExamineResponses(current => Object.prototype.hasOwnProperty.call(current, key)
-            ? current
-            : {...current, [key]: readResponseHistory(selectedParsableKey, selectedEndpoint.path, selectedEndpoint.method)});
+        setExamineResponses(current =>
+            Object.prototype.hasOwnProperty.call(current, key)
+                ? current
+                : {
+                      ...current,
+                      [key]: readResponseHistory(selectedParsableKey, selectedEndpoint.path, selectedEndpoint.method),
+                  },
+        );
     }, [selectedEndpoint, selectedParsableKey]);
     const [activeSplitPane, setActiveSplitPane] = useState<'docs' | 'examine'>('docs');
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
@@ -215,60 +223,53 @@ export default function App() {
         separatorNow: splitSeparatorNow,
     } = useResizableSplit(splitContainerRef, 'opendoc:ui:endpoint_split_width');
     useEffect(() => {
-        if (selectedTab === 'both')
-            setActiveSplitPane('docs');
+        if (selectedTab === 'both') setActiveSplitPane('docs');
     }, [selectedTab, selectedEndpoint]);
     const [isUpdatingHash, setIsUpdatingHash] = useState(false);
     useEffect(() => {
-        if (spec?.info?.title)
-            document.title = `${spec.info.title} — OpenDoc UI`;
-        else if (selectedParsableKey)
-            document.title = `${selectedParsableKey} — OpenDoc UI`;
-        else
-            document.title = 'OpenDoc UI';
+        if (spec?.info?.title) document.title = `${spec.info.title} — OpenDoc UI`;
+        else if (selectedParsableKey) document.title = `${selectedParsableKey} — OpenDoc UI`;
+        else document.title = 'OpenDoc UI';
     }, [spec, selectedParsableKey]);
     useEffect(() => {
         if (selectedParsableKey && parsables[selectedParsableKey]) {
             uiStorage.set('last_parsable', selectedParsableKey);
         }
     }, [selectedParsableKey, parsables]);
-    const handleApplyLocalSpec = useCallback(({key, document, switchingSpec}: {
-        key: string;
-        document: OpenApiSpec;
-        switchingSpec: boolean;
-    }) => {
-        setSelectedParsableKey(key);
-        setSpec(document);
-        setLoadedSpecKey(key);
-        setIsLoadingSpec(false);
-        setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
-        if (!switchingSpec)
-            return;
-        setSelectedEndpoint(null);
-        setShowWelcome(false);
-        setShowHome(false);
-        setShowSchemaExplorer(false);
-        setShowAbout(false);
-        setShowAssistant(false);
-        setAssistantContextEndpoints([]);
-        setSearchQuery('');
-        setResultsQuery('');
-        setActiveResponseCode(null);
-        setModalsStack([]);
-        setSelectedTab('docs');
-        setSelectedMethods([]);
-        setSelectedTags([]);
-        setOnlyProtected(null);
-        setEndpointTabs([]);
-        setActiveTabId(null);
-        setTabViewModes({});
-        setExamineResponses({});
-        setIsUpdatingHash(true);
-        const hash = `#/parsable/${encodeURIComponent(key)}`;
-        if (window.location.hash !== hash)
-            window.location.hash = hash;
-        setIsUpdatingHash(false);
-    }, []);
+    const handleApplyLocalSpec = useCallback(
+        ({key, document, switchingSpec}: {key: string; document: OpenApiSpec; switchingSpec: boolean}) => {
+            setSelectedParsableKey(key);
+            setSpec(document);
+            setLoadedSpecKey(key);
+            setIsLoadingSpec(false);
+            setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
+            if (!switchingSpec) return;
+            setSelectedEndpoint(null);
+            setShowWelcome(false);
+            setShowHome(false);
+            setShowSchemaExplorer(false);
+            setShowAbout(false);
+            setShowAssistant(false);
+            setAssistantContextEndpoints([]);
+            setSearchQuery('');
+            setResultsQuery('');
+            setActiveResponseCode(null);
+            setModalsStack([]);
+            setSelectedTab('docs');
+            setSelectedMethods([]);
+            setSelectedTags([]);
+            setOnlyProtected(null);
+            setEndpointTabs([]);
+            setActiveTabId(null);
+            setTabViewModes({});
+            setExamineResponses({});
+            setIsUpdatingHash(true);
+            const hash = `#/parsable/${encodeURIComponent(key)}`;
+            if (window.location.hash !== hash) window.location.hash = hash;
+            setIsUpdatingHash(false);
+        },
+        [],
+    );
     const {
         localSpec,
         localHistory,
@@ -367,109 +368,134 @@ export default function App() {
         ensureViewTabFromState,
     });
     const closeMobileIfNeeded = () => {
-        if (isMobile)
-            setMobileOpen(false);
+        if (isMobile) setMobileOpen(false);
     };
     const [shareTarget, setShareTarget] = useState<{
         url: string;
         title: string;
         description?: string;
     } | null>(null);
-    const endpointDeepLink = useCallback((path: string, method: string) => {
-        const op = getOperation(spec, path, method) || {};
-        const opId = getEndpointId(op, path, method);
-        return `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}/api/${encodeURIComponent(opId)}`;
-    }, [spec, selectedParsableKey]);
-    const viewDeepLink = useCallback((view: ViewTabKind) => {
-        const base = `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}`;
-        if (view === 'about')
-            return `${base}/about`;
-        if (view === 'schemas')
-            return `${base}/schema-explorer`;
-        if (view === 'assistant')
-            return `${base}/assistant`;
-        if (view === 'search')
-            return `${base}?search=`;
-        return base;
-    }, [selectedParsableKey]);
-    const openEndpointInBrowserTab = useCallback((path: string, method: string) => {
-        window.open(endpointDeepLink(path, method), '_blank', 'noopener');
-    }, [endpointDeepLink]);
-    const openViewInBrowserTab = useCallback((view: ViewTabKind) => {
-        window.open(viewDeepLink(view), '_blank', 'noopener');
-    }, [viewDeepLink]);
+    const endpointDeepLink = useCallback(
+        (path: string, method: string) => {
+            const op = getOperation(spec, path, method) || {};
+            const opId = getEndpointId(op, path, method);
+            return `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}/api/${encodeURIComponent(opId)}`;
+        },
+        [spec, selectedParsableKey],
+    );
+    const viewDeepLink = useCallback(
+        (view: ViewTabKind) => {
+            const base = `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}`;
+            if (view === 'about') return `${base}/about`;
+            if (view === 'schemas') return `${base}/schema-explorer`;
+            if (view === 'assistant') return `${base}/assistant`;
+            if (view === 'search') return `${base}?search=`;
+            return base;
+        },
+        [selectedParsableKey],
+    );
+    const openEndpointInBrowserTab = useCallback(
+        (path: string, method: string) => {
+            window.open(endpointDeepLink(path, method), '_blank', 'noopener');
+        },
+        [endpointDeepLink],
+    );
+    const openViewInBrowserTab = useCallback(
+        (view: ViewTabKind) => {
+            window.open(viewDeepLink(view), '_blank', 'noopener');
+        },
+        [viewDeepLink],
+    );
     const copyText = useCallback(async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
-        } catch {
-        }
+        } catch {}
     }, []);
-    const askAIAboutEndpoint = useCallback((path: string, method: string) => {
-        setAssistantContextEndpoints(current => {
-            const next = {path, method: method.toLowerCase()};
-            if (!showAssistant)
-                return [next];
-            if (current.some(endpoint => endpoint.path === next.path && endpoint.method === next.method))
-                return current;
-            return [...current, next].slice(0, 5);
-        });
-        openViewTab('assistant');
-        closeMobileIfNeeded();
-    }, [openViewTab, isMobile, showAssistant]);
-    const handleContextAction = useCallback((action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai', target: {
-        type: 'endpoint';
-        path: string;
-        method: string;
-    } | {
-        type: 'view';
-        view: ViewTabKind;
-    }) => {
-        if (target.type === 'endpoint') {
-            const {path, method} = target;
-            if (action === 'ask-ai' && !hasAIProfile)
-                return;
-            if (action === 'ask-ai') {
-                askAIAboutEndpoint(path, method);
+    const askAIAboutEndpoint = useCallback(
+        (path: string, method: string) => {
+            setAssistantContextEndpoints(current => {
+                const next = {path, method: method.toLowerCase()};
+                if (!showAssistant) return [next];
+                if (current.some(endpoint => endpoint.path === next.path && endpoint.method === next.method))
+                    return current;
+                return [...current, next].slice(0, 5);
+            });
+            openViewTab('assistant');
+            closeMobileIfNeeded();
+        },
+        [openViewTab, isMobile, showAssistant],
+    );
+    const handleContextAction = useCallback(
+        (
+            action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai',
+            target:
+                | {
+                      type: 'endpoint';
+                      path: string;
+                      method: string;
+                  }
+                | {
+                      type: 'view';
+                      view: ViewTabKind;
+                  },
+        ) => {
+            if (target.type === 'endpoint') {
+                const {path, method} = target;
+                if (action === 'ask-ai' && !hasAIProfile) return;
+                if (action === 'ask-ai') {
+                    askAIAboutEndpoint(path, method);
+                    return;
+                }
+                if (action === 'open-new-tab') {
+                    openEndpointPermanent(path, method);
+                    return;
+                }
+                if (action === 'open-browser') {
+                    openEndpointInBrowserTab(path, method);
+                    return;
+                }
+                const op = getOperation(spec, path, method);
+                const label = op?.summary || `${method.toUpperCase()} ${path}`;
+                const url = endpointDeepLink(path, method);
+                if (action === 'copy-link') {
+                    copyText(url);
+                    return;
+                }
+                setShareTarget({url, title: `${method.toUpperCase()} ${path} — ${label}`, description: label});
                 return;
             }
+            const {view} = target;
             if (action === 'open-new-tab') {
-                openEndpointPermanent(path, method);
+                openViewTabPermanent(view);
                 return;
             }
             if (action === 'open-browser') {
-                openEndpointInBrowserTab(path, method);
+                openViewInBrowserTab(view);
                 return;
             }
-            const op = getOperation(spec, path, method);
-            const label = op?.summary || `${method.toUpperCase()} ${path}`;
-            const url = endpointDeepLink(path, method);
+            const url = viewDeepLink(view);
+            const title = VIEW_TAB_META[view].label;
             if (action === 'copy-link') {
                 copyText(url);
                 return;
             }
-            setShareTarget({url, title: `${method.toUpperCase()} ${path} — ${label}`, description: label});
-            return;
-        }
-        const {view} = target;
-        if (action === 'open-new-tab') {
-            openViewTabPermanent(view);
-            return;
-        }
-        if (action === 'open-browser') {
-            openViewInBrowserTab(view);
-            return;
-        }
-        const url = viewDeepLink(view);
-        const title = VIEW_TAB_META[view].label;
-        if (action === 'copy-link') {
-            copyText(url);
-            return;
-        }
-        setShareTarget({url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}`});
-    }, [spec, hasAIProfile, openEndpointPermanent, openViewTabPermanent, openEndpointInBrowserTab, openViewInBrowserTab, endpointDeepLink, viewDeepLink, copyText, askAIAboutEndpoint]);
+            setShareTarget({url, title: `${title} — ${spec?.info?.title || 'OpenDoc UI'}`});
+        },
+        [
+            spec,
+            hasAIProfile,
+            openEndpointPermanent,
+            openViewTabPermanent,
+            openEndpointInBrowserTab,
+            openViewInBrowserTab,
+            endpointDeepLink,
+            viewDeepLink,
+            copyText,
+            askAIAboutEndpoint,
+        ],
+    );
     const handleSelectEndpoint = (path: string, method: string) => {
-        if (activeTabId === 'view:search')
-            stashSearchTab();
+        if (activeTabId === 'view:search') stashSearchTab();
         if (searchRenderTimer.current) {
             clearTimeout(searchRenderTimer.current);
             searchRenderTimer.current = null;
@@ -488,30 +514,26 @@ export default function App() {
         closeMobileIfNeeded();
     };
     const handleSearchResult = (path: string, method: string) => {
-        if (!isMobile)
-            setDesktopCollapsed(false);
+        if (!isMobile) setDesktopCollapsed(false);
         handleSelectEndpoint(path, method);
     };
     const preSearchTabRef = useRef<string | null>(null);
-    const searchHasResults = useCallback((q: string): boolean => {
-        if (!spec?.paths || !q.trim())
+    const searchHasResults = useCallback(
+        (q: string): boolean => {
+            if (!spec?.paths || !q.trim()) return false;
+            const needle = q.trim().toLowerCase();
+            for (const {path: pathStr, operation} of getDocumentOperations(spec)) {
+                if (sidebarDisplayRoutes && pathStr.toLowerCase().includes(needle)) return true;
+                if ((operation.summary || '').toLowerCase().includes(needle)) return true;
+                if ((operation.description || '').toLowerCase().includes(needle)) return true;
+                if ((operation.tags || []).some((tag: string) => tag.toLowerCase().includes(needle))) return true;
+            }
             return false;
-        const needle = q.trim().toLowerCase();
-        for (const {path: pathStr, operation} of getDocumentOperations(spec)) {
-            if (sidebarDisplayRoutes && pathStr.toLowerCase().includes(needle))
-                return true;
-            if ((operation.summary || '').toLowerCase().includes(needle))
-                return true;
-            if ((operation.description || '').toLowerCase().includes(needle))
-                return true;
-            if ((operation.tags || []).some((tag: string) => tag.toLowerCase().includes(needle)))
-                return true;
-        }
-        return false;
-    }, [spec, sidebarDisplayRoutes]);
+        },
+        [spec, sidebarDisplayRoutes],
+    );
     const handleSearchChange = (query: string) => {
-        if (query.trim())
-            setSelectedEndpoint(null);
+        if (query.trim()) setSelectedEndpoint(null);
         setSearchQuery(query);
         if (searchRenderTimer.current) {
             clearTimeout(searchRenderTimer.current);
@@ -521,11 +543,17 @@ export default function App() {
         if (query.trim().length) {
             setShowWelcome(false);
             if (activeTabId === 'view:search' && query.trim().length) {
-                setEndpointTabs(prev => prev.map(t => t.id === 'view:search' ? {
-                    ...t,
-                    query,
-                    label: `Search: ${query}`
-                } : t));
+                setEndpointTabs(prev =>
+                    prev.map(t =>
+                        t.id === 'view:search'
+                            ? {
+                                  ...t,
+                                  query,
+                                  label: `Search: ${query}`,
+                              }
+                            : t,
+                    ),
+                );
                 return;
             }
             if (!preSearchTabRef.current && activeTabId && !activeTabId.startsWith('view:search')) {
@@ -571,15 +599,13 @@ export default function App() {
     const handleOpenHome = () => {
         setScrollIntent({type: 'view', id: 'view:home'});
         openViewTab('home');
-        if (!spec)
-            window.location.hash = '#/';
+        if (!spec) window.location.hash = '#/';
         closeMobileIfNeeded();
     };
     const handleOpenAbout = () => {
         setScrollIntent({type: 'view', id: 'view:about'});
         openViewTab('about');
-        if (!spec)
-            window.location.hash = '#/about';
+        if (!spec) window.location.hash = '#/about';
         closeMobileIfNeeded();
     };
     const handleOpenSchemaExplorer = () => {
@@ -609,8 +635,7 @@ export default function App() {
         }
     }, []);
     const handleDownload = () => {
-        if (!spec)
-            return;
+        if (!spec) return;
         const raw = getRawSpecDocument(spec);
         const text = raw?.text || JSON.stringify(spec, null, 2);
         const isYaml = raw?.text ? !raw.text.trimStart().startsWith('{') : false;
@@ -621,97 +646,104 @@ export default function App() {
         a.click();
     };
     const handlePushSchema = (n: string) => setModalsStack(p => [...p, n]);
-    const handleAssistantBridgeAction = useCallback((action: OpenDocUIAction) => {
-        if (action.action === 'open_endpoint') {
-            handleSelectEndpoint(action.path, action.method);
-            return;
-        }
-        if (action.action === 'open_schema') {
-            if (spec?.components?.schemas?.[action.schema])
-                handlePushSchema(action.schema);
-            return;
-        }
-        if (action.action === 'search_spec') {
-            handleSearchChange(action.query);
-            return;
-        }
-        if (action.action === 'select_server') {
-            if (spec?.servers?.some(server => server.url === action.url))
-                setSelectedServer(action.url);
-            return;
-        }
-        if (action.action === 'open_runner') {
-            handleOpenRunner(action.path, action.method);
-            return;
-        }
-        if (action.action === 'set_runner_fields') {
-            handleOpenRunner(action.path, action.method);
-            window.setTimeout(() => dispatchOpenDocUIAction(action), 50);
-            return;
-        }
-        const operation = getOperation(spec, action.path, action.method);
-        const actionId = action.id || createOpenDocUIActionId();
-        if (!spec || !operation)
-            return;
-        assistantRunnerAbortRef.current?.abort();
-        const controller = new AbortController();
-        assistantRunnerAbortRef.current = controller;
-        void executeRunnerRequest({
-            spec,
-            path: action.path,
-            method: action.method,
-            operation,
-            selectedServer,
+    const handleAssistantBridgeAction = useCallback(
+        (action: OpenDocUIAction) => {
+            if (action.action === 'open_endpoint') {
+                handleSelectEndpoint(action.path, action.method);
+                return;
+            }
+            if (action.action === 'open_schema') {
+                if (spec?.components?.schemas?.[action.schema]) handlePushSchema(action.schema);
+                return;
+            }
+            if (action.action === 'search_spec') {
+                handleSearchChange(action.query);
+                return;
+            }
+            if (action.action === 'select_server') {
+                if (spec?.servers?.some(server => server.url === action.url)) setSelectedServer(action.url);
+                return;
+            }
+            if (action.action === 'open_runner') {
+                handleOpenRunner(action.path, action.method);
+                return;
+            }
+            if (action.action === 'set_runner_fields') {
+                handleOpenRunner(action.path, action.method);
+                window.setTimeout(() => dispatchOpenDocUIAction(action), 50);
+                return;
+            }
+            const operation = getOperation(spec, action.path, action.method);
+            const actionId = action.id || createOpenDocUIActionId();
+            if (!spec || !operation) return;
+            assistantRunnerAbortRef.current?.abort();
+            const controller = new AbortController();
+            assistantRunnerAbortRef.current = controller;
+            void executeRunnerRequest({
+                spec,
+                path: action.path,
+                method: action.method,
+                operation,
+                selectedServer,
+                activeAuth,
+                params: action.params,
+                headers: action.headers,
+                body: action.body,
+                bodyType: action.bodyType,
+                signal: controller.signal,
+            })
+                .then(result => {
+                    if (assistantRunnerAbortRef.current === controller) assistantRunnerAbortRef.current = null;
+                    const historyKey = endpointKey(action.path, action.method);
+                    setExamineResponses(current => ({
+                        ...current,
+                        [historyKey]: appendResponseHistory(
+                            selectedParsableKey,
+                            action.path,
+                            action.method,
+                            result,
+                            current[historyKey] || readResponseHistory(selectedParsableKey, action.path, action.method),
+                        ),
+                    }));
+                    dispatchOpenDocUIRunnerResult({
+                        actionId,
+                        specKey: selectedParsableKey,
+                        path: action.path,
+                        method: action.method,
+                        result,
+                    });
+                })
+                .catch(error => {
+                    if (assistantRunnerAbortRef.current === controller) assistantRunnerAbortRef.current = null;
+                    dispatchOpenDocUIRunnerResult({
+                        actionId,
+                        specKey: selectedParsableKey,
+                        path: action.path,
+                        method: action.method,
+                        result: {
+                            status: 0,
+                            headers: {},
+                            body: error instanceof Error ? error.message : 'AI Runner action failed.',
+                            isJson: false,
+                            errorKind: 'network',
+                            errorMessage: error instanceof Error ? error.message : 'AI Runner action failed.',
+                        },
+                    });
+                });
+        },
+        [
             activeAuth,
-            params: action.params,
-            headers: action.headers,
-            body: action.body,
-            bodyType: action.bodyType,
-            signal: controller.signal,
-        }).then(result => {
-            if (assistantRunnerAbortRef.current === controller)
-                assistantRunnerAbortRef.current = null;
-            const historyKey = endpointKey(action.path, action.method);
-            setExamineResponses(current => ({
-                ...current,
-                [historyKey]: appendResponseHistory(
-                    selectedParsableKey,
-                    action.path,
-                    action.method,
-                    result,
-                    current[historyKey] || readResponseHistory(selectedParsableKey, action.path, action.method),
-                ),
-            }));
-            dispatchOpenDocUIRunnerResult({
-                actionId,
-                specKey: selectedParsableKey,
-                path: action.path,
-                method: action.method,
-                result
-            });
-        }).catch(error => {
-            if (assistantRunnerAbortRef.current === controller)
-                assistantRunnerAbortRef.current = null;
-            dispatchOpenDocUIRunnerResult({
-                actionId,
-                specKey: selectedParsableKey,
-                path: action.path,
-                method: action.method,
-                result: {
-                    status: 0,
-                    headers: {},
-                    body: error instanceof Error ? error.message : 'AI Runner action failed.',
-                    isJson: false,
-                    errorKind: 'network',
-                    errorMessage: error instanceof Error ? error.message : 'AI Runner action failed.'
-                },
-            });
-        });
-    }, [activeAuth, handleOpenRunner, handleSelectEndpoint, handleSearchChange, selectedParsableKey, selectedServer, spec]);
+            handleOpenRunner,
+            handleSelectEndpoint,
+            handleSearchChange,
+            selectedParsableKey,
+            selectedServer,
+            spec,
+        ],
+    );
     const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
     const handleSelectParsable = (k: string) => {
-        if (k === selectedParsableKey)
-            return;
+        if (k === selectedParsableKey) return;
         setSpec(null);
         setLoadedSpecKey('');
         setSelectedEndpoint(null);
@@ -736,183 +768,324 @@ export default function App() {
         setExamineResponses({});
         setIsUpdatingHash(true);
         const h = `#/parsable/${encodeURIComponent(k)}`;
-        if (window.location.hash !== h)
-            window.location.hash = h;
+        if (window.location.hash !== h) window.location.hash = h;
         setIsUpdatingHash(false);
         closeMobileIfNeeded();
     };
     const isLocalMode = Object.keys(parsables).length === 0;
     const canOpenLocal = configSource === 'none';
     const assistantTabActive = showAssistant || activeTabId === 'view:assistant';
-    const content = () => (<WorkspaceContent spec={spec} specKey={selectedParsableKey} canOpenLocal={canOpenLocal}
-                                             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                                             showAbout={showAbout} showWelcome={showWelcome}
-                                             assistantActive={assistantTabActive} activeTabId={activeTabId}
-                                             resultsQuery={resultsQuery} selectedMethods={selectedMethods}
-                                             setSelectedMethods={setSelectedMethods} selectedTags={selectedTags}
-                                             setSelectedTags={setSelectedTags} onlyProtected={onlyProtected}
-                                             setOnlyProtected={setOnlyProtected} selectedServer={selectedServer}
-                                             setSelectedServer={setSelectedServer} displayRoutes={sidebarDisplayRoutes}
-                                             selectedEndpoint={selectedEndpoint} selectedViewMode={selectedTab}
-                                             setSelectedViewMode={setSelectedTab} activeSplitPane={activeSplitPane}
-                                             setActiveSplitPane={setActiveSplitPane}
-                                             splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth}
-                                             isSplitDragging={isSplitDragging}
-                                             onSplitResizeMouseDown={onSplitResizeMouseDown}
-                                             onSplitResizeKeyDown={onSplitResizeKeyDown}
-                                             splitSeparatorMin={splitSeparatorMin} splitSeparatorMax={splitSeparatorMax}
-                                             splitSeparatorNow={splitSeparatorNow} isMobile={isMobile}
-                                             activeAuth={activeAuth} resolvedThemeMode={resolvedThemeMode}
-                                             activeResponseCode={activeResponseCode}
-                                             setActiveResponseCode={setActiveResponseCode}
-                                             examineResponses={examineResponses}
-                                             setExamineResponses={setExamineResponses}
-                                             showSchemaExplorer={showSchemaExplorer} showHome={showHome}
-                                             onOpenAbout={handleOpenAbout} onOpenHome={handleOpenHome}
-                                             onOpenSchema={handlePushSchema} onSearchChange={handleSearchChange}
-                                             onSelectEndpoint={handleSelectEndpoint} onSearchResult={handleSearchResult}
-                                             onOpenEndpointPermanent={openEndpointPermanent}
-                                             onOpenEndpointPreview={openEndpointPreview}
-                                             onGenerateCode={setCodeGenEndpoint} onHidePageViews={() => {
-        setShowHome(false);
-        setShowSchemaExplorer(false);
-        setShowAbout(false);
-        setShowAssistant(false);
-    }}/>);
+    const content = () => (
+        <WorkspaceContent
+            spec={spec}
+            specKey={selectedParsableKey}
+            canOpenLocal={canOpenLocal}
+            onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+            showAbout={showAbout}
+            showWelcome={showWelcome}
+            assistantActive={assistantTabActive}
+            activeTabId={activeTabId}
+            resultsQuery={resultsQuery}
+            selectedMethods={selectedMethods}
+            setSelectedMethods={setSelectedMethods}
+            selectedTags={selectedTags}
+            setSelectedTags={setSelectedTags}
+            onlyProtected={onlyProtected}
+            setOnlyProtected={setOnlyProtected}
+            selectedServer={selectedServer}
+            setSelectedServer={setSelectedServer}
+            displayRoutes={sidebarDisplayRoutes}
+            selectedEndpoint={selectedEndpoint}
+            selectedViewMode={selectedTab}
+            setSelectedViewMode={setSelectedTab}
+            activeSplitPane={activeSplitPane}
+            setActiveSplitPane={setActiveSplitPane}
+            splitContainerRef={splitContainerRef}
+            docsPaneWidth={docsPaneWidth}
+            isSplitDragging={isSplitDragging}
+            onSplitResizeMouseDown={onSplitResizeMouseDown}
+            onSplitResizeKeyDown={onSplitResizeKeyDown}
+            splitSeparatorMin={splitSeparatorMin}
+            splitSeparatorMax={splitSeparatorMax}
+            splitSeparatorNow={splitSeparatorNow}
+            isMobile={isMobile}
+            activeAuth={activeAuth}
+            resolvedThemeMode={resolvedThemeMode}
+            activeResponseCode={activeResponseCode}
+            setActiveResponseCode={setActiveResponseCode}
+            examineResponses={examineResponses}
+            setExamineResponses={setExamineResponses}
+            showSchemaExplorer={showSchemaExplorer}
+            showHome={showHome}
+            onOpenAbout={handleOpenAbout}
+            onOpenHome={handleOpenHome}
+            onOpenSchema={handlePushSchema}
+            onSearchChange={handleSearchChange}
+            onSelectEndpoint={handleSelectEndpoint}
+            onSearchResult={handleSearchResult}
+            onOpenEndpointPermanent={openEndpointPermanent}
+            onOpenEndpointPreview={openEndpointPreview}
+            onGenerateCode={setCodeGenEndpoint}
+            onHidePageViews={() => {
+                setShowHome(false);
+                setShowSchemaExplorer(false);
+                setShowAbout(false);
+                setShowAssistant(false);
+            }}
+        />
+    );
     const isSidebarCollapsed = isMobile ? false : desktopCollapsed;
     const onToggleCollapse = () => {
-        if (isMobile)
-            setMobileOpen(o => !o);
-        else
-            setDesktopCollapsed(c => !c);
+        if (isMobile) setMobileOpen(o => !o);
+        else setDesktopCollapsed(c => !c);
     };
-    return (<TooltipProvider>
-        <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
-            <div style={styleVars}
-                 className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]">
+    return (
+        <TooltipProvider>
+            <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
+                <div
+                    style={styleVars}
+                    className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]"
+                >
+                    <input
+                        ref={hiddenFileInputRef}
+                        type="file"
+                        multiple
+                        accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml"
+                        className="hidden"
+                        onChange={handleFileChosen}
+                    />
 
-                <input ref={hiddenFileInputRef} type="file" multiple
-                       accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml" className="hidden"
-                       onChange={handleFileChosen}/>
-
-                <Topbar parsables={parsables} selectedParsableKey={selectedParsableKey}
-                        onSelectParsable={handleSelectParsable} activeAuth={activeAuth} onUpdateAuth={setActiveAuth}
-                        onOpenAuthModal={() => setShowAuthModal(true)} searchQuery={searchQuery}
-                        onSearchChange={handleSearchChange} onDownloadSpec={handleDownload}
-                        title={spec?.info?.title || 'OpenDoc UI'} showSchemaExplorer={showSchemaExplorer} spec={spec}
-                        specFreshness={specFetchInfo} showHome={showHome} isCollapsed={isSidebarCollapsed} onToggleCollapse={onToggleCollapse}
-                        onOpenMobileSidebar={() => setMobileOpen(true)} onOpenAssistant={handleOpenAssistant}
-                        selectedThemeName={selectedThemeName} onSelectTheme={setSelectedThemeName}
-                        onOpenThemeModal={() => setShowThemeModal(true)} isLocalMode={isLocalMode}
-                        canOpenLocal={canOpenLocal} onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                        onRefreshSpec={handleRefreshSpec} onReloadSpecification={handleReloadSpecification}
+                    <Topbar
+                        parsables={parsables}
+                        selectedParsableKey={selectedParsableKey}
+                        onSelectParsable={handleSelectParsable}
+                        activeAuth={activeAuth}
+                        onUpdateAuth={setActiveAuth}
+                        onOpenAuthModal={() => setShowAuthModal(true)}
+                        searchQuery={searchQuery}
+                        onSearchChange={handleSearchChange}
+                        onDownloadSpec={handleDownload}
+                        title={spec?.info?.title || 'OpenDoc UI'}
+                        showSchemaExplorer={showSchemaExplorer}
+                        spec={spec}
+                        specFreshness={specFetchInfo}
+                        showHome={showHome}
+                        isCollapsed={isSidebarCollapsed}
+                        onToggleCollapse={onToggleCollapse}
+                        onOpenMobileSidebar={() => setMobileOpen(true)}
+                        onOpenAssistant={handleOpenAssistant}
+                        selectedThemeName={selectedThemeName}
+                        onSelectTheme={setSelectedThemeName}
+                        onOpenThemeModal={() => setShowThemeModal(true)}
+                        isLocalMode={isLocalMode}
+                        canOpenLocal={canOpenLocal}
+                        onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                        onRefreshSpec={handleRefreshSpec}
+                        onReloadSpecification={handleReloadSpecification}
                         onResetSpecification={handleResetSpecification}
-                        onResetAllConfigurations={handleResetAllConfigurations} isRefreshingSpec={isRefreshingSpec}
-                        localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry}
-                        onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory}
-                        localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)}
-                        onSearchHasResults={searchHasResults} hideSearch={false}/>
+                        onResetAllConfigurations={handleResetAllConfigurations}
+                        isRefreshingSpec={isRefreshingSpec}
+                        localHistory={localHistory}
+                        onSelectHistoryEntry={handleSelectHistoryEntry}
+                        onRemoveHistoryEntry={handleRemoveHistoryEntry}
+                        onClearHistory={handleClearHistory}
+                        localOpenError={localOpenError}
+                        onDismissLocalError={() => setLocalOpenError(null)}
+                        onSearchHasResults={searchHasResults}
+                        hideSearch={false}
+                    />
 
-                <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
-                    {isLoadingSpec ? (<SpecLoadingState/>) : !spec ? (content()) : (<>
-                        <Sidebar spec={spec} parsables={isMobile ? parsables : undefined}
-                                 selectedParsableKey={selectedParsableKey}
-                                 onSelectParsable={isMobile ? handleSelectParsable : undefined}
-                                 selectedServer={selectedServer} onSelectServer={setSelectedServer}
-                                 isCollapsed={desktopCollapsed} onToggleCollapse={() => setDesktopCollapsed(c => !c)}
-                                 onOpenSchemaExplorer={handleOpenSchemaExplorer} showSchemaExplorer={showSchemaExplorer}
-                                 selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
-                                 selectedTags={selectedTags} setSelectedTags={setSelectedTags}
-                                 onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected}
-                                 searchQuery={searchQuery} selectedEndpoint={selectedEndpoint}
-                                 onSelectEndpoint={handleSelectEndpoint} onMiddleClickEndpoint={openEndpointPermanent}
-                                 getEndpointHref={(path, method) => generateSmartRoute({
-                                     parsableKey: selectedParsableKey,
-                                     showHome: false,
-                                     showAbout: false,
-                                     showAssistant: false,
-                                     showSchemaExplorer: false,
-                                     endpoint: {path, method},
-                                     tab: 'docs',
-                                     schemaModals: [],
-                                     responseCode: null,
-                                     searchQuery: '',
-                                     searchMethods: [],
-                                     searchTags: [],
-                                     searchSecured: null,
-                                     activeSpec: spec
-                                 })} onOpenHome={handleOpenHome} onOpenAbout={handleOpenAbout}
-                                 onOpenViewPermanent={openViewTabPermanent} onContextAction={handleContextAction}
-                                 scrollIntent={scrollIntent} setScrollIntent={setScrollIntent} showHome={showHome}
-                                 showAbout={showAbout} showAssistant={showAssistant}
-                                 assistantContextEndpoints={assistantContextEndpoints} hasAIProfile={hasAIProfile}
-                                 themeMode={currentThemeMode} resolvedThemeMode={resolvedThemeMode}
-                                 onToggleThemeMode={toggleThemeMode} selectedThemeName={selectedThemeName}
-                                 onOpenThemeModal={() => setShowThemeModal(true)}
-                                 onOpenAuthModal={() => setShowAuthModal(true)} activeAuth={activeAuth}
-                                 onDownloadSpec={handleDownload} isLocalMode={isLocalMode} canOpenLocal={canOpenLocal}
-                                 onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                                 onDisplayRoutesChange={setSidebarDisplayRoutes}
-                                 onReloadSpecification={handleReloadSpecification}
-                                 onResetSpecification={handleResetSpecification}
-                                 onResetAllConfigurations={handleResetAllConfigurations}
-                                 onRefreshSpec={handleRefreshSpec} isRefreshingSpec={isRefreshingSpec}
-                                 localHistory={localHistory} onSelectHistoryEntry={handleSelectHistoryEntry}
-                                 onRemoveHistoryEntry={handleRemoveHistoryEntry} onClearHistory={handleClearHistory}
-                                 localOpenError={localOpenError} onDismissLocalError={() => setLocalOpenError(null)}
-                                 mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)}
-                                 onOpenMobile={() => setMobileOpen(true)}/>
-                        <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
-                            {endpointTabs.length > 0 && spec && (
-                                <EndpointTabs tabs={endpointTabs} activeTabId={activeTabId}
-                                              onSelectTab={handleSelectTab} onCloseTab={handleCloseTab}
-                                              onDoubleClickTab={handleDoubleClickTab}
-                                              onCloseAllLeft={handleCloseAllLeft} onCloseAllRight={handleCloseAllRight}
-                                              onCloseOthers={handleCloseOthers} onReorderTabs={handleReorderTabs}
-                                              assistantUnread={assistantUnread} onOpenSwitcher={openSwitcher}/>)}
-                            <div
-                                className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'hidden' : 'flex')}>
-                                {content()}
-                            </div>
-                            <div
-                                className={clsx('flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden', assistantTabActive ? 'flex' : 'hidden')}>
-                                {spec && <AIAssistantView spec={spec} parsableKey={selectedParsableKey}
-                                                          selectedEndpoints={assistantContextEndpoints}
-                                                          selectedServer={selectedServer} activeAuth={activeAuth}
-                                                          activeTab={selectedTab} searchQuery={searchQuery}
-                                                          settings={aiSettings} hasAIProfile={hasAIProfile}
-                                                          isVisible={assistantTabActive}
-                                                          onOpenSettings={() => setShowAISettings(true)}
-                                                          onClearEndpointContext={() => setAssistantContextEndpoints([])}
-                                                          onRemoveEndpointContext={(path, method) => setAssistantContextEndpoints(current => current.filter(endpoint => !(endpoint.path === path && endpoint.method === method)))}
-                                                          onOpenEndpoint={handleSelectEndpoint}
-                                                          onOpenRunner={handleOpenRunner}
-                                                          onBridgeAction={handleAssistantBridgeAction}
-                                                          onResponseFinished={handleAssistantResponseFinished}/>}
-                            </div>
-                        </div>
-                    </>)}
+                    <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
+                        {isLoadingSpec ? (
+                            <SpecLoadingState />
+                        ) : !spec ? (
+                            content()
+                        ) : (
+                            <>
+                                <Sidebar
+                                    spec={spec}
+                                    parsables={isMobile ? parsables : undefined}
+                                    selectedParsableKey={selectedParsableKey}
+                                    onSelectParsable={isMobile ? handleSelectParsable : undefined}
+                                    selectedServer={selectedServer}
+                                    onSelectServer={setSelectedServer}
+                                    isCollapsed={desktopCollapsed}
+                                    onToggleCollapse={() => setDesktopCollapsed(c => !c)}
+                                    onOpenSchemaExplorer={handleOpenSchemaExplorer}
+                                    showSchemaExplorer={showSchemaExplorer}
+                                    selectedMethods={selectedMethods}
+                                    setSelectedMethods={setSelectedMethods}
+                                    selectedTags={selectedTags}
+                                    setSelectedTags={setSelectedTags}
+                                    onlyProtected={onlyProtected}
+                                    setOnlyProtected={setOnlyProtected}
+                                    searchQuery={searchQuery}
+                                    selectedEndpoint={selectedEndpoint}
+                                    onSelectEndpoint={handleSelectEndpoint}
+                                    onMiddleClickEndpoint={openEndpointPermanent}
+                                    getEndpointHref={(path, method) =>
+                                        generateSmartRoute({
+                                            parsableKey: selectedParsableKey,
+                                            showHome: false,
+                                            showAbout: false,
+                                            showAssistant: false,
+                                            showSchemaExplorer: false,
+                                            endpoint: {path, method},
+                                            tab: 'docs',
+                                            schemaModals: [],
+                                            responseCode: null,
+                                            searchQuery: '',
+                                            searchMethods: [],
+                                            searchTags: [],
+                                            searchSecured: null,
+                                            activeSpec: spec,
+                                        })
+                                    }
+                                    onOpenHome={handleOpenHome}
+                                    onOpenAbout={handleOpenAbout}
+                                    onOpenViewPermanent={openViewTabPermanent}
+                                    onContextAction={handleContextAction}
+                                    scrollIntent={scrollIntent}
+                                    setScrollIntent={setScrollIntent}
+                                    showHome={showHome}
+                                    showAbout={showAbout}
+                                    showAssistant={showAssistant}
+                                    assistantContextEndpoints={assistantContextEndpoints}
+                                    hasAIProfile={hasAIProfile}
+                                    themeMode={currentThemeMode}
+                                    resolvedThemeMode={resolvedThemeMode}
+                                    onToggleThemeMode={toggleThemeMode}
+                                    selectedThemeName={selectedThemeName}
+                                    onOpenThemeModal={() => setShowThemeModal(true)}
+                                    onOpenAuthModal={() => setShowAuthModal(true)}
+                                    activeAuth={activeAuth}
+                                    onDownloadSpec={handleDownload}
+                                    isLocalMode={isLocalMode}
+                                    canOpenLocal={canOpenLocal}
+                                    onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                                    onDisplayRoutesChange={setSidebarDisplayRoutes}
+                                    onReloadSpecification={handleReloadSpecification}
+                                    onResetSpecification={handleResetSpecification}
+                                    onResetAllConfigurations={handleResetAllConfigurations}
+                                    onRefreshSpec={handleRefreshSpec}
+                                    isRefreshingSpec={isRefreshingSpec}
+                                    localHistory={localHistory}
+                                    onSelectHistoryEntry={handleSelectHistoryEntry}
+                                    onRemoveHistoryEntry={handleRemoveHistoryEntry}
+                                    onClearHistory={handleClearHistory}
+                                    localOpenError={localOpenError}
+                                    onDismissLocalError={() => setLocalOpenError(null)}
+                                    mobileOpen={mobileOpen}
+                                    onCloseMobile={() => setMobileOpen(false)}
+                                    onOpenMobile={() => setMobileOpen(true)}
+                                />
+                                <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
+                                    {endpointTabs.length > 0 && spec && (
+                                        <EndpointTabs
+                                            tabs={endpointTabs}
+                                            activeTabId={activeTabId}
+                                            onSelectTab={handleSelectTab}
+                                            onCloseTab={handleCloseTab}
+                                            onDoubleClickTab={handleDoubleClickTab}
+                                            onCloseAllLeft={handleCloseAllLeft}
+                                            onCloseAllRight={handleCloseAllRight}
+                                            onCloseOthers={handleCloseOthers}
+                                            onReorderTabs={handleReorderTabs}
+                                            assistantUnread={assistantUnread}
+                                            onOpenSwitcher={openSwitcher}
+                                        />
+                                    )}
+                                    <div
+                                        className={clsx(
+                                            'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
+                                            assistantTabActive ? 'hidden' : 'flex',
+                                        )}
+                                    >
+                                        {content()}
+                                    </div>
+                                    <div
+                                        className={clsx(
+                                            'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
+                                            assistantTabActive ? 'flex' : 'hidden',
+                                        )}
+                                    >
+                                        {spec && (
+                                            <AIAssistantView
+                                                spec={spec}
+                                                parsableKey={selectedParsableKey}
+                                                selectedEndpoints={assistantContextEndpoints}
+                                                selectedServer={selectedServer}
+                                                activeAuth={activeAuth}
+                                                activeTab={selectedTab}
+                                                searchQuery={searchQuery}
+                                                settings={aiSettings}
+                                                hasAIProfile={hasAIProfile}
+                                                isVisible={assistantTabActive}
+                                                onOpenSettings={() => setShowAISettings(true)}
+                                                onClearEndpointContext={() => setAssistantContextEndpoints([])}
+                                                onRemoveEndpointContext={(path, method) =>
+                                                    setAssistantContextEndpoints(current =>
+                                                        current.filter(
+                                                            endpoint =>
+                                                                !(endpoint.path === path && endpoint.method === method),
+                                                        ),
+                                                    )
+                                                }
+                                                onOpenEndpoint={handleSelectEndpoint}
+                                                onOpenRunner={handleOpenRunner}
+                                                onBridgeAction={handleAssistantBridgeAction}
+                                                onResponseFinished={handleAssistantResponseFinished}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <AppModalLayer
+                        spec={spec}
+                        specKey={selectedParsableKey}
+                        selectedServer={selectedServer}
+                        schemaStack={modalsStack}
+                        setSchemaStack={setModalsStack}
+                        onPopSchema={handlePopSchema}
+                        onPushSchema={handlePushSchema}
+                        codeEndpoint={codeGenEndpoint}
+                        setCodeEndpoint={setCodeGenEndpoint}
+                        activeAuth={activeAuth}
+                        authOperation={
+                            selectedEndpoint ? getOperation(spec, selectedEndpoint.path, selectedEndpoint.method) : null
+                        }
+                        setActiveAuth={setActiveAuth}
+                        authOpen={showAuthModal}
+                        setAuthOpen={setShowAuthModal}
+                        switcherOpen={switcherOpen}
+                        tabs={endpointTabs}
+                        activeTabId={activeTabId}
+                        switcherIndex={switcherIndex}
+                        onCancelSwitcher={cancelSwitcher}
+                        onSelectSwitcherTab={id => {
+                            handleSelectTab(id);
+                            setSwitcherOpen(false);
+                        }}
+                        shareTarget={shareTarget}
+                        setShareTarget={setShareTarget}
+                        themeOpen={showThemeModal}
+                        setThemeOpen={setShowThemeModal}
+                        selectedThemeName={selectedThemeName}
+                        setSelectedThemeName={setSelectedThemeName}
+                        currentThemeMode={currentThemeMode}
+                        setCurrentThemeMode={setCurrentThemeMode}
+                        resolvedThemeMode={resolvedThemeMode}
+                        toggleThemeMode={toggleThemeMode}
+                        aiSettingsOpen={showAISettings}
+                        setAISettingsOpen={setShowAISettings}
+                        aiSettings={aiSettings}
+                        onSaveAISettings={handleAISettingsSave}
+                    />
                 </div>
-
-                <AppModalLayer spec={spec} specKey={selectedParsableKey} selectedServer={selectedServer} schemaStack={modalsStack}
-                               setSchemaStack={setModalsStack} onPopSchema={handlePopSchema}
-                               onPushSchema={handlePushSchema} codeEndpoint={codeGenEndpoint}
-                               setCodeEndpoint={setCodeGenEndpoint} activeAuth={activeAuth}
-                               authOperation={selectedEndpoint ? getOperation(spec, selectedEndpoint.path, selectedEndpoint.method) : null}
-                               setActiveAuth={setActiveAuth} authOpen={showAuthModal} setAuthOpen={setShowAuthModal}
-                               switcherOpen={switcherOpen} tabs={endpointTabs} activeTabId={activeTabId}
-                               switcherIndex={switcherIndex} onCancelSwitcher={cancelSwitcher}
-                               onSelectSwitcherTab={id => {
-                                   handleSelectTab(id);
-                                   setSwitcherOpen(false);
-                               }} shareTarget={shareTarget} setShareTarget={setShareTarget} themeOpen={showThemeModal}
-                               setThemeOpen={setShowThemeModal} selectedThemeName={selectedThemeName}
-                               setSelectedThemeName={setSelectedThemeName} currentThemeMode={currentThemeMode}
-                               setCurrentThemeMode={setCurrentThemeMode} resolvedThemeMode={resolvedThemeMode}
-                               toggleThemeMode={toggleThemeMode} aiSettingsOpen={showAISettings}
-                               setAISettingsOpen={setShowAISettings} aiSettings={aiSettings}
-                               onSaveAISettings={handleAISettingsSave}/>
-            </div>
-        </OperationLinkProvider>
-    </TooltipProvider>);
+            </OperationLinkProvider>
+        </TooltipProvider>
+    );
 }

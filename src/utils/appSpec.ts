@@ -18,9 +18,7 @@ export type EndpointKey = string;
 export const endpointKey = (path: string, method: string): EndpointKey => `${method.toLowerCase()}:${path}`;
 export const parseSpecDraft = (text: string): OpenApiSpec => {
     const trimmed = text.trim();
-    const parsed = trimmed.startsWith('{') || trimmed.startsWith('[')
-        ? JSON.parse(text)
-        : jsYaml.load(text);
+    const parsed = trimmed.startsWith('{') || trimmed.startsWith('[') ? JSON.parse(text) : jsYaml.load(text);
     assertValidOpenApiDocument(parsed);
     const normalized = normalizeOpenApiSpec(parsed);
     registerRawSpecDocument(normalized, text, parsed, validateOpenApiDocument(parsed).version);

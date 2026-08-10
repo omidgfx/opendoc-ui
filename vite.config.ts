@@ -9,11 +9,7 @@ export default defineConfig(() => {
         // GitHub Pages serves project sites from /<repository>/; regular and
         // custom-domain builds keep the root default.
         base: process.env.VITE_BASE_PATH || '/',
-        plugins: [
-            react(),
-            svgr(),
-            tailwindcss(),
-        ],
+        plugins: [react(), svgr(), tailwindcss()],
         resolve: {
             alias: {
                 '@': path.resolve(__dirname, '.'),
@@ -41,11 +37,11 @@ export default defineConfig(() => {
                     inlineDynamicImports: true,
                     entryFileNames: 'index.js',
                     assetFileNames: '[name].[ext]',
-                }
+                },
             },
         },
         css: {
-            devSourcemap: true
-        }
+            devSourcemap: true,
+        },
     };
 });

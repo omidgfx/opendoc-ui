@@ -6,8 +6,7 @@ const memoryStore = new Map<string, string>();
 let storageHydrated = false;
 let indexedDbEnabled = false;
 export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
-    if (storageHydrated)
-        return indexedDbEnabled;
+    if (storageHydrated) return indexedDbEnabled;
     const records = await idbGetAll<string>(IDB_STORAGE_PREFIX);
     if (records === null) {
         storageHydrated = true;
@@ -24,8 +23,7 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
                 continue;
             }
             const value = window.localStorage.getItem(key);
-            if (value === null)
-                continue;
+            if (value === null) continue;
             if (value === LOCAL_DELETE_MARKER) {
                 memoryStore.delete(key);
                 await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
@@ -34,8 +32,7 @@ export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
             memoryStore.set(key, value);
             await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
         }
-    } catch {
-    }
+    } catch {}
     storageHydrated = true;
     return true;
 };
@@ -50,8 +47,7 @@ const byteLength = (value: string): number => {
     }
 };
 const readRaw = (key: string): string | null => {
-    if (memoryStore.has(key))
-        return memoryStore.get(key) || '';
+    if (memoryStore.has(key)) return memoryStore.get(key) || '';
     try {
         const value = window.localStorage.getItem(key);
         return value === LOCAL_DELETE_MARKER ? null : value;
@@ -74,7 +70,8 @@ const currentUsageBytes = (): number => {
 const writeRaw = (key: string, value: string): boolean => {
     try {
         const previous = window.localStorage.getItem(key) || '';
-        const projected = currentUsageBytes() - byteLength(previous) - byteLength(key) + byteLength(value) + byteLength(key);
+        const projected =
+            currentUsageBytes() - byteLength(previous) - byteLength(key) + byteLength(value) + byteLength(key);
         if (projected > LOCAL_STORAGE_BUDGET_BYTES) {
             lastWriteError = `Storage budget exceeded (${Math.round(projected / 1024)} KiB requested).`;
             console.warn(`localStorage write skipped for "${key}": ${lastWriteError}`);
@@ -92,19 +89,16 @@ const writeRaw = (key: string, value: string): boolean => {
 const deleteRaw = (key: string) => {
     try {
         window.localStorage.removeItem(key);
-    } catch {
-    }
+    } catch {}
 };
 const markRawDeleted = (key: string) => {
     try {
         window.localStorage.setItem(key, LOCAL_DELETE_MARKER);
-    } catch {
-    }
+    } catch {}
 };
 export const storage = {
     available(): boolean {
-        if (indexedDbEnabled)
-            return true;
+        if (indexedDbEnabled) return true;
         try {
             window.localStorage.setItem(TEST_KEY, '1');
             window.localStorage.removeItem(TEST_KEY);
@@ -125,8 +119,7 @@ export const storage = {
         if (indexedDbEnabled) {
             memoryStore.set(key, normalized);
             const mirrored = writeRaw(key, normalized);
-            if (!mirrored)
-                deleteRaw(key);
+            if (!mirrored) deleteRaw(key);
             void idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized).then(written => {
                 if (!written) {
                     lastWriteError = mirrored
@@ -161,8 +154,7 @@ export const storage = {
     },
     getJSON<T>(key: string, fallback: T, validate?: (value: any) => boolean): T {
         const raw = readRaw(key);
-        if (raw === null)
-            return fallback;
+        if (raw === null) return fallback;
         try {
             const parsed = JSON.parse(raw);
             if (validate && !validate(parsed)) {
@@ -187,15 +179,13 @@ export const storage = {
         const keys = new Set<string>(memoryStore.keys());
         try {
             Object.keys(window.localStorage).forEach(key => keys.add(key));
-        } catch {
-        }
+        } catch {}
         return Array.from(keys).filter(key => key.startsWith(prefix) && readRaw(key) !== null);
     },
     async clearPrefix(prefix: string): Promise<void> {
         const keys = this.keys(prefix);
         await Promise.all(keys.map(key => this.removeAsync(key)));
-        if (indexedDbEnabled)
-            await idbClearPrefix(`${IDB_STORAGE_PREFIX}${prefix}`);
+        if (indexedDbEnabled) await idbClearPrefix(`${IDB_STORAGE_PREFIX}${prefix}`);
     },
 };
 export const sessionStore = {
@@ -217,13 +207,11 @@ export const sessionStore = {
     remove(key: string) {
         try {
             window.sessionStorage.removeItem(key);
-        } catch {
-        }
+        } catch {}
     },
     getJSON<T>(key: string, fallback: T): T {
         const raw = this.get(key, '');
-        if (!raw)
-            return fallback;
+        if (!raw) return fallback;
         try {
             return JSON.parse(raw) as T;
         } catch {
@@ -292,12 +280,10 @@ export const specStorage = {
         return storage.clearPrefix(SPEC_PREFIX);
     },
     specKeyOf(storageKey: string): string | null {
-        if (!storageKey.startsWith(SPEC_PREFIX))
-            return null;
+        if (!storageKey.startsWith(SPEC_PREFIX)) return null;
         const rest = storageKey.slice(SPEC_PREFIX.length);
         const sep = rest.lastIndexOf(':');
-        if (sep <= 0)
-            return null;
+        if (sep <= 0) return null;
         try {
             return decodeURIComponent(rest.slice(0, sep));
         } catch {
@@ -306,29 +292,24 @@ export const specStorage = {
     },
     prune(validSpecKeys: string[]) {
         const valid = new Set(validSpecKeys);
-        storage.keys(SPEC_PREFIX).forEach((key) => {
+        storage.keys(SPEC_PREFIX).forEach(key => {
             const specKey = this.specKeyOf(key);
-            if (specKey !== null && !valid.has(specKey))
-                storage.remove(key);
+            if (specKey !== null && !valid.has(specKey)) storage.remove(key);
         });
         void idbGetAll<unknown>('conversations:').then(records => {
-            if (!records)
-                return;
+            if (!records) return;
             records.forEach(record => {
                 const specKey = String(record.key).slice('conversations:'.length);
-                if (!valid.has(specKey))
-                    void idbDelete(String(record.key));
+                if (!valid.has(specKey)) void idbDelete(String(record.key));
             });
         });
     },
 };
 const MIGRATED_FLAG = 'opendoc:ui:migration_v1_done';
 const moveKey = (from: string, to: string) => {
-    if (storage.get(to) !== '')
-        return;
+    if (storage.get(to) !== '') return;
     const value = readRaw(from);
-    if (value === null)
-        return;
+    if (value === null) return;
     storage.set(to, value);
     storage.remove(from);
 };
@@ -342,18 +323,15 @@ const migrateSpecKeys = () => {
         {prefix: 'preferred_tab_', name: 'tab_mode'},
         {prefix: 'endpoint_tabs_', name: 'tabs'},
     ];
-    storage.keys('').forEach((legacyKey) => {
+    storage.keys('').forEach(legacyKey => {
         for (const {prefix, name} of patterns) {
-            if (!legacyKey.startsWith(prefix))
-                continue;
+            if (!legacyKey.startsWith(prefix)) continue;
             const specKey = legacyKey.slice(prefix.length);
-            if (!specKey)
-                continue;
+            if (!specKey) continue;
             const target = specStorage.key(specKey, name);
             if (storage.get(target) === '') {
                 const value = readRaw(legacyKey);
-                if (value !== null)
-                    storage.set(target, value);
+                if (value !== null) storage.set(target, value);
             }
             storage.remove(legacyKey);
             break;
@@ -361,8 +339,7 @@ const migrateSpecKeys = () => {
     });
 };
 export const migrateLegacyStorage = () => {
-    if (storage.get(MIGRATED_FLAG) === '1')
-        return;
+    if (storage.get(MIGRATED_FLAG) === '1') return;
     moveKey('sidebar_collapsed', uiStorage.key('sidebar_collapsed'));
     moveKey('sidebar_width', uiStorage.key('sidebar_width'));
     moveKey('collapsed_tags', uiStorage.key('collapsed_tags'));

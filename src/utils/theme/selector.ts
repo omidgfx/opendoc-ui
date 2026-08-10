@@ -10,4 +10,5 @@ export const METHOD_ITEMS: Array<{
     {label: 'PATCH', key: 'methodPatch'},
     {label: 'DELETE', key: 'methodDelete'},
 ];
-export const alpha = (color: string, opacity: string): string => /^#[0-9a-f]{6}$/i.test(color) ? `${color}${opacity}` : color;
+export const alpha = (color: string, opacity: string): string =>
+    /^#[0-9a-f]{6}$/i.test(color) ? `${color}${opacity}` : color;

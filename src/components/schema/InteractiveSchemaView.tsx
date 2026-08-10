@@ -14,14 +14,14 @@ interface InteractiveSchemaViewProps {
 }
 
 export default function InteractiveSchemaView({
-                                                  schema,
-                                                  resolveReference,
-                                                  getRefName,
-                                                  onPushSchema,
-                                                  onViewExample,
-                                                  onTestPattern,
-                                                  getMockSnippet
-                                              }: InteractiveSchemaViewProps) {
+    schema,
+    resolveReference,
+    getRefName,
+    onPushSchema,
+    onViewExample,
+    onTestPattern,
+    getMockSnippet,
+}: InteractiveSchemaViewProps) {
     const [activeTabMap, setActiveTabMap] = useState<{
         [combinatorKey: string]: number;
     }>({});
@@ -30,16 +30,20 @@ export default function InteractiveSchemaView({
         return <p className="text-xs italic opacity-50">No schema provided.</p>;
     }
     if (schema === true) {
-        return <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
-            <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
-            <p className="mt-1 text-[var(--text-muted)]">Any JSON value is valid.</p>
-        </div>;
+        return (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
+                <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+                <p className="mt-1 text-[var(--text-muted)]">Any JSON value is valid.</p>
+            </div>
+        );
     }
     if (schema === false) {
-        return <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
-            <strong className="text-[var(--method-delete)]">Impossible schema</strong>
-            <p className="mt-1 text-[var(--text-muted)]">No JSON value can satisfy this schema.</p>
-        </div>;
+        return (
+            <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
+                <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+                <p className="mt-1 text-[var(--text-muted)]">No JSON value can satisfy this schema.</p>
+            </div>
+        );
     }
     const resolved = resolveReference(schema) || schema;
     const isEnum = resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0;
@@ -47,12 +51,9 @@ export default function InteractiveSchemaView({
     const hasAnyOf = resolved.anyOf && Array.isArray(resolved.anyOf) && resolved.anyOf.length > 0;
     const hasAllOf = resolved.allOf && Array.isArray(resolved.allOf) && resolved.allOf.length > 0;
     const combinatorType = hasOneOf ? 'oneOf' : hasAnyOf ? 'anyOf' : hasAllOf ? 'allOf' : null;
-    const subSchemas = combinatorType ?
-        resolved[combinatorType] as any[] :
-        [];
+    const subSchemas = combinatorType ? (resolved[combinatorType] as any[]) : [];
     const getSubSchemaLabel = (sub: any, idx: number): string => {
-        if (!sub)
-            return `Option ${idx + 1}`;
+        if (!sub) return `Option ${idx + 1}`;
         if (sub.$ref) {
             return getRefName(sub.$ref);
         }
@@ -79,18 +80,20 @@ export default function InteractiveSchemaView({
         const resolvedProps: {
             [name: string]: any;
         } = {};
-        const resolvePropertiesLocal = (sObj: any, prefix = '', visited = new Set<string>()): {
+        const resolvePropertiesLocal = (
+            sObj: any,
+            prefix = '',
+            visited = new Set<string>(),
+        ): {
             [name: string]: any;
         } => {
-            if (!sObj)
-                return {};
+            if (!sObj) return {};
             let props: {
                 [name: string]: any;
             } = {};
             if (sObj.$ref) {
                 const refName = getRefName(sObj.$ref);
-                if (visited.has(refName))
-                    return {};
+                if (visited.has(refName)) return {};
                 visited.add(refName);
                 const refSchema = resolveReference(sObj);
                 if (refSchema) {
@@ -104,10 +107,7 @@ export default function InteractiveSchemaView({
                 });
             }
             if (sObj.properties) {
-                Object.entries(sObj.properties).forEach(([name, prop]: [
-                    string,
-                    any
-                ]) => {
+                Object.entries(sObj.properties).forEach(([name, prop]: [string, any]) => {
                     const key = prefix ? `${prefix}.${name}` : name;
                     props[key] = prop;
                     const res = resolveReference(prop);
@@ -140,63 +140,83 @@ export default function InteractiveSchemaView({
             return props;
         };
         const properties = resolvePropertiesLocal(resolvedS);
-        return (<div className="space-y-4">
-            {resolvedS.description &&
-                <div
-                    className="p-3 rounded-lg border text-xs leading-relaxed bg-[var(--background)] border-[var(--border)]">
-
-                    <p className="font-semibold mb-1 text-[var(--text-heading)]">Sub-schema
-                        Description:</p>
-                    <div>
-                        <Markdown text={resolvedS.description}/>
+        return (
+            <div className="space-y-4">
+                {resolvedS.description && (
+                    <div className="p-3 rounded-lg border text-xs leading-relaxed bg-[var(--background)] border-[var(--border)]">
+                        <p className="font-semibold mb-1 text-[var(--text-heading)]">Sub-schema Description:</p>
+                        <div>
+                            <Markdown text={resolvedS.description} />
+                        </div>
                     </div>
-                </div>}
+                )}
 
-            <div className="flex border-b gap-4 pb-1 border-[var(--border)]">
-                <button type="button" onClick={() => setViewMode('table')}
-                        className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${viewMode === 'table' ?
-                            'border-[var(--primary)] text-[var(--primary)] font-bold' :
-                            'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'}`}>
+                <div className="flex border-b gap-4 pb-1 border-[var(--border)]">
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('table')}
+                        className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                            viewMode === 'table'
+                                ? 'border-[var(--primary)] text-[var(--primary)] font-bold'
+                                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'
+                        }`}
+                    >
+                        Unified Schema Matrix
+                    </button>
+                    {isEnum && (
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('enum')}
+                            className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                                viewMode === 'enum'
+                                    ? 'border-[var(--primary)] text-[var(--primary)] font-bold'
+                                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'
+                            }`}
+                        >
+                            Enum Values
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('example')}
+                        className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                            viewMode === 'example'
+                                ? 'border-[var(--primary)] text-[var(--primary)] font-bold'
+                                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'
+                        }`}
+                    >
+                        Example Simulation Object
+                    </button>
+                </div>
 
-                    Unified Schema Matrix
-                </button>
-                {isEnum &&
-                    <button type="button" onClick={() => setViewMode('enum')}
-                            className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${viewMode === 'enum' ?
-                                'border-[var(--primary)] text-[var(--primary)] font-bold' :
-                                'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'}`}>
-
-                        Enum Values
-                    </button>}
-                <button type="button" onClick={() => setViewMode('example')}
-                        className={`pb-1 text-xs font-semibold border-b-2 transition-all cursor-pointer ${viewMode === 'example' ?
-                            'border-[var(--primary)] text-[var(--primary)] font-bold' :
-                            'border-transparent text-[var(--text-muted)] hover:text-[var(--text-heading)]'}`}>
-
-                    Example Simulation Object
-                </button>
+                <div className="mt-2">
+                    {viewMode === 'table' ? (
+                        <SchemaPropertiesTable
+                            properties={properties}
+                            schema={resolvedS}
+                            resolveReference={resolveReference}
+                            getRefName={getRefName}
+                            onPushSchema={onPushSchema}
+                            onViewExample={onViewExample}
+                            onTestPattern={onTestPattern}
+                        />
+                    ) : viewMode === 'enum' && isEnum ? (
+                        <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
+                            {resolved.enum.map((val: any) => (
+                                <span
+                                    key={val}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
+                                >
+                                    {JSON.stringify(val)}
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <CodeViewer code={getMockSnippet(resolvedS)} language="json" maxHeight="none" />
+                    )}
+                </div>
             </div>
-
-            <div className="mt-2">
-                {viewMode === 'table' ?
-                    <SchemaPropertiesTable properties={properties} schema={resolvedS}
-                                           resolveReference={resolveReference} getRefName={getRefName}
-                                           onPushSchema={onPushSchema} onViewExample={onViewExample}
-                                           onTestPattern={onTestPattern}/> :
-                    viewMode === 'enum' && isEnum ?
-                        <div
-                            className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-
-                            {resolved.enum.map((val: any) => <span key={val}
-                                                                   className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
-
-
-                                {JSON.stringify(val)}
-                            </span>)}
-                        </div> :
-                        <CodeViewer code={getMockSnippet(resolvedS)} language="json" maxHeight="none"/>}
-            </div>
-        </div>);
+        );
     };
     if (!combinatorType) {
         return renderStandardSchema(schema);
@@ -209,106 +229,130 @@ export default function InteractiveSchemaView({
             case 'oneOf':
                 return {
                     label: 'One Of',
-                    classes: 'bg-[var(--method-options)]/10 text-[var(--method-options)] border-[var(--method-options)]/25'
+                    classes:
+                        'bg-[var(--method-options)]/10 text-[var(--method-options)] border-[var(--method-options)]/25',
                 };
             case 'anyOf':
                 return {
                     label: 'Any Of',
-                    classes: 'bg-[var(--method-put)]/10 text-[var(--method-put)] border-[var(--method-put)]/25'
+                    classes: 'bg-[var(--method-put)]/10 text-[var(--method-put)] border-[var(--method-put)]/25',
                 };
             case 'allOf':
                 return {
                     label: 'All Of',
-                    classes: 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/25'
+                    classes: 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/25',
                 };
             default:
                 return {
                     label: 'Schema',
-                    classes: 'bg-[var(--text-muted)]/10 text-[var(--text-muted)] border-[var(--text-muted)]/25'
+                    classes: 'bg-[var(--text-muted)]/10 text-[var(--text-muted)] border-[var(--text-muted)]/25',
                 };
         }
     };
     const badge = getBadgeStyle();
     if (combinatorType === 'allOf') {
-        return (<div className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
-            <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3">
-                <span className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}>All Of</span>
-                <div>
-                    <p className="text-xs font-semibold text-[var(--text-heading)]">All constraints below apply together</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">These are composed constraints, not selectable alternatives.</p>
-                </div>
-            </div>
-            {subSchemas.map((sub, index) => <section key={index}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
-                        Constraint {index + 1}: {getSubSchemaLabel(sub, index)}
+        return (
+            <div className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
+                <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3">
+                    <span
+                        className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}
+                    >
+                        All Of
                     </span>
-                    {sub?.$ref && <button type="button" onClick={() => onPushSchema(getRefName(sub.$ref))}
-                        className="rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-2 py-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer">
-                        Open schema
-                    </button>}
+                    <div>
+                        <p className="text-xs font-semibold text-[var(--text-heading)]">
+                            All constraints below apply together
+                        </p>
+                        <p className="text-[10px] text-[var(--text-muted)]">
+                            These are composed constraints, not selectable alternatives.
+                        </p>
+                    </div>
                 </div>
-                {renderStandardSchema(sub)}
-            </section>)}
-        </div>);
+                {subSchemas.map((sub, index) => (
+                    <section key={index} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                        <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
+                                Constraint {index + 1}: {getSubSchemaLabel(sub, index)}
+                            </span>
+                            {sub?.$ref && (
+                                <button
+                                    type="button"
+                                    onClick={() => onPushSchema(getRefName(sub.$ref))}
+                                    className="rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-2 py-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer"
+                                >
+                                    Open schema
+                                </button>
+                            )}
+                        </div>
+                        {renderStandardSchema(sub)}
+                    </section>
+                ))}
+            </div>
+        );
     }
-    return (<div
-        className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
-
-
-        <div
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
-
-            <div className="flex items-center gap-2">
-                <span
-                    className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}>
-                    {badge.label}
-                </span>
-                <span className="text-xs font-semibold text-[var(--text-heading)]">
-                    {combinatorType === 'oneOf' ? 'Exactly one alternative must validate' : 'One or more alternatives may validate'}
-                </span>
-            </div>
-            <p className="text-[10px] text-[var(--text-muted)]">
-                Inspect an alternative; this selection changes only the documentation view.
-            </p>
-        </div>
-
-
-        <div className="flex flex-wrap gap-1.5 py-1">
-            {subSchemas.map((sub, idx) => {
-                const isSelected = selectedIdx === idx;
-                const label = getSubSchemaLabel(sub, idx);
-                return (<button key={idx} type="button"
-                                onClick={() => setActiveTabMap((prev) => ({...prev, [cacheKey]: idx}))}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer select-none transition-all duration-150 ${isSelected ?
-                                    'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm' :
-                                    'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15'}`}>
-
-                    {label}
-                </button>);
-            })}
-        </div>
-
-
-        <div className="p-4 rounded-xl border bg-[var(--surface)] bg-[var(--surface)] border-[var(--border)]">
-            <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-[var(--border)]">
-
-                <span className="text-xs font-extrabold tracking-wide uppercase text-[var(--text-muted)]">
-
-                    Active Representation: {getSubSchemaLabel(activeSubSchema, selectedIdx)}
-                </span>
-                {activeSubSchema && activeSubSchema.$ref &&
-                    <button type="button" onClick={() => onPushSchema(getRefName(activeSubSchema.$ref))}
-                            className="px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/25 rounded cursor-pointer transition-colors">
-
-                        Drill-down to Schema
-                    </button>}
+    return (
+        <div className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2">
+                    <span
+                        className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}
+                    >
+                        {badge.label}
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--text-heading)]">
+                        {combinatorType === 'oneOf'
+                            ? 'Exactly one alternative must validate'
+                            : 'One or more alternatives may validate'}
+                    </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)]">
+                    Inspect an alternative; this selection changes only the documentation view.
+                </p>
             </div>
 
-            {activeSubSchema ?
-                renderStandardSchema(activeSubSchema) :
-                <p className="text-xs italic opacity-50">Empty sub-schema definition.</p>}
+            <div className="flex flex-wrap gap-1.5 py-1">
+                {subSchemas.map((sub, idx) => {
+                    const isSelected = selectedIdx === idx;
+                    const label = getSubSchemaLabel(sub, idx);
+                    return (
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActiveTabMap(prev => ({...prev, [cacheKey]: idx}))}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer select-none transition-all duration-150 ${
+                                isSelected
+                                    ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                    : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="p-4 rounded-xl border bg-[var(--surface)] bg-[var(--surface)] border-[var(--border)]">
+                <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-[var(--border)]">
+                    <span className="text-xs font-extrabold tracking-wide uppercase text-[var(--text-muted)]">
+                        Active Representation: {getSubSchemaLabel(activeSubSchema, selectedIdx)}
+                    </span>
+                    {activeSubSchema && activeSubSchema.$ref && (
+                        <button
+                            type="button"
+                            onClick={() => onPushSchema(getRefName(activeSubSchema.$ref))}
+                            className="px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/25 rounded cursor-pointer transition-colors"
+                        >
+                            Drill-down to Schema
+                        </button>
+                    )}
+                </div>
+
+                {activeSubSchema ? (
+                    renderStandardSchema(activeSubSchema)
+                ) : (
+                    <p className="text-xs italic opacity-50">Empty sub-schema definition.</p>
+                )}
+            </div>
         </div>
-    </div>);
+    );
 }

@@ -1,10 +1,6 @@
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
 import {isJsonMediaType} from './openapi/serialization';
-import {
-    compileBrowserRequest,
-    type ParameterValueState,
-    type RunnerInputValue,
-} from './requestPlan';
+import {compileBrowserRequest, type ParameterValueState, type RunnerInputValue} from './requestPlan';
 
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -27,7 +23,9 @@ export interface RunnerExecutionInput {
     signal?: AbortSignal;
 }
 
-const readResponseBody = async (response: Response): Promise<{
+const readResponseBody = async (
+    response: Response,
+): Promise<{
     text: string;
     bytes: number;
     truncated: boolean;
@@ -38,7 +36,7 @@ const readResponseBody = async (response: Response): Promise<{
         return {
             text: new TextDecoder().decode(encoded.slice(0, MAX_RESPONSE_BYTES)),
             bytes: encoded.byteLength,
-            truncated: encoded.byteLength > MAX_RESPONSE_BYTES
+            truncated: encoded.byteLength > MAX_RESPONSE_BYTES,
         };
     }
     const reader = response.body.getReader();
@@ -48,14 +46,11 @@ const readResponseBody = async (response: Response): Promise<{
     try {
         while (true) {
             const {value, done} = await reader.read();
-            if (done)
-                break;
-            if (!value)
-                continue;
+            if (done) break;
+            if (!value) continue;
             const remaining = MAX_RESPONSE_BYTES - bytes;
             if (value.byteLength > remaining) {
-                if (remaining > 0)
-                    chunks.push(value.slice(0, remaining));
+                if (remaining > 0) chunks.push(value.slice(0, remaining));
                 bytes += Math.max(0, remaining);
                 truncated = true;
                 await reader.cancel();
@@ -118,9 +113,10 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             responseHeaders[key] = value;
         });
         const contentType = response.headers.get('Content-Type') || '';
-        const binary = !isJsonMediaType(contentType)
-            && !/^text\//i.test(contentType)
-            && !/javascript|xml|event-stream|graphql/i.test(contentType);
+        const binary =
+            !isJsonMediaType(contentType) &&
+            !/^text\//i.test(contentType) &&
+            !/javascript|xml|event-stream|graphql/i.test(contentType);
         const body = await readResponseBody(response);
         return {
             status: response.status,
@@ -143,8 +139,8 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
         const errorMessage = cancelled
             ? 'Request cancelled by the user.'
             : timedOut
-                ? 'Request timed out after 30 seconds.'
-                : error?.message || 'The request failed.';
+              ? 'Request timed out after 30 seconds.'
+              : error?.message || 'The request failed.';
         return {
             status: 0,
             headers: {},
