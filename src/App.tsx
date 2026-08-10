@@ -317,6 +317,7 @@ export default function App() {
         setSelectedSpecKey: setSelectedParsableKey,
         setInitialLoadComplete: setIsInitialLoadComplete,
         applyLocalSpec,
+        applyLocalBundle,
     });
     useWorkspaceRouting({
         parsables,
@@ -791,7 +792,7 @@ export default function App() {
         closeMobileIfNeeded();
     };
     const isLocalMode = Object.keys(parsables).length === 0;
-    const canOpenLocal = configSource === 'none';
+    const canOpenLocal = configSource === 'none' || configSource === 'hybrid';
     const assistantTabActive = showAssistant || activeTabId === 'view:assistant';
     const content = () => (
         <WorkspaceContent

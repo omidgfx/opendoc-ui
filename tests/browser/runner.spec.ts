@@ -259,6 +259,49 @@ test('layers the local endpoint filter over global results without searching tag
     await expect(sidebar.getByText('API Navigation', {exact: true})).toBeVisible();
 });
 
+test('combines configured and local specifications in hybrid mode', async ({page}) => {
+    await page.addInitScript(rawSpec => {
+        window.INITIAL_CONFIG = {
+            allowLocalSpecifications: true,
+            parsables: {
+                'Bundled Demo API': {
+                    title: 'Bundled Demo API',
+                    isCustom: true,
+                    rawSpec,
+                },
+            },
+        };
+    }, specText());
+    await page.goto('/');
+    await expect(page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true})).toBeVisible();
+    await page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true}).click();
+    await expect(page.getByRole('button', {name: 'Open your own specification'})).toBeVisible();
+
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: 'Open your own specification'}).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+        name: 'local-hybrid.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(
+            JSON.stringify({
+                openapi: '3.1.1',
+                info: {title: 'My Local Hybrid API', version: '1'},
+                paths: {'/local': {get: {summary: 'Local endpoint', responses: {'200': {description: 'OK'}}}}},
+            }),
+        ),
+    });
+    await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();
+    await page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true}).click();
+    await expect(page.getByText('Recent local specifications', {exact: true})).toBeVisible();
+    await expect(page.getByText('Bundled Demo API', {exact: true})).toBeVisible();
+    await page.getByText('Bundled Demo API', {exact: true}).click();
+    await expect(page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true})).toBeVisible();
+});
+
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
