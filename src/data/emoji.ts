@@ -54,24 +54,78 @@ const NATIVE_TO_SHORTCODE: Record<string, string> = {
     '💡': 'bulb',
 };
 
+const emojiImageHtml = (shortcode: string, alt: string): string => {
+    const dataUri = EMOJI_BASE64_MAP[shortcode];
+    return dataUri ? `<img class="emoji" alt="${alt}" src="${dataUri}" decoding="async" draggable="false" />` : alt;
+};
+
 export function parseEmojis(text: string): string {
     if (!text) return '';
     let processed = text;
     for (const [native, short] of Object.entries(NATIVE_TO_SHORTCODE)) {
-        if (processed.includes(native)) {
-            const dataUri = EMOJI_BASE64_MAP[short];
-            if (dataUri) {
-                const imgTag = `<img class="emoji" alt="${native}" src="${dataUri}" style="height: 1.1em; width: 1.1em; margin: 0 .08em 0 .12em; vertical-align: -0.15em; display: inline-block; object-fit: contain;" />`;
-                processed = processed.split(native).join(imgTag);
-            }
-        }
+        if (processed.includes(native)) processed = processed.split(native).join(emojiImageHtml(short, native));
     }
     return processed.replace(/:([a-zA-Z0-9_\-]+):/g, (match, code) => {
         const lower = code.toLowerCase();
-        const dataUri = EMOJI_BASE64_MAP[lower];
-        if (dataUri) {
-            return `<img class="emoji" alt=":${lower}:" src="${dataUri}" style="height: 1.1em; width: 1.1em; margin: 0 .08em 0 .12em; vertical-align: -0.15em; display: inline-block; object-fit: contain;" />`;
+        return EMOJI_BASE64_MAP[lower] ? emojiImageHtml(lower, `:${lower}:`) : match;
+    });
+}
+
+const nativeEmojiPattern = Object.keys(NATIVE_TO_SHORTCODE)
+    .sort((left, right) => right.length - left.length)
+    .map(value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+const emojiTokenPattern = new RegExp(`(${nativeEmojiPattern}|:[a-zA-Z0-9_-]+:)`, 'g');
+
+const shortcodeForToken = (token: string): string | undefined => {
+    if (token.startsWith(':') && token.endsWith(':')) {
+        const shortcode = token.slice(1, -1).toLowerCase();
+        return EMOJI_BASE64_MAP[shortcode] ? shortcode : undefined;
+    }
+    return NATIVE_TO_SHORTCODE[token];
+};
+
+/** Replace supported emoji text nodes without changing code/preformatted content. */
+export function applyAppleEmojiImages(root: ParentNode): void {
+    const documentNode = root instanceof Document ? root : root.ownerDocument;
+    if (!documentNode || !nativeEmojiPattern) return;
+    const walker = documentNode.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    let current = walker.nextNode();
+    while (current) {
+        const parent = current.parentElement;
+        if (
+            current.nodeValue &&
+            parent &&
+            !parent.closest('code, pre, script, style, textarea, [data-native-emoji]') &&
+            emojiTokenPattern.test(current.nodeValue)
+        ) {
+            textNodes.push(current as Text);
         }
-        return match;
+        emojiTokenPattern.lastIndex = 0;
+        current = walker.nextNode();
+    }
+
+    textNodes.forEach(textNode => {
+        const text = textNode.nodeValue || '';
+        const fragment = documentNode.createDocumentFragment();
+        let offset = 0;
+        for (const match of text.matchAll(emojiTokenPattern)) {
+            const token = match[0];
+            const index = match.index || 0;
+            const shortcode = shortcodeForToken(token);
+            if (!shortcode) continue;
+            if (index > offset) fragment.append(documentNode.createTextNode(text.slice(offset, index)));
+            const image = documentNode.createElement('img');
+            image.className = 'emoji';
+            image.alt = token;
+            image.src = EMOJI_BASE64_MAP[shortcode];
+            image.decoding = 'async';
+            image.draggable = false;
+            fragment.append(image);
+            offset = index + token.length;
+        }
+        if (offset < text.length) fragment.append(documentNode.createTextNode(text.slice(offset)));
+        textNode.replaceWith(fragment);
     });
 }

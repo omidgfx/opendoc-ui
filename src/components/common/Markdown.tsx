@@ -4,6 +4,7 @@ import {highlightCodeString} from './CodeViewer';
 import DOMPurify from 'dompurify';
 import {useOperationLinkIndex} from '../../contexts/OperationLinkContext';
 import {rewriteInternalEndpointLinks} from '../../utils/docLinks';
+import {applyAppleEmojiImages} from '../../data/emoji';
 
 interface MarkdownProps {
     text?: string;
@@ -60,6 +61,7 @@ export default function Markdown({text, className = ''}: MarkdownProps) {
             const doc = parser.parseFromString(cleanHtml, 'text/html');
             addDirAttributesToDoc(doc);
             rewriteInternalEndpointLinks(doc, linkIndex, parsableKey);
+            applyAppleEmojiImages(doc.body);
             const finalHtml = doc.body.innerHTML;
             setHtml(finalHtml);
         } catch (e) {

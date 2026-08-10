@@ -46,6 +46,12 @@ interface AIAssistantViewProps {
     settings: AISettings;
     hasAIProfile: boolean;
     isVisible: boolean;
+    newConversationRequest?: {
+        id: string;
+        path: string;
+        method: string;
+    } | null;
+    onNewConversationRequestHandled?: (id: string) => void;
     onOpenSettings: () => void;
     onClearEndpointContext: () => void;
     onRemoveEndpointContext: (path: string, method: string) => void;
@@ -86,6 +92,8 @@ export default function AIAssistantView({
     settings,
     hasAIProfile,
     isVisible,
+    newConversationRequest,
+    onNewConversationRequestHandled,
     onOpenSettings,
     onClearEndpointContext,
     onRemoveEndpointContext,
@@ -113,6 +121,7 @@ export default function AIAssistantView({
     const chatScrollRef = useRef<HTMLDivElement | null>(null);
     const contextScrollRef = useRef<HTMLDivElement | null>(null);
     const previousScrollTopRef = useRef(0);
+    const handledNewConversationRequestRef = useRef('');
     const [deleteConfirmation, setDeleteConfirmation] = useState<AIConversation | null>(null);
     const [runnerConfirmation, setRunnerConfirmation] = useState<{
         path: string;
@@ -303,6 +312,30 @@ export default function AIAssistantView({
         setActiveConversationId(next.id);
         setInput('');
     };
+    useEffect(() => {
+        if (
+            !newConversationRequest ||
+            !isVisible ||
+            !conversationsLoaded ||
+            loadedConversationSpecKey !== parsableKey ||
+            handledNewConversationRequestRef.current === newConversationRequest.id
+        ) {
+            return;
+        }
+        handledNewConversationRequestRef.current = newConversationRequest.id;
+        const next = newAIConversation(parsableKey);
+        setConversations(current => [next, ...current]);
+        setActiveConversationId(next.id);
+        setInput('');
+        onNewConversationRequestHandled?.(newConversationRequest.id);
+    }, [
+        conversationsLoaded,
+        isVisible,
+        loadedConversationSpecKey,
+        newConversationRequest,
+        onNewConversationRequestHandled,
+        parsableKey,
+    ]);
     const deleteConversation = (id: string) => {
         if (id === activeConversationId) {
             abortRef.current?.abort();

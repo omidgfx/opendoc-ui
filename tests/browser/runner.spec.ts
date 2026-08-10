@@ -9,7 +9,11 @@ let requestCount = 0;
 const specText = () =>
     JSON.stringify({
         openapi: '3.1.1',
-        info: {title: 'Browser Runner Fixture', version: '1'},
+        info: {
+            title: 'Browser Runner Fixture',
+            version: '1',
+            description: 'Embedded emoji preview 🚀 :fire: and native code `🚀`.',
+        },
         servers: [{url: apiOrigin}],
         paths: {
             '/validate/{id}': {
@@ -163,6 +167,33 @@ test('selects response schema by default and formats example indentation', async
     expect(example).toContain('\n        "field": "id"');
 });
 
+test('renders embedded Apple-style emoji without changing emoji inside code', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    await expect(page.locator('img.emoji[alt="🚀"]')).toHaveCount(1);
+    await expect(page.locator('img.emoji[alt=":fire:"]')).toHaveCount(1);
+    await expect(page.locator('code').filter({hasText: '🚀'})).toBeVisible();
+});
+
+test('filters endpoints locally inside the sidebar navigation stripe', async ({page}) => {
+    await loadSpecification(page);
+    const endpoint = page.getByText('Send permissive validation request', {exact: true});
+    await expect(endpoint).toBeVisible();
+    await page.getByRole('button', {name: 'Filter sidebar endpoints'}).click();
+    const input = page.getByRole('textbox', {name: 'Filter sidebar endpoints'});
+    await expect(input).toBeFocused();
+    await expect(page.getByText('API Navigation', {exact: true})).toHaveCount(0);
+    await expect(page.getByRole('button', {name: 'Navigation settings'})).toHaveCount(0);
+    await input.fill('does-not-exist');
+    await expect(endpoint).toHaveCount(0);
+    await page.getByRole('button', {name: 'Clear endpoint filter'}).click();
+    await expect(endpoint).toBeVisible();
+    await input.fill('pet');
+    await page.keyboard.press('Escape');
+    await expect(input).toHaveCount(0);
+    await expect(page.getByText('API Navigation', {exact: true})).toBeVisible();
+});
+
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
@@ -179,6 +210,25 @@ test('turns protected indicators green when the effective auth requirement is co
     await page.getByRole('button', {name: 'Cancel'}).click();
     await expect(page.getByText('Authorized', {exact: true})).toBeVisible();
     await expect(page.getByText('Authorized', {exact: true})).toHaveClass(/text-\[var\(--method-get\)\]/);
+
+    await page
+        .locator('.app-topbar')
+        .getByRole('button', {name: /BEARERAUTH/i})
+        .click();
+    await page.getByRole('button', {name: 'Log out'}).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByText('Protected', {exact: true})).toBeVisible();
+});
+
+test('opens navbar AI without auto-targeting and offers endpoint-specific new conversation action', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.getByRole('button', {name: 'Open AI Assistant'}).click();
+    await expect(page.getByLabel('Targeted in AI assistant')).toHaveCount(0);
+
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.getByRole('button', {name: 'Ask AI in a new conversation'}).click();
+    await expect(page.getByLabel('Targeted in AI assistant')).toHaveCount(1);
 });
 
 test('keeps a small desktop schema modal content-sized without an empty lower body', async ({page}) => {

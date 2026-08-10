@@ -4,7 +4,12 @@ import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useEscClose} from '../../hooks/useEscClose';
-import {getAuthSchemeLabel, getSecurityRequirementOptions, normalizeActiveAuth} from '../../utils/auth';
+import {
+    createEmptyAuth,
+    getAuthSchemeLabel,
+    getSecurityRequirementOptions,
+    normalizeActiveAuth,
+} from '../../utils/auth';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -311,21 +316,35 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
                     })}
                 </div>
 
-                <footer className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-5 py-3">
+                <footer className="flex items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--background)] px-5 py-3">
                     <button
                         type="button"
-                        onClick={requestClose}
-                        className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                        disabled={activeAuth.activeScheme === 'none' && activeAuth.selectedSchemes.length === 0}
+                        onClick={() => {
+                            onSave(createEmptyAuth());
+                            requestClose();
+                        }}
+                        className="rounded-lg px-3 py-2 text-xs font-semibold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 disabled:cursor-not-allowed disabled:opacity-35 cursor-pointer"
                     >
-                        Cancel
+                        <i className="ph ph-sign-out me-1.5" />
+                        Log out
                     </button>
-                    <button
-                        type="button"
-                        onClick={save}
-                        className="rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-contrast)] hover:bg-[var(--primary-hover)] cursor-pointer"
-                    >
-                        Apply
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={requestClose}
+                            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={save}
+                            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-contrast)] hover:bg-[var(--primary-hover)] cursor-pointer"
+                        >
+                            Apply
+                        </button>
+                    </div>
                 </footer>
             </div>
         </div>
