@@ -11,7 +11,6 @@ import {
 } from './openapi/serialization';
 import {getMergedParameters, resolveParameter, resolveRequestBody} from './openapi';
 import {resolveEffectiveServer, type ResolvedServer} from './serverResolver';
-import {getSpecDiagnostics} from './specSource';
 
 export type RunnerInputValue = unknown;
 export type ParameterValueState = Record<string, RunnerInputValue>;
@@ -265,7 +264,9 @@ const unresolvedParameterDiagnostics = (pathItem: any, operation: Operation, spe
 };
 
 export const compileRequestIntent = (input: CompileRequestInput): RequestIntent => {
-    const diagnostics: Diagnostic[] = getSpecDiagnostics(input.spec);
+    // Document-wide parser diagnostics belong to the specification loader, not
+    // to every endpoint execution. Runner diagnostics are compiled locally.
+    const diagnostics: Diagnostic[] = [];
     const pathItem = (input.spec.paths as any)?.[input.path] || {};
     const server = resolveEffectiveServer({
         spec: input.spec,

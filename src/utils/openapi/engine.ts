@@ -6,6 +6,54 @@ import * as jsYaml from 'js-yaml';
 const MAX_EXTERNAL_DOCUMENTS = 16;
 const MAX_EXTERNAL_BYTES = 5 * 1024 * 1024;
 const EXTERNAL_TIMEOUT_MS = 10_000;
+const MAX_ENGINE_VALIDATION_DETAILS = 12;
+
+interface EngineValidationError {
+    code?: string;
+    message: string;
+    path?: unknown;
+}
+
+const isBranchSelectionNoise = (message: string): boolean => {
+    const normalized = message.trim();
+    return /^if must match ["'](?:then|else)["'] schema$/i.test(normalized)
+        || /^Property .+ is not expected to be here$/i.test(normalized)
+        || /^must match ["'](?:then|else)["'] schema$/i.test(normalized);
+};
+
+/**
+ * AJV-style OpenAPI meta-schemas can emit thousands of oneOf/if branch details
+ * for one root problem. Keep only a small set of actionable, unique messages.
+ */
+export const summarizeEngineValidationErrors = (errors: EngineValidationError[]): Diagnostic[] => {
+    const unique = new Map<string, EngineValidationError>();
+    let branchNoise = 0;
+    errors.forEach(error => {
+        if (isBranchSelectionNoise(error.message)) {
+            branchNoise += 1;
+            return;
+        }
+        const pointer = formatEngineErrorPath(error.path) || '';
+        const key = `${error.code || ''}\u0000${pointer}\u0000${error.message}`;
+        if (!unique.has(key))
+            unique.set(key, error);
+    });
+    const actionable = Array.from(unique.values());
+    const visible = actionable.slice(0, MAX_ENGINE_VALIDATION_DETAILS).map(error => diagnostic(
+        error.code ? `OAS_ENGINE_${error.code}` : 'OAS_ENGINE_VALIDATION',
+        error.message,
+        {severity: 'warning', source: {pointer: formatEngineErrorPath(error.path)}},
+    ));
+    const suppressed = branchNoise + Math.max(0, actionable.length - visible.length);
+    if (suppressed > 0) {
+        visible.push(diagnostic(
+            'OAS_ENGINE_VALIDATION_SUMMARY',
+            `${suppressed.toLocaleString()} repetitive validator detail${suppressed === 1 ? '' : 's'} hidden.`,
+            {severity: 'info', details: {reported: errors.length, branchNoise, actionable: actionable.length}},
+        ));
+    }
+    return visible;
+};
 
 /** Parser versions do not always agree on whether an error path is an array or string. */
 export const formatEngineErrorPath = (path: unknown): string | undefined => {
@@ -107,11 +155,7 @@ export const processWithOpenApiEngine = async (
 
     try {
         const validation = await parser.validate(raw);
-        (validation.errors || []).forEach(error => diagnostics.push(diagnostic(
-            error.code ? `OAS_ENGINE_${error.code}` : 'OAS_ENGINE_VALIDATION',
-            error.message,
-            {severity: 'warning', source: {pointer: formatEngineErrorPath(error.path)}},
-        )));
+        diagnostics.push(...summarizeEngineValidationErrors(validation.errors || []));
     } catch (error) {
         diagnostics.push(diagnostic(
             'OAS_ENGINE_VALIDATION_FAILED',
@@ -276,11 +320,7 @@ export const processLocalOpenApiBundle = async (
     try {
         const {validate, dereference} = await import('@scalar/openapi-parser');
         const validation = await validate(filesystem as any);
-        (validation.errors || []).forEach(error => diagnostics.push(diagnostic(
-            error.code ? `OAS_ENGINE_${error.code}` : 'OAS_ENGINE_VALIDATION',
-            error.message,
-            {severity: 'warning', source: {pointer: formatEngineErrorPath(error.path)}},
-        )));
+        diagnostics.push(...summarizeEngineValidationErrors(validation.errors || []));
         const resolved = dereference(filesystem as any);
         (resolved.errors || []).forEach(error => diagnostics.push(diagnostic(
             error.code ? `OAS_REF_${error.code}` : 'OAS_REF_RESOLUTION_FAILED',

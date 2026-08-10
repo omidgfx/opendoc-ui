@@ -19,7 +19,8 @@ import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabil
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
-import {formatEngineErrorPath} from '@/src/utils/openapi/engine';
+import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
+import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 const test = (name: string, callback: () => void) => {
     callback();
@@ -383,6 +384,33 @@ test('normalizes parser error paths without assuming an array shape', () => {
     assert.equal(formatEngineErrorPath('/paths/~1pets/get'), '/paths/~1pets/get');
     assert.equal(formatEngineErrorPath(42), '42');
     assert.equal(formatEngineErrorPath(undefined), undefined);
+});
+test('collapses noisy OpenAPI meta-schema branch errors', () => {
+    const noisy = Array.from({length: 2000}, (_, index) => ({
+        code: 'SCHEMA',
+        message: index % 2 ? 'if must match "else" schema' : `Property type is not expected to be here`,
+        path: '/components/schemas/Pet',
+    }));
+    noisy.push({code: 'ACTIONABLE', message: 'A real actionable validation issue', path: '/paths'});
+    noisy.push({code: 'ACTIONABLE', message: 'A real actionable validation issue', path: '/paths'});
+    const summarized = summarizeEngineValidationErrors(noisy);
+    assert.equal(summarized.filter(item => item.code === 'OAS_ENGINE_ACTIONABLE').length, 1);
+    assert.equal(summarized.some(item => item.code === 'OAS_ENGINE_VALIDATION_SUMMARY'), true);
+    assert.ok(summarized.length <= 13);
+});
+test('keeps document-wide parser noise out of endpoint Runner notices', () => {
+    const spec: any = structuredClone(baseSpec);
+    registerSpecDiagnostics(spec, [
+        {code: 'OAS_ENGINE_VALIDATION', severity: 'warning', message: 'Property type is not expected to be here'},
+    ]);
+    const operation = spec.paths['/users/{id}'].get;
+    const plan = compileBrowserRequest({
+        spec, path: '/users/{id}', method: 'get', operation,
+        selectedServer: 'https://api.example.test',
+        activeAuth: {activeScheme: 'none', selectedSchemes: [], schemeValues: {}, cookieValues: {}, bearerToken: '', apiKeyName: '', apiKeyValue: '', apiKeyIn: 'header', basicUsername: '', basicPassword: ''},
+        parameterValues: {[parameterStateKey('path', 'id')]: '42'},
+    });
+    assert.equal(plan.diagnostics.some(item => item.code.startsWith('OAS_ENGINE_')), false);
 });
 test('validates documents by explicit dialect and accepts pathless OAS 3.1 webhooks', () => {
     assert.equal(validateOpenApiDocument(baseSpec).valid, true);
