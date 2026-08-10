@@ -7,18 +7,19 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.2-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-0.1.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
 ## Table of contents
 
 - [Features](#features)
+- [Version 0.1.3](#version-013)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
-    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
@@ -30,7 +31,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Browser persistence](#browser-persistence)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
-    - [GitHub Pages demo](#github-pages-demo)
+  - [GitHub Pages demo](#github-pages-demo)
 - [FAQ](#faq)
 - [License](#license)
 
@@ -65,10 +66,27 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
+## Version 0.1.3
+
+This release focuses on predictable request execution and portable deployment:
+
+- specification-scoped authentication with operation-level security handling;
+- one request compiler shared by the manual Runner and assistant actions;
+- required path-segment protection while other invalid inputs remain testable;
+- persistent per-endpoint response history with individual and bulk removal;
+- Swagger 2.0 and OpenAPI 3.0, 3.1, and 3.2 compatibility improvements;
+- local and constrained remote multi-document reference resolution;
+- deterministic mock validation and compile-checked TypeScript exports;
+- keyboard-accessible custom dropdowns, modal focus handling, and resizers;
+- one-file JavaScript builds with Windows-compatible scripts;
+- automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
+
+---
+
 ## Quick start
 
 ```bash
-npm install
+npm ci
 npm run dev        # http://localhost:3000
 ```
 
@@ -82,9 +100,10 @@ npm run preview    # serves dist/ locally
 Build and clean scripts are shell-independent and run on Windows, macOS, and Linux. The build fails
 if more than one `.js` bundle is emitted.
 
-Type check and unit tests:
+Formatting, type checks, and tests:
 
 ```bash
+npm run format:check
 npm run lint
 npm test
 npm run test:browser   # Playwright request/history/accessibility flows
@@ -107,7 +126,7 @@ OpenDoc UI supports **three deployment modes**. The mode is decided at startup, 
 what is present on the page:
 
 | Mode                           | Trigger                                                     | What the user sees                                                 |
-|--------------------------------|-------------------------------------------------------------|--------------------------------------------------------------------|
+| ------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------ |
 | **1. config.json**             | `public/config.json` exists and is served at `/config.json` | A spec selector in the navbar + switch modal, specs auto-load      |
 | **2. `window.INITIAL_CONFIG`** | A global object injected before the app boots               | Same as mode 1; the inline object wins over `config.json`          |
 | **3. Local mode**              | Neither of the above exists (no config source at all)       | An **Open** button instead of the selector; users open local files |
@@ -124,25 +143,25 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
   "parsables": {
     "Player API": {
-      "theme": "default",                       // optional, per-spec theme
+      "theme": "default", // optional, per-spec theme
       "url": "https://api.example.com/docs-json", // remote JSON or YAML
-      "title": "Player API"                     // optional, shown in the selector
+      "title": "Player API", // optional, shown in the selector
     },
     "Pet Store": {
-      "url": "/specs/pet-store.json"            // local file inside public/
+      "url": "/specs/pet-store.json", // local file inside public/
     },
     "Inline Spec": {
-      "isCustom": true,                          // optional — treat the entry as inline
-      "rawSpec": "{ \"openapi\": \"3.0.0\", ... }" // the spec itself, as a string
-    }
-  }
+      "isCustom": true, // optional — treat the entry as inline
+      "rawSpec": "{ \"openapi\": \"3.0.0\", ... }", // the spec itself, as a string
+    },
+  },
 }
 ```
 
 Supported keys per entry:
 
 | Key        | Type    | Description                                                                                                                                         |
-|------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
 | `title`    | string  | Display name in the selector / navbar. Defaults to the object key.                                                                                  |
 | `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
@@ -158,14 +177,13 @@ Identical shape to `config.json`, but injected as a JavaScript global **before**
 script runs, e.g. in `index.html`:
 
 ```html
-
 <script>
-    window.INITIAL_CONFIG = {
-        "theme": "default",
-        "parsables": {
-            "Pet Store": {"url": "/specs/pet-store.json"}
-        }
-    };
+  window.INITIAL_CONFIG = {
+    theme: 'default',
+    parsables: {
+      'Pet Store': {url: '/specs/pet-store.json'},
+    },
+  };
 </script>
 <script type="module" src="/src/main.tsx"></script>
 ```
@@ -176,7 +194,7 @@ configuration must be baked into the HTML itself.
 **Precedence:** if `window.INITIAL_CONFIG` exists it is used and `/config.json` is never
 fetched. Otherwise the app fetches `/config.json`; a 404 means local mode.
 
-> ⚠️ **Important:** when *either* pre-defined source exists, local file loading is disabled.
+> ⚠️ **Important:** when _either_ pre-defined source exists, local file loading is disabled.
 > There is no "Open" button, no folder button in the modal and no way to load a spec from
 > disk. Pre-defined deployments are locked to their configured specs — this is intentional,
 > so a hosted instance can never be bypassed with a local file. If you want the local
@@ -188,8 +206,8 @@ Run the app with **no** `window.INITIAL_CONFIG` and **no** `public/config.json` 
 `/config.json`). The app boots straight into the empty state and offers:
 
 - an **Open** button in the navbar (where the spec selector would normally sit),
-- a dedicated **"No specification loaded"** page with *Open specification* and
-  *About OpenDoc UI* actions,
+- a dedicated **"No specification loaded"** page with _Open specification_ and
+  _About OpenDoc UI_ actions,
 - the **spec selector modal** (opened from the navbar / mobile sidebar) containing a
   folder button for picking files, a drop-zone-style open card and the **recent history**,
 - file support for `.json`, `.yaml` and `.yml` (Swagger 2.x and OpenAPI 3.x), including selecting
@@ -372,7 +390,7 @@ Themes come from `src/data/themes.ts`. Each theme defines full **light** and **d
 palettes. The **mode** can be:
 
 | Mode     | Behavior                                                                       |
-|----------|--------------------------------------------------------------------------------|
+| -------- | ------------------------------------------------------------------------------ |
 | `system` | Follows the OS setting (`prefers-color-scheme`) live — this is the **default** |
 | `light`  | Always the light palette                                                       |
 | `dark`   | Always the dark palette                                                        |
@@ -409,12 +427,12 @@ is loaded.
 The app is hash-routed. Main shapes:
 
 | Hash                                              | Meaning                                    |
-|---------------------------------------------------|--------------------------------------------|
+| ------------------------------------------------- | ------------------------------------------ |
 | `#/`                                              | Home (no spec)                             |
 | `#/parsable/<key>`                                | Home of the spec with the given config key |
 | `#/parsable/<key>/api/<endpointId>`               | A specific endpoint (docs view)            |
 | `#/parsable/<key>/about`                          | About page for that spec                   |
-| `#/parsable/<key>/assistant`                      | OpenDoc UI assistant for that spec        |
+| `#/parsable/<key>/assistant`                      | OpenDoc UI assistant for that spec         |
 | `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open         |
 | `#/about`                                         | About page without a spec                  |
 
@@ -428,7 +446,7 @@ reload.
 ## Keyboard shortcuts
 
 | Shortcut                            | Action                                                                                                              |
-|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `Ctrl / ⌘ + K`                      | Focus global search                                                                                                 |
 | `Esc`                               | Close the top-most modal / overlay                                                                                  |
 | `Alt + ←` / `Alt + →`               | Previous / next endpoint tab                                                                                        |
@@ -451,33 +469,33 @@ reset actions delete both the dedicated records and the fallback mirror.
 
 State is split into three namespaces:
 
-| Namespace                                               | Contains                                                                                                       |
-|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| `opendoc:ui:<name>`                                     | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width, non-secret AI settings/profiles, and cached model catalogs |
-| `opendoc:spec:<encoded spec key>:<encoded name>`        | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation fallback mirror |
-| `opendoc_spec_cache_v2:<url>` / IndexedDB / `opendoc_local_history` | Small cache fallback, large spec cache, and local-file history                                  |
+| Namespace                                                           | Contains                                                                                                                                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `opendoc:ui:<name>`                                                 | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width, non-secret AI settings/profiles, and cached model catalogs |
+| `opendoc:spec:<encoded spec key>:<encoded name>`                    | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation fallback mirror                   |
+| `opendoc_spec_cache_v2:<url>` / IndexedDB / `opendoc_local_history` | Small cache fallback, large spec cache, and local-file history                                                                                                             |
 
 Per-spec data is pruned automatically when a spec disappears from the configuration, and
 legacy v0.1.0 keys are migrated into the namespaces once on first run. Known keys:
 
-| Key                                                         | Purpose                                           |
-|-------------------------------------------------------------|---------------------------------------------------|
-| `opendoc:ui:sidebar_width` / `opendoc:ui:sidebar_collapsed` | Desktop sidebar state (global — not per spec)     |
-| `opendoc:ui:collapsed_tags`                                 | Collapsed tag folders in the sidebar navigation   |
-| `opendoc:ui:last_parsable`                                  | Last selected spec key                            |
-| `opendoc:ui:endpoint_split_width`                           | Split-view pane width                             |
-| `opendoc:ui:ai_settings` / `:ai_profiles`                   | Current AI settings and global provider profiles (secrets omitted unless explicitly remembered)  |
-| `opendoc:ui:ai_active_profile` / `:ai_model_catalogs`       | Selected profile and refreshed model catalogs     |
-| `opendoc:spec:<key>:theme` / `:theme_mode`                  | Theme name & mode per spec                        |
-| `opendoc:spec:<key>:tab_mode`                               | Last used tab mode (docs / examine / split)       |
-| `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab |
-| `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                  |
-| `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint              |
-| `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                 |
-| `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification     |
-| `opendoc_spec_cache_v2:<url>`                               | Small/legacy fallback copy of a remotely loaded spec; large copies use IndexedDB         |
-| `opendoc_local_history`                                     | Recently opened local files                       |
-| `sessionStorage:opendoc_ui_session_secrets`                | Session-only AI keys/tokens when remember-secrets is off |
+| Key                                                         | Purpose                                                                                         |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `opendoc:ui:sidebar_width` / `opendoc:ui:sidebar_collapsed` | Desktop sidebar state (global — not per spec)                                                   |
+| `opendoc:ui:collapsed_tags`                                 | Collapsed tag folders in the sidebar navigation                                                 |
+| `opendoc:ui:last_parsable`                                  | Last selected spec key                                                                          |
+| `opendoc:ui:endpoint_split_width`                           | Split-view pane width                                                                           |
+| `opendoc:ui:ai_settings` / `:ai_profiles`                   | Current AI settings and global provider profiles (secrets omitted unless explicitly remembered) |
+| `opendoc:ui:ai_active_profile` / `:ai_model_catalogs`       | Selected profile and refreshed model catalogs                                                   |
+| `opendoc:spec:<key>:theme` / `:theme_mode`                  | Theme name & mode per spec                                                                      |
+| `opendoc:spec:<key>:tab_mode`                               | Last used tab mode (docs / examine / split)                                                     |
+| `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab                                               |
+| `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                                                                |
+| `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint                                                            |
+| `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                                                               |
+| `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification                                                   |
+| `opendoc_spec_cache_v2:<url>`                               | Small/legacy fallback copy of a remotely loaded spec; large copies use IndexedDB                |
+| `opendoc_local_history`                                     | Recently opened local files                                                                     |
+| `sessionStorage:opendoc_ui_session_secrets`                 | Session-only AI keys/tokens when remember-secrets is off                                        |
 
 ---
 

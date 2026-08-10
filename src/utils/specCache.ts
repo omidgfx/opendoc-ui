@@ -28,13 +28,14 @@ export interface FetchSpecResult<T = undefined> {
 
 const cacheKeyFor = (url: string) => `${PREFIX}${url}`;
 const idbKeyFor = (url: string) => `${IDB_PREFIX}${url}`;
-const isEntry = (value: any): value is CacheEntry => !!value && typeof value.raw === 'string' && Number.isFinite(value.fetchedAt);
-const readLocalEntry = (url: string): CacheEntry | null => storage.getJSON<CacheEntry | null>(cacheKeyFor(url), null, isEntry);
+const isEntry = (value: any): value is CacheEntry =>
+    !!value && typeof value.raw === 'string' && Number.isFinite(value.fetchedAt);
+const readLocalEntry = (url: string): CacheEntry | null =>
+    storage.getJSON<CacheEntry | null>(cacheKeyFor(url), null, isEntry);
 const writeLocalEntry = (url: string, entry: CacheEntry) => {
     if (new TextEncoder().encode(entry.raw).byteLength <= LOCAL_COPY_LIMIT_BYTES)
         storage.setJSON(cacheKeyFor(url), entry);
-    else
-        storage.remove(cacheKeyFor(url));
+    else storage.remove(cacheKeyFor(url));
 };
 const commitValidatedEntry = (url: string, entry: CacheEntry) => {
     writeLocalEntry(url, entry);
@@ -57,10 +58,8 @@ export const clearAllCachedSpecs = async (): Promise<void> => {
 export const getCachedSpecAge = (url: string): number | null => readLocalEntry(url)?.fetchedAt ?? null;
 
 const chooseEntry = (local: CacheEntry | null, indexed: CacheEntry | null): CacheEntry | null => {
-    if (!local)
-        return indexed;
-    if (!indexed)
-        return local;
+    if (!local) return indexed;
+    if (!indexed) return local;
     return indexed.fetchedAt >= local.fetchedAt ? indexed : local;
 };
 
@@ -86,11 +85,14 @@ const resultFromEntry = <T>(
  * cache entry. If validation or revalidation fails, a previous validated entry
  * remains available and is returned as stale.
  */
-export const fetchSpec = async <T = undefined>(url: string, opts: {
-    force?: boolean;
-    maxAgeMs?: number;
-    validate?: (raw: string) => T | Promise<T>;
-} = {}): Promise<FetchSpecResult<T>> => {
+export const fetchSpec = async <T = undefined>(
+    url: string,
+    opts: {
+        force?: boolean;
+        maxAgeMs?: number;
+        validate?: (raw: string) => T | Promise<T>;
+    } = {},
+): Promise<FetchSpecResult<T>> => {
     const maxAgeMs = opts.maxAgeMs ?? DEFAULT_SPEC_CACHE_TTL_MS;
     // Even a forced request may fall back to the previous entry. `force`
     // bypasses freshness and validators, but does not discard resilience.
@@ -109,10 +111,8 @@ export const fetchSpec = async <T = undefined>(url: string, opts: {
     }
 
     const headers: Record<string, string> = {};
-    if (!opts.force && cached?.etag)
-        headers['If-None-Match'] = cached.etag;
-    if (!opts.force && cached?.lastModified)
-        headers['If-Modified-Since'] = cached.lastModified;
+    if (!opts.force && cached?.etag) headers['If-None-Match'] = cached.etag;
+    if (!opts.force && cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
 
     try {
         const response = await fetch(url, {cache: 'no-store', headers});
@@ -127,8 +127,7 @@ export const fetchSpec = async <T = undefined>(url: string, opts: {
             commitValidatedEntry(url, entry);
             return resultFromEntry(url, entry, 'revalidated', parsed as T | undefined);
         }
-        if (!response.ok)
-            throw new Error(`Failed to fetch ${url} (${response.status})`);
+        if (!response.ok) throw new Error(`Failed to fetch ${url} (${response.status})`);
         const raw = await response.text();
         // Parse and validate before replacing the last-known-good entry.
         const parsed = opts.validate ? await opts.validate(raw) : undefined;
@@ -154,7 +153,10 @@ export const fetchSpec = async <T = undefined>(url: string, opts: {
 };
 
 /** Backward-compatible text API. New loaders should use `fetchSpec`. */
-export const fetchSpecText = async (url: string, opts: {
-    force?: boolean;
-    maxAgeMs?: number;
-} = {}): Promise<string> => (await fetchSpec(url, opts)).raw;
+export const fetchSpecText = async (
+    url: string,
+    opts: {
+        force?: boolean;
+        maxAgeMs?: number;
+    } = {},
+): Promise<string> => (await fetchSpec(url, opts)).raw;

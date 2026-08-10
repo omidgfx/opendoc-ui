@@ -1,7 +1,7 @@
 openapi: 3.1.1
 info:
   title: Public operation regression
-  version: "1.0"
+  version: '1.0'
 servers:
   - url: http://127.0.0.1:{port}
 paths:
@@ -19,7 +19,7 @@ paths:
           required: true
           schema:
             type: string
-            pattern: "^[A-Z]+$"
+            pattern: '^[A-Z]+$'
         - name: X-Region
           in: header
           schema:
@@ -31,7 +31,7 @@ paths:
             schema:
               type: object
       responses:
-        "400":
+        '400':
           description: Server validation response
           content:
             application/problem+json: {}

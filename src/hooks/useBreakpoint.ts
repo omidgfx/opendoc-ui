@@ -5,10 +5,8 @@ const MOBILE_MAX = 639;
 const TABLET_MAX = 1023;
 
 export function getBreakpoint(width: number = typeof window !== 'undefined' ? window.innerWidth : 1280): Breakpoint {
-    if (width <= MOBILE_MAX)
-        return 'mobile';
-    if (width <= TABLET_MAX)
-        return 'tablet';
+    if (width <= MOBILE_MAX) return 'mobile';
+    if (width <= TABLET_MAX) return 'tablet';
     return 'desktop';
 }
 

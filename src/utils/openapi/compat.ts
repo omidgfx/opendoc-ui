@@ -5,19 +5,15 @@ const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'
 const isPlainObject = (value: any): value is Record<string, any> => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
-const clone = <T, >(value: T): T => {
-    if (value === undefined || value === null)
-        return value;
+const clone = <T>(value: T): T => {
+    if (value === undefined || value === null) return value;
     try {
-        if (typeof structuredClone === 'function')
-            return structuredClone(value);
-    } catch {
-    }
+        if (typeof structuredClone === 'function') return structuredClone(value);
+    } catch {}
     return JSON.parse(JSON.stringify(value));
 };
 const rewriteRef = (ref: string): string => {
-    if (!ref || typeof ref !== 'string')
-        return ref;
+    if (!ref || typeof ref !== 'string') return ref;
     return ref
         .replace(/^#\/definitions\//, '#/components/schemas/')
         .replace(/^#\/parameters\//, '#/components/parameters/')
@@ -56,7 +52,8 @@ const getSwaggerServers = (doc: any) => {
     if (host) {
         const schemes = Array.isArray(doc.schemes) && doc.schemes.length > 0 ? doc.schemes : [];
         if (schemes.length === 0) {
-            const normalizedBase = basePath && basePath !== '/' ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
+            const normalizedBase =
+                basePath && basePath !== '/' ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
             return [{url: `//${host}${normalizedBase}`}];
         }
         return schemes.map((scheme: string) => ({url: buildServerUrl(scheme, host, basePath)}));
@@ -67,20 +64,35 @@ const getSwaggerServers = (doc: any) => {
     return undefined;
 };
 const swaggerSchemaFromParameter = (param: any): any => {
-    if (!param)
-        return {};
-    if (param.schema)
-        return rewriteRefsDeep(param.schema);
+    if (!param) return {};
+    if (param.schema) return rewriteRefsDeep(param.schema);
     if (param.type === 'file') {
         return {type: 'string', format: 'binary'};
     }
     const schemaKeys = [
-        'type', 'format', 'items', 'collectionFormat', 'default', 'maximum', 'exclusiveMaximum',
-        'minimum', 'exclusiveMinimum', 'maxLength', 'minLength', 'pattern', 'maxItems', 'minItems',
-        'uniqueItems', 'enum', 'multipleOf', 'allowEmptyValue', 'example', 'examples'
+        'type',
+        'format',
+        'items',
+        'collectionFormat',
+        'default',
+        'maximum',
+        'exclusiveMaximum',
+        'minimum',
+        'exclusiveMinimum',
+        'maxLength',
+        'minLength',
+        'pattern',
+        'maxItems',
+        'minItems',
+        'uniqueItems',
+        'enum',
+        'multipleOf',
+        'allowEmptyValue',
+        'example',
+        'examples',
     ];
     const schema: any = {};
-    schemaKeys.forEach((key) => {
+    schemaKeys.forEach(key => {
         if (param[key] !== undefined) {
             schema[key] = rewriteRefsDeep(param[key]);
         }
@@ -88,19 +100,20 @@ const swaggerSchemaFromParameter = (param: any): any => {
     return Object.keys(schema).length > 0 ? schema : {};
 };
 const normalizeParameter = (param: any): any => {
-    if (!param)
-        return param;
-    if (param.$ref)
-        return rewriteRefsDeep(param);
+    if (!param) return param;
+    if (param.$ref) return rewriteRefsDeep(param);
     const next = rewriteRefsDeep(param);
     if (!next.schema && next.in !== 'body' && next.in !== 'formData') {
         next.schema = swaggerSchemaFromParameter(next);
     }
     if (next.collectionFormat) {
-        const collectionStyle: Record<string, {
-            style: string;
-            explode?: boolean;
-        }> = {
+        const collectionStyle: Record<
+            string,
+            {
+                style: string;
+                explode?: boolean;
+            }
+        > = {
             csv: {style: 'form', explode: false},
             multi: {style: 'form', explode: true},
             ssv: {style: 'spaceDelimited', explode: false},
@@ -108,22 +121,18 @@ const normalizeParameter = (param: any): any => {
             tsv: {style: 'form', explode: false},
         };
         const mapped = collectionStyle[next.collectionFormat];
-        if (mapped)
-            Object.assign(next, mapped);
+        if (mapped) Object.assign(next, mapped);
     }
     return next;
 };
 const resolveSwaggerParameter = (param: any, doc: any, visited = new Set<string>()): any => {
-    if (!param?.$ref)
-        return param;
+    if (!param?.$ref) return param;
     const rewritten = rewriteRef(param.$ref);
     const name = getRefName(rewritten);
-    if (!name || visited.has(name))
-        return {$ref: rewritten};
+    if (!name || visited.has(name)) return {$ref: rewritten};
     visited.add(name);
     const resolved = doc?.parameters?.[name] || doc?.components?.parameters?.[name];
-    if (!resolved)
-        return {$ref: rewritten};
+    if (!resolved) return {$ref: rewritten};
     return resolveSwaggerParameter(resolved, doc, visited);
 };
 const convertSecurityScheme = (scheme: any): any => {
@@ -132,7 +141,7 @@ const convertSecurityScheme = (scheme: any): any => {
         return {
             ...next,
             type: 'http',
-            scheme: 'basic'
+            scheme: 'basic',
         };
     }
     if (next.type === 'oauth2' && next.flow && !next.flows) {
@@ -140,29 +149,23 @@ const convertSecurityScheme = (scheme: any): any => {
             implicit: 'implicit',
             password: 'password',
             application: 'clientCredentials',
-            accessCode: 'authorizationCode'
+            accessCode: 'authorizationCode',
         };
         const flowKey = flowNameMap[next.flow] || next.flow;
         const flow: any = {scopes: next.scopes || {}};
-        if (next.authorizationUrl)
-            flow.authorizationUrl = next.authorizationUrl;
-        if (next.tokenUrl)
-            flow.tokenUrl = next.tokenUrl;
+        if (next.authorizationUrl) flow.authorizationUrl = next.authorizationUrl;
+        if (next.tokenUrl) flow.tokenUrl = next.tokenUrl;
         return {
             ...next,
-            flows: {[flowKey]: flow}
+            flows: {[flowKey]: flow},
         };
     }
     return next;
 };
 const convertHeaders = (headers: any): any => {
-    if (!headers)
-        return undefined;
+    if (!headers) return undefined;
     const next: any = {};
-    Object.entries(headers).forEach(([name, header]: [
-        string,
-        any
-    ]) => {
+    Object.entries(headers).forEach(([name, header]: [string, any]) => {
         if (header?.$ref) {
             next[name] = rewriteRefsDeep(header);
             return;
@@ -191,12 +194,12 @@ const convertResponse = (response: any, produces: string[] = ['*/*']): any => {
     if (schema) {
         const mediaTypes = produces.length > 0 ? produces : ['*/*'];
         next.content = next.content || {};
-        mediaTypes.forEach((mediaType) => {
+        mediaTypes.forEach(mediaType => {
             const mediaExample = next.examples?.[mediaType];
             next.content[mediaType] = {
                 ...(next.content[mediaType] || {}),
                 schema: rewriteRefsDeep(schema),
-                ...(mediaExample !== undefined ? {example: mediaExample} : {})
+                ...(mediaExample !== undefined ? {example: mediaExample} : {}),
             };
         });
     }
@@ -207,14 +210,11 @@ const convertResponse = (response: any, produces: string[] = ['*/*']): any => {
 };
 const convertResponses = (responses: any, produces: string[] = ['*/*'], doc?: any): any => {
     const next: any = {};
-    Object.entries(responses || {}).forEach(([code, response]: [
-        string,
-        any
-    ]) => {
+    Object.entries(responses || {}).forEach(([code, response]: [string, any]) => {
         if (response?.$ref) {
             const rewritten = rewriteRef(response.$ref);
             const name = getRefName(rewritten);
-            const resolved = name ? (doc?.responses?.[name] || doc?.components?.responses?.[name]) : null;
+            const resolved = name ? doc?.responses?.[name] || doc?.components?.responses?.[name] : null;
             next[code] = resolved ? convertResponse(resolved, produces) : {$ref: rewritten};
         } else {
             next[code] = convertResponse(response, produces);
@@ -232,23 +232,21 @@ const inheritedMimeTypes = (operationValue: unknown, rootValue: unknown): string
 const contentTypesForBody = (operation: any, doc: any) => inheritedMimeTypes(operation?.consumes, doc?.consumes);
 const contentTypesForResponse = (operation: any, doc: any) => inheritedMimeTypes(operation?.produces, doc?.produces);
 const convertBodyParametersToRequestBody = (parameters: any[], operation: any, doc: any): any | undefined => {
-    const bodyParams = parameters.filter((p) => p && !p.$ref && p.in === 'body');
-    const formParams = parameters.filter((p) => p && !p.$ref && p.in === 'formData');
+    const bodyParams = parameters.filter(p => p && !p.$ref && p.in === 'body');
+    const formParams = parameters.filter(p => p && !p.$ref && p.in === 'formData');
     if (formParams.length > 0) {
-        const required = formParams.filter((p) => p.required).map((p) => p.name);
-        const hasFile = formParams.some((p) => p.type === 'file' || p.schema?.format === 'binary');
+        const required = formParams.filter(p => p.required).map(p => p.name);
+        const hasFile = formParams.some(p => p.type === 'file' || p.schema?.format === 'binary');
         const consumes = contentTypesForBody(operation, doc);
-        const mediaTypes = consumes.length > 0
-            ? consumes
-            : [hasFile ? 'multipart/form-data' : 'application/x-www-form-urlencoded'];
+        const mediaTypes =
+            consumes.length > 0 ? consumes : [hasFile ? 'multipart/form-data' : 'application/x-www-form-urlencoded'];
         const schema: any = {
             type: 'object',
-            properties: {}
+            properties: {},
         };
-        if (required.length > 0)
-            schema.required = required;
+        if (required.length > 0) schema.required = required;
         const encoding: Record<string, any> = {};
-        formParams.forEach((param) => {
+        formParams.forEach(param => {
             schema.properties[param.name] = swaggerSchemaFromParameter(param);
             if (param.collectionFormat) {
                 const mapped = normalizeParameter(param);
@@ -268,7 +266,7 @@ const convertBodyParametersToRequestBody = (parameters: any[], operation: any, d
         });
         return {
             required: required.length > 0,
-            content
+            content,
         };
     }
     if (bodyParams.length > 0) {
@@ -280,7 +278,7 @@ const convertBodyParametersToRequestBody = (parameters: any[], operation: any, d
         return {
             description: bodyParam.description,
             required: !!bodyParam.required,
-            content
+            content,
         };
     }
     return undefined;
@@ -300,7 +298,7 @@ const convertSwaggerOperation = (operation: any, pathItem: any, doc: any): any =
         parameters: operationParameters
             .filter((param: any) => param?.$ref || (param.in !== 'body' && param.in !== 'formData'))
             .map(normalizeParameter),
-        responses: convertResponses(op.responses, contentTypesForResponse(op, doc), doc)
+        responses: convertResponses(op.responses, contentTypesForResponse(op, doc), doc),
     };
     delete next.consumes;
     delete next.produces;
@@ -324,10 +322,7 @@ const normalizeOpenApiOperation = (operation: any, root: any): any => {
         op.responses = {default: {description: 'Default response'}};
     } else {
         const responses: any = {};
-        Object.entries(op.responses).forEach(([code, response]: [
-            string,
-            any
-        ]) => {
+        Object.entries(op.responses).forEach(([code, response]: [string, any]) => {
             responses[code] = resolveResponseObject(response, root);
         });
         op.responses = responses;
@@ -339,61 +334,61 @@ const normalizeOpenApiOperation = (operation: any, root: any): any => {
 };
 const getRefName = (ref: string) => (ref || '').split('/').pop() || '';
 const resolveResponseObject = (response: any, root: any, visited = new Set<string>()): any => {
-    if (!response?.$ref)
-        return rewriteRefsDeep(response);
+    if (!response?.$ref) return rewriteRefsDeep(response);
     const rewritten = rewriteRef(response.$ref);
     const name = getRefName(rewritten);
-    if (!name || visited.has(name))
-        return {$ref: rewritten};
+    if (!name || visited.has(name)) return {$ref: rewritten};
     visited.add(name);
     const resolved = root?.components?.responses?.[name] || root?.responses?.[name];
-    if (!resolved)
-        return {$ref: rewritten};
+    if (!resolved) return {$ref: rewritten};
     return resolveResponseObject(resolved, root, visited);
 };
 const resolveRequestBodyObject = (requestBody: any, root: any, visited = new Set<string>()): any => {
-    if (!requestBody?.$ref)
-        return rewriteRefsDeep(requestBody);
+    if (!requestBody?.$ref) return rewriteRefsDeep(requestBody);
     const rewritten = rewriteRef(requestBody.$ref);
     const name = getRefName(rewritten);
-    if (!name || visited.has(name))
-        return {$ref: rewritten};
+    if (!name || visited.has(name)) return {$ref: rewritten};
     visited.add(name);
     const resolved = root?.components?.requestBodies?.[name];
-    if (!resolved)
-        return {$ref: rewritten};
+    if (!resolved) return {$ref: rewritten};
     return resolveRequestBodyObject(resolved, root, visited);
 };
 const convertSwagger2 = (input: any): OpenApiSpec => {
     const doc = clone(input);
     const components: any = rewriteRefsDeep(doc.components || {});
     components.schemas = {
-        ...(rewriteRefsDeep(doc.definitions || {})),
-        ...(components.schemas || {})
+        ...rewriteRefsDeep(doc.definitions || {}),
+        ...(components.schemas || {}),
     };
     if (doc.parameters) {
         components.parameters = {
             ...(components.parameters || {}),
-            ...Object.fromEntries(Object.entries(doc.parameters).map(([key, value]) => [key, normalizeParameter(value)]))
+            ...Object.fromEntries(
+                Object.entries(doc.parameters).map(([key, value]) => [key, normalizeParameter(value)]),
+            ),
         };
     }
     if (doc.responses) {
         components.responses = {
             ...(components.responses || {}),
-            ...Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value, doc.produces || ['*/*'])]))
+            ...Object.fromEntries(
+                Object.entries(doc.responses).map(([key, value]) => [
+                    key,
+                    convertResponse(value, doc.produces || ['*/*']),
+                ]),
+            ),
         };
     }
     if (doc.securityDefinitions) {
         components.securitySchemes = {
             ...(components.securitySchemes || {}),
-            ...Object.fromEntries(Object.entries(doc.securityDefinitions).map(([key, value]) => [key, convertSecurityScheme(value)]))
+            ...Object.fromEntries(
+                Object.entries(doc.securityDefinitions).map(([key, value]) => [key, convertSecurityScheme(value)]),
+            ),
         };
     }
     const paths: any = {};
-    Object.entries(doc.paths || {}).forEach(([pathKey, pathItem]: [
-        string,
-        any
-    ]) => {
+    Object.entries(doc.paths || {}).forEach(([pathKey, pathItem]: [string, any]) => {
         const nextPathItem: any = {};
         if (Array.isArray(pathItem?.parameters)) {
             nextPathItem.parameters = pathItem.parameters
@@ -401,13 +396,9 @@ const convertSwagger2 = (input: any): OpenApiSpec => {
                 .filter((param: any) => param?.$ref || (param.in !== 'body' && param.in !== 'formData'))
                 .map(normalizeParameter);
         }
-        Object.entries(pathItem || {}).forEach(([method, operation]: [
-            string,
-            any
-        ]) => {
+        Object.entries(pathItem || {}).forEach(([method, operation]: [string, any]) => {
             const lowerMethod = method.toLowerCase();
-            if (!HTTP_METHODS.includes(lowerMethod))
-                return;
+            if (!HTTP_METHODS.includes(lowerMethod)) return;
             nextPathItem[lowerMethod] = convertSwaggerOperation(operation, pathItem, doc);
         });
         paths[pathKey] = nextPathItem;
@@ -419,7 +410,7 @@ const convertSwagger2 = (input: any): OpenApiSpec => {
         servers: getSwaggerServers(doc),
         paths,
         components,
-        security: rewriteRefsDeep(doc.security || [])
+        security: rewriteRefsDeep(doc.security || []),
     } as any;
 };
 const normalizeOpenApiLike = (input: any): OpenApiSpec => {
@@ -432,38 +423,40 @@ const normalizeOpenApiLike = (input: any): OpenApiSpec => {
         doc.components.schemas = rewriteRefsDeep(doc.definitions);
     }
     if (doc.securityDefinitions && !doc.components.securitySchemes) {
-        doc.components.securitySchemes = Object.fromEntries(Object.entries(doc.securityDefinitions).map(([key, value]) => [key, convertSecurityScheme(value)]));
+        doc.components.securitySchemes = Object.fromEntries(
+            Object.entries(doc.securityDefinitions).map(([key, value]) => [key, convertSecurityScheme(value)]),
+        );
     }
     if (doc.parameters && !doc.components.parameters) {
-        doc.components.parameters = Object.fromEntries(Object.entries(doc.parameters).map(([key, value]) => [key, normalizeParameter(value)]));
+        doc.components.parameters = Object.fromEntries(
+            Object.entries(doc.parameters).map(([key, value]) => [key, normalizeParameter(value)]),
+        );
     }
     if (doc.responses && !doc.components.responses) {
-        doc.components.responses = Object.fromEntries(Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value as any, ['*/*'])]));
+        doc.components.responses = Object.fromEntries(
+            Object.entries(doc.responses).map(([key, value]) => [key, convertResponse(value as any, ['*/*'])]),
+        );
     }
     if (!doc.servers) {
         doc.servers = getSwaggerServers(doc);
     }
-    Object.entries(doc.paths || {}).forEach(([pathKey, pathItem]: [
-        string,
-        any
-    ]) => {
-        if (!isPlainObject(pathItem))
-            return;
+    Object.entries(doc.paths || {}).forEach(([pathKey, pathItem]: [string, any]) => {
+        if (!isPlainObject(pathItem)) return;
         if (Array.isArray(pathItem.parameters)) {
             pathItem.parameters = pathItem.parameters.map(normalizeParameter);
         }
-        Object.entries(pathItem).forEach(([method, operation]: [
-            string,
-            any
-        ]) => {
+        Object.entries(pathItem).forEach(([method, operation]: [string, any]) => {
             const lowerMethod = method.toLowerCase();
-            if (!HTTP_METHODS.includes(lowerMethod))
-                return;
+            if (!HTTP_METHODS.includes(lowerMethod)) return;
             pathItem[lowerMethod] = normalizeOpenApiOperation(operation, doc);
         });
         if (isPlainObject(pathItem.additionalOperations)) {
-            pathItem.additionalOperations = Object.fromEntries(Object.entries(pathItem.additionalOperations)
-                .map(([method, operation]) => [method, normalizeOpenApiOperation(operation, doc)]));
+            pathItem.additionalOperations = Object.fromEntries(
+                Object.entries(pathItem.additionalOperations).map(([method, operation]) => [
+                    method,
+                    normalizeOpenApiOperation(operation, doc),
+                ]),
+            );
         }
         doc.paths[pathKey] = pathItem;
     });

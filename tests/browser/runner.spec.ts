@@ -6,35 +6,48 @@ let apiServer: Server;
 let apiOrigin = '';
 let requestCount = 0;
 
-const specText = () => JSON.stringify({
-    openapi: '3.1.1',
-    info: {title: 'Browser Runner Fixture', version: '1'},
-    servers: [{url: apiOrigin}],
-    paths: {
-        '/validate/{id}': {
-            post: {
-                summary: 'Send permissive validation request',
-                parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string', pattern: '^[0-9]+$'}}],
-                requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
-                security: [{bearerAuth: []}],
-                responses: {'400': {description: 'Invalid input', content: {'application/problem+json': {
-                    schema: {$ref: '#/components/schemas/Problem'},
-                    example: {error: 'bad input', details: {field: 'id'}},
-                }}}},
+const specText = () =>
+    JSON.stringify({
+        openapi: '3.1.1',
+        info: {title: 'Browser Runner Fixture', version: '1'},
+        servers: [{url: apiOrigin}],
+        paths: {
+            '/validate/{id}': {
+                post: {
+                    summary: 'Send permissive validation request',
+                    parameters: [
+                        {name: 'id', in: 'path', required: true, schema: {type: 'string', pattern: '^[0-9]+$'}},
+                    ],
+                    requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
+                    security: [{bearerAuth: []}],
+                    responses: {
+                        '400': {
+                            description: 'Invalid input',
+                            content: {
+                                'application/problem+json': {
+                                    schema: {$ref: '#/components/schemas/Problem'},
+                                    example: {error: 'bad input', details: {field: 'id'}},
+                                },
+                            },
+                        },
+                    },
+                },
             },
         },
-    },
-    components: {
-        securitySchemes: {bearerAuth: {type: 'http', scheme: 'bearer'}},
-        schemas: {
-            Problem: {
-                type: 'object',
-                properties: {error: {type: 'string'}, details: {type: 'object', properties: {field: {type: 'string'}}}},
+        components: {
+            securitySchemes: {bearerAuth: {type: 'http', scheme: 'bearer'}},
+            schemas: {
+                Problem: {
+                    type: 'object',
+                    properties: {
+                        error: {type: 'string'},
+                        details: {type: 'object', properties: {field: {type: 'string'}}},
+                    },
+                },
+                Tiny: {type: 'object', properties: {id: {type: 'integer'}}},
             },
-            Tiny: {type: 'object', properties: {id: {type: 'integer'}}},
         },
-    },
-});
+    });
 
 test.beforeAll(async () => {
     apiServer = createServer((request, response) => {
@@ -59,22 +72,28 @@ test.beforeAll(async () => {
         apiServer.listen(0, '127.0.0.1', resolve);
     });
     const address = apiServer.address();
-    if (!address || typeof address === 'string')
-        throw new Error('Fixture API did not bind a TCP port.');
+    if (!address || typeof address === 'string') throw new Error('Fixture API did not bind a TCP port.');
     apiOrigin = `http://127.0.0.1:${address.port}`;
 });
 
 test.afterAll(async () => {
-    await new Promise<void>((resolve, reject) => apiServer.close(error => error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => apiServer.close(error => (error ? reject(error) : resolve())));
 });
 
 async function loadSpecification(page: Page) {
     await page.goto('/');
-    await page.getByRole('button', {name: /open specification/i}).first().click();
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
     const chooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', {name: /open specification file/i}).click();
     const chooser = await chooserPromise;
-    await chooser.setFiles({name: 'browser-fixture.json', mimeType: 'application/json', buffer: Buffer.from(specText())});
+    await chooser.setFiles({
+        name: 'browser-fixture.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(specText()),
+    });
     await expect(page.getByText('Browser Runner Fixture', {exact: true}).first()).toBeVisible();
 }
 
@@ -112,7 +131,10 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
     await expect(page.getByRole('option')).toHaveCount(10);
 
     // Individual deletion is immediate.
-    await page.getByRole('button', {name: /Delete .* from history/i}).first().click();
+    await page
+        .getByRole('button', {name: /Delete .* from history/i})
+        .first()
+        .click();
     await expect(page.getByRole('option')).toHaveCount(9);
     await page.keyboard.press('Escape');
 
@@ -149,7 +171,10 @@ test('turns protected indicators green when the effective auth requirement is co
     await page.getByLabel('Access token').fill('browser-test-token');
     await page.getByRole('button', {name: 'Apply'}).click();
     await expect(page.getByRole('dialog')).toBeHidden();
-    await page.locator('.app-topbar').getByRole('button', {name: /BEARERAUTH/i}).click();
+    await page
+        .locator('.app-topbar')
+        .getByRole('button', {name: /BEARERAUTH/i})
+        .click();
     await expect(page.getByLabel('Access token')).toHaveValue('browser-test-token');
     await page.getByRole('button', {name: 'Cancel'}).click();
     await expect(page.getByText('Authorized', {exact: true})).toBeVisible();
@@ -176,7 +201,12 @@ test('traps modal focus and restores it when closed', async ({page}) => {
     await page.waitForTimeout(750);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.keyboard.press('Shift+Tab');
-    expect(await dialog.evaluate((element, active) => element.contains(active as Node), await page.evaluateHandle(() => document.activeElement))).toBe(true);
+    expect(
+        await dialog.evaluate(
+            (element, active) => element.contains(active as Node),
+            await page.evaluateHandle(() => document.activeElement),
+        ),
+    ).toBe(true);
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
@@ -184,18 +214,27 @@ test('traps modal focus and restores it when closed', async ({page}) => {
 
 test('loads user-selected local multi-file references', async ({page}) => {
     await page.goto('/');
-    await page.getByRole('button', {name: /open specification/i}).first().click();
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
     const chooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', {name: /open specification file/i}).click();
     const chooser = await chooserPromise;
     await chooser.setFiles([
         {
-            name: 'root.yaml', mimeType: 'application/yaml',
-            buffer: Buffer.from('openapi: 3.1.1\ninfo: {title: Browser Multi File, version: "1"}\npaths:\n  /resolved:\n    $ref: folder/paths.yaml#/ResolvedPath\n'),
+            name: 'root.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(
+                'openapi: 3.1.1\ninfo: {title: Browser Multi File, version: "1"}\npaths:\n  /resolved:\n    $ref: folder/paths.yaml#/ResolvedPath\n',
+            ),
         },
         {
-            name: 'paths.yaml', mimeType: 'application/yaml',
-            buffer: Buffer.from('ResolvedPath:\n  get:\n    summary: Resolved from sibling file\n    responses:\n      "200": {description: ok}\n'),
+            name: 'paths.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(
+                'ResolvedPath:\n  get:\n    summary: Resolved from sibling file\n    responses:\n      "200": {description: ok}\n',
+            ),
         },
     ]);
     await expect(page.getByText('Browser Multi File', {exact: true}).first()).toBeVisible();
@@ -204,13 +243,19 @@ test('loads user-selected local multi-file references', async ({page}) => {
 
 test('accepts and documents a pathless OAS 3.1 webhook document', async ({page}) => {
     await page.goto('/');
-    await page.getByRole('button', {name: /open specification/i}).first().click();
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
     const chooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', {name: /open specification file/i}).click();
     const chooser = await chooserPromise;
     await chooser.setFiles({
-        name: 'webhook.yaml', mimeType: 'application/yaml',
-        buffer: Buffer.from('openapi: 3.1.1\ninfo: {title: Webhook Only, version: "1"}\nwebhooks:\n  paymentReceived:\n    post:\n      summary: Receive payment event\n      responses:\n        "200": {description: ok}\n'),
+        name: 'webhook.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(
+            'openapi: 3.1.1\ninfo: {title: Webhook Only, version: "1"}\nwebhooks:\n  paymentReceived:\n    post:\n      summary: Receive payment event\n      responses:\n        "200": {description: ok}\n',
+        ),
     });
     await expect(page.getByText('Webhook Only', {exact: true}).first()).toBeVisible();
     await page.getByRole('button', {name: /Overview & Statistics/i}).click();
@@ -231,7 +276,9 @@ test('supports keyboard resizers and has no serious accessibility violations in 
     expect(after).toBeGreaterThan(before);
 
     const results = await new AxeBuilder({page}).disableRules(['color-contrast']).analyze();
-    const serious = results.violations.filter(violation => violation.impact === 'serious' || violation.impact === 'critical');
+    const serious = results.violations.filter(
+        violation => violation.impact === 'serious' || violation.impact === 'critical',
+    );
     const summary = serious.flatMap(item => item.nodes.map(node => `${item.id}: ${node.html}`)).join('\n');
     expect(serious, summary).toEqual([]);
 });

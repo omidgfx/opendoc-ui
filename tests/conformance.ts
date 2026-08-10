@@ -10,8 +10,10 @@ import {startRequestRecorder} from './support/requestRecorder';
 
 const recorder = await startRequestRecorder();
 try {
-    const source = readFileSync(resolve('tests/fixtures/security-operation-public.yaml'), 'utf8')
-        .replace('http://127.0.0.1:{port}', recorder.origin);
+    const source = readFileSync(resolve('tests/fixtures/security-operation-public.yaml'), 'utf8').replace(
+        'http://127.0.0.1:{port}',
+        recorder.origin,
+    );
     const spec: any = normalizeOpenApiSpec(yaml.load(source));
     const operation = spec.paths['/users/{id}'].post;
     const auth: any = {
@@ -21,10 +23,15 @@ try {
         schemeValues: {auth: {schemeId: 'auth', type: 'bearer', value: 'must-not-leak'}},
     };
     const missingPath = await executeRunnerRequest({
-        spec, path: '/users/{id}', method: 'post', operation,
-        selectedServer: recorder.origin, activeAuth: auth,
+        spec,
+        path: '/users/{id}',
+        method: 'post',
+        operation,
+        selectedServer: recorder.origin,
+        activeAuth: auth,
         parameterValues: {[parameterStateKey('query', 'code')]: 'wrong-pattern'},
-        body: '{deliberately invalid json', bodyType: 'application/json',
+        body: '{deliberately invalid json',
+        bodyType: 'application/json',
     });
     assert.equal(missingPath.status, 0);
     assert.equal(missingPath.errorKind, 'validation');
@@ -67,7 +74,10 @@ try {
             required: true,
             content: {
                 'multipart/form-data': {
-                    schema: {type: 'object', properties: {metadata: {type: 'object'}, file: {type: 'string', format: 'binary'}}},
+                    schema: {
+                        type: 'object',
+                        properties: {metadata: {type: 'object'}, file: {type: 'string', format: 'binary'}},
+                    },
                     encoding: {metadata: {contentType: 'application/json'}},
                 },
             },
@@ -75,13 +85,18 @@ try {
         responses: {'400': {description: 'bad', content: {'application/problem+json': {}}}},
     };
     const multipartSpec: any = {
-        openapi: '3.1.1', info: {title: 'Multipart', version: '1'},
-        servers: [{url: recorder.origin}], paths: {'/upload': {post: multipartOperation}},
+        openapi: '3.1.1',
+        info: {title: 'Multipart', version: '1'},
+        servers: [{url: recorder.origin}],
+        paths: {'/upload': {post: multipartOperation}},
     };
     const multipartResult = await executeRunnerRequest({
         spec: multipartSpec,
-        path: '/upload', method: 'post', operation: multipartOperation,
-        selectedServer: recorder.origin, activeAuth: createEmptyAuth(),
+        path: '/upload',
+        method: 'post',
+        operation: multipartOperation,
+        selectedServer: recorder.origin,
+        activeAuth: createEmptyAuth(),
         body: JSON.stringify({metadata: {kind: 'fixture'}}),
         bodyType: 'multipart/form-data',
         selectedFiles: {file: new Blob(['file bytes'], {type: 'text/plain'})},

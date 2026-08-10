@@ -35,11 +35,10 @@ export const startRequestRecorder = async (): Promise<RequestRecorder> => {
         server.listen(0, '127.0.0.1', () => resolve());
     });
     const address = server.address();
-    if (!address || typeof address === 'string')
-        throw new Error('Recorder did not receive a TCP port.');
+    if (!address || typeof address === 'string') throw new Error('Recorder did not receive a TCP port.');
     return {
         origin: `http://127.0.0.1:${address.port}`,
         requests,
-        close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())),
+        close: () => new Promise<void>((resolve, reject) => server.close(error => (error ? reject(error) : resolve()))),
     };
 };

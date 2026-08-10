@@ -11,9 +11,10 @@ interface MarkdownProps {
 }
 
 function addDirAttributesToDoc(doc: Document): void {
-    const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+    const rtlRegex =
+        /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
     const allElements = doc.querySelectorAll('*');
-    allElements.forEach((el) => {
+    allElements.forEach(el => {
         const text = el.textContent || '';
         const wordLimit = el.tagName.toLowerCase() === 'ul' ? 20 : 10;
         const words = text.trim().split(/\s+/).slice(0, wordLimit);
@@ -42,10 +43,7 @@ export default function Markdown({text, className = ''}: MarkdownProps) {
         }
         try {
             const renderer = new marked.Renderer();
-            renderer.code = function ({text: codeVal, lang}: {
-                text: string;
-                lang?: string;
-            }) {
+            renderer.code = function ({text: codeVal, lang}: {text: string; lang?: string}) {
                 const highlighted = highlightCodeString(codeVal, lang || 'text');
                 return `
  <div class="relative my-4 rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden font-mono text-xs">
@@ -69,7 +67,6 @@ export default function Markdown({text, className = ''}: MarkdownProps) {
             setHtml(text || '');
         }
     }, [text, linkIndex, parsableKey]);
-    if (!text)
-        return null;
-    return (<div className={`markdown-body ${className}`} dangerouslySetInnerHTML={{__html: html}}/>);
+    if (!text) return null;
+    return <div className={`markdown-body ${className}`} dangerouslySetInnerHTML={{__html: html}} />;
 }

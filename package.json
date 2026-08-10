@@ -1,7 +1,7 @@
 {
   "name": "opendoc-ui",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "ai-gateway": "tsx server/ai-gateway.ts",
     "clean": "node scripts/clean.mjs",
-    "lint": "tsc --noEmit && node scripts/verify-ui-contracts.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "prettier --check . && tsc --noEmit && node scripts/verify-ui-contracts.mjs",
     "test": "tsx tests/run.ts && tsx tests/serialization-matrix.ts && tsx tests/swagger2-matrix.ts && tsx tests/async.ts && tsx tests/conformance.ts",
     "test:browser": "playwright test",
     "test:all": "npm run lint && npm test && npm run test:browser && npm run build"
@@ -45,6 +47,7 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "prettier": "^3.9.6",
     "sass": "^1.101.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",

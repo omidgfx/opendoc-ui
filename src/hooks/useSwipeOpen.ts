@@ -7,28 +7,23 @@ export function useSwipeEdgeOpen(enabled: boolean, onOpen: () => void, edgeThres
         startedAtEdge: boolean;
     } | null>(null);
     useEffect(() => {
-        if (!enabled)
-            return;
+        if (!enabled) return;
         const onTouchStart = (e: TouchEvent) => {
             const t = e.touches[0];
-            if (!t)
-                return;
+            if (!t) return;
             startRef.current = {
                 x: t.clientX,
                 y: t.clientY,
                 startedAtEdge: t.clientX <= edgeThreshold,
             };
         };
-        const onTouchMove = () => {
-        };
+        const onTouchMove = () => {};
         const onTouchEnd = (e: TouchEvent) => {
             const s = startRef.current;
             startRef.current = null;
-            if (!s?.startedAtEdge)
-                return;
+            if (!s?.startedAtEdge) return;
             const t = e.changedTouches[0];
-            if (!t)
-                return;
+            if (!t) return;
             const dx = t.clientX - s.x;
             const dy = Math.abs(t.clientY - s.y);
             if (dx >= minDistance && dy < dx * 0.9) {

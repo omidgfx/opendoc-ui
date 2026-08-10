@@ -4,7 +4,8 @@ import {OPENDOC_UI_BRIDGE_INSTRUCTIONS} from './aiBridge';
 import {renderAISkillPackContent} from './aiSkills';
 import {getDocumentOperations} from './openapi/operations';
 
-const SECRET_KEY = /(api[-_ ]?key|access[-_ ]?key|secret|token|password|passwd|credential|authorization|cookie|private[-_ ]?key|client[-_ ]?secret)/i;
+const SECRET_KEY =
+    /(api[-_ ]?key|access[-_ ]?key|secret|token|password|passwd|credential|authorization|cookie|private[-_ ]?key|client[-_ ]?secret)/i;
 const SECRET_VALUE = /^(bearer\s+)?[A-Za-z0-9_\-./+=]{20,}$/i;
 const MAX_INCLUDED_ENDPOINTS = 24;
 const MAX_INCLUDED_SCHEMAS = 40;
@@ -17,8 +18,7 @@ const redactUrl = (value: string): string => {
             url.password = '[REDACTED]';
         }
         [...url.searchParams.keys()].forEach(key => {
-            if (SECRET_KEY.test(key))
-                url.searchParams.set(key, '[REDACTED]');
+            if (SECRET_KEY.test(key)) url.searchParams.set(key, '[REDACTED]');
         });
         return url.toString();
     } catch {
@@ -26,22 +26,16 @@ const redactUrl = (value: string): string => {
     }
 };
 export const redactValue = (value: any, key = '', seen = new WeakSet<object>()): any => {
-    if (SECRET_KEY.test(key))
-        return '[REDACTED]';
+    if (SECRET_KEY.test(key)) return '[REDACTED]';
     if (typeof value === 'string') {
-        if (/^https?:\/\//i.test(value))
-            return redactUrl(value);
-        if (SECRET_VALUE.test(value) && key)
-            return '[REDACTED]';
+        if (/^https?:\/\//i.test(value)) return redactUrl(value);
+        if (SECRET_VALUE.test(value) && key) return '[REDACTED]';
         return value;
     }
-    if (!value || typeof value !== 'object')
-        return value;
-    if (seen.has(value))
-        return '[Circular]';
+    if (!value || typeof value !== 'object') return value;
+    if (seen.has(value)) return '[Circular]';
     seen.add(value);
-    if (Array.isArray(value))
-        return value.map(item => redactValue(item, key, seen));
+    if (Array.isArray(value)) return value.map(item => redactValue(item, key, seen));
     const result: Record<string, any> = {};
     Object.entries(value).forEach(([childKey, childValue]) => {
         result[childKey] = redactValue(childValue, childKey, seen);
@@ -53,20 +47,15 @@ const safeText = (value: any, max = 4000): string => {
     return text.length > max ? `${text.slice(0, max)}… [truncated]` : text;
 };
 const schemaRefs = (value: any, result = new Set<string>(), seen = new WeakSet<object>()): Set<string> => {
-    if (!value || typeof value !== 'object')
-        return result;
-    if (seen.has(value))
-        return result;
+    if (!value || typeof value !== 'object') return result;
+    if (seen.has(value)) return result;
     seen.add(value);
     if (typeof value.$ref === 'string') {
         const match = value.$ref.match(/^#\/components\/schemas\/([^/]+)$/);
-        if (match)
-            result.add(decodeURIComponent(match[1]).replace(/~1/g, '/').replace(/~0/g, '~'));
+        if (match) result.add(decodeURIComponent(match[1]).replace(/~1/g, '/').replace(/~0/g, '~'));
     }
-    if (Array.isArray(value))
-        value.forEach(item => schemaRefs(item, result, seen));
-    else
-        Object.values(value).forEach(child => schemaRefs(child, result, seen));
+    if (Array.isArray(value)) value.forEach(item => schemaRefs(item, result, seen));
+    else Object.values(value).forEach(child => schemaRefs(child, result, seen));
     return result;
 };
 const endpointKey = (method: string, path: string) => `path:${method.toUpperCase()}:${path}`;
@@ -81,68 +70,92 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
     }> = [];
     const tags = new Set<string>();
     getDocumentOperations(input.spec).forEach(({path, method, operation}) => {
-        const tagList = Array.isArray(operation.tags) && operation.tags.length ? operation.tags.map(String) : ['General'];
+        const tagList =
+            Array.isArray(operation.tags) && operation.tags.length ? operation.tags.map(String) : ['General'];
         tagList.forEach(tag => tags.add(tag));
         const source: AISourceRef = {
-            id: endpointKey(method, path), kind: 'endpoint',
+            id: endpointKey(method, path),
+            kind: 'endpoint',
             label: `${method.toUpperCase()} ${path}${operation.summary ? ` — ${safeText(operation.summary, 180)}` : ''}`,
-            path, method: method.toUpperCase(),
+            path,
+            method: method.toUpperCase(),
             href: `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(operation, path, method))}`,
         };
         sources.push(source);
         endpoints.push({path, method: method.toLowerCase(), operation, source, tags: tagList});
     });
-    Array.from(tags).sort().forEach(tag => sources.push({id: `tag:${tag}`, kind: 'tag', label: `Tag: ${tag}`}));
-    Object.keys(input.spec?.components?.schemas || {}).sort().forEach(schemaName => sources.push({
-        id: `schema:${schemaName}`,
-        kind: 'schema',
-        label: `Schema: ${schemaName}`,
-        schemaName,
-        href: `#/parsable/${encodeURIComponent(input.specKey)}/schema-explorer?schemas=${encodeURIComponent(schemaName)}`
-    }));
-    Object.keys(input.spec?.components?.securitySchemes || {}).sort().forEach(name => sources.push({
-        id: `security:${name}`,
-        kind: 'security',
-        label: `Security scheme: ${name}`
-    }));
-    (input.spec?.servers || []).forEach((server: any, index: number) => sources.push({
-        id: `server:${index}`,
-        kind: 'server',
-        label: `Server: ${server?.description || server?.url || index}`
-    }));
+    Array.from(tags)
+        .sort()
+        .forEach(tag => sources.push({id: `tag:${tag}`, kind: 'tag', label: `Tag: ${tag}`}));
+    Object.keys(input.spec?.components?.schemas || {})
+        .sort()
+        .forEach(schemaName =>
+            sources.push({
+                id: `schema:${schemaName}`,
+                kind: 'schema',
+                label: `Schema: ${schemaName}`,
+                schemaName,
+                href: `#/parsable/${encodeURIComponent(input.specKey)}/schema-explorer?schemas=${encodeURIComponent(schemaName)}`,
+            }),
+        );
+    Object.keys(input.spec?.components?.securitySchemes || {})
+        .sort()
+        .forEach(name =>
+            sources.push({
+                id: `security:${name}`,
+                kind: 'security',
+                label: `Security scheme: ${name}`,
+            }),
+        );
+    (input.spec?.servers || []).forEach((server: any, index: number) =>
+        sources.push({
+            id: `server:${index}`,
+            kind: 'server',
+            label: `Server: ${server?.description || server?.url || index}`,
+        }),
+    );
     sources.unshift({
         id: 'spec:info',
         kind: 'spec',
-        label: `Specification: ${input.spec?.info?.title || input.specKey}`
+        label: `Specification: ${input.spec?.info?.title || input.specKey}`,
     });
-    const selectedSet = new Set((input.selectedEndpoints || []).map(endpoint => endpointKey(endpoint.method, endpoint.path)));
+    const selectedSet = new Set(
+        (input.selectedEndpoints || []).map(endpoint => endpointKey(endpoint.method, endpoint.path)),
+    );
     const terms = (input.searchQuery || '').toLowerCase().split(/\s+/).filter(Boolean);
-    const ranked = endpoints.map(endpoint => {
-        const haystack = `${endpoint.path} ${endpoint.method} ${endpoint.operation.summary || ''} ${endpoint.operation.description || ''} ${endpoint.tags.join(' ')}`.toLowerCase();
-        const selected = selectedSet.has(endpoint.source.id);
-        const matched = terms.length > 0 && terms.every(term => haystack.includes(term));
-        return {endpoint, score: selected ? 100 : matched ? 50 : terms.length === 0 ? 1 : 0};
-    }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.endpoint.path.localeCompare(b.endpoint.path));
+    const ranked = endpoints
+        .map(endpoint => {
+            const haystack =
+                `${endpoint.path} ${endpoint.method} ${endpoint.operation.summary || ''} ${endpoint.operation.description || ''} ${endpoint.tags.join(' ')}`.toLowerCase();
+            const selected = selectedSet.has(endpoint.source.id);
+            const matched = terms.length > 0 && terms.every(term => haystack.includes(term));
+            return {endpoint, score: selected ? 100 : matched ? 50 : terms.length === 0 ? 1 : 0};
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score || a.endpoint.path.localeCompare(b.endpoint.path));
     const included = ranked.slice(0, MAX_INCLUDED_ENDPOINTS).map(item => item.endpoint);
-    if (included.length === 0)
-        included.push(...endpoints.slice(0, MAX_INCLUDED_ENDPOINTS));
+    if (included.length === 0) included.push(...endpoints.slice(0, MAX_INCLUDED_ENDPOINTS));
     const includedSchemaNames = new Set<string>();
     included.forEach(endpoint => schemaRefs(endpoint.operation).forEach(name => includedSchemaNames.add(name)));
     const schemas = input.spec?.components?.schemas || {};
-    const schemaDocuments = Array.from(includedSchemaNames).slice(0, MAX_INCLUDED_SCHEMAS).map(name => ({
-        name,
-        value: redactValue(schemas[name])
-    }));
+    const schemaDocuments = Array.from(includedSchemaNames)
+        .slice(0, MAX_INCLUDED_SCHEMAS)
+        .map(name => ({
+            name,
+            value: redactValue(schemas[name]),
+        }));
     const safeAuth = input.includeAuthValues
         ? {
-            warning: 'The user explicitly enabled authentication values for this conversation.',
-            values: input.auth || {}
-        }
+              warning: 'The user explicitly enabled authentication values for this conversation.',
+              values: input.auth || {},
+          }
         : {
-            activeScheme: input.activeAuthScheme || 'none',
-            credentialsPresent: Boolean(input.auth && Object.values(input.auth).some(value => typeof value === 'string' && value.length > 0)),
-            note: 'Authentication values are withheld from the assistant.'
-        };
+              activeScheme: input.activeAuthScheme || 'none',
+              credentialsPresent: Boolean(
+                  input.auth && Object.values(input.auth).some(value => typeof value === 'string' && value.length > 0),
+              ),
+              note: 'Authentication values are withheld from the assistant.',
+          };
     const selectedDocuments = included.map(endpoint => ({
         sourceId: endpoint.source.id,
         method: endpoint.method.toUpperCase(),
@@ -154,7 +167,7 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
         method: endpoint.method.toUpperCase(),
         path: endpoint.path,
         summary: safeText(endpoint.operation.summary, 180),
-        tags: endpoint.tags
+        tags: endpoint.tags,
     }));
     const contextPayload = {
         specificationKey: input.specKey,
@@ -163,7 +176,7 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
             selectedServer: input.selectedServer || null,
             activeTab: input.activeTab || null,
             searchQuery: input.searchQuery || '',
-            auth: safeAuth
+            auth: safeAuth,
         },
         sourceCatalog: sources.slice(0, 2500),
         retrieval: {
@@ -176,7 +189,7 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
                 servers: input.spec?.servers,
                 security: input.spec?.security,
                 securitySchemes: input.spec?.components?.securitySchemes,
-                tags: Array.from(tags).sort()
+                tags: Array.from(tags).sort(),
             }),
         },
     };
@@ -188,7 +201,10 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
 export const buildAISystemPrompt = (settings: AISettings, context: AIContextResult): string => {
     const skills = settings.skillPacks.length > 0 ? settings.skillPacks.join(', ') : 'openapi';
     const skillContent = renderAISkillPackContent(settings.skillPacks);
-    const sourceCatalog = context.sources.slice(0, 2500).map(source => `${source.id} — ${source.label}${source.href ? ` — link: ${source.href}` : ''}`).join('\n');
+    const sourceCatalog = context.sources
+        .slice(0, 2500)
+        .map(source => `${source.id} — ${source.label}${source.href ? ` — link: ${source.href}` : ''}`)
+        .join('\n');
     return `You are OpenDoc UI, an expert assistant embedded in an API documentation application.
 Your expertise includes OpenAPI and Swagger, REST and HTTP semantics, authentication, schemas, error handling, API testing, SDK generation, and practical API design.
 Enabled skill packs: ${skills}.
@@ -219,18 +235,19 @@ const citationHasLocalSupport = (text: string, start: number, end: number, sourc
     const paragraphStart = Math.max(text.lastIndexOf('\n', start - 1), text.lastIndexOf('\n\n', start - 1)) + 1;
     const paragraphEndCandidate = text.indexOf('\n', end);
     const paragraphEnd = paragraphEndCandidate < 0 ? text.length : paragraphEndCandidate;
-    const nearby = text.slice(paragraphStart, paragraphEnd).replace(/\[source:[^\]]+\]/gi, '').toLowerCase();
+    const nearby = text
+        .slice(paragraphStart, paragraphEnd)
+        .replace(/\[source:[^\]]+\]/gi, '')
+        .toLowerCase();
     if (source.kind === 'endpoint') {
         const route = source.path?.toLowerCase() || '';
         const method = source.method?.toLowerCase() || '';
         return Boolean(route && nearby.includes(route) && (!method || nearby.includes(method)));
     }
-    if (source.kind === 'schema' && source.schemaName)
-        return nearby.includes(source.schemaName.toLowerCase());
+    if (source.kind === 'schema' && source.schemaName) return nearby.includes(source.schemaName.toLowerCase());
     if (source.kind === 'security')
         return nearby.includes(source.label.replace(/^security scheme:\s*/i, '').toLowerCase());
-    if (source.kind === 'tag')
-        return nearby.includes(source.label.replace(/^tag:\s*/i, '').toLowerCase());
+    if (source.kind === 'tag') return nearby.includes(source.label.replace(/^tag:\s*/i, '').toLowerCase());
     return true;
 };
 export const citationsFromText = (text: string, sources: AISourceRef[]): AISourceRef[] => {
@@ -240,9 +257,17 @@ export const citationsFromText = (text: string, sources: AISourceRef[]): AISourc
     let match: RegExpExecArray | null;
     while ((match = regex.exec(text))) {
         const source = byId.get(match[1].trim());
-        if (source && citationHasLocalSupport(text, match.index, regex.lastIndex, source) && !result.some(existing => existing.id === source.id))
+        if (
+            source &&
+            citationHasLocalSupport(text, match.index, regex.lastIndex, source) &&
+            !result.some(existing => existing.id === source.id)
+        )
             result.push(source);
     }
     return result;
 };
-export const stripCitationTokens = (text: string): string => text.replace(/\[source:[^\]]+\]/g, '').replace(/[ \t]{2,}/g, ' ').trim();
+export const stripCitationTokens = (text: string): string =>
+    text
+        .replace(/\[source:[^\]]+\]/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();

@@ -31,15 +31,18 @@ interface AISettingsModalProps {
     onClose: () => void;
 }
 
-type ConfirmAction = {
-    kind: 'save';
-    profileId: string;
-} | {
-    kind: 'delete';
-    profileId: string;
-} | {
-    kind: 'all';
-};
+type ConfirmAction =
+    | {
+          kind: 'save';
+          profileId: string;
+      }
+    | {
+          kind: 'delete';
+          profileId: string;
+      }
+    | {
+          kind: 'all';
+      };
 const SKILL_OPTIONS: Array<{
     id: AISkillPack;
     label: string;
@@ -49,20 +52,21 @@ const SKILL_OPTIONS: Array<{
     {
         id: 'rest-debugging',
         label: 'REST debugging',
-        description: 'HTTP status codes, headers, caching, retries, and CORS.'
+        description: 'HTTP status codes, headers, caching, retries, and CORS.',
     },
     {id: 'security', label: 'Security and auth', description: 'OAuth, API keys, cookies, scopes, and least privilege.'},
     {
         id: 'sdk-generation',
         label: 'SDK generation',
-        description: 'Practical curl, Fetch, Axios, and client-model examples.'
+        description: 'Practical curl, Fetch, Axios, and client-model examples.',
     },
     {id: 'api-testing', label: 'API testing', description: 'Test cases, payloads, edge cases, and runner preparation.'},
 ];
 const profileName = (index: number) => `Assistant profile ${index}`;
-const cachedModelsForSettings = (settings: AISettings): AIModelOption[] => settings.transport === 'gateway'
-    ? readAIGatewayModelCatalog(settings.gatewayUrl, settings.provider)
-    : (readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models);
+const cachedModelsForSettings = (settings: AISettings): AIModelOption[] =>
+    settings.transport === 'gateway'
+        ? readAIGatewayModelCatalog(settings.gatewayUrl, settings.provider)
+        : readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models;
 export default function AISettingsModal({isOpen, settings, onSave, onClose}: AISettingsModalProps) {
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     const [profiles, setProfiles] = useState<AIProfile[]>([]);
@@ -96,22 +100,22 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const filteredModels = useMemo(() => {
         const query = modelSearch.trim().toLowerCase();
         return availableModels.filter(model => {
-            const tierMatches = modelTierFilter === 'all' || (modelTierFilter === 'free' ? model.tier === 'free' : model.tier !== 'free');
+            const tierMatches =
+                modelTierFilter === 'all' ||
+                (modelTierFilter === 'free' ? model.tier === 'free' : model.tier !== 'free');
             const textMatches = !query || `${model.label} ${model.id} ${model.tier}`.toLowerCase().includes(query);
             return tierMatches && textMatches;
         });
     }, [availableModels, modelSearch, modelTierFilter]);
     useEffect(() => {
-        if (!isOpen)
-            return;
+        if (!isOpen) return;
         const loadedProfiles = readAIProfiles();
         const savedActiveId = readActiveAIProfileId();
         const selected = loadedProfiles.find(profile => profile.id === savedActiveId) || loadedProfiles[0] || null;
         setProfiles(loadedProfiles);
         setActiveProfileId(selected?.id || '');
         setDraft(selected?.settings || settings);
-        if (selected)
-            onSave(selected.settings);
+        if (selected) onSave(selected.settings);
         setAvailableModels(cachedModelsForSettings(selected?.settings || settings));
         setGatewayPolicy(null);
         setModelError('');
@@ -122,12 +126,10 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setModelTierFilter('all');
     }, [isOpen]);
     useEffect(() => {
-        if (!profileMenuOpen)
-            return;
+        if (!profileMenuOpen) return;
         const closeOutside = (event: MouseEvent) => {
             const target = event.target as Node;
-            if (profileMenuRef.current?.contains(target) || profileButtonRef.current?.contains(target))
-                return;
+            if (profileMenuRef.current?.contains(target) || profileButtonRef.current?.contains(target)) return;
             setProfileMenuOpen(false);
         };
         const onKeyDown = (event: KeyboardEvent) => {
@@ -165,17 +167,17 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             setAvailableModels(models);
             setGatewayPolicy(gateway || null);
             const catalogProvider = gateway?.provider || draft.provider;
-            if (draft.transport === 'gateway')
-                writeAIGatewayModelCatalog(draft.gatewayUrl, catalogProvider, models);
-            else
-                writeAIModelCatalog(catalogProvider, models);
+            if (draft.transport === 'gateway') writeAIGatewayModelCatalog(draft.gatewayUrl, catalogProvider, models);
+            else writeAIModelCatalog(catalogProvider, models);
             setDraft(current => {
                 const provider = gateway?.provider || current.provider;
                 const model = gateway
-                    ? (gateway.clientModelSelection && models.some(item => item.id === current.model)
+                    ? gateway.clientModelSelection && models.some(item => item.id === current.model)
                         ? current.model
-                        : gateway.model || models[0].id)
-                    : (current.model.trim() ? current.model : models[0].id);
+                        : gateway.model || models[0].id
+                    : current.model.trim()
+                      ? current.model
+                      : models[0].id;
                 return {...current, provider, model};
             });
         } catch (error) {
@@ -200,8 +202,7 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     };
     const createProfile = () => {
         const name = newProfileName.trim();
-        if (!name)
-            return;
+        if (!name) return;
         if (profileNameTargetId) {
             commitRename(profileNameTargetId, name);
             newProfileTransition.requestClose();
@@ -235,23 +236,25 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     };
     const commitRename = (profileId: string, value: string) => {
         const name = value.trim() || profileName(profiles.length);
-        const next = profiles.map(profile => profile.id === profileId ? {
-            ...profile,
-            name,
-            updatedAt: Date.now()
-        } : profile);
+        const next = profiles.map(profile =>
+            profile.id === profileId
+                ? {
+                      ...profile,
+                      name,
+                      updatedAt: Date.now(),
+                  }
+                : profile,
+        );
         writeAIProfiles(next);
         setProfiles(next);
         setProfileMenuOpen(false);
     };
     const requestSave = () => {
-        if (!activeProfile)
-            return;
+        if (!activeProfile) return;
         setConfirmAction({kind: 'save', profileId: activeProfile.id});
     };
     const confirmChanges = () => {
-        if (!confirmAction)
-            return;
+        if (!confirmAction) return;
         if (confirmAction.kind === 'all') {
             writeAIProfiles([]);
             writeActiveAIProfileId('');
@@ -264,9 +267,9 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             return;
         }
         if (confirmAction.kind === 'save') {
-            const next = profiles.map(profile => profile.id === confirmAction.profileId
-                ? {...profile, settings: draft, updatedAt: Date.now()}
-                : profile);
+            const next = profiles.map(profile =>
+                profile.id === confirmAction.profileId ? {...profile, settings: draft, updatedAt: Date.now()} : profile,
+            );
             writeAIProfiles(next);
             writeActiveAIProfileId(confirmAction.profileId);
             setProfiles(next);
@@ -295,282 +298,532 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setProfileMenuOpen(false);
         confirmTransition.requestClose();
     };
-    if (!shouldRender)
-        return null;
-    return (<div className={`${backdropClassName} fixed inset-0 z-[5000] bg-black/60 backdrop-blur-[2px]`}
-                 onMouseDown={event => {
-                     if (event.target === event.currentTarget && !confirmAction)
-                         requestClose();
-                 }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="ai-settings-title"
-                 className="modal-surface modal-surface-stable flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl">
-            <header
-                className="flex flex-col items-stretch gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                <div className="flex min-w-0 items-center gap-3">
-                    <span
-                        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><i
-                        className="ph-fill ph-sparkle text-[19px]"/></span>
-                    <div className="min-w-0">
-                        <h2 id="ai-settings-title" className="text-sm font-extrabold text-[var(--text-heading)]">AI
-                            assistant settings</h2>
-                        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">Global profiles, provider keys,
-                            models, and skills.</p>
-                    </div>
-                    <button type="button" onClick={requestClose}
+    if (!shouldRender) return null;
+    return (
+        <div
+            className={`${backdropClassName} fixed inset-0 z-[5000] bg-black/60 backdrop-blur-[2px]`}
+            onMouseDown={event => {
+                if (event.target === event.currentTarget && !confirmAction) requestClose();
+            }}
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ai-settings-title"
+                className="modal-surface modal-surface-stable flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl"
+            >
+                <header className="flex flex-col items-stretch gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                            <i className="ph-fill ph-sparkle text-[19px]" />
+                        </span>
+                        <div className="min-w-0">
+                            <h2 id="ai-settings-title" className="text-sm font-extrabold text-[var(--text-heading)]">
+                                AI assistant settings
+                            </h2>
+                            <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+                                Global profiles, provider keys, models, and skills.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={requestClose}
                             className="ms-auto flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] sm:hidden"
-                            aria-label="Close AI settings"><i className="ph ph-x"/></button>
-                </div>
-                <div className="flex w-full items-center gap-1.5 sm:w-auto">
-                    {hasProfiles && <div className="relative min-w-0 flex-1 sm:flex-none" ref={profileMenuRef}>
-                        <button ref={profileButtonRef} type="button" onClick={() => setProfileMenuOpen(open => !open)}
-                                className="flex h-9 w-full min-w-0 items-center sm:w-auto sm:max-w-[190px] gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-left text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                                aria-expanded={profileMenuOpen}>
-                            <i className="ph ph-user-circle text-[14px] text-[var(--primary)]"/><span
-                            className="min-w-0 flex-1 truncate">{activeProfile?.name || 'Select profile'}</span><i
-                            className="ph ph-caret-down text-[10px] text-[var(--text-muted)]"/>
+                            aria-label="Close AI settings"
+                        >
+                            <i className="ph ph-x" />
                         </button>
-                        {profileMenuOpen && <div
-                            className="absolute end-0 top-[calc(100%+6px)] z-[20] w-[min(300px,calc(100vw-2rem))] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl animate-fade-in">
-                            <div
-                                className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Saved
-                                AI profiles
-                            </div>
-                            {profiles.map(profile => <div key={profile.id}
-                                                          className={clsx('mb-1 flex items-center gap-1 rounded-lg px-2 py-1.5 last:mb-0', profile.id === activeProfileId ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]')}>
-                                <button type="button" onClick={() => selectProfile(profile)}
-                                        className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold text-[var(--text)] cursor-pointer">{profile.name}<span
-                                    className="ms-1 text-[8px] text-[var(--text-muted)]">{profile.settings.provider}</span>
+                    </div>
+                    <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                        {hasProfiles && (
+                            <div className="relative min-w-0 flex-1 sm:flex-none" ref={profileMenuRef}>
+                                <button
+                                    ref={profileButtonRef}
+                                    type="button"
+                                    onClick={() => setProfileMenuOpen(open => !open)}
+                                    className="flex h-9 w-full min-w-0 items-center sm:w-auto sm:max-w-[190px] gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-left text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                    aria-expanded={profileMenuOpen}
+                                >
+                                    <i className="ph ph-user-circle text-[14px] text-[var(--primary)]" />
+                                    <span className="min-w-0 flex-1 truncate">
+                                        {activeProfile?.name || 'Select profile'}
+                                    </span>
+                                    <i className="ph ph-caret-down text-[10px] text-[var(--text-muted)]" />
                                 </button>
-                                <button type="button" onClick={() => requestRename(profile)}
-                                        className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer">
-                                    <i className="ph ph-pencil-simple text-[11px]"/></button>
-                                <button type="button"
-                                        onClick={() => setConfirmAction({kind: 'delete', profileId: profile.id})}
-                                        className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer">
-                                    <i className="ph ph-trash text-[11px]"/></button>
-                            </div>)}
-                            <div className="my-1 border-t border-[var(--border)]"/>
-                            <button type="button" onClick={() => {
-                                setProfileMenuOpen(false);
-                                requestCreateProfile();
-                            }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer">
-                                <i className="ph ph-plus text-[12px]"/>New profile
-                            </button>
-                            <button type="button" onClick={() => setConfirmAction({kind: 'all'})}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer">
-                                <i className="ph ph-trash text-[12px]"/>Remove all profiles
-                            </button>
-                        </div>}
-                    </div>}
-                    <Tip content="New profile">
-                        <button type="button" onClick={requestCreateProfile}
-                                className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                                aria-label="Create new AI profile"><i className="ph ph-plus text-[14px]"/></button>
-                    </Tip>
-                    <button type="button" onClick={requestClose}
-                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] sm:flex hover:bg-[var(--surface-hover)] cursor-pointer"
-                            aria-label="Close AI settings"><i className="ph ph-x"/></button>
-                </div>
-            </header>
-
-            {!hasProfiles ?
-                <div className="flex min-h-[420px] flex-1 flex-col items-center justify-center px-6 text-center">
-                    <span
-                        className="flex size-16 items-center justify-center rounded-3xl bg-[var(--primary)]/10 text-[var(--primary)]"><i
-                        className="ph-fill ph-sparkle text-[30px]"/></span>
-                    <h3 className="mt-4 text-base font-extrabold text-[var(--text-heading)]">Create your first AI
-                        profile</h3>
-                    <p className="mt-1 max-w-sm text-xs leading-relaxed text-[var(--text-muted)]">Profiles keep
-                        provider keys, models, gateway settings, and skill choices together. They are saved globally
-                        in this browser.</p>
-                    <button type="button" onClick={requestCreateProfile}
-                            className="mt-5 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">
-                        <i className="ph ph-plus me-1.5"/>Create first profile
-                    </button>
-                </div> : <>
-                    <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
-                        <div className="space-y-5">
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <label className="space-y-1.5"><span
-                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Transport</span><CustomDropdown
-                                    value={draft.transport} onChange={value => {
-                                    setGatewayPolicy(null);
-                                    setDraft({...draft, transport: value as AISettings['transport']});
-                                }} options={[
-                                    {value: 'direct', label: 'Direct browser request'},
-                                    {value: 'gateway', label: 'AI gateway / proxy'},
-                                ]} className="w-full"/></label>
-                                <label className="space-y-1.5"><span
-                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Provider</span><CustomDropdown
-                                    value={draft.provider} disabled={draft.transport === 'gateway'}
-                                    onChange={value => updateProvider(value as AIProviderId)}
-                                    options={AI_PROVIDER_PRESETS.map(item => ({value: item.id, label: item.label}))}
-                                    className="w-full"/><span
-                                    className="block text-[10px] text-[var(--text-muted)]">{draft.transport === 'gateway' ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.` : 'Selected by this browser profile.'}</span></label>
+                                {profileMenuOpen && (
+                                    <div className="absolute end-0 top-[calc(100%+6px)] z-[20] w-[min(300px,calc(100vw-2rem))] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-2xl animate-fade-in">
+                                        <div className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                            Saved AI profiles
+                                        </div>
+                                        {profiles.map(profile => (
+                                            <div
+                                                key={profile.id}
+                                                className={clsx(
+                                                    'mb-1 flex items-center gap-1 rounded-lg px-2 py-1.5 last:mb-0',
+                                                    profile.id === activeProfileId
+                                                        ? 'bg-[var(--primary)]/10'
+                                                        : 'hover:bg-[var(--surface-hover)]',
+                                                )}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectProfile(profile)}
+                                                    className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold text-[var(--text)] cursor-pointer"
+                                                >
+                                                    {profile.name}
+                                                    <span className="ms-1 text-[8px] text-[var(--text-muted)]">
+                                                        {profile.settings.provider}
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => requestRename(profile)}
+                                                    className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                                >
+                                                    <i className="ph ph-pencil-simple text-[11px]" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setConfirmAction({kind: 'delete', profileId: profile.id})
+                                                    }
+                                                    className="flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
+                                                >
+                                                    <i className="ph ph-trash text-[11px]" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <div className="my-1 border-t border-[var(--border)]" />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setProfileMenuOpen(false);
+                                                requestCreateProfile();
+                                            }}
+                                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                        >
+                                            <i className="ph ph-plus text-[12px]" />
+                                            New profile
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfirmAction({kind: 'all'})}
+                                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                                        >
+                                            <i className="ph ph-trash text-[12px]" />
+                                            Remove all profiles
+                                        </button>
+                                    </div>
+                                )}
                             </div>
+                        )}
+                        <Tip content="New profile">
+                            <button
+                                type="button"
+                                onClick={requestCreateProfile}
+                                className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                aria-label="Create new AI profile"
+                            >
+                                <i className="ph ph-plus text-[14px]" />
+                            </button>
+                        </Tip>
+                        <button
+                            type="button"
+                            onClick={requestClose}
+                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] sm:flex hover:bg-[var(--surface-hover)] cursor-pointer"
+                            aria-label="Close AI settings"
+                        >
+                            <i className="ph ph-x" />
+                        </button>
+                    </div>
+                </header>
 
-                            {draft.transport === 'gateway' && <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Gateway
-                                URL and access token</span><input value={draft.gatewayUrl} onChange={event => setDraft({
-                                ...draft,
-                                gatewayUrl: event.target.value
-                            })} placeholder="/api/ai or https://gateway.example.com"
-                                                                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/><input
-                                type="password" value={draft.gatewayToken}
-                                onChange={event => setDraft({...draft, gatewayToken: event.target.value})}
-                                placeholder="Gateway access token"
-                                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/><span
-                                className="block text-[10px] text-[var(--text-muted)]">Provider credentials remain
-                                on the gateway. Gateway authentication is required outside explicit development
-                                mode.</span></label>}
+                {!hasProfiles ? (
+                    <div className="flex min-h-[420px] flex-1 flex-col items-center justify-center px-6 text-center">
+                        <span className="flex size-16 items-center justify-center rounded-3xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                            <i className="ph-fill ph-sparkle text-[30px]" />
+                        </span>
+                        <h3 className="mt-4 text-base font-extrabold text-[var(--text-heading)]">
+                            Create your first AI profile
+                        </h3>
+                        <p className="mt-1 max-w-sm text-xs leading-relaxed text-[var(--text-muted)]">
+                            Profiles keep provider keys, models, gateway settings, and skill choices together. They are
+                            saved globally in this browser.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={requestCreateProfile}
+                            className="mt-5 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"
+                        >
+                            <i className="ph ph-plus me-1.5" />
+                            Create first profile
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <label className="space-y-1.5">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Transport
+                                        </span>
+                                        <CustomDropdown
+                                            value={draft.transport}
+                                            onChange={value => {
+                                                setGatewayPolicy(null);
+                                                setDraft({...draft, transport: value as AISettings['transport']});
+                                            }}
+                                            options={[
+                                                {value: 'direct', label: 'Direct browser request'},
+                                                {value: 'gateway', label: 'AI gateway / proxy'},
+                                            ]}
+                                            className="w-full"
+                                        />
+                                    </label>
+                                    <label className="space-y-1.5">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Provider
+                                        </span>
+                                        <CustomDropdown
+                                            value={draft.provider}
+                                            disabled={draft.transport === 'gateway'}
+                                            onChange={value => updateProvider(value as AIProviderId)}
+                                            options={AI_PROVIDER_PRESETS.map(item => ({
+                                                value: item.id,
+                                                label: item.label,
+                                            }))}
+                                            className="w-full"
+                                        />
+                                        <span className="block text-[10px] text-[var(--text-muted)]">
+                                            {draft.transport === 'gateway'
+                                                ? `Configured by the gateway${gatewayPolicy ? `: ${gatewayPolicy.provider}` : '; refresh models to synchronize'}.`
+                                                : 'Selected by this browser profile.'}
+                                        </span>
+                                    </label>
+                                </div>
 
-                            <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Model</span>
-                                <div className="flex gap-2">
-                                    <input value={draft.model}
-                                           disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false}
-                                           onChange={event => setDraft({...draft, model: event.target.value})}
-                                           placeholder={availableModels[0]?.id || 'model-id'}
-                                           className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"/>
-                                    <button type="button"
-                                            disabled={draft.transport === 'gateway' && gatewayPolicy?.clientModelSelection === false}
+                                {draft.transport === 'gateway' && (
+                                    <label className="block space-y-1.5">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Gateway URL and access token
+                                        </span>
+                                        <input
+                                            value={draft.gatewayUrl}
+                                            onChange={event =>
+                                                setDraft({
+                                                    ...draft,
+                                                    gatewayUrl: event.target.value,
+                                                })
+                                            }
+                                            placeholder="/api/ai or https://gateway.example.com"
+                                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"
+                                        />
+                                        <input
+                                            type="password"
+                                            value={draft.gatewayToken}
+                                            onChange={event => setDraft({...draft, gatewayToken: event.target.value})}
+                                            placeholder="Gateway access token"
+                                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"
+                                        />
+                                        <span className="block text-[10px] text-[var(--text-muted)]">
+                                            Provider credentials remain on the gateway. Gateway authentication is
+                                            required outside explicit development mode.
+                                        </span>
+                                    </label>
+                                )}
+
+                                <label className="block space-y-1.5">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                        Model
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={draft.model}
+                                            disabled={
+                                                draft.transport === 'gateway' &&
+                                                gatewayPolicy?.clientModelSelection === false
+                                            }
+                                            onChange={event => setDraft({...draft, model: event.target.value})}
+                                            placeholder={availableModels[0]?.id || 'model-id'}
+                                            className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={
+                                                draft.transport === 'gateway' &&
+                                                gatewayPolicy?.clientModelSelection === false
+                                            }
                                             onClick={() => {
                                                 setModelSearch('');
                                                 setModelTierFilter('all');
                                                 setModelPickerOpen(true);
                                             }}
-                                            className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
-                                        <i className="ph ph-list me-1"/>Browse
-                                    </button>
-                                </div>
-                                <span
-                                    className="block text-[10px] text-[var(--text-muted)]">{availableModels.length} catalog
-                                    model{availableModels.length === 1 ? '' : 's'} · selected: <code
-                                        className="font-mono text-[var(--text-heading)]">{draft.model || 'none'}</code></span>
-                                {draft.transport === 'gateway' && <span
-                                    className="block text-[10px] text-[var(--text-muted)]">{gatewayPolicy ? (gatewayPolicy.clientModelSelection ? 'Gateway allowlist synchronized.' : 'Gateway fixed model; model editing is locked.') : 'Refresh models to read the gateway policy.'}</span>}
-                                {modelError && <span
-                                    className="mt-1 block text-[10px] text-[var(--method-put)]">{modelError}</span>}
-                            </label>
-
-                            <ModelPickerModal visible={modelPickerTransition.shouldRender}
-                                              backdropClassName={modelPickerTransition.backdropClassName}
-                                              currentModel={draft.model} models={filteredModels} search={modelSearch}
-                                              tier={modelTierFilter} refreshing={isRefreshingModels}
-                                              onSearchChange={setModelSearch} onTierChange={setModelTierFilter}
-                                              onRefresh={() => void refreshModels()} onSelect={model => {
-                                setDraft(current => ({...current, model: model.id}));
-                                modelPickerTransition.requestClose();
-                            }} onClose={modelPickerTransition.requestClose}/>
-
-                            <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Temperature
-                                · {draft.temperature.toFixed(1)}</span><TemperatureSlider value={draft.temperature}
-                                                                                          onChange={temperature => setDraft({
-                                                                                              ...draft,
-                                                                                              temperature
-                                                                                          })}/></label>
-
-                            <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Maximum
-                                output tokens</span><input type="number" min="256" max="16384" step="128"
-                                                           value={draft.maxTokens || 2048} onChange={event => setDraft({
-                                ...draft,
-                                maxTokens: Number(event.target.value)
-                            })}
-                                                           className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/><span
-                                className="block text-[10px] text-[var(--text-muted)]">Bounds the response budget
-                                and helps prevent unexpectedly expensive requests.</span></label>
-
-                            {draft.transport === 'direct' && <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Base
-                                URL</span><input value={draft.baseUrl} onChange={event => setDraft({
-                                ...draft,
-                                baseUrl: event.target.value
-                            })}
-                                                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"/><span
-                                className="block text-[10px] text-[var(--text-muted)]">{preset.description}</span></label>}
-
-                            {preset.requiresApiKey && draft.transport === 'direct' &&
-                                <label className="block space-y-1.5"><span
-                                    className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">API
-                                    key</span>
-                                    <div className="relative"><input type={showKey ? 'text' : 'password'}
-                                                                     value={draft.apiKey} onChange={event => setDraft({
-                                        ...draft,
-                                        apiKey: event.target.value
-                                    })} placeholder="Stored in this profile when remembered"
-                                                                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 pe-10 font-mono text-xs outline-none focus:border-[var(--primary)]"/>
-                                        <button type="button" onClick={() => setShowKey(!showKey)}
-                                                className="absolute inset-y-0 end-0 flex w-9 items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-heading)] cursor-pointer">
-                                            <i className={clsx('ph text-[14px]', showKey ? 'ph-eye-slash' : 'ph-eye')}/>
+                                            className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                        >
+                                            <i className="ph ph-list me-1" />
+                                            Browse
                                         </button>
                                     </div>
-                                    <span className="block text-[10px] text-[var(--method-put)]">Direct mode sends
-                                        this key from the browser. Use gateway mode for server-side
-                                        credentials.</span></label>}
+                                    <span className="block text-[10px] text-[var(--text-muted)]">
+                                        {availableModels.length} catalog model{availableModels.length === 1 ? '' : 's'}{' '}
+                                        · selected:{' '}
+                                        <code className="font-mono text-[var(--text-heading)]">
+                                            {draft.model || 'none'}
+                                        </code>
+                                    </span>
+                                    {draft.transport === 'gateway' && (
+                                        <span className="block text-[10px] text-[var(--text-muted)]">
+                                            {gatewayPolicy
+                                                ? gatewayPolicy.clientModelSelection
+                                                    ? 'Gateway allowlist synchronized.'
+                                                    : 'Gateway fixed model; model editing is locked.'
+                                                : 'Refresh models to read the gateway policy.'}
+                                        </span>
+                                    )}
+                                    {modelError && (
+                                        <span className="mt-1 block text-[10px] text-[var(--method-put)]">
+                                            {modelError}
+                                        </span>
+                                    )}
+                                </label>
 
-                            <label
-                                className="flex items-start gap-2 rounded-xl border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-3 text-[10px] leading-relaxed text-[var(--text-muted)]"><input
-                                type="checkbox" checked={draft.rememberCredentials === true}
-                                onChange={event => setDraft({...draft, rememberCredentials: event.target.checked})}
-                                className="mt-0.5 accent-[var(--primary)]"/><span><strong
-                                className="text-[var(--text-heading)]">Remember provider/gateway secrets on this
-                                device</strong><br/>Off by default: secrets stay in session storage and are removed
-                                when the browser session ends. LocalStorage is not a secure vault.</span></label>
+                                <ModelPickerModal
+                                    visible={modelPickerTransition.shouldRender}
+                                    backdropClassName={modelPickerTransition.backdropClassName}
+                                    currentModel={draft.model}
+                                    models={filteredModels}
+                                    search={modelSearch}
+                                    tier={modelTierFilter}
+                                    refreshing={isRefreshingModels}
+                                    onSearchChange={setModelSearch}
+                                    onTierChange={setModelTierFilter}
+                                    onRefresh={() => void refreshModels()}
+                                    onSelect={model => {
+                                        setDraft(current => ({...current, model: model.id}));
+                                        modelPickerTransition.requestClose();
+                                    }}
+                                    onClose={modelPickerTransition.requestClose}
+                                />
 
-                            <div className="space-y-2"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Skill
-                                packs</span>
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{SKILL_OPTIONS.map(skill => {
-                                    const active = draft.skillPacks.includes(skill.id);
-                                    return <button key={skill.id} type="button" onClick={() => toggleSkill(skill.id)}
-                                                   className={clsx('rounded-xl border p-3 text-left transition-colors cursor-pointer', active ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--surface-hover)]')}>
-                                        <span
-                                            className="flex items-center gap-2 text-[11px] font-bold text-[var(--text-heading)]"><span
-                                            className={clsx('flex size-4 items-center justify-center rounded border text-[10px]', active ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-contrast)]' : 'border-[var(--border)] text-transparent')}><i
-                                            className="ph ph-check"/></span>{skill.label}</span><span
-                                        className="mt-1 block ps-6 text-[10px] leading-relaxed text-[var(--text-muted)]">{skill.description}</span>
-                                    </button>;
-                                })}</div>
+                                <label className="block space-y-1.5">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                        Temperature · {draft.temperature.toFixed(1)}
+                                    </span>
+                                    <TemperatureSlider
+                                        value={draft.temperature}
+                                        onChange={temperature =>
+                                            setDraft({
+                                                ...draft,
+                                                temperature,
+                                            })
+                                        }
+                                    />
+                                </label>
+
+                                <label className="block space-y-1.5">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                        Maximum output tokens
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="256"
+                                        max="16384"
+                                        step="128"
+                                        value={draft.maxTokens || 2048}
+                                        onChange={event =>
+                                            setDraft({
+                                                ...draft,
+                                                maxTokens: Number(event.target.value),
+                                            })
+                                        }
+                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"
+                                    />
+                                    <span className="block text-[10px] text-[var(--text-muted)]">
+                                        Bounds the response budget and helps prevent unexpectedly expensive requests.
+                                    </span>
+                                </label>
+
+                                {draft.transport === 'direct' && (
+                                    <label className="block space-y-1.5">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Base URL
+                                        </span>
+                                        <input
+                                            value={draft.baseUrl}
+                                            onChange={event =>
+                                                setDraft({
+                                                    ...draft,
+                                                    baseUrl: event.target.value,
+                                                })
+                                            }
+                                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-xs outline-none focus:border-[var(--primary)]"
+                                        />
+                                        <span className="block text-[10px] text-[var(--text-muted)]">
+                                            {preset.description}
+                                        </span>
+                                    </label>
+                                )}
+
+                                {preset.requiresApiKey && draft.transport === 'direct' && (
+                                    <label className="block space-y-1.5">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            API key
+                                        </span>
+                                        <div className="relative">
+                                            <input
+                                                type={showKey ? 'text' : 'password'}
+                                                value={draft.apiKey}
+                                                onChange={event =>
+                                                    setDraft({
+                                                        ...draft,
+                                                        apiKey: event.target.value,
+                                                    })
+                                                }
+                                                placeholder="Stored in this profile when remembered"
+                                                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 pe-10 font-mono text-xs outline-none focus:border-[var(--primary)]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowKey(!showKey)}
+                                                className="absolute inset-y-0 end-0 flex w-9 items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-heading)] cursor-pointer"
+                                            >
+                                                <i
+                                                    className={clsx(
+                                                        'ph text-[14px]',
+                                                        showKey ? 'ph-eye-slash' : 'ph-eye',
+                                                    )}
+                                                />
+                                            </button>
+                                        </div>
+                                        <span className="block text-[10px] text-[var(--method-put)]">
+                                            Direct mode sends this key from the browser. Use gateway mode for
+                                            server-side credentials.
+                                        </span>
+                                    </label>
+                                )}
+
+                                <label className="flex items-start gap-2 rounded-xl border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-3 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                    <input
+                                        type="checkbox"
+                                        checked={draft.rememberCredentials === true}
+                                        onChange={event =>
+                                            setDraft({...draft, rememberCredentials: event.target.checked})
+                                        }
+                                        className="mt-0.5 accent-[var(--primary)]"
+                                    />
+                                    <span>
+                                        <strong className="text-[var(--text-heading)]">
+                                            Remember provider/gateway secrets on this device
+                                        </strong>
+                                        <br />
+                                        Off by default: secrets stay in session storage and are removed when the browser
+                                        session ends. LocalStorage is not a secure vault.
+                                    </span>
+                                </label>
+
+                                <div className="space-y-2">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                        Skill packs
+                                    </span>
+                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {SKILL_OPTIONS.map(skill => {
+                                            const active = draft.skillPacks.includes(skill.id);
+                                            return (
+                                                <button
+                                                    key={skill.id}
+                                                    type="button"
+                                                    onClick={() => toggleSkill(skill.id)}
+                                                    className={clsx(
+                                                        'rounded-xl border p-3 text-left transition-colors cursor-pointer',
+                                                        active
+                                                            ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                                                            : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--surface-hover)]',
+                                                    )}
+                                                >
+                                                    <span className="flex items-center gap-2 text-[11px] font-bold text-[var(--text-heading)]">
+                                                        <span
+                                                            className={clsx(
+                                                                'flex size-4 items-center justify-center rounded border text-[10px]',
+                                                                active
+                                                                    ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                                                    : 'border-[var(--border)] text-transparent',
+                                                            )}
+                                                        >
+                                                            <i className="ph ph-check" />
+                                                        </span>
+                                                        {skill.label}
+                                                    </span>
+                                                    <span className="mt-1 block ps-6 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                                        {skill.description}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <label className="block space-y-1.5">
+                                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                        Additional instructions
+                                    </span>
+                                    <textarea
+                                        value={draft.customInstructions}
+                                        onChange={event =>
+                                            setDraft({
+                                                ...draft,
+                                                customInstructions: event.target.value,
+                                            })
+                                        }
+                                        rows={3}
+                                        placeholder="Optional instructions for the assistant…"
+                                        className="w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]"
+                                    />
+                                </label>
                             </div>
-
-                            <label className="block space-y-1.5"><span
-                                className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Additional
-                                instructions</span><textarea value={draft.customInstructions}
-                                                             onChange={event => setDraft({
-                                                                 ...draft,
-                                                                 customInstructions: event.target.value
-                                                             })} rows={3}
-                                                             placeholder="Optional instructions for the assistant…"
-                                                             className="w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]"/></label>
                         </div>
-                    </div>
-                    <footer
-                        className="flex flex-col items-stretch gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                        <span className="text-[10px] text-[var(--text-muted)]">Changes are saved to the selected
-                            profile only after confirmation.</span>
-                        <div className="flex shrink-0 justify-end gap-2">
-                            <button type="button" onClick={requestClose}
-                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer">Close
-                            </button>
-                            <button type="button" onClick={requestSave}
-                                    className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer">Save
-                                profile
-                            </button>
-                        </div>
-                    </footer>
-                </>}
-        </section>
+                        <footer className="flex flex-col items-stretch gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                            <span className="text-[10px] text-[var(--text-muted)]">
+                                Changes are saved to the selected profile only after confirmation.
+                            </span>
+                            <div className="flex shrink-0 justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={requestClose}
+                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={requestSave}
+                                    className="whitespace-nowrap rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"
+                                >
+                                    Save profile
+                                </button>
+                            </div>
+                        </footer>
+                    </>
+                )}
+            </section>
 
-        <ProfileNameModal visible={newProfileTransition.shouldRender}
-                          backdropClassName={newProfileTransition.backdropClassName} targetId={profileNameTargetId}
-                          name={newProfileName} onNameChange={setNewProfileName}
-                          onClose={newProfileTransition.requestClose} onSubmit={createProfile}/>
+            <ProfileNameModal
+                visible={newProfileTransition.shouldRender}
+                backdropClassName={newProfileTransition.backdropClassName}
+                targetId={profileNameTargetId}
+                name={newProfileName}
+                onNameChange={setNewProfileName}
+                onClose={newProfileTransition.requestClose}
+                onSubmit={createProfile}
+            />
 
-        <SettingsConfirmModal visible={confirmTransition.shouldRender}
-                              backdropClassName={confirmTransition.backdropClassName} kind={confirmAction?.kind || null}
-                              onClose={confirmTransition.requestClose} onConfirm={confirmChanges}/>
-    </div>);
+            <SettingsConfirmModal
+                visible={confirmTransition.shouldRender}
+                backdropClassName={confirmTransition.backdropClassName}
+                kind={confirmAction?.kind || null}
+                onClose={confirmTransition.requestClose}
+                onConfirm={confirmChanges}
+            />
+        </div>
+    );
 }

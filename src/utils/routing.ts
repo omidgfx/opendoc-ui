@@ -3,16 +3,13 @@ import {getDocumentOperations, getOperation, OAS_FIXED_HTTP_METHODS} from './ope
 
 export const HTTP_METHODS = [...OAS_FIXED_HTTP_METHODS];
 export const getEndpointId = (operation: any, path: string, method: string): string => {
-    if (operation?.operationId)
-        return operation.operationId;
+    if (operation?.operationId) return operation.operationId;
     return `${method}-${path.replace(/^\//, '').replace(/\//g, '-')}`;
 };
 export const resolveEndpointFromId = (id: string, spec: OpenApiSpec | null): EndpointRef | null => {
-    if (!spec?.paths)
-        return null;
+    if (!spec?.paths) return null;
     for (const {path, method, operation} of getDocumentOperations(spec)) {
-        if (getEndpointId(operation, path, method) === id)
-            return {path, method};
+        if (getEndpointId(operation, path, method) === id) return {path, method};
     }
     return null;
 };
@@ -33,8 +30,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         searchTags: [],
         searchSecured: null,
     };
-    if (!hash || hash === '#/' || hash === '#')
-        return empty;
+    if (!hash || hash === '#/' || hash === '#') return empty;
     let raw = hash.substring(1);
     let responseCode: string | null = null;
     const responseMatch = raw.match(/#response-([a-zA-Z0-9_-]+)/);
@@ -55,21 +51,19 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         const searchParams = new URLSearchParams(queryString);
         const tabParam = searchParams.get('tab');
         if (tabParam) {
-            const tabParts = tabParam.split(',').map(s => s.trim()).filter(Boolean);
+            const tabParts = tabParam
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
             const hasExamine = tabParts.includes('examine');
             const hasDoc = tabParts.includes('doc');
-            if (hasExamine && hasDoc)
-                tab = 'both';
-            else if (hasExamine)
-                tab = 'examine';
-            else
-                tab = 'view';
+            if (hasExamine && hasDoc) tab = 'both';
+            else if (hasExamine) tab = 'examine';
+            else tab = 'view';
         }
         const schemasParam = searchParams.get('schemas');
-        if (schemasParam)
-            schemas = schemasParam.split(',').filter(Boolean);
-        if (searchParams.get('search'))
-            searchQuery = searchParams.get('search') || '';
+        if (schemasParam) schemas = schemasParam.split(',').filter(Boolean);
+        if (searchParams.get('search')) searchQuery = searchParams.get('search') || '';
         searchMethods = (searchParams.get('methods') || '').split(',').filter(Boolean);
         searchTags = (searchParams.get('tags') || '').split(',').filter(Boolean);
         const securedRaw = searchParams.get('secured');
@@ -86,7 +80,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             showHome: false,
             schemas: [decodeURIComponent(parts[1])],
             responseCode,
-            searchQuery
+            searchQuery,
         };
     }
     if (parts[0] === 'spec' && parts.length >= 4) {
@@ -96,7 +90,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             showHome: false,
             legacyOperationId: decodeURIComponent(parts[3]),
             responseCode,
-            searchQuery
+            searchQuery,
         };
     }
     if (parts[0] === 'schema-explorer') {
@@ -131,7 +125,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 searchQuery,
                 searchMethods,
                 searchTags,
-                searchSecured
+                searchSecured,
             };
         } else if (parts[2] === 'about') {
             return {
@@ -148,7 +142,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 searchQuery,
                 searchMethods,
                 searchTags,
-                searchSecured
+                searchSecured,
             };
         } else {
             showHome = true;
@@ -170,7 +164,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         searchQuery,
         searchMethods,
         searchTags,
-        searchSecured
+        searchSecured,
     };
 };
 
@@ -209,14 +203,11 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         searchMethods,
         searchTags,
         searchSecured,
-        activeSpec
+        activeSpec,
     } = state;
-    if (!parsableKey)
-        return showAbout ? '#/about' : showAssistant ? '#/assistant' : '#/';
-    if (showAbout)
-        return `#/parsable/${encodeURIComponent(parsableKey)}/about`;
-    if (showAssistant)
-        return `#/parsable/${encodeURIComponent(parsableKey)}/assistant`;
+    if (!parsableKey) return showAbout ? '#/about' : showAssistant ? '#/assistant' : '#/';
+    if (showAbout) return `#/parsable/${encodeURIComponent(parsableKey)}/about`;
+    if (showAssistant) return `#/parsable/${encodeURIComponent(parsableKey)}/assistant`;
     let route = `#/parsable/${encodeURIComponent(parsableKey)}`;
     if (showSchemaExplorer) {
         route += `/schema-explorer`;
@@ -224,34 +215,22 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         let endpointId = '';
         if (activeSpec) {
             const operation = getOperation(activeSpec, endpoint.path, endpoint.method);
-            if (operation)
-                endpointId = getEndpointId(operation, endpoint.path, endpoint.method);
+            if (operation) endpointId = getEndpointId(operation, endpoint.path, endpoint.method);
         }
-        if (!endpointId)
-            endpointId = `${endpoint.method}-${endpoint.path.replace(/^\//, '').replace(/\//g, '-')}`;
+        if (!endpointId) endpointId = `${endpoint.method}-${endpoint.path.replace(/^\//, '').replace(/\//g, '-')}`;
         route += `/api/${encodeURIComponent(endpointId)}`;
     }
     const qp = new URLSearchParams();
-    if (tab === 'examine')
-        qp.set('tab', 'examine');
-    else if (tab === 'both')
-        qp.set('tab', 'examine,doc');
-    if (schemaModals.length > 0)
-        qp.set('schemas', schemaModals.map(m => m.schemaName).join(','));
-    if (searchQuery && searchQuery.trim().length > 0)
-        qp.set('search', searchQuery);
-    if (searchMethods && searchMethods.length > 0)
-        qp.set('methods', searchMethods.join(','));
-    if (searchTags && searchTags.length > 0)
-        qp.set('tags', searchTags.join(','));
-    if (searchSecured === true)
-        qp.set('secured', 'true');
-    else if (searchSecured === false)
-        qp.set('secured', 'false');
+    if (tab === 'examine') qp.set('tab', 'examine');
+    else if (tab === 'both') qp.set('tab', 'examine,doc');
+    if (schemaModals.length > 0) qp.set('schemas', schemaModals.map(m => m.schemaName).join(','));
+    if (searchQuery && searchQuery.trim().length > 0) qp.set('search', searchQuery);
+    if (searchMethods && searchMethods.length > 0) qp.set('methods', searchMethods.join(','));
+    if (searchTags && searchTags.length > 0) qp.set('tags', searchTags.join(','));
+    if (searchSecured === true) qp.set('secured', 'true');
+    else if (searchSecured === false) qp.set('secured', 'false');
     const qs = qp.toString();
-    if (qs)
-        route += `?${qs}`;
-    if (responseCode)
-        route += `#response-${responseCode}`;
+    if (qs) route += `?${qs}`;
+    if (responseCode) route += `#response-${responseCode}`;
     return route;
 };

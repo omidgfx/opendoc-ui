@@ -33,7 +33,7 @@ paths:
             minimum: 1
           example: 1
       responses:
-        "200":
+        '200':
           description: Pet found
           content:
             application/json:
@@ -43,7 +43,7 @@ paths:
                 id: 1
                 name: Milo
                 status: available
-        "404":
+        '404':
           description: Pet not found
           content:
             application/json:
@@ -67,13 +67,13 @@ paths:
               name: Luna
               status: available
       responses:
-        "200":
+        '200':
           description: Pet created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pet'
-        "422":
+        '422':
           description: Invalid input
           content:
             application/json:
@@ -87,7 +87,7 @@ paths:
       security:
         - apiKey: []
       responses:
-        "200":
+        '200':
           description: Status-to-count inventory map
           content:
             application/json:

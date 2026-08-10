@@ -198,14 +198,7 @@ export interface OpenApiSpec {
 }
 
 export type AuthCredentialType =
-    'apiKey'
-    | 'http'
-    | 'oauth2'
-    | 'openIdConnect'
-    | 'cookie'
-    | 'basic'
-    | 'bearer'
-    | 'unknown';
+    'apiKey' | 'http' | 'oauth2' | 'openIdConnect' | 'cookie' | 'basic' | 'bearer' | 'unknown';
 
 export interface AuthCredential {
     schemeId: string;

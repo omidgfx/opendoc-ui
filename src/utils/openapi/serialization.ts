@@ -19,40 +19,33 @@ const DEFAULT_STYLE: Record<string, string> = {
     header: 'simple',
     cookie: 'form',
 };
-const firstContentEntry = (parameter: any): {
+const firstContentEntry = (
+    parameter: any,
+): {
     mediaType: string;
     media: any;
 } | null => {
-    const entry = Object.entries(parameter?.content || {})[0] as [
-        string,
-        any
-    ] | undefined;
+    const entry = Object.entries(parameter?.content || {})[0] as [string, any] | undefined;
     return entry ? {mediaType: entry[0], media: entry[1]} : null;
 };
-const schemaOf = (parameter: any): any => parameter?.schema
-    ?? firstContentEntry(parameter)?.media?.schema
-    ?? parameter
-    ?? {};
-const contentMediaTypeOf = (parameter: any): string => firstContentEntry(parameter)?.mediaType?.toLowerCase().split(';', 1)[0].trim() || '';
+const schemaOf = (parameter: any): any =>
+    parameter?.schema ?? firstContentEntry(parameter)?.media?.schema ?? parameter ?? {};
+const contentMediaTypeOf = (parameter: any): string =>
+    firstContentEntry(parameter)?.mediaType?.toLowerCase().split(';', 1)[0].trim() || '';
 const typeOf = (parameter: any, value: any): string => {
     const schema = schemaOf(parameter);
     if (Array.isArray(schema.type)) {
         const nonNull = schema.type.find((type: string) => type !== 'null');
-        if (nonNull)
-            return nonNull;
+        if (nonNull) return nonNull;
     }
-    if (schema.type)
-        return schema.type;
-    if (Array.isArray(value))
-        return 'array';
-    if (value && typeof value === 'object')
-        return 'object';
+    if (schema.type) return schema.type;
+    if (Array.isArray(value)) return 'array';
+    if (value && typeof value === 'object') return 'object';
     return 'string';
 };
 const encodeComponent = (value: unknown, allowReserved = false): string => {
     const text = String(value);
-    if (!allowReserved)
-        return encodeURIComponent(text);
+    if (!allowReserved) return encodeURIComponent(text);
     // Preserve already encoded triples and the reserved characters that are
     // safe inside one query value. Delimiters with form/query semantics (#,
     // &, =, +, [, ]) stay encoded so a value cannot become another parameter.
@@ -66,12 +59,9 @@ const encodeComponent = (value: unknown, allowReserved = false): string => {
         .replace(/__OPENDOC_PERCENT_(\d+)__/g, (_match, index) => triples[Number(index)] || '');
 };
 const scalar = (value: unknown): string => {
-    if (value === null)
-        return 'null';
-    if (value === undefined)
-        return '';
-    if (typeof value === 'string')
-        return value;
+    if (value === null) return 'null';
+    if (value === undefined) return '';
+    if (typeof value === 'string') return value;
     if (typeof value === 'object') {
         try {
             return JSON.stringify(value);
@@ -81,41 +71,36 @@ const scalar = (value: unknown): string => {
     }
     return String(value);
 };
-const valueEntries = (value: any): Array<[
-    string,
-    string
-]> => {
-    if (!value || typeof value !== 'object' || Array.isArray(value))
-        return [];
+const valueEntries = (value: any): Array<[string, string]> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
     return Object.entries(value).map(([key, item]) => [key, scalar(item)]);
 };
-const arrayValues = (value: any): string[] => Array.isArray(value)
-    ? value.map(scalar)
-    : typeof value === 'string' && value.trim().startsWith('[')
-        ? (() => {
-            try {
-                const parsed = JSON.parse(value);
-                return Array.isArray(parsed) ? parsed.map(scalar) : [value];
-            } catch {
-                return [value];
-            }
-        })()
-        : [scalar(value)];
+const arrayValues = (value: any): string[] =>
+    Array.isArray(value)
+        ? value.map(scalar)
+        : typeof value === 'string' && value.trim().startsWith('[')
+          ? (() => {
+                try {
+                    const parsed = JSON.parse(value);
+                    return Array.isArray(parsed) ? parsed.map(scalar) : [value];
+                } catch {
+                    return [value];
+                }
+            })()
+          : [scalar(value)];
 const objectValue = (value: any): Record<string, unknown> => {
-    if (value && typeof value === 'object' && !Array.isArray(value))
-        return value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value;
     if (typeof value === 'string' && value.trim().startsWith('{')) {
         try {
             const parsed = JSON.parse(value);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-                return parsed;
-        } catch {
-        }
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+        } catch {}
     }
     return {value};
 };
 const delimited = (items: string[], delimiter: string) => items.join(delimiter);
-const queryEncoding = (location: string, allowReserved: boolean) => (location === 'query' || location === 'querystring') && allowReserved;
+const queryEncoding = (location: string, allowReserved: boolean) =>
+    (location === 'query' || location === 'querystring') && allowReserved;
 const contentValue = (parameter: any, value: any): string => {
     const mediaType = contentMediaTypeOf(parameter);
     if (mediaType === 'application/json' || mediaType.endsWith('+json')) {
@@ -128,32 +113,44 @@ const contentValue = (parameter: any, value: any): string => {
         }
         return scalar(value);
     }
-    if (mediaType === 'application/x-www-form-urlencoded' && value && typeof value === 'object' && !Array.isArray(value)) {
-        return valueEntries(value).map(([key, item]) => `${encodeComponent(key)}=${encodeComponent(item)}`).join('&');
+    if (
+        mediaType === 'application/x-www-form-urlencoded' &&
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value)
+    ) {
+        return valueEntries(value)
+            .map(([key, item]) => `${encodeComponent(key)}=${encodeComponent(item)}`)
+            .join('&');
     }
     return scalar(value);
 };
 export const serializeOpenApiParameter = (parameter: any, value: any): SerializedParameter => {
     const location = String(parameter?.in || 'query');
     const style = String(parameter?.style || DEFAULT_STYLE[location] || 'form');
-    const explode = parameter?.explode !== undefined
-        ? Boolean(parameter.explode)
-        : style === 'form' || style === 'cookie';
+    const explode =
+        parameter?.explode !== undefined ? Boolean(parameter.explode) : style === 'form' || style === 'cookie';
     const allowReserved = Boolean(parameter?.allowReserved);
     const name = String(parameter?.name || '');
     const type = typeOf(parameter, value);
     const result: SerializedParameter = {query: [], headers: {}, cookies: []};
-    if (!name && location !== 'querystring')
-        return result;
+    if (!name && location !== 'querystring') return result;
     if (parameter?.content) {
         const serialized = contentValue(parameter, value);
         if (location === 'querystring') {
-            if (contentMediaTypeOf(parameter) === 'application/x-www-form-urlencoded' && value && typeof value === 'object' && !Array.isArray(value)) {
-                valueEntries(value).forEach(([key, item]) => result.query.push({
-                    name: key,
-                    value: item,
-                    allowReserved
-                }));
+            if (
+                contentMediaTypeOf(parameter) === 'application/x-www-form-urlencoded' &&
+                value &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+            ) {
+                valueEntries(value).forEach(([key, item]) =>
+                    result.query.push({
+                        name: key,
+                        value: item,
+                        allowReserved,
+                    }),
+                );
             } else {
                 result.query.push({name: '', value: serialized, allowReserved});
             }
@@ -170,11 +167,13 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     }
     if (location === 'querystring') {
         if (type === 'object') {
-            valueEntries(objectValue(value)).forEach(([key, item]) => result.query.push({
-                name: key,
-                value: item,
-                allowReserved
-            }));
+            valueEntries(objectValue(value)).forEach(([key, item]) =>
+                result.query.push({
+                    name: key,
+                    value: item,
+                    allowReserved,
+                }),
+            );
         } else {
             result.query.push({name: '', value: scalar(value), allowReserved});
         }
@@ -184,12 +183,10 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     if (type !== 'array' && type !== 'object') {
         const text = scalar(value);
         if (location === 'path') {
-            if (style === 'label')
-                result.pathValue = `.${encodeComponent(text, allowReservedForLocation)}`;
+            if (style === 'label') result.pathValue = `.${encodeComponent(text, allowReservedForLocation)}`;
             else if (style === 'matrix')
                 result.pathValue = `;${encodeComponent(name)}=${encodeComponent(text, allowReservedForLocation)}`;
-            else
-                result.pathValue = encodeComponent(text, allowReservedForLocation);
+            else result.pathValue = encodeComponent(text, allowReservedForLocation);
         } else if (location === 'header') {
             result.headers[name] = text;
         } else if (location === 'cookie') {
@@ -202,19 +199,27 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     if (type === 'array') {
         const values = arrayValues(value);
         const swaggerCollectionFormat = String(parameter?.collectionFormat || '');
-        const delimiter = swaggerCollectionFormat === 'ssv' ? ' '
-            : swaggerCollectionFormat === 'tsv' ? '\t'
-                : swaggerCollectionFormat === 'pipes' ? '|'
-                    : style === 'spaceDelimited' ? ' '
-                        : style === 'pipeDelimited' ? '|'
-                            : ',';
+        const delimiter =
+            swaggerCollectionFormat === 'ssv'
+                ? ' '
+                : swaggerCollectionFormat === 'tsv'
+                  ? '\t'
+                  : swaggerCollectionFormat === 'pipes'
+                    ? '|'
+                    : style === 'spaceDelimited'
+                      ? ' '
+                      : style === 'pipeDelimited'
+                        ? '|'
+                        : ',';
         if (location === 'query') {
             if (style === 'deepObject') {
-                values.forEach((item, index) => result.query.push({
-                    name: `${name}[${index}]`,
-                    value: item,
-                    allowReserved: allowReservedForLocation
-                }));
+                values.forEach((item, index) =>
+                    result.query.push({
+                        name: `${name}[${index}]`,
+                        value: item,
+                        allowReserved: allowReservedForLocation,
+                    }),
+                );
             } else if (explode && (style === 'form' || style === 'cookie')) {
                 values.forEach(item => result.query.push({name, value: item, allowReserved: allowReservedForLocation}));
             } else {
@@ -223,8 +228,7 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
         } else if (location === 'cookie') {
             if (explode && (style === 'form' || style === 'cookie'))
                 values.forEach(item => result.cookies.push({name, value: item}));
-            else
-                result.cookies.push({name, value: delimited(values, delimiter)});
+            else result.cookies.push({name, value: delimited(values, delimiter)});
         } else if (location === 'header') {
             result.headers[name] = delimited(values, delimiter);
         } else {
@@ -234,31 +238,37 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 result.pathValue = explode
                     ? values.map(item => `;${encodeComponent(name)}=${encodeComponent(item, false)}`).join('')
                     : `;${encodeComponent(name)}=${values.map(item => encodeComponent(item, false)).join(',')}`;
-            } else
-                result.pathValue = values.map(item => encodeComponent(item, false)).join(',');
+            } else result.pathValue = values.map(item => encodeComponent(item, false)).join(',');
         }
         return result;
     }
     const entries = valueEntries(objectValue(value));
     if (location === 'query') {
         if (style === 'deepObject') {
-            entries.forEach(([key, item]) => result.query.push({
-                name: `${name}[${key}]`,
-                value: item,
-                allowReserved: allowReservedForLocation
-            }));
+            entries.forEach(([key, item]) =>
+                result.query.push({
+                    name: `${name}[${key}]`,
+                    value: item,
+                    allowReserved: allowReservedForLocation,
+                }),
+            );
         } else if (explode && (style === 'form' || style === 'cookie')) {
-            entries.forEach(([key, item]) => result.query.push({
-                name: key,
-                value: item,
-                allowReserved: allowReservedForLocation
-            }));
+            entries.forEach(([key, item]) =>
+                result.query.push({
+                    name: key,
+                    value: item,
+                    allowReserved: allowReservedForLocation,
+                }),
+            );
         } else if (style === 'spaceDelimited' || style === 'pipeDelimited') {
             const delimiter = style === 'spaceDelimited' ? ' ' : '|';
             result.query.push({
                 name,
-                value: delimited(entries.flatMap(([key, item]) => [key, item]), delimiter),
-                allowReserved: allowReservedForLocation
+                value: delimited(
+                    entries.flatMap(([key, item]) => [key, item]),
+                    delimiter,
+                ),
+                allowReserved: allowReservedForLocation,
             });
         } else {
             const flattened = entries.flatMap(([key, item]) => [key, item]);
@@ -266,12 +276,20 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
         }
     } else if (location === 'cookie') {
         if (explode && (style === 'form' || style === 'cookie'))
-            entries.forEach(([key, item]) => result.cookies.push({
-                name: key,
-                value: item
-            }));
+            entries.forEach(([key, item]) =>
+                result.cookies.push({
+                    name: key,
+                    value: item,
+                }),
+            );
         else
-            result.cookies.push({name, value: delimited(entries.flatMap(([key, item]) => [key, item]), ',')});
+            result.cookies.push({
+                name,
+                value: delimited(
+                    entries.flatMap(([key, item]) => [key, item]),
+                    ',',
+                ),
+            });
     } else if (location === 'header') {
         result.headers[name] = explode
             ? entries.map(([key, item]) => `${key}=${item}`).join(',')
@@ -283,7 +301,9 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                 : `.${entries.flatMap(([key, item]) => [encodeComponent(key, false), encodeComponent(item, false)]).join(',')}`;
         } else if (style === 'matrix') {
             result.pathValue = explode
-                ? entries.map(([key, item]) => `;${encodeComponent(key, false)}=${encodeComponent(item, false)}`).join('')
+                ? entries
+                      .map(([key, item]) => `;${encodeComponent(key, false)}=${encodeComponent(item, false)}`)
+                      .join('')
                 : `;${encodeComponent(name)}=${entries.flatMap(([key, item]) => [encodeComponent(key, false), encodeComponent(item, false)]).join(',')}`;
         } else {
             const flattened = explode
@@ -294,20 +314,28 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     }
     return result;
 };
-export const queryStringFromPairs = (pairs: SerializedPair[]): string => pairs.length === 0
-    ? ''
-    : `?${pairs.map(pair => pair.name
-        ? `${encodeComponent(pair.name)}=${encodeComponent(pair.value, pair.allowReserved)}`
-        : encodeComponent(pair.value, pair.allowReserved)).join('&')}`;
-export const cookieHeaderFromPairs = (pairs: SerializedPair[]): string => pairs.map(pair => `${pair.name}=${pair.value}`).join('; ');
+export const queryStringFromPairs = (pairs: SerializedPair[]): string =>
+    pairs.length === 0
+        ? ''
+        : `?${pairs
+              .map(pair =>
+                  pair.name
+                      ? `${encodeComponent(pair.name)}=${encodeComponent(pair.value, pair.allowReserved)}`
+                      : encodeComponent(pair.value, pair.allowReserved),
+              )
+              .join('&')}`;
+export const cookieHeaderFromPairs = (pairs: SerializedPair[]): string =>
+    pairs.map(pair => `${pair.name}=${pair.value}`).join('; ');
 export const isJsonMediaType = (contentType: string | null | undefined): boolean => {
-    const mediaType = String(contentType || '').split(';', 1)[0].trim().toLowerCase();
+    const mediaType = String(contentType || '')
+        .split(';', 1)[0]
+        .trim()
+        .toLowerCase();
     return mediaType === 'application/json' || mediaType.endsWith('+json') || mediaType === 'text/json';
 };
 export const normalizeParameterValue = (parameter: Parameter | any, value: unknown): unknown => {
     const schema = schemaOf(parameter);
-    if (typeof value !== 'string')
-        return value;
+    if (typeof value !== 'string') return value;
     const contentType = contentMediaTypeOf(parameter);
     if (contentType === 'application/json' || contentType.endsWith('+json')) {
         try {
@@ -317,8 +345,9 @@ export const normalizeParameterValue = (parameter: Parameter | any, value: unkno
         }
     }
     const schemaType = Array.isArray(schema.type) ? schema.type.find((type: string) => type !== 'null') : schema.type;
-    const looksStructured = (schemaType === 'array' && value.trim().startsWith('['))
-        || (schemaType === 'object' && (value.trim().startsWith('{') || value.trim().startsWith('[')));
+    const looksStructured =
+        (schemaType === 'array' && value.trim().startsWith('[')) ||
+        (schemaType === 'object' && (value.trim().startsWith('{') || value.trim().startsWith('[')));
     if (looksStructured) {
         try {
             return JSON.parse(value);

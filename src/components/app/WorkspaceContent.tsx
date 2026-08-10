@@ -63,10 +63,7 @@ interface WorkspaceContentProps {
     onSearchResult: (path: string, method: string) => void;
     onOpenEndpointPermanent: (path: string, method: string) => void;
     onOpenEndpointPreview: (path: string, method: string) => void;
-    onGenerateCode: (endpoint: {
-        path: string;
-        method: string;
-    }) => void;
+    onGenerateCode: (endpoint: {path: string; method: string}) => void;
     onHidePageViews: () => void;
 }
 
@@ -124,72 +121,141 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         onHidePageViews,
     } = props;
     if (!spec) {
-        if (showAbout)
-            return <AboutView specTitle={undefined} parsableKey={specKey} spec={spec}/>;
-        return <NoSpecView canOpenLocal={canOpenLocal} onOpenLocalFile={onOpenLocalFile} onOpenAbout={onOpenAbout}/>;
+        if (showAbout) return <AboutView specTitle={undefined} parsableKey={specKey} spec={spec} />;
+        return <NoSpecView canOpenLocal={canOpenLocal} onOpenLocalFile={onOpenLocalFile} onOpenAbout={onOpenAbout} />;
     }
     if (showWelcome && !assistantActive) {
-        return (<WelcomeView specTitle={spec.info?.title || specKey} specKey={specKey} onSearchSubmit={onSearchChange}
-                             onOpenAbout={onOpenAbout} onOpenHome={onOpenHome} onOpenLocalFile={onOpenLocalFile}
-                             canOpenLocal={canOpenLocal}/>);
+        return (
+            <WelcomeView
+                specTitle={spec.info?.title || specKey}
+                specKey={specKey}
+                onSearchSubmit={onSearchChange}
+                onOpenAbout={onOpenAbout}
+                onOpenHome={onOpenHome}
+                onOpenLocalFile={onOpenLocalFile}
+                canOpenLocal={canOpenLocal}
+            />
+        );
     }
     const hasFilters = selectedMethods.length || selectedTags.length || onlyProtected !== null;
     if (activeTabId === 'view:search') {
         if (resultsQuery.trim().length || hasFilters) {
-            return (<SearchResultsView spec={spec} activeAuth={activeAuth} searchQuery={resultsQuery} onSelectEndpoint={onSearchResult}
-                                       onMiddleClickEndpoint={onOpenEndpointPermanent} selectedServer={selectedServer}
-                                       selectedMethods={selectedMethods} setSelectedMethods={setSelectedMethods}
-                                       selectedTags={selectedTags} setSelectedTags={setSelectedTags}
-                                       onlyProtected={onlyProtected} setOnlyProtected={setOnlyProtected}
-                                       displayRoutes={displayRoutes} parsableKey={specKey}/>);
+            return (
+                <SearchResultsView
+                    spec={spec}
+                    activeAuth={activeAuth}
+                    searchQuery={resultsQuery}
+                    onSelectEndpoint={onSearchResult}
+                    onMiddleClickEndpoint={onOpenEndpointPermanent}
+                    selectedServer={selectedServer}
+                    selectedMethods={selectedMethods}
+                    setSelectedMethods={setSelectedMethods}
+                    selectedTags={selectedTags}
+                    setSelectedTags={setSelectedTags}
+                    onlyProtected={onlyProtected}
+                    setOnlyProtected={setOnlyProtected}
+                    displayRoutes={displayRoutes}
+                    parsableKey={specKey}
+                />
+            );
         }
-        return <EmptySearchState/>;
+        return <EmptySearchState />;
     }
     if (selectedEndpoint) {
         const operation = getOperation(spec, selectedEndpoint.path, selectedEndpoint.method);
         if (operation) {
             const key = `${selectedEndpoint.method.toLowerCase()}:${selectedEndpoint.path}`;
-            return (<EndpointWorkspace spec={spec} endpoint={selectedEndpoint} parsableKey={specKey}
-                                       selectedTab={selectedViewMode} setSelectedTab={setSelectedViewMode}
-                                       activeSplitPane={activeSplitPane} setActiveSplitPane={setActiveSplitPane}
-                                       splitContainerRef={splitContainerRef} docsPaneWidth={docsPaneWidth}
-                                       isSplitDragging={isSplitDragging} onSplitResizeMouseDown={onSplitResizeMouseDown}
-                                       onSplitResizeKeyDown={onSplitResizeKeyDown}
-                                       splitSeparatorMin={splitSeparatorMin} splitSeparatorMax={splitSeparatorMax}
-                                       splitSeparatorNow={splitSeparatorNow} isMobile={isMobile} activeAuth={activeAuth} selectedServer={selectedServer}
-                                       resolvedThemeMode={resolvedThemeMode} activeResponseCode={activeResponseCode}
-                                       setActiveResponseCode={setActiveResponseCode}
-                                       responseHistory={examineResponses[key] || []}
-                                       onResponseChange={response => setExamineResponses(current => ({
-                                           ...current,
-                                           [key]: appendResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method, response, current[key] || [])
-                                       }))}
-                                       onDeleteResponse={index => setExamineResponses(current => ({
-                                           ...current,
-                                           [key]: removeResponseHistoryAt(specKey, selectedEndpoint.path, selectedEndpoint.method, index, current[key] || [])
-                                       }))}
-                                       onClearResponse={() => {
-                                           void clearResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method);
-                                           setExamineResponses(current => ({...current, [key]: []}));
-                                       }} onOpenSchema={onOpenSchema} onGenerateCode={() => onGenerateCode(selectedEndpoint)}/>);
+            return (
+                <EndpointWorkspace
+                    spec={spec}
+                    endpoint={selectedEndpoint}
+                    parsableKey={specKey}
+                    selectedTab={selectedViewMode}
+                    setSelectedTab={setSelectedViewMode}
+                    activeSplitPane={activeSplitPane}
+                    setActiveSplitPane={setActiveSplitPane}
+                    splitContainerRef={splitContainerRef}
+                    docsPaneWidth={docsPaneWidth}
+                    isSplitDragging={isSplitDragging}
+                    onSplitResizeMouseDown={onSplitResizeMouseDown}
+                    onSplitResizeKeyDown={onSplitResizeKeyDown}
+                    splitSeparatorMin={splitSeparatorMin}
+                    splitSeparatorMax={splitSeparatorMax}
+                    splitSeparatorNow={splitSeparatorNow}
+                    isMobile={isMobile}
+                    activeAuth={activeAuth}
+                    selectedServer={selectedServer}
+                    resolvedThemeMode={resolvedThemeMode}
+                    activeResponseCode={activeResponseCode}
+                    setActiveResponseCode={setActiveResponseCode}
+                    responseHistory={examineResponses[key] || []}
+                    onResponseChange={response =>
+                        setExamineResponses(current => ({
+                            ...current,
+                            [key]: appendResponseHistory(
+                                specKey,
+                                selectedEndpoint.path,
+                                selectedEndpoint.method,
+                                response,
+                                current[key] || [],
+                            ),
+                        }))
+                    }
+                    onDeleteResponse={index =>
+                        setExamineResponses(current => ({
+                            ...current,
+                            [key]: removeResponseHistoryAt(
+                                specKey,
+                                selectedEndpoint.path,
+                                selectedEndpoint.method,
+                                index,
+                                current[key] || [],
+                            ),
+                        }))
+                    }
+                    onClearResponse={() => {
+                        void clearResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method);
+                        setExamineResponses(current => ({...current, [key]: []}));
+                    }}
+                    onOpenSchema={onOpenSchema}
+                    onGenerateCode={() => onGenerateCode(selectedEndpoint)}
+                />
+            );
         }
     }
     if (showSchemaExplorer) {
-        return <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={onOpenSchema} parsableKey={specKey}/>;
+        return (
+            <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={onOpenSchema} parsableKey={specKey} />
+        );
     }
-    if (showAbout)
-        return <AboutView specTitle={spec.info?.title} parsableKey={specKey} spec={spec}/>;
+    if (showAbout) return <AboutView specTitle={spec.info?.title} parsableKey={specKey} spec={spec} />;
     if (showHome) {
-        return (<HomeView spec={spec} selectedEndpoint={selectedEndpoint} onSelectEndpoint={onSelectEndpoint}
-                          selectedServer={selectedServer} onSelectServer={setSelectedServer} activeAuth={activeAuth}
-                          onDeepLinkResponse={(path, method, code) => {
-                              onOpenEndpointPreview(path, method);
-                              onHidePageViews();
-                              setSelectedViewMode('docs');
-                              setActiveResponseCode(code);
-                          }}/>);
+        return (
+            <HomeView
+                spec={spec}
+                selectedEndpoint={selectedEndpoint}
+                onSelectEndpoint={onSelectEndpoint}
+                selectedServer={selectedServer}
+                onSelectServer={setSelectedServer}
+                activeAuth={activeAuth}
+                onDeepLinkResponse={(path, method, code) => {
+                    onOpenEndpointPreview(path, method);
+                    onHidePageViews();
+                    setSelectedViewMode('docs');
+                    setActiveResponseCode(code);
+                }}
+            />
+        );
     }
-    return (<WelcomeView specTitle={spec.info?.title || specKey} specKey={specKey} onSearchSubmit={onSearchChange}
-                         onOpenAbout={onOpenAbout} onOpenHome={onOpenHome} onOpenLocalFile={onOpenLocalFile}
-                         canOpenLocal={canOpenLocal}/>);
+    return (
+        <WelcomeView
+            specTitle={spec.info?.title || specKey}
+            specKey={specKey}
+            onSearchSubmit={onSearchChange}
+            onOpenAbout={onOpenAbout}
+            onOpenHome={onOpenHome}
+            onOpenLocalFile={onOpenLocalFile}
+            canOpenLocal={canOpenLocal}
+        />
+    );
 }

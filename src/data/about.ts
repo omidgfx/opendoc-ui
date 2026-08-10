@@ -23,37 +23,37 @@ export const FEATURES: Array<{
     {
         icon: 'ph-fill ph-book-open-text',
         title: 'Documentation Browser',
-        desc: 'Navigate tags, operations, parameters, request bodies and responses with live schema inspection.'
+        desc: 'Navigate tags, operations, parameters, request bodies and responses with live schema inspection.',
     },
     {
         icon: 'ph-fill ph-flask',
         title: 'Built-in API Runner',
-        desc: 'Execute requests directly from the browser with cookie, bearer, API-key and basic auth support.'
+        desc: 'Execute requests directly from the browser with cookie, bearer, API-key and basic auth support.',
     },
     {
         icon: 'ph-fill ph-code',
         title: 'Code & TypeScript Generator',
-        desc: 'Export ready-to-run fetch / axios / Angular snippets and TypeScript models generated from your schemas.'
+        desc: 'Export ready-to-run fetch / axios / Angular snippets and TypeScript models generated from your schemas.',
     },
     {
         icon: 'ph-fill ph-sparkle',
         title: 'OpenDoc UI Assistant',
-        desc: 'Ask grounded API questions with citations, endpoint context, model profiles, Markdown export, and safe Runner preparation.'
+        desc: 'Ask grounded API questions with citations, endpoint context, model profiles, Markdown export, and safe Runner preparation.',
     },
     {
         icon: 'ph-fill ph-paint-bucket',
         title: 'Themes & Dark Mode',
-        desc: '15+ hand-picked editor themes with per-spec preferences and instant light/dark toggling.'
+        desc: '15+ hand-picked editor themes with per-spec preferences and instant light/dark toggling.',
     },
     {
         icon: 'ph-fill ph-magnifying-glass',
         title: 'Global Search',
-        desc: 'Cmd/Ctrl+K to search paths, summaries, tags, and schema definitions with advanced filters.'
+        desc: 'Cmd/Ctrl+K to search paths, summaries, tags, and schema definitions with advanced filters.',
     },
     {
         icon: 'ph-fill ph-plugs-connected',
         title: 'Share Deep Links',
-        desc: 'Every endpoint, tab, response and schema modal lives in the URL hash for perfect link sharing.'
+        desc: 'Every endpoint, tab, response and schema modal lives in the URL hash for perfect link sharing.',
     },
 ];
 type Shortcut = {

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+coverage/
+out/
+test-results/
+playwright-report/
+.git/
+public/config.json
+*.zip
+*.tar.gz
+*.bundle

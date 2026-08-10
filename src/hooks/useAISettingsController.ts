@@ -8,8 +8,7 @@ export function useAISettingsController() {
     const [aiSettingsReady, setAISettingsReady] = useState(false);
     const [showAISettings, setShowAISettings] = useState(false);
     useEffect(() => {
-        if (aiSettingsReady)
-            writeAISettings(aiSettings);
+        if (aiSettingsReady) writeAISettings(aiSettings);
     }, [aiSettings, aiSettingsReady]);
     const handleAISettingsSave = useCallback((settings: AISettings) => {
         setAISettings(settings);

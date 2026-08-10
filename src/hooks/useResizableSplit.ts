@@ -16,8 +16,7 @@ export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, s
     const isResizing = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const onMouseMove = (e: MouseEvent) => {
-        if (!isResizing.current || !containerRef.current)
-            return;
+        if (!isResizing.current || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const clamped = Math.max(minPx, Math.min(rect.width - minPx, x));
@@ -38,22 +37,16 @@ export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, s
     };
     const onKeyDown = (event: React.KeyboardEvent) => {
         const container = containerRef.current;
-        if (!container)
-            return;
+        if (!container) return;
         const maxPx = Math.max(minPx, container.getBoundingClientRect().width - minPx);
         const current = leftWidth >= 0 ? leftWidth : container.getBoundingClientRect().width / 2;
         const step = event.shiftKey ? 48 : 16;
         let next = current;
-        if (event.key === 'ArrowLeft')
-            next = current - step;
-        else if (event.key === 'ArrowRight')
-            next = current + step;
-        else if (event.key === 'Home')
-            next = minPx;
-        else if (event.key === 'End')
-            next = maxPx;
-        else
-            return;
+        if (event.key === 'ArrowLeft') next = current - step;
+        else if (event.key === 'ArrowRight') next = current + step;
+        else if (event.key === 'Home') next = minPx;
+        else if (event.key === 'End') next = maxPx;
+        else return;
         event.preventDefault();
         setLeftWidth(Math.max(minPx, Math.min(maxPx, next)));
     };

@@ -9,7 +9,11 @@ interface OperationLinkContextValue {
 
 const OperationLinkContext = createContext<OperationLinkContextValue>({index: {}, parsableKey: ''});
 
-export function OperationLinkProvider({spec, parsableKey, children,}: {
+export function OperationLinkProvider({
+    spec,
+    parsableKey,
+    children,
+}: {
     spec: OpenApiSpec | null;
     parsableKey: string;
     children: React.ReactNode;

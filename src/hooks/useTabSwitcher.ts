@@ -22,23 +22,20 @@ export function useTabSwitcher({tabs, activeTabId, modalCount, onSelectTab}: Use
         const list = tabsRef.current;
         const tab = list[Math.min(selectedIndex, list.length - 1)];
         setOpen(false);
-        if (tab)
-            selectRef.current(tab.id);
+        if (tab) selectRef.current(tab.id);
         previousTabRef.current = null;
     }, [selectedIndex]);
     const cancel = useCallback(() => {
         setOpen(false);
         if (previousTabRef.current) {
             const tab = tabsRef.current.find(item => item.id === previousTabRef.current);
-            if (tab)
-                selectRef.current(tab.id);
+            if (tab) selectRef.current(tab.id);
         }
         previousTabRef.current = null;
     }, []);
     const openSwitcher = useCallback(() => {
         const list = tabsRef.current;
-        if (list.length < 2)
-            return;
+        if (list.length < 2) return;
         const current = list.findIndex(tab => tab.id === activeTabRef.current);
         previousTabRef.current = activeTabRef.current;
         setSelectedIndex(current >= 0 ? current : 0);
@@ -48,8 +45,7 @@ export function useTabSwitcher({tabs, activeTabId, modalCount, onSelectTab}: Use
         const cycle = (event: KeyboardEvent, direction: number) => {
             event.preventDefault();
             const list = tabsRef.current;
-            if (list.length < 2 || modalCount > 0)
-                return;
+            if (list.length < 2 || modalCount > 0) return;
             if (!open) {
                 const current = list.findIndex(tab => tab.id === activeTabRef.current);
                 previousTabRef.current = activeTabRef.current;
@@ -71,8 +67,7 @@ export function useTabSwitcher({tabs, activeTabId, modalCount, onSelectTab}: Use
             }
         };
         const onKeyUp = (event: KeyboardEvent) => {
-            if ((event.key === 'Control' || event.key === 'Meta') && open)
-                commit();
+            if ((event.key === 'Control' || event.key === 'Meta') && open) commit();
         };
         window.addEventListener('keydown', onKeyDown, true);
         window.addEventListener('keyup', onKeyUp, true);
