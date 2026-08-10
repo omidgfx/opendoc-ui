@@ -1,0 +1,139 @@
+openapi: 3.1.0
+info:
+  title: OpenDoc Petstore Demo
+  version: 1.0.0
+  description: |
+    A compact demonstration specification for OpenDoc UI. Browse schemas,
+    configure authentication, generate snippets, and use the API Runner.
+  contact:
+    name: OpenDoc UI
+    url: https://github.com/omidgfx/opendoc-ui
+servers:
+  - url: https://petstore3.swagger.io/api/v3
+    description: Public Swagger Petstore server
+tags:
+  - name: Pets
+    description: Pet lookup and creation
+  - name: Store
+    description: Store inventory
+paths:
+  /pet/{petId}:
+    get:
+      tags: [Pets]
+      summary: Find a pet by ID
+      operationId: getPetById
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          description: Numeric pet identifier
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 1
+      responses:
+        "200":
+          description: Pet found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+              example:
+                id: 1
+                name: Milo
+                status: available
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /pet:
+    post:
+      tags: [Pets]
+      summary: Create a pet
+      operationId: addPet
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+            example:
+              name: Luna
+              status: available
+      responses:
+        "200":
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        "422":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /store/inventory:
+    get:
+      tags: [Store]
+      summary: Get store inventory
+      operationId: getInventory
+      security:
+        - apiKey: []
+      responses:
+        "200":
+          description: Status-to-count inventory map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int32
+              example:
+                available: 12
+                pending: 3
+                sold: 7
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: api_key
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          example: Milo
+        status:
+          type: string
+          enum: [available, pending, sold]
+          default: available
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

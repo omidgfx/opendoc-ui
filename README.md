@@ -30,6 +30,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Browser persistence](#browser-persistence)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
+    - [GitHub Pages demo](#github-pages-demo)
 - [FAQ](#faq)
 - [License](#license)
 
@@ -509,15 +510,35 @@ src/
 ## Deployment notes
 
 - Serve `dist/` from any static host. The app needs **no API** of its own.
-- **Pre-defined mode:** make sure `config.json` is reachable at `/config.json` (i.e. it
-  must live in the public folder, not somewhere deeper), and that it actually contains
-  your `parsables` — an empty file still counts as pre-defined mode.
+- **Pre-defined mode:** make sure `config.json` is reachable at the app's deployment base
+  (normally `/config.json`; on a project Pages site, `/<repository>/config.json`). It must live
+  in the public folder and contain `parsables` — an empty file still counts as pre-defined mode.
 - **Remote spec URLs** must send CORS headers (`Access-Control-Allow-Origin`) or the
   browser will block the fetch. Relative URLs (`/specs/...`) avoid this entirely.
 - **Local mode:** simply don't ship a config source — a 404 on `/config.json` is what
   enables local file loading.
 - The API runner calls endpoints directly from the visitor's browser. If your API does not
   allow CORS, the runner will show the browser's CORS error — the docs still work.
+
+### GitHub Pages demo
+
+The repository includes `.github/workflows/pages.yml`. On every push to `master` it builds OpenDoc
+with the repository base path, enables `public/demo/openapi.yaml`, and deploys `dist/` through the
+official GitHub Pages artifact workflow.
+
+Enable it once:
+
+1. Open **Repository Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `master`, or run **Deploy demo to GitHub Pages** manually from the Actions tab.
+4. Open `https://omidgfx.github.io/opendoc-ui/` after the deployment succeeds.
+
+The committed app remains in local mode during normal development. The workflow copies
+`public/demo/config.pages.json` to `public/config.json` only inside the disposable Actions runner,
+so the hosted demonstration opens the bundled Petstore demo automatically.
+
+For a custom domain, set `VITE_BASE_PATH` to `/` in `pages.yml`. For a renamed repository, the
+existing workflow automatically uses `/${{ github.event.repository.name }}/`.
 
 ---
 

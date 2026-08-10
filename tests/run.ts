@@ -322,8 +322,10 @@ test('generates compiling TypeScript for adversarial schema names and boolean sc
         writeFileSync(join(directory, 'tsconfig.json'), JSON.stringify({compilerOptions: {
             strict: true, noEmit: true, target: 'ES2022', module: 'ESNext', skipLibCheck: true,
         }, include: ['models.ts']}));
-        const tsc = resolve('node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
-        execFileSync(tsc, ['--project', join(directory, 'tsconfig.json')], {stdio: 'pipe'});
+        // Execute the JavaScript CLI through Node instead of spawning a .cmd
+        // shim, which is not directly executable by execFileSync on Windows.
+        const tscCli = resolve('node_modules', 'typescript', 'bin', 'tsc');
+        execFileSync(process.execPath, [tscCli, '--project', join(directory, 'tsconfig.json')], {stdio: 'pipe'});
     } finally {
         rmSync(directory, {recursive: true, force: true});
     }
