@@ -35,7 +35,8 @@ export function useConfigBootstrap({
                 source = 'initial';
             } else {
                 try {
-                    const response = await fetch('/config.json', {cache: 'no-store'});
+                    const configUrl = new URL('config.json', document.baseURI).href;
+                    const response = await fetch(configUrl, {cache: 'no-store'});
                     if (response.ok) {
                         data = await response.json();
                         source = 'file';

@@ -6,6 +6,9 @@ import svgr from 'vite-plugin-svgr';
 
 export default defineConfig(() => {
     return {
+        // GitHub Pages serves project sites from /<repository>/; regular and
+        // custom-domain builds keep the root default.
+        base: process.env.VITE_BASE_PATH || '/',
         plugins: [
             react(),
             svgr(),

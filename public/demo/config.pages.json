@@ -1,0 +1,9 @@
+{
+  "theme": "default",
+  "parsables": {
+    "OpenDoc Petstore Demo": {
+      "title": "OpenDoc Petstore Demo",
+      "url": "demo/openapi.yaml"
+    }
+  }
+}
