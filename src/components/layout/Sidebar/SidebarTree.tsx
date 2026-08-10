@@ -34,6 +34,7 @@ interface SidebarTreeProps {
     showAssistant: boolean;
     assistantContextEndpoints: Endpoint[];
     searchQuery: string;
+    endpointFilterQuery: string;
     config: SidebarConfig;
     endpointRefs: MutableRefObject<Record<string, HTMLAnchorElement | null>>;
     onToggleNode: (path: string) => void;
@@ -58,6 +59,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
         showAssistant,
         assistantContextEndpoints,
         searchQuery,
+        endpointFilterQuery,
         config: sidebarConfig,
         endpointRefs,
         onToggleNode: toggleNode,
@@ -66,6 +68,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
         onOpenPermanent: onMiddleClickEndpoint,
         onContextMenu: openContextMenu,
     } = props;
+    const endpointHighlightQuery = [searchQuery.trim(), endpointFilterQuery.trim()].filter(Boolean).join(' ');
     const render = (node: TreeNode, nodePath: string) => {
         const collapsed = !!collapsedNodes[nodePath];
         const childNames = Object.keys(node.children);
@@ -285,7 +288,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                     <span className={clsx('min-w-0 truncate text-[11px]')}>
                                                         <SearchHighlightedText
                                                             text={summary}
-                                                            query={searchQuery}
+                                                            query={endpointHighlightQuery}
                                                             deprecated={!!ep.operation?.deprecated}
                                                         />
                                                     </span>
@@ -299,7 +302,10 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                             )}
                                                             title={ep.path}
                                                         >
-                                                            <SearchHighlightedText text={ep.path} query={searchQuery} />
+                                                            <SearchHighlightedText
+                                                                text={ep.path}
+                                                                query={endpointHighlightQuery}
+                                                            />
                                                         </span>
                                                     )}
                                                 </div>

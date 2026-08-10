@@ -12,7 +12,7 @@ const specText = () =>
         info: {
             title: 'Browser Runner Fixture',
             version: '1',
-            description: 'Embedded emoji preview 🚀 :fire: and native code `🚀`.',
+            description: 'Embedded emoji preview 🚀 :fire: 👩🏽‍💻 🫩 and native code `🚀`.',
         },
         servers: [{url: apiOrigin}],
         paths: {
@@ -35,6 +35,28 @@ const specText = () =>
                             },
                         },
                     },
+                },
+            },
+            '/billing/charges': {
+                post: {
+                    tags: ['Billing Folder'],
+                    summary: 'Create customer charge',
+                    description: 'Settlement wording is only in this description.',
+                    responses: {'204': {description: 'Created'}},
+                },
+            },
+            '/billing/refunds': {
+                post: {
+                    tags: ['Billing Folder'],
+                    summary: 'Refund customer charge',
+                    responses: {'204': {description: 'Refunded'}},
+                },
+            },
+            '/reports/invoice-route': {
+                get: {
+                    tags: ['Reports'],
+                    summary: 'Export monthly report',
+                    responses: {'200': {description: 'Exported'}},
                 },
             },
         },
@@ -167,31 +189,74 @@ test('selects response schema by default and formats example indentation', async
     expect(example).toContain('\n        "field": "id"');
 });
 
-test('renders embedded Apple-style emoji without changing emoji inside code', async ({page}) => {
+test('renders the embedded Apple sprite set without changing emoji inside code', async ({page}) => {
     await loadSpecification(page);
     await page.getByRole('button', {name: /Overview & Statistics/i}).click();
-    await expect(page.locator('img.emoji[alt="🚀"]')).toHaveCount(1);
-    await expect(page.locator('img.emoji[alt=":fire:"]')).toHaveCount(1);
+    await expect(page.locator('span.emoji[aria-label="🚀"]')).toHaveCount(1);
+    await expect(page.locator('span.emoji[aria-label=":fire:"]')).toHaveCount(1);
+    await expect(page.locator('span.emoji[aria-label="👩🏽‍💻"]')).toHaveCount(1);
+    await expect(page.locator('span.emoji[aria-label="🫩"]')).toHaveCount(1);
+    const backgroundImage = await page
+        .locator('span.emoji[aria-label="🚀"]')
+        .evaluate(element => getComputedStyle(element).backgroundImage);
+    expect(backgroundImage).toContain('data:image/png;base64,');
     await expect(page.locator('code').filter({hasText: '🚀'})).toBeVisible();
 });
 
-test('filters endpoints locally inside the sidebar navigation stripe', async ({page}) => {
+test('layers the local endpoint filter over global results without searching tag folders', async ({page}) => {
     await loadSpecification(page);
-    const endpoint = page.getByText('Send permissive validation request', {exact: true});
-    await expect(endpoint).toBeVisible();
-    await page.getByRole('button', {name: 'Filter sidebar endpoints'}).click();
-    const input = page.getByRole('textbox', {name: 'Filter sidebar endpoints'});
+    const sidebar = page.locator('[data-opendoc-sidebar]');
+    const navigationHeader = sidebar.locator('[data-sidebar-navigation-header]');
+    const validationEndpoint = sidebar.getByText('Send permissive validation request', {exact: true});
+    const createEndpoint = sidebar.getByText('Create customer charge', {exact: true});
+    const refundEndpoint = sidebar.getByText('Refund customer charge', {exact: true});
+    const reportEndpoint = sidebar.getByText('Export monthly report', {exact: true});
+    await expect(validationEndpoint).toBeVisible();
+    const closedHeaderHeight = await navigationHeader.evaluate(element => element.getBoundingClientRect().height);
+
+    await sidebar.getByRole('button', {name: 'Filter sidebar endpoints'}).click();
+    const input = sidebar.getByRole('textbox', {name: 'Filter sidebar endpoints'});
     await expect(input).toBeFocused();
-    await expect(page.getByText('API Navigation', {exact: true})).toHaveCount(0);
-    await expect(page.getByRole('button', {name: 'Navigation settings'})).toHaveCount(0);
-    await input.fill('does-not-exist');
-    await expect(endpoint).toHaveCount(0);
-    await page.getByRole('button', {name: 'Clear endpoint filter'}).click();
-    await expect(endpoint).toBeVisible();
-    await input.fill('pet');
+    await expect(sidebar.getByText('API Navigation', {exact: true})).toHaveCount(0);
+    await expect(sidebar.getByRole('button', {name: 'Navigation settings'})).toHaveCount(0);
+    const openHeaderHeight = await navigationHeader.evaluate(element => element.getBoundingClientRect().height);
+    expect(openHeaderHeight).toBe(closedHeaderHeight);
+
+    await input.fill('Billing Folder');
+    await expect(createEndpoint).toHaveCount(0);
+    await expect(refundEndpoint).toHaveCount(0);
+    await input.fill('settlement');
+    await expect(createEndpoint).toHaveCount(0);
+    await input.fill('invoice-route');
+    await expect(reportEndpoint).toBeVisible();
+    await input.fill('refund customer');
+    await expect(refundEndpoint).toBeVisible();
+    await expect(createEndpoint).toHaveCount(0);
+    await sidebar.getByRole('button', {name: 'Clear endpoint filter'}).click();
+    await expect(validationEndpoint).toBeVisible();
+    await sidebar.getByRole('button', {name: 'Close endpoint filter'}).click();
+
+    const globalSearch = page.getByPlaceholder('Global Search (Ctrl+K)...');
+    await globalSearch.fill('Billing Folder');
+    await expect(createEndpoint).toBeVisible();
+    await expect(refundEndpoint).toBeVisible();
+    await expect(validationEndpoint).toHaveCount(0);
+
+    await sidebar.getByRole('button', {name: 'Filter sidebar endpoints'}).click();
+    const layeredInput = sidebar.getByRole('textbox', {name: 'Filter sidebar endpoints'});
+    await layeredInput.fill('refund');
+    await expect(refundEndpoint).toBeVisible();
+    await expect(createEndpoint).toHaveCount(0);
+    await layeredInput.fill('Billing Folder');
+    await expect(createEndpoint).toHaveCount(0);
+    await expect(refundEndpoint).toHaveCount(0);
+    await sidebar.getByRole('button', {name: 'Clear endpoint filter'}).click();
+    await expect(createEndpoint).toBeVisible();
+    await expect(refundEndpoint).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(input).toHaveCount(0);
-    await expect(page.getByText('API Navigation', {exact: true})).toBeVisible();
+    await expect(layeredInput).toHaveCount(0);
+    await expect(globalSearch).toHaveValue('Billing Folder');
+    await expect(sidebar.getByText('API Navigation', {exact: true})).toBeVisible();
 });
 
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {

@@ -78,7 +78,8 @@ This release focuses on predictable request execution and portable deployment:
 - local and constrained remote multi-document reference resolution;
 - deterministic mock validation and compile-checked TypeScript exports;
 - keyboard-accessible custom dropdowns, modal focus handling, and resizers;
-- an independent sidebar endpoint filter and embedded Apple-style emoji in rendered Markdown;
+- a layered sidebar endpoint filter and comprehensive Apple Emoji 16 sprite rendering for native, shortcode, skin-tone, and ZWJ sequences;
+- self-contained emoji assets embedded in `index.css`, with no runtime image or CDN dependency;
 - explicit authentication logout and endpoint-scoped AI actions that start new conversations;
 - one-file JavaScript builds with Windows-compatible scripts;
 - automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
@@ -596,3 +597,5 @@ there is no analytics or telemetry code in the app.
 ## License
 
 MIT © Pejman Chatrrouz — see the About page inside the app for the full text.
+
+Apple emoji artwork bundled through `emoji-datasource-apple` remains © Apple Inc. and is not covered by this project's MIT license. Upstream notes that the Apple artwork is not licensed for commercial use.
