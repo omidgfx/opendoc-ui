@@ -17,6 +17,7 @@ import SidebarTree from './SidebarTree';
 import type {SidebarProps} from '@/src/types/sidebar';
 import {
     buildTagTree,
+    endpointMatchesSidebarFilter,
     filterTagTree,
     normalizeSidebarConfig,
     readSidebarConfig,
@@ -334,14 +335,12 @@ export default function Sidebar(props: SidebarProps) {
         };
     }, [settingsMenuOpen]);
     const tagTree = useMemo(() => buildTagTree(spec, sidebarConfig, activeAuth), [spec, sidebarConfig, activeAuth]);
-    const effectiveSidebarQuery = [searchQuery.trim(), sidebarFilterQuery.trim()].filter(Boolean).join(' ');
-    const hasActiveSidebarFilters =
-        !!effectiveSidebarQuery || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
-    const hasEndpointVisibilityFilter = hasActiveSidebarFilters || sidebarConfig.hideDeprecatedEndpoints;
-    const visibleTagTree = useMemo(() => {
-        if (!hasEndpointVisibilityFilter) return tagTree;
-        const query = effectiveSidebarQuery.toLowerCase();
-        const terms = query.split(/[\s._-]+/).filter(Boolean);
+    const mainSearchQuery = searchQuery.trim().toLowerCase();
+    const hasMainSidebarFilters =
+        !!mainSearchQuery || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
+    const mainSearchTagTree = useMemo(() => {
+        if (!hasMainSidebarFilters && !sidebarConfig.hideDeprecatedEndpoints) return tagTree;
+        const terms = mainSearchQuery.split(/[\s._-]+/).filter(Boolean);
         const predicate = (ep: TreeNode['endpoints'][number]) => {
             if (sidebarConfig.hideDeprecatedEndpoints && ep.operation?.deprecated) return false;
             const methodUpper = ep.method.toUpperCase();
@@ -350,7 +349,7 @@ export default function Sidebar(props: SidebarProps) {
             if (selectedTags.length > 0 && !opTags.some((t: string) => selectedTags.includes(t))) return false;
             if (onlyProtected === true && !ep.isProtected) return false;
             if (onlyProtected === false && ep.isProtected) return false;
-            if (!query) return true;
+            if (!mainSearchQuery) return true;
             const summary = (ep.operation?.summary || '').toLowerCase();
             const desc = (ep.operation?.description || '').toLowerCase();
             const searchable = [
@@ -361,20 +360,33 @@ export default function Sidebar(props: SidebarProps) {
                 ...opTags.map((t: string) => t.toLowerCase()),
             ];
             if (terms.every(term => searchable.some(value => value.includes(term)))) return true;
-            if (ep.method.toLowerCase() === query) return true;
-            if (opTags.some((t: string) => t.toLowerCase().includes(query))) return true;
+            if (ep.method.toLowerCase() === mainSearchQuery) return true;
+            if (opTags.some((t: string) => t.toLowerCase().includes(mainSearchQuery))) return true;
             return false;
         };
         return filterTagTree(tagTree, predicate);
     }, [
         tagTree,
-        hasEndpointVisibilityFilter,
-        effectiveSidebarQuery,
+        hasMainSidebarFilters,
+        mainSearchQuery,
         selectedMethods,
         selectedTags,
         onlyProtected,
+        sidebarConfig.displayRoutes,
         sidebarConfig.hideDeprecatedEndpoints,
     ]);
+    const endpointFilterQuery = sidebarFilterQuery.trim();
+    const visibleTagTree = useMemo(
+        () =>
+            endpointFilterQuery
+                ? filterTagTree(mainSearchTagTree, endpoint =>
+                      endpointMatchesSidebarFilter(endpoint, endpointFilterQuery, sidebarConfig.displayRoutes),
+                  )
+                : mainSearchTagTree,
+        [endpointFilterQuery, mainSearchTagTree, sidebarConfig.displayRoutes],
+    );
+    const hasEndpointVisibilityFilter =
+        hasMainSidebarFilters || !!endpointFilterQuery || sidebarConfig.hideDeprecatedEndpoints;
     const endpointRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
     const navScrollRef = useRef<HTMLDivElement | null>(null);
     const [navScrolled, setNavScrolled] = useState(false);
@@ -569,7 +581,7 @@ export default function Sidebar(props: SidebarProps) {
         <SidebarTree
             node={node}
             nodePath={nodePath}
-            collapsedNodes={sidebarFilterQuery.trim() ? {} : collapsedNodes}
+            collapsedNodes={endpointFilterQuery ? {} : collapsedNodes}
             countEndpoints={countEndpoints}
             ancestorNodePaths={ancestorNodePaths}
             selectedEndpoint={selectedEndpoint}
@@ -579,7 +591,8 @@ export default function Sidebar(props: SidebarProps) {
             showAbout={showAbout}
             showAssistant={showAssistant}
             assistantContextEndpoints={assistantContextEndpoints}
-            searchQuery={effectiveSidebarQuery}
+            searchQuery={searchQuery}
+            endpointFilterQuery={endpointFilterQuery}
             config={sidebarConfig}
             endpointRefs={endpointRefs}
             onToggleNode={toggleNode}
@@ -633,6 +646,7 @@ export default function Sidebar(props: SidebarProps) {
     const sidebarContent = (
         <div
             ref={sidebarRef}
+            data-opendoc-sidebar
             className={clsx(
                 'h-full flex flex-col overflow-hidden font-sans bg-[var(--sidebar)]',
                 isMobile ? 'w-[82vw] max-w-[340px]' : 'relative shrink-0 border-r border-[var(--border)]',
@@ -771,7 +785,10 @@ export default function Sidebar(props: SidebarProps) {
                 )}
             </div>
 
-            <div className="relative z-20 min-h-7 px-3 pt-1 pb-0 flex items-center justify-between gap-2 shrink-0">
+            <div
+                data-sidebar-navigation-header
+                className="relative z-20 h-7 px-3 flex items-center justify-between gap-2 shrink-0"
+            >
                 {sidebarFilterOpen ? (
                     <div className="flex w-full min-w-0 items-center gap-1">
                         <div className="relative min-w-0 flex-1">
@@ -784,7 +801,7 @@ export default function Sidebar(props: SidebarProps) {
                                 onChange={event => setSidebarFilterQuery(event.target.value)}
                                 aria-label="Filter sidebar endpoints"
                                 placeholder="Filter endpoints…"
-                                className="h-7 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-7 pr-7 text-[10px] text-[var(--text-heading)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--primary)]"
+                                className="h-6 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-7 pr-7 text-[10px] text-[var(--text-heading)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--primary)]"
                             />
                             {sidebarFilterQuery && (
                                 <button

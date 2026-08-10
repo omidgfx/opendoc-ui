@@ -26,7 +26,7 @@ export default defineConfig(() => {
             },
         },
         build: {
-            sourcemap: true,
+            sourcemap: false,
             // A single bundle is intentional for the drop-in distribution.
             chunkSizeWarningLimit: 2000,
             rollupOptions: {

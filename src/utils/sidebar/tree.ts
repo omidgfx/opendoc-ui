@@ -156,6 +156,25 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig, ac
     return sort(root);
 }
 
+export function endpointMatchesSidebarFilter(
+    endpoint: TreeNode['endpoints'][number],
+    query: string,
+    displayRoutes: boolean,
+): boolean {
+    const terms = query
+        .trim()
+        .toLowerCase()
+        .split(/[\s._-]+/)
+        .filter(Boolean);
+    if (terms.length === 0) return true;
+    const summary = String(endpoint.operation?.summary || endpoint.path).toLowerCase();
+    const visibleEndpointText = [
+        summary,
+        ...(displayRoutes && endpoint.operation?.summary ? [endpoint.path.toLowerCase()] : []),
+    ];
+    return terms.every(term => visibleEndpointText.some(value => value.includes(term)));
+}
+
 export function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoints'][number]) => boolean): TreeNode {
     const newChildren: Record<string, TreeNode> = {};
     Object.entries(node.children).forEach(([k, child]) => {

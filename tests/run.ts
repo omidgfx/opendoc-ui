@@ -51,6 +51,7 @@ import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGener
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
 import {parseEmojis} from '@/src/data/emoji';
+import {endpointMatchesSidebarFilter} from '@/src/utils/sidebar/tree';
 import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
@@ -970,11 +971,39 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
         tags: ['one', 'two'],
     });
 });
-test('renders supported native and shortcode emoji with embedded Apple-style images', () => {
-    const parsed = parseEmojis('Launch 🚀 :fire: and keep unknown :not_an_emoji:');
-    assert.match(parsed, /<img class="emoji" alt="🚀" src="data:image\/png;base64,/);
-    assert.match(parsed, /<img class="emoji" alt=":fire:" src="data:image\/png;base64,/);
+test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple sprites', () => {
+    const parsed = parseEmojis('Launch 🚀 :fire: 👩🏽‍💻 🫩 and keep unknown :not_an_emoji:');
+    assert.match(parsed, /class="emoji"[^>]+aria-label="🚀"[^>]+data-apple-emoji="true"/);
+    assert.match(parsed, /class="emoji"[^>]+aria-label=":fire:"[^>]+data-apple-emoji="true"/);
+    assert.match(parsed, /class="emoji"[^>]+aria-label="👩🏽‍💻"[^>]+data-apple-emoji="true"/);
+    assert.match(parsed, /class="emoji"[^>]+aria-label="🫩"[^>]+data-apple-emoji="true"/);
+    assert.match(parsed, /--emoji-sheet-left:-[\d.]+em;--emoji-sheet-top:-[\d.]+em/);
     assert.match(parsed, /:not_an_emoji:/);
+});
+test('limits the local sidebar filter to endpoint text that is actually visible', () => {
+    const endpoint: any = {
+        path: '/internal/invoice-route',
+        method: 'post',
+        operation: {
+            summary: 'Create customer invoice',
+            description: 'Secret settlement wording',
+            tags: ['Billing Folder'],
+        },
+    };
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'customer invoice', true), true);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'invoice-route', true), true);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'invoice-route', false), false);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'Billing Folder', true), false);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'settlement', true), false);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'post', true), false);
+    assert.equal(
+        endpointMatchesSidebarFilter(
+            {...endpoint, operation: {...endpoint.operation, summary: ''}},
+            'invoice-route',
+            false,
+        ),
+        true,
+    );
 });
 test('uses inline descriptions until the tooltip threshold', () => {
     assert.equal(usesDescriptionTooltip('Short field description'), false);
