@@ -19,6 +19,7 @@ import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabil
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
+import {formatEngineErrorPath} from '@/src/utils/openapi/engine';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 const test = (name: string, callback: () => void) => {
     callback();
@@ -376,6 +377,12 @@ test('detects vendor JSON media types', () => {
     assert.equal(isJsonMediaType('application/problem+json; charset=utf-8'), true);
     assert.equal(isJsonMediaType('application/vnd.company.resource+json'), true);
     assert.equal(isJsonMediaType('application/octet-stream'), false);
+});
+test('normalizes parser error paths without assuming an array shape', () => {
+    assert.equal(formatEngineErrorPath(['paths', '/pets', 'get']), 'paths//pets/get');
+    assert.equal(formatEngineErrorPath('/paths/~1pets/get'), '/paths/~1pets/get');
+    assert.equal(formatEngineErrorPath(42), '42');
+    assert.equal(formatEngineErrorPath(undefined), undefined);
 });
 test('validates documents by explicit dialect and accepts pathless OAS 3.1 webhooks', () => {
     assert.equal(validateOpenApiDocument(baseSpec).valid, true);
