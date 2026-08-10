@@ -1,4 +1,4 @@
-# OpenDoc UI
+# [OpenDoc UI](https://omidgfx.github.io/opendoc-ui/)
 
 A static-first documentation browser, API runner, and optional AI assistant for **Swagger 2.x** and
 **OpenAPI 3.x** specifications (JSON or YAML). Point it at a spec — via configuration or straight
@@ -7,7 +7,9 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-0.1.3-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+
+**[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
 ---
 
@@ -88,6 +90,8 @@ This release focuses on predictable request execution and portable deployment:
 ---
 
 ## Quick start
+
+Try it immediately in the **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/)**, or run it locally:
 
 ```bash
 npm ci
@@ -211,8 +215,7 @@ spec selector while also allowing visitors to open local JSON/YAML files. Hybrid
 recent local-file history, preserves deep links to those files, and always keeps the configured
 specifications available for switching back. Files remain entirely in the visitor's browser.
 
-The GitHub Pages demo uses this mode: it opens the bundled Petstore specification immediately,
-but visitors can still try OpenDoc UI with their own specifications.
+The **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/)** uses this mode: it opens the bundled Petstore specification immediately, but visitors can still try OpenDoc UI with their own specifications.
 
 ### Mode 3 — No configuration (local mode)
 
@@ -554,6 +557,8 @@ src/
 
 ### GitHub Pages demo
 
+**Live site:** [https://omidgfx.github.io/opendoc-ui/](https://omidgfx.github.io/opendoc-ui/)
+
 The repository includes `.github/workflows/pages.yml`. On every push to `master` it builds OpenDoc
 with the repository base path, enables `public/demo/openapi.yaml`, and deploys `dist/` through the
 official GitHub Pages artifact workflow.
@@ -563,7 +568,7 @@ Enable it once:
 1. Open **Repository Settings → Pages**.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
 3. Push to `master`, or run **Deploy demo to GitHub Pages** manually from the Actions tab.
-4. Open `https://omidgfx.github.io/opendoc-ui/` after the deployment succeeds.
+4. Open the **[live demo](https://omidgfx.github.io/opendoc-ui/)** after the deployment succeeds.
 
 The committed app remains in local mode during normal development. The workflow copies
 `public/demo/config.pages.json` to `public/config.json` only inside the disposable Actions runner,
