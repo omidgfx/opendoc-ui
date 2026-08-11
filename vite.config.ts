@@ -1,10 +1,31 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 import svgr from 'vite-plugin-svgr';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+    const env = {...loadEnv(mode, process.cwd(), ''), ...process.env};
+    const remoteLoadingEnabled = String(env.VITE_LOAD_FROM_URL || '').toLowerCase() === 'true';
+    const downloaderTemplate = String(env.VITE_SPEC_DOWNLOADER || '').trim();
+    if (remoteLoadingEnabled && downloaderTemplate) {
+        const normalized = downloaderTemplate.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
+        if (!normalized.includes('{URL}'))
+            throw new Error('VITE_SPEC_DOWNLOADER must contain the exact {URL} placeholder.');
+        try {
+            const parsed = new URL(
+                `https://${normalized.split('{URL}').join(encodeURIComponent('https://example.com/openapi.yaml'))}`,
+            );
+            if (parsed.username || parsed.password)
+                throw new Error('VITE_SPEC_DOWNLOADER cannot contain embedded credentials.');
+        } catch (error) {
+            throw new Error(
+                error instanceof Error && error.message.includes('credentials')
+                    ? error.message
+                    : 'VITE_SPEC_DOWNLOADER does not produce a valid downloader URL.',
+            );
+        }
+    }
     return {
         // GitHub Pages serves project sites from /<repository>/; regular and
         // custom-domain builds keep the root default.

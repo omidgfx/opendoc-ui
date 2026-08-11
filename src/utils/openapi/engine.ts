@@ -83,8 +83,10 @@ const containsExternalRef = (value: unknown, visited = new Set<object>()): boole
     return false;
 };
 
+export type ExternalReferenceRequester = (url: string, init: RequestInit) => Promise<Response>;
+
 const safeReferenceFetch =
-    (rootUri: string) =>
+    (rootUri: string, requester: ExternalReferenceRequester = (url, init) => fetch(url, init)) =>
     async (requested: string): Promise<Response> => {
         const root = new URL(rootUri);
         const target = new URL(requested, root);
@@ -98,14 +100,15 @@ const safeReferenceFetch =
         const controller = new AbortController();
         const timeout = globalThis.setTimeout(() => controller.abort(), EXTERNAL_TIMEOUT_MS);
         try {
-            const response = await fetch(target.href, {
+            const response = await requester(target.href, {
                 signal: controller.signal,
                 credentials: 'omit',
                 redirect: 'follow',
                 cache: 'no-store',
             });
-            if (response.url && new URL(response.url).origin !== root.origin)
-                throw new Error(`External reference redirect left the allowed origin: ${response.url}`);
+            const finalUri = response.headers.get('x-opendoc-final-url') || response.url;
+            if (finalUri && new URL(finalUri).origin !== root.origin)
+                throw new Error(`External reference redirect left the allowed origin: ${finalUri}`);
             if (!response.ok) throw new Error(`External reference returned HTTP ${response.status}: ${target.href}`);
             const declaredLength = Number(response.headers.get('content-length') || 0);
             if (declaredLength > MAX_EXTERNAL_BYTES)
@@ -138,6 +141,7 @@ export const processWithOpenApiEngine = async (
     raw: string,
     parsed: OpenApiSpec,
     sourceUri?: string,
+    externalReferenceRequester?: ExternalReferenceRequester,
 ): Promise<OpenApiEngineResult> => {
     const diagnostics: Diagnostic[] = [];
     let parser: typeof import('@scalar/openapi-parser');
@@ -188,7 +192,7 @@ export const processWithOpenApiEngine = async (
             plugins: [
                 fetchUrls({
                     limit: MAX_EXTERNAL_DOCUMENTS,
-                    fetch: safeReferenceFetch(absoluteSource),
+                    fetch: safeReferenceFetch(absoluteSource, externalReferenceRequester),
                 }),
             ],
         });
