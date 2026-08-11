@@ -272,8 +272,9 @@ export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps
                                     static host (GitHub Pages, Netlify, S3, an internal nginx box) and point it at any
                                     CORS-enabled API. Authentication is stored in memory only — tokens never leave your
                                     machine unless you explicitly send a request. AI can run directly against a
-                                    CORS-enabled provider or through the optional Express gateway when a provider does
-                                    not allow browser requests.
+                                    CORS-enabled provider or through an optional server-side gateway. The repository
+                                    includes Express plus adapters for popular PHP, Python, Go, Java, .NET, Ruby, and
+                                    Rust frameworks.
                                 </p>
                                 <p>
                                     Theme preferences, collapsed tag folders, sidebar width, tabs, cache and chat
