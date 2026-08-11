@@ -83,6 +83,16 @@ export default function Sidebar(props: SidebarProps) {
         onClearHistory,
         localOpenError,
         onDismissLocalError,
+        remoteLoadingEnabled,
+        downloaderConfigured,
+        remoteHistory,
+        remoteOpenError,
+        isLoadingRemoteSpec,
+        remoteLoadStatus,
+        onLoadRemoteUrl,
+        onSelectRemoteHistoryEntry,
+        onRemoveRemoteHistoryEntry,
+        onClearRemoteHistory,
         mobileOpen,
         onCloseMobile,
         onOpenMobile,
@@ -1012,6 +1022,16 @@ export default function Sidebar(props: SidebarProps) {
             onClearHistory={onClearHistory}
             localOpenError={localOpenError}
             onDismissLocalError={onDismissLocalError}
+            remoteLoadingEnabled={remoteLoadingEnabled}
+            downloaderConfigured={downloaderConfigured}
+            remoteHistory={remoteHistory}
+            remoteOpenError={remoteOpenError}
+            isLoadingRemoteSpec={isLoadingRemoteSpec}
+            remoteLoadStatus={remoteLoadStatus}
+            onLoadRemoteUrl={onLoadRemoteUrl}
+            onSelectRemoteHistoryEntry={onSelectRemoteHistoryEntry}
+            onRemoveRemoteHistoryEntry={onRemoveRemoteHistoryEntry}
+            onClearRemoteHistory={onClearRemoteHistory}
             onSelect={k => {
                 onSelectParsable(k);
                 setShowSpecModal(false);

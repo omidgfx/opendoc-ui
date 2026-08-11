@@ -52,6 +52,13 @@ import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
 import {parseEmojis} from '@/src/data/emoji';
 import {endpointMatchesSidebarFilter} from '@/src/utils/sidebar/tree';
+import {
+    buildDownloaderUrl,
+    normalizeDownloaderTemplate,
+    normalizeRemoteSpecUrl,
+    remoteSpecKey,
+    replaceUrlProtocol,
+} from '@/src/utils/remoteSpec';
 import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
@@ -970,6 +977,33 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {
         tags: ['one', 'two'],
     });
+});
+test('normalizes remote specification and downloader URLs without mixed-content proxy calls', () => {
+    const target = normalizeRemoteSpecUrl(' https://api.example.test/openapi.yaml#section ');
+    assert.equal(target, 'https://api.example.test/openapi.yaml');
+    assert.equal(
+        normalizeDownloaderTemplate('http://proxy.example.test/load?url={URL}'),
+        'proxy.example.test/load?url={URL}',
+    );
+    assert.equal(
+        buildDownloaderUrl('http://proxy.example.test/load?url={URL}', target, 'https:'),
+        `https://proxy.example.test/load?url=${encodeURIComponent(target)}`,
+    );
+    assert.equal(
+        buildDownloaderUrl('proxy.example.test/{URL}/dl', 'http://api.example.test/openapi.json', 'http:'),
+        `http://proxy.example.test/${encodeURIComponent('http://api.example.test/openapi.json')}/dl`,
+    );
+    assert.equal(
+        replaceUrlProtocol('http://api.example.test/openapi.json', 'https:'),
+        'https://api.example.test/openapi.json',
+    );
+    assert.match(remoteSpecKey(target), /^remote:[a-z0-9]+$/);
+    assert.throws(() => normalizeRemoteSpecUrl('file:///tmp/openapi.yaml'), /Only HTTP and HTTPS/);
+    assert.throws(
+        () => normalizeRemoteSpecUrl('https://user:secret@example.test/openapi.yaml'),
+        /usernames or passwords/,
+    );
+    assert.throws(() => normalizeDownloaderTemplate('proxy.example.test/load'), /\{URL\}/);
 });
 test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple sprites', () => {
     const parsed = parseEmojis('Launch 🚀 :fire: 👩🏽‍💻 🫩 and keep unknown :not_an_emoji:');

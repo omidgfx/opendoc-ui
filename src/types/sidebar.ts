@@ -1,6 +1,7 @@
 import type {Dispatch, SetStateAction} from 'react';
 import type {OpenApiSpec, ParsableConfig, ThemeMode} from '@/src/types';
 import type {LocalHistoryEntry} from '@/src/utils/localHistory';
+import type {RemoteHistoryEntry} from '@/src/utils/remoteHistory';
 import type {ViewTabKind} from '@/src/components/endpoint/EndpointTabs';
 
 export interface SidebarProps {
@@ -85,6 +86,16 @@ export interface SidebarProps {
     onClearHistory: () => void;
     localOpenError: string | null;
     onDismissLocalError: () => void;
+    remoteLoadingEnabled: boolean;
+    downloaderConfigured: boolean;
+    remoteHistory: RemoteHistoryEntry[];
+    remoteOpenError: string | null;
+    isLoadingRemoteSpec: boolean;
+    remoteLoadStatus: string | null;
+    onLoadRemoteUrl: (url: string) => Promise<unknown>;
+    onSelectRemoteHistoryEntry: (entry: RemoteHistoryEntry) => Promise<unknown>;
+    onRemoveRemoteHistoryEntry: (key: string) => Promise<void> | void;
+    onClearRemoteHistory: () => Promise<void> | void;
     mobileOpen: boolean;
     onCloseMobile: () => void;
     onOpenMobile: () => void;

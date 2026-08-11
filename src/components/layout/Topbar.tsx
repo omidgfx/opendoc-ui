@@ -5,6 +5,7 @@ import {useBreakpoint} from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
 import {Tip} from '../common/Tooltip';
 import type {LocalHistoryEntry} from '../../utils/localHistory';
+import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
 import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
 import {specStorage} from '../../utils/storage';
 import Logo from '@/src/assets/logo.svg?react';
@@ -47,6 +48,16 @@ interface TopbarProps {
     onClearHistory: () => void;
     localOpenError: string | null;
     onDismissLocalError: () => void;
+    remoteLoadingEnabled: boolean;
+    downloaderConfigured: boolean;
+    remoteHistory: RemoteHistoryEntry[];
+    remoteOpenError: string | null;
+    isLoadingRemoteSpec: boolean;
+    remoteLoadStatus: string | null;
+    onLoadRemoteUrl: (url: string) => Promise<unknown>;
+    onSelectRemoteHistoryEntry: (entry: RemoteHistoryEntry) => Promise<unknown>;
+    onRemoveRemoteHistoryEntry: (key: string) => Promise<void> | void;
+    onClearRemoteHistory: () => Promise<void> | void;
     onSearchHasResults?: (q: string) => boolean;
     hideSearch?: boolean;
 }
@@ -85,6 +96,16 @@ export default function Topbar({
     onClearHistory,
     localOpenError,
     onDismissLocalError,
+    remoteLoadingEnabled,
+    downloaderConfigured,
+    remoteHistory,
+    remoteOpenError,
+    isLoadingRemoteSpec,
+    remoteLoadStatus,
+    onLoadRemoteUrl,
+    onSelectRemoteHistoryEntry,
+    onRemoveRemoteHistoryEntry,
+    onClearRemoteHistory,
     onSearchHasResults,
     hideSearch,
 }: TopbarProps & {
@@ -158,19 +179,38 @@ export default function Topbar({
         return () => window.removeEventListener('keydown', handler);
     }, [isMobile, hideSearch]);
     const authConnected = activeAuth.activeScheme && activeAuth.activeScheme !== 'none';
-    const selectedSpecificationIsLocal = !!selectedParsableKey && !parsables[selectedParsableKey];
+    const selectedSpecificationIsRemote = selectedParsableKey.startsWith('remote:');
+    const selectedSpecificationIsLocal =
+        !!selectedParsableKey && !selectedSpecificationIsRemote && !parsables[selectedParsableKey];
     const selectedSpecificationTitle =
         parsables[selectedParsableKey]?.title || spec?.info?.title || selectedParsableKey || 'API Specifications';
     const selectorButton = isLocalMode ? (
-        canOpenLocal && (
-            <Tip content="Open a specification from your device">
+        (canOpenLocal || remoteLoadingEnabled) && (
+            <Tip
+                content={
+                    canOpenLocal ? 'Open a specification from your device or URL' : 'Load a specification from URL'
+                }
+            >
                 <button
                     type="button"
                     onClick={() => setShowSpecificationModal(true)}
                     className="flex h-8 w-40 xl:w-48 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]"
                 >
-                    <i className="ph-fill ph-folder-open shrink-0 text-[14px] text-[var(--primary)]" />
-                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">Open specification</span>
+                    <i
+                        className={clsx(
+                            'ph-fill shrink-0 text-[14px] text-[var(--primary)]',
+                            hasSpec
+                                ? selectedSpecificationIsRemote
+                                    ? 'ph-globe-hemisphere-west'
+                                    : 'ph-file-code'
+                                : canOpenLocal
+                                  ? 'ph-folder-open'
+                                  : 'ph-globe-hemisphere-west',
+                        )}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                        {hasSpec ? selectedSpecificationTitle : 'Open specification'}
+                    </span>
                     <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
                 </button>
             </Tip>
@@ -185,7 +225,11 @@ export default function Topbar({
                 <i
                     className={clsx(
                         'ph-fill shrink-0 text-[14px] text-[var(--primary)]',
-                        selectedSpecificationIsLocal ? 'ph-file-code' : 'ph-files',
+                        selectedSpecificationIsRemote
+                            ? 'ph-globe-hemisphere-west'
+                            : selectedSpecificationIsLocal
+                              ? 'ph-file-code'
+                              : 'ph-files',
                     )}
                 />
                 <span className="min-w-0 flex-1 truncate text-xs font-semibold">{selectedSpecificationTitle}</span>
@@ -257,7 +301,7 @@ export default function Topbar({
                     )}
                 </div>
 
-                {isMobile && isLocalMode && canOpenLocal && (
+                {isMobile && isLocalMode && (canOpenLocal || remoteLoadingEnabled) && (
                     <Tip content="Open a specification from your device" placement="bottom">
                         <button
                             type="button"
@@ -475,6 +519,16 @@ export default function Topbar({
                 onClearHistory={onClearHistory}
                 localOpenError={localOpenError}
                 onDismissLocalError={onDismissLocalError}
+                remoteLoadingEnabled={remoteLoadingEnabled}
+                downloaderConfigured={downloaderConfigured}
+                remoteHistory={remoteHistory}
+                remoteOpenError={remoteOpenError}
+                isLoadingRemoteSpec={isLoadingRemoteSpec}
+                remoteLoadStatus={remoteLoadStatus}
+                onLoadRemoteUrl={onLoadRemoteUrl}
+                onSelectRemoteHistoryEntry={onSelectRemoteHistoryEntry}
+                onRemoveRemoteHistoryEntry={onRemoveRemoteHistoryEntry}
+                onClearRemoteHistory={onClearRemoteHistory}
                 onSelect={k => {
                     onSelectParsable(k);
                     setShowSpecificationModal(false);

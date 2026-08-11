@@ -26,6 +26,26 @@ export interface FetchSpecResult<T = undefined> {
     lastModified?: string;
 }
 
+export interface FetchSpecOptions<T> {
+    force?: boolean;
+    maxAgeMs?: number;
+    maxBytes?: number;
+    validate?: (raw: string) => T | Promise<T>;
+    request?: (url: string, init: RequestInit) => Promise<Response>;
+}
+
+export class SpecFetchError extends Error {
+    readonly code: string;
+    readonly status?: number;
+
+    constructor(code: string, message: string, status?: number) {
+        super(message);
+        this.name = 'SpecFetchError';
+        this.code = code;
+        this.status = status;
+    }
+}
+
 const cacheKeyFor = (url: string) => `${PREFIX}${url}`;
 const idbKeyFor = (url: string) => `${IDB_PREFIX}${url}`;
 const isEntry = (value: any): value is CacheEntry =>
@@ -80,6 +100,65 @@ const resultFromEntry = <T>(
     lastModified: entry.lastModified,
 });
 
+const readResponseText = async (response: Response, maxBytes?: number): Promise<string> => {
+    if (!maxBytes || !Number.isFinite(maxBytes) || maxBytes <= 0) return response.text();
+    const declared = Number(response.headers.get('content-length') || 0);
+    if (declared > maxBytes)
+        throw new SpecFetchError(
+            'REMOTE_FILE_TOO_LARGE',
+            `The remote specification exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB limit.`,
+        );
+    if (!response.body) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes.byteLength > maxBytes)
+            throw new SpecFetchError(
+                'REMOTE_FILE_TOO_LARGE',
+                `The remote specification exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB limit.`,
+            );
+        return new TextDecoder().decode(bytes);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let total = 0;
+    let text = '';
+    try {
+        while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            total += value.byteLength;
+            if (total > maxBytes) {
+                await reader.cancel();
+                throw new SpecFetchError(
+                    'REMOTE_FILE_TOO_LARGE',
+                    `The remote specification exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB limit.`,
+                );
+            }
+            text += decoder.decode(value, {stream: true});
+        }
+        text += decoder.decode();
+        return text;
+    } finally {
+        reader.releaseLock();
+    }
+};
+
+const responseFailure = async (response: Response): Promise<SpecFetchError> => {
+    let message = `The specification server returned HTTP ${response.status}.`;
+    try {
+        const payload = JSON.parse(await readResponseText(response.clone(), 64 * 1024));
+        const remoteMessage = payload?.error?.message || payload?.message;
+        if (typeof remoteMessage === 'string' && remoteMessage.trim()) message = remoteMessage.trim();
+        const remoteCode = payload?.error?.code || payload?.code;
+        return new SpecFetchError(
+            typeof remoteCode === 'string' && remoteCode ? remoteCode : 'SPEC_FETCH_HTTP_ERROR',
+            message,
+            response.status,
+        );
+    } catch {
+        return new SpecFetchError('SPEC_FETCH_HTTP_ERROR', message, response.status);
+    }
+};
+
 /**
  * Fetch and optionally parse/validate before committing a new last-known-good
  * cache entry. If validation or revalidation fails, a previous validated entry
@@ -87,11 +166,7 @@ const resultFromEntry = <T>(
  */
 export const fetchSpec = async <T = undefined>(
     url: string,
-    opts: {
-        force?: boolean;
-        maxAgeMs?: number;
-        validate?: (raw: string) => T | Promise<T>;
-    } = {},
+    opts: FetchSpecOptions<T> = {},
 ): Promise<FetchSpecResult<T>> => {
     const maxAgeMs = opts.maxAgeMs ?? DEFAULT_SPEC_CACHE_TTL_MS;
     // Even a forced request may fall back to the previous entry. `force`
@@ -115,7 +190,8 @@ export const fetchSpec = async <T = undefined>(
     if (!opts.force && cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
 
     try {
-        const response = await fetch(url, {cache: 'no-store', headers});
+        const init: RequestInit = {cache: 'no-store', headers};
+        const response = opts.request ? await opts.request(url, init) : await fetch(url, init);
         if (response.status === 304 && cached) {
             const parsed = opts.validate ? await opts.validate(cached.raw) : undefined;
             const entry: CacheEntry = {
@@ -127,8 +203,8 @@ export const fetchSpec = async <T = undefined>(
             commitValidatedEntry(url, entry);
             return resultFromEntry(url, entry, 'revalidated', parsed as T | undefined);
         }
-        if (!response.ok) throw new Error(`Failed to fetch ${url} (${response.status})`);
-        const raw = await response.text();
+        if (!response.ok) throw await responseFailure(response);
+        const raw = await readResponseText(response, opts.maxBytes);
         // Parse and validate before replacing the last-known-good entry.
         const parsed = opts.validate ? await opts.validate(raw) : undefined;
         const entry: CacheEntry = {
@@ -155,8 +231,5 @@ export const fetchSpec = async <T = undefined>(
 /** Backward-compatible text API. New loaders should use `fetchSpec`. */
 export const fetchSpecText = async (
     url: string,
-    opts: {
-        force?: boolean;
-        maxAgeMs?: number;
-    } = {},
+    opts: Omit<FetchSpecOptions<undefined>, 'validate'> = {},
 ): Promise<string> => (await fetchSpec(url, opts)).raw;

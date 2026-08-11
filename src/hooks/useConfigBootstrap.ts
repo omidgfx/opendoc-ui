@@ -1,6 +1,7 @@
 import {type Dispatch, type SetStateAction, useEffect} from 'react';
 import type {AISettings, ParsableConfig} from '../types';
 import {findLocalHistoryEntry, readLocalHistory} from '../utils/localHistory';
+import {readRemoteHistory} from '../utils/remoteHistory';
 import {parseSmartRoute} from '../utils/routing';
 import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage';
 import type {ConfigSource} from '../utils/appSpec';
@@ -14,6 +15,8 @@ interface UseConfigBootstrapOptions {
     setInitialLoadComplete: Dispatch<SetStateAction<boolean>>;
     applyLocalSpec: (raw: string, fileName: string, file: File | null) => unknown;
     applyLocalBundle: (bundle: Record<string, string>, preferredFile?: File | null) => Promise<unknown>;
+    remoteLoadingEnabled: boolean;
+    restoreRemoteSpec: (key: string) => Promise<boolean>;
 }
 
 export function useConfigBootstrap({
@@ -25,6 +28,8 @@ export function useConfigBootstrap({
     setInitialLoadComplete,
     applyLocalSpec,
     applyLocalBundle,
+    remoteLoadingEnabled,
+    restoreRemoteSpec,
 }: UseConfigBootstrapOptions): void {
     useEffect(() => {
         let cancelled = false;
@@ -74,7 +79,7 @@ export function useConfigBootstrap({
             setParsables(loaded);
             if (Object.keys(loaded).length > 0) {
                 const route = parseSmartRoute(window.location.hash);
-                let restoredLocalSpecification = false;
+                let restoredAdHocSpecification = false;
                 if (canOpenLocal && route.parsableKey && !loaded[route.parsableKey]) {
                     const entry = findLocalHistoryEntry(route.parsableKey);
                     if (entry) {
@@ -82,11 +87,19 @@ export function useConfigBootstrap({
                             if (entry.bundle && Object.keys(entry.bundle).length > 1)
                                 await applyLocalBundle(entry.bundle, null);
                             else applyLocalSpec(entry.raw, entry.fileName, null);
-                            restoredLocalSpecification = true;
+                            restoredAdHocSpecification = true;
                         } catch {}
                     }
                 }
-                if (!restoredLocalSpecification) {
+                if (
+                    !restoredAdHocSpecification &&
+                    remoteLoadingEnabled &&
+                    route.parsableKey &&
+                    !loaded[route.parsableKey]
+                ) {
+                    restoredAdHocSpecification = await restoreRemoteSpec(route.parsableKey);
+                }
+                if (!restoredAdHocSpecification) {
                     let initialKey = '';
                     if (route.parsableKey && loaded[route.parsableKey]) initialKey = route.parsableKey;
                     else {
@@ -95,21 +108,26 @@ export function useConfigBootstrap({
                     }
                     if (initialKey) setSelectedSpecKey(initialKey);
                 }
-                const retainedKeys = canOpenLocal
-                    ? [...Object.keys(loaded), ...readLocalHistory().map(entry => entry.key)]
-                    : Object.keys(loaded);
+                const retainedKeys = [
+                    ...Object.keys(loaded),
+                    ...(canOpenLocal ? readLocalHistory().map(entry => entry.key) : []),
+                    ...(remoteLoadingEnabled ? readRemoteHistory().map(entry => entry.key) : []),
+                ];
                 specStorage.prune(retainedKeys);
             } else if (window.location.hash) {
                 const route = parseSmartRoute(window.location.hash);
                 if (route.parsableKey) {
+                    let restored = false;
                     const entry = findLocalHistoryEntry(route.parsableKey);
                     if (entry) {
                         try {
                             if (entry.bundle && Object.keys(entry.bundle).length > 1)
                                 await applyLocalBundle(entry.bundle, null);
                             else applyLocalSpec(entry.raw, entry.fileName, null);
+                            restored = true;
                         } catch {}
                     }
+                    if (!restored && remoteLoadingEnabled) await restoreRemoteSpec(route.parsableKey);
                 }
             }
             setInitialLoadComplete(true);

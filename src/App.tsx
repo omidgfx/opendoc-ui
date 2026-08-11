@@ -22,6 +22,7 @@ import {executeRunnerRequest} from './utils/runnerExecution';
 import {createEmptyAuth} from './utils/auth';
 import {getRawSpecDocument} from './utils/specSource';
 import {appendResponseHistory, readResponseHistory} from './utils/responseHistory';
+import type {FetchSpecResult} from './utils/specCache';
 import {type ConfigSource, endpointKey, type EndpointKey} from './utils/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
@@ -31,6 +32,8 @@ import {useAISettingsController} from './hooks/useAISettingsController';
 import {useSidebarController} from './hooks/useSidebarController';
 import {useSpecLoader} from './hooks/useSpecLoader';
 import {useLocalSpecifications} from './hooks/useLocalSpecifications';
+import {useRemoteSpecifications} from './hooks/useRemoteSpecifications';
+import {REMOTE_SPEC_BUILD_CONFIG} from './utils/remoteBuildConfig';
 import {useWorkspaceRouting} from './hooks/useWorkspaceRouting';
 import {useConfigBootstrap} from './hooks/useConfigBootstrap';
 import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
@@ -58,6 +61,7 @@ export default function App() {
         selectedServer,
         setSelectedServer,
         specFetchInfo,
+        setSpecFetchInfo,
         loadSpec,
     } = useSpecLoader(selectedParsableKey, parsables);
     const [searchQuery, setSearchQuery] = useState('');
@@ -242,10 +246,21 @@ export default function App() {
         }
     }, [selectedParsableKey, parsables]);
     const handleApplyLocalSpec = useCallback(
-        ({key, document, switchingSpec}: {key: string; document: OpenApiSpec; switchingSpec: boolean}) => {
+        ({
+            key,
+            document,
+            switchingSpec,
+            fetchInfo,
+        }: {
+            key: string;
+            document: OpenApiSpec;
+            switchingSpec: boolean;
+            fetchInfo?: FetchSpecResult<OpenApiSpec>;
+        }) => {
             setSelectedParsableKey(key);
             setSpec(document);
             setLoadedSpecKey(key);
+            setSpecFetchInfo(fetchInfo || null);
             setIsLoadingSpec(false);
             setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
             if (!switchingSpec) return;
@@ -293,6 +308,24 @@ export default function App() {
         onApply: handleApplyLocalSpec,
     });
     const {
+        activeRemoteSpec,
+        remoteHistory,
+        remoteOpenError,
+        setRemoteOpenError,
+        isLoadingRemoteSpec,
+        remoteLoadStatus,
+        loadRemoteSpec,
+        restoreRemoteSpec,
+        handleSelectRemoteHistoryEntry,
+        handleRemoveRemoteHistoryEntry,
+        handleClearRemoteHistory,
+    } = useRemoteSpecifications({
+        enabled: REMOTE_SPEC_BUILD_CONFIG.enabled,
+        downloaderTemplate: REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate,
+        selectedSpecKey: selectedParsableKey,
+        onApply: handleApplyLocalSpec,
+    });
+    const {
         isRefreshingSpec,
         handleRefreshSpec,
         handleReloadSpecification,
@@ -302,12 +335,15 @@ export default function App() {
         selectedSpecKey: selectedParsableKey,
         parsables,
         localSpec,
+        activeRemoteSpec,
+        loadRemoteSpec,
         loadSpec,
         applyLocalSpec,
         applyLocalBundle,
         setSpec,
         setLoadedSpecKey,
         setLocalOpenError,
+        setRemoteOpenError,
     });
     useConfigBootstrap({
         setConfigSource,
@@ -318,6 +354,8 @@ export default function App() {
         setInitialLoadComplete: setIsInitialLoadComplete,
         applyLocalSpec,
         applyLocalBundle,
+        remoteLoadingEnabled: REMOTE_SPEC_BUILD_CONFIG.enabled,
+        restoreRemoteSpec,
     });
     useWorkspaceRouting({
         parsables,
@@ -911,6 +949,16 @@ export default function App() {
                         onClearHistory={handleClearHistory}
                         localOpenError={localOpenError}
                         onDismissLocalError={() => setLocalOpenError(null)}
+                        remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
+                        downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+                        remoteHistory={remoteHistory}
+                        remoteOpenError={remoteOpenError}
+                        isLoadingRemoteSpec={isLoadingRemoteSpec}
+                        remoteLoadStatus={remoteLoadStatus}
+                        onLoadRemoteUrl={loadRemoteSpec}
+                        onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
+                        onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
+                        onClearRemoteHistory={handleClearRemoteHistory}
                         onSearchHasResults={searchHasResults}
                         hideSearch={false}
                     />
@@ -995,6 +1043,16 @@ export default function App() {
                                     onClearHistory={handleClearHistory}
                                     localOpenError={localOpenError}
                                     onDismissLocalError={() => setLocalOpenError(null)}
+                                    remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
+                                    downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+                                    remoteHistory={remoteHistory}
+                                    remoteOpenError={remoteOpenError}
+                                    isLoadingRemoteSpec={isLoadingRemoteSpec}
+                                    remoteLoadStatus={remoteLoadStatus}
+                                    onLoadRemoteUrl={loadRemoteSpec}
+                                    onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
+                                    onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
+                                    onClearRemoteHistory={handleClearRemoteHistory}
                                     mobileOpen={mobileOpen}
                                     onCloseMobile={() => setMobileOpen(false)}
                                     onOpenMobile={() => setMobileOpen(true)}

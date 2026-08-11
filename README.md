@@ -23,6 +23,9 @@ CORS-enabled providers directly or an optional gateway.
   - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
   - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
   - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+- [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
+  - [Build-time settings](#build-time-settings)
+  - [Downloader services](#downloader-services)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
@@ -63,6 +66,8 @@ CORS-enabled providers directly or an optional gateway.
   requests in the existing API Runner.
 - **Local mode** — no configuration at all: open `.json` / `.yaml` / `.yml` files from your
   device, with a persistent history of everything you opened.
+- **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
+  persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; large raw documents use IndexedDB instead of consuming the localStorage quota.
 - **Crash recovery** — unexpected UI errors show refresh, full-reset, error details, and a GitHub issue-report link.
@@ -83,6 +88,7 @@ This release focuses on predictable request execution and portable deployment:
 - keyboard-accessible custom dropdowns, modal focus handling, and resizers;
 - a layered sidebar endpoint filter and comprehensive Apple Emoji 16 sprite rendering for native, shortcode, skin-tone, and ZWJ sequences;
 - self-contained emoji assets embedded in `index.css`, with no runtime image or CDN dependency;
+- optional URL specification loading with persistent history and secure multi-language downloader services;
 - explicit authentication logout and endpoint-scoped AI actions that start new conversations;
 - one-file JavaScript builds with Windows-compatible scripts;
 - automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
@@ -233,6 +239,201 @@ Run the app with **no** `window.INITIAL_CONFIG` and **no** `public/config.json` 
 Files are read with the browser's File API — **nothing is uploaded anywhere**. Everything
 stays in your browser. Each opened spec is recorded in the history (see
 [Local history](#local-history)) so you can reopen it after a reload.
+
+---
+
+## Remote URL loading and downloader proxies
+
+Remote URL loading is an optional, build-time capability. When enabled, the specification selector
+gets a **Load from URL** action, a dedicated URL modal, classified request errors, CORS help, and a
+bounded recent-URL history. Downloaded documents use the same OpenAPI parser, diagnostics, cache,
+last-known-good fallback, IndexedDB storage, tabs, and deep links as configured specifications.
+
+Remote history keys contain only a stable hash; the complete source URL is not written into the URL
+fragment. The URL is retained locally in the browser so it can be reopened. Avoid putting permanent
+secrets in query strings, and URLs containing an embedded username or password are rejected.
+
+### Build-time settings
+
+Add these values to `.env`, `.env.production`, or the environment that runs Vite:
+
+```env
+VITE_LOAD_FROM_URL=true
+VITE_SPEC_DOWNLOADER=https://proxy.example.com/download?spec_url={URL}
+```
+
+| `VITE_LOAD_FROM_URL` | `VITE_SPEC_DOWNLOADER` | Result                                              |
+| -------------------- | ---------------------- | --------------------------------------------------- |
+| `false` or missing   | Any value              | URL-loading controls are unavailable in this build  |
+| `true`               | Missing/empty          | Browser-direct mode with CORS help and scheme retry |
+| `true`               | Valid `{URL}` template | Downloader-first mode with direct browser fallbacks |
+
+The downloader is optional, but when present it must contain the exact, case-sensitive `{URL}`
+placeholder. Vite fails the build instead of shipping a malformed template. `{URL}` is replaced with
+the percent-encoded complete target URL, including its original `http://` or `https://` scheme.
+Templates therefore work in either query or path form:
+
+```env
+VITE_SPEC_DOWNLOADER=proxy.example.com/download?spec_url={URL}
+VITE_SPEC_DOWNLOADER=proxy.example.com/{URL}/dl
+```
+
+Any initial scheme on the **downloader endpoint** is removed and replaced with the scheme currently
+serving OpenDoc UI. An HTTPS documentation page therefore never calls an HTTP downloader and cannot
+create a downloader mixed-content error. If OpenDoc is opened with a non-HTTP scheme, HTTPS is used.
+The target specification's own scheme is preserved inside `{URL}` so the backend knows what to fetch.
+
+The browser request sequence is deterministic:
+
+1. With a downloader, call the scheme-normalized downloader URL.
+2. A downloader network, timeout, DNS, or HTTP `5xx` failure falls back to the exact target URL.
+3. A direct transport/CORS/mixed-content failure retries once using OpenDoc UI's scheme.
+4. A downloader `4xx` response is a deliberate policy rejection and is never bypassed.
+5. A received direct HTTP response, including `4xx`/`5xx`, is reported as-is rather than retried under another scheme.
+
+Remote responses are limited to 10 MiB in the browser, even when a custom downloader is used. Cache
+identity is based on the original target URL rather than the generated proxy URL. Downloader services
+return `X-OpenDoc-Final-URL`, allowing the OpenAPI engine to enforce same-origin external `$ref`
+redirect rules while still downloading those references through the configured service.
+
+For a one-off Windows PowerShell build without an environment file:
+
+```powershell
+$env:VITE_LOAD_FROM_URL = "true"
+$env:VITE_SPEC_DOWNLOADER = "https://proxy.example.com/download?spec_url={URL}"
+npm run build
+```
+
+Because these values are compiled into the static bundle, changing them requires another build. Do
+not place a secret token in `VITE_SPEC_DOWNLOADER`; browser-visible build variables are public.
+
+### Downloader services
+
+The `proxy/` directory contains six standalone services. Every implementation exposes the same API:
+
+```http
+GET /download?spec_url=<percent-encoded-http-or-https-url>
+OPTIONS /download
+GET /health
+```
+
+A successful download returns the raw JSON/YAML bytes. Errors use a consistent JSON envelope:
+
+```json
+{
+  "error": {
+    "code": "TARGET_ADDRESS_BLOCKED",
+    "message": "The target resolves to a private, reserved, or otherwise prohibited address."
+  }
+}
+```
+
+Copy `proxy/config.env.example` into your deployment configuration. The common settings are:
+
+```env
+OPENDOC_ALLOWED_ORIGINS=https://docs.example.com,http://localhost:3000
+OPENDOC_MAX_BYTES=10485760
+OPENDOC_TIMEOUT_SECONDS=15
+OPENDOC_MAX_REDIRECTS=3
+OPENDOC_ALLOWED_PORTS=80,443
+OPENDOC_RATE_LIMIT_PER_MINUTE=60
+OPENDOC_ALLOWED_REMOTE_HOSTS=
+PORT=8080
+OPENDOC_BIND=0.0.0.0
+```
+
+`OPENDOC_ALLOWED_ORIGINS` is a comma-separated list of exact browser origins. Do not include URL
+paths. An empty `OPENDOC_ALLOWED_REMOTE_HOSTS` permits arbitrary **public** targets; private,
+loopback, link-local, multicast, metadata-service, and reserved destinations remain blocked. Set an
+exact/wildcard allowlist for constrained deployments:
+
+```env
+OPENDOC_ALLOWED_REMOTE_HOSTS=api.example.com,*.trusted.example
+```
+
+All services revalidate redirects, resolve every destination before connecting, limit ports,
+stream with a hard size cutoff, omit user credentials/cookies, forward only conditional cache
+headers, apply a per-client minute rate limit, and expose only the response headers OpenDoc needs.
+Run them behind a production TLS reverse proxy and make both HTTP and HTTPS available if the same
+OpenDoc bundle is served over both schemes.
+
+#### Node.js 22
+
+```bash
+cd proxy/node
+OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 npm start
+```
+
+`server.mjs` exports `configFromEnv`, `downloadSpecification`, and `createDownloaderHandler`, so an
+existing Node/Express application can mount the returned handler instead of starting the included
+HTTP server.
+
+#### Python 3.11+
+
+```bash
+cd proxy/python
+OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 python app.py
+```
+
+`app.py` uses only the standard library. `download_spec()` and `create_handler()` can be called from
+Flask, Django, FastAPI, or another Python server; the included `ThreadingHTTPServer` is the standalone
+entry point.
+
+#### PHP 8.1+
+
+```bash
+cd proxy/php
+OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 php -S 0.0.0.0:8080 -t public public/index.php
+```
+
+The cURL extension is required. `src/Downloader.php` contains framework-independent functions; a
+Laravel/Symfony controller can call `downloadSpecification()` and translate `DownloaderException`
+into its normal response type. `public/index.php` is the ready-to-run standalone adapter.
+
+#### Go 1.23+
+
+```bash
+cd proxy/go
+go run ./cmd/server
+```
+
+Import `proxy/go/downloader` and mount `downloader.NewHandler(config)` in an existing `net/http`
+router, or use the included command directly.
+
+#### Java 21 / Spring Boot
+
+```bash
+cd proxy/java
+mvn spring-boot:run
+```
+
+`DownloaderService` contains the reusable fetch policy and `DownloaderController` exposes the
+Spring MVC routes. Existing Spring applications can copy/register those beans without using the
+included `DownloaderApplication` launcher.
+
+#### C# / ASP.NET Core 8
+
+```bash
+cd proxy/dotnet
+dotnet run
+```
+
+Call `app.MapOpenDocSpecDownloader(DownloaderConfig.FromEnvironment())` in an existing ASP.NET Core
+application. `Program.cs` is the standalone host and `SpecDownloader.cs` contains the reusable
+service, target policy, rate limiter, and endpoint extension.
+
+Every implementation also includes a Dockerfile. Example:
+
+```bash
+docker build -t opendoc-downloader proxy/go
+docker run --rm -p 8080:8080 \
+  -e OPENDOC_ALLOWED_ORIGINS=https://docs.example.com \
+  opendoc-downloader
+```
+
+These services are intentionally specification downloaders—not general-purpose open proxies. Keep
+their limits enabled, deploy only the implementation matching your backend stack, and use a host
+allowlist where practical.
 
 ---
 
@@ -399,6 +600,11 @@ History specifics:
   shared link restores the right spec from history automatically,
 - history is strictly local to the browser — clearing site data wipes it.
 
+When URL loading is compiled in, `opendoc_remote_spec_history` separately stores the 12 most recent
+remote sources. Their raw documents stay in the normal bounded cache rather than being duplicated in
+history. Removing a URL-history entry removes its cache record, and clear-all uses a confirmation
+before deleting every remote-history/cache pair.
+
 ---
 
 ## Theme system
@@ -486,11 +692,11 @@ reset actions delete both the dedicated records and the fallback mirror.
 
 State is split into three namespaces:
 
-| Namespace                                                           | Contains                                                                                                                                                                   |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `opendoc:ui:<name>`                                                 | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width, non-secret AI settings/profiles, and cached model catalogs |
-| `opendoc:spec:<encoded spec key>:<encoded name>`                    | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation fallback mirror                   |
-| `opendoc_spec_cache_v2:<url>` / IndexedDB / `opendoc_local_history` | Small cache fallback, large spec cache, and local-file history                                                                                                             |
+| Namespace                                                                 | Contains                                                                                                                                                                   |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `opendoc:ui:<name>`                                                       | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width, non-secret AI settings/profiles, and cached model catalogs |
+| `opendoc:spec:<encoded spec key>:<encoded name>`                          | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation fallback mirror                   |
+| `opendoc_spec_cache_v2:<url>` / IndexedDB / local and remote history keys | Small cache fallback, large spec cache, local-file history, and recent remote URLs                                                                                         |
 
 Per-spec data is pruned automatically when a spec disappears from the configuration, and
 legacy v0.1.0 keys are migrated into the namespaces once on first run. Known keys:
@@ -512,6 +718,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 | `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification                                                   |
 | `opendoc_spec_cache_v2:<url>`                               | Small/legacy fallback copy of a remotely loaded spec; large copies use IndexedDB                |
 | `opendoc_local_history`                                     | Recently opened local files                                                                     |
+| `opendoc_remote_spec_history`                               | Last 12 URL-loaded specifications; complete URLs stay in this browser                           |
 | `sessionStorage:opendoc_ui_session_secrets`                 | Session-only AI keys/tokens when remember-secrets is off                                        |
 
 ---
@@ -520,6 +727,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 
 ```
 public/                  # static assets; config.json lives here (pre-defined mode)
+proxy/                   # hardened Node/Python/PHP/Go/Java/.NET specification downloaders
 src/
   App.tsx                # root: config bootstrap, spec loading, state, routing
   components/
@@ -594,6 +802,15 @@ local mode, or add `"allowLocalSpecifications": true` to enable hybrid mode.
 Check the URL in `config.json` — relative paths are resolved against the site root, and
 remote URLs must be CORS-enabled. The selector shows per-entry error messages.
 
+**Why is Load from URL missing?**
+It is a build-time capability. Set `VITE_LOAD_FROM_URL=true` before running `npm run dev` or
+`npm run build`; changing the value after deployment cannot modify an existing static bundle.
+
+**Why did the direct URL request fail while the downloader works?**
+Browsers enforce CORS and mixed-content rules; backend downloaders are not subject to browser CORS
+when contacting the target. The downloader itself must still allow the exact OpenDoc UI origin via
+`OPENDOC_ALLOWED_ORIGINS`.
+
 **Does the refresh button clear my history?**
 No. Refresh only drops the spec cache; local history and settings are untouched.
 
@@ -605,8 +822,9 @@ Yes. Files are normalized to OpenAPI 3 internally; both `swagger: "2.0"` and
 `openapi: 3.x` documents are accepted, in JSON or YAML.
 
 **Is anything sent to a server?**
-No. Specs are fetched by your browser, files opened locally never leave the device, and
-there is no analytics or telemetry code in the app.
+Local files never leave the device. Configured/URL specifications are requested from their source
+or configured downloader, and optional AI requests go only to the selected provider/gateway. There
+is no analytics or telemetry code in the app.
 
 ---
 

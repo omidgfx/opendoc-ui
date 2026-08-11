@@ -6,6 +6,7 @@ import {dereference, validate} from '@scalar/openapi-parser';
 import {processLocalOpenApiBundle} from '../src/utils/openapi/engine';
 import {clearCachedSpec, fetchSpec, writeCachedSpec} from '../src/utils/specCache';
 import {parseSpecDraft} from '../src/utils/appSpec';
+import {createRemoteSpecRequester, RemoteSpecRequestError} from '../src/utils/remoteSpec';
 const originalFetch = globalThis.fetch;
 const settings: AISettings = {
     transport: 'direct',
@@ -20,6 +21,55 @@ const settings: AISettings = {
     customInstructions: '',
 };
 try {
+    const attemptedRemoteUrls: string[] = [];
+    const requester = createRemoteSpecRequester({
+        downloaderTemplate: 'http://proxy.example.test/download?spec_url={URL}',
+        pageProtocol: 'https:',
+        fetchImpl: (async input => {
+            const url = String(input);
+            attemptedRemoteUrls.push(url);
+            if (url.startsWith('https://proxy.example.test/')) return new Response('proxy unavailable', {status: 503});
+            if (url.startsWith('http://source.example.test/')) throw new TypeError('mixed content');
+            return new Response('openapi: 3.1.1', {status: 200});
+        }) as typeof fetch,
+    });
+    const remoteResponse = await requester('http://source.example.test/openapi.yaml');
+    assert.equal(remoteResponse.status, 200);
+    assert.deepEqual(attemptedRemoteUrls, [
+        `https://proxy.example.test/download?spec_url=${encodeURIComponent('http://source.example.test/openapi.yaml')}`,
+        'http://source.example.test/openapi.yaml',
+        'https://source.example.test/openapi.yaml',
+    ]);
+    let bypassedPolicy = false;
+    const policyRequester = createRemoteSpecRequester({
+        downloaderTemplate: 'proxy.example.test/download?spec_url={URL}',
+        pageProtocol: 'https:',
+        fetchImpl: (async input => {
+            if (!String(input).startsWith('https://proxy.example.test/')) bypassedPolicy = true;
+            return new Response('{"error":{"code":"TARGET_BLOCKED","message":"Target is blocked."}}', {
+                status: 403,
+                headers: {'content-type': 'application/json'},
+            });
+        }) as typeof fetch,
+    });
+    assert.equal((await policyRequester('https://blocked.example.test/openapi.json')).status, 403);
+    assert.equal(bypassedPolicy, false);
+    const failingRequester = createRemoteSpecRequester({
+        pageProtocol: 'https:',
+        fetchImpl: (async () => {
+            throw new TypeError('cors');
+        }) as typeof fetch,
+    });
+    await assert.rejects(failingRequester('http://source.example.test/openapi.yaml'), RemoteSpecRequestError);
+    await assert.rejects(
+        fetchSpec('https://large.example.test/openapi.yaml', {
+            maxBytes: 8,
+            request: async () => new Response('0123456789', {status: 200}),
+        }),
+        error => error instanceof Error && /exceeds/.test(error.message),
+    );
+    console.log('✓ applies proxy/direct/scheme fallback policy and remote size limits');
+
     globalThis.fetch = (async () =>
         new Response(
             'data: this is a provider comment\n\n' +

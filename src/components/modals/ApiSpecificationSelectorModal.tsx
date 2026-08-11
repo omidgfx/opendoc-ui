@@ -4,7 +4,10 @@ import {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
 import {clearCachedSpec} from '../../utils/specCache';
 import {Tip} from '../common/Tooltip';
 import type {LocalHistoryEntry} from '../../utils/localHistory';
+import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
 import {useModalTransition} from '../../hooks/useModalTransition';
+import RemoteSpecificationModal from './RemoteSpecificationModal';
+import RemoteSpecificationControls from './RemoteSpecificationControls';
 import {
     formatRelativeTime,
     loadSpecification,
@@ -26,6 +29,16 @@ type ApiSpecificationSelectorModalProps = {
     onClearHistory: () => void;
     localOpenError: string | null;
     onDismissLocalError: () => void;
+    remoteLoadingEnabled: boolean;
+    downloaderConfigured: boolean;
+    remoteHistory: RemoteHistoryEntry[];
+    remoteOpenError: string | null;
+    isLoadingRemoteSpec: boolean;
+    remoteLoadStatus: string | null;
+    onLoadRemoteUrl: (url: string) => Promise<unknown>;
+    onSelectRemoteHistoryEntry: (entry: RemoteHistoryEntry) => Promise<unknown>;
+    onRemoveRemoteHistoryEntry: (key: string) => Promise<void> | void;
+    onClearRemoteHistory: () => Promise<void> | void;
     onSelect: (key: string) => void;
     onReloadSpecification?: (key: string) => void | Promise<void>;
     onResetSpecification?: (key: string) => void;
@@ -46,6 +59,16 @@ export default function ApiSpecificationSelectorModal({
     onClearHistory,
     localOpenError,
     onDismissLocalError,
+    remoteLoadingEnabled,
+    downloaderConfigured,
+    remoteHistory,
+    remoteOpenError,
+    isLoadingRemoteSpec,
+    remoteLoadStatus,
+    onLoadRemoteUrl,
+    onSelectRemoteHistoryEntry,
+    onRemoveRemoteHistoryEntry,
+    onClearRemoteHistory,
     onSelect,
     onReloadSpecification,
     onResetSpecification,
@@ -59,6 +82,7 @@ export default function ApiSpecificationSelectorModal({
         key?: string;
     } | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [showRemoteLoader, setShowRemoteLoader] = useState(false);
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
     const entries = useMemo(() => Object.entries(specifications), [specifications]);
@@ -114,15 +138,20 @@ export default function ApiSpecificationSelectorModal({
         if (!isOpen) return;
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
+            if (showRemoteLoader) return;
             if (confirmAction) {
                 confirmTransition.requestClose();
                 return;
             }
+            const visibleModalCount = Array.from(document.querySelectorAll<HTMLElement>('.modal-surface')).filter(
+                element => element.getClientRects().length > 0,
+            ).length;
+            if (visibleModalCount > 1) return;
             requestClose();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, requestClose, confirmAction]);
+    }, [isOpen, requestClose, confirmAction, showRemoteLoader]);
     const reloadSpecification = async (key: string, item: Parsable) => {
         if (reloadingKeys[key]) return;
         setReloadingKeys(current => ({...current, [key]: true}));
@@ -196,6 +225,18 @@ export default function ApiSpecificationSelectorModal({
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                        {remoteLoadingEnabled && (
+                            <Tip content="Load an OpenAPI specification from URL">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRemoteLoader(true)}
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--primary)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                                    aria-label="Load specification from URL"
+                                >
+                                    <i className="ph-fill ph-globe-hemisphere-west text-[15px]" />
+                                </button>
+                            </Tip>
+                        )}
                         {canOpenLocal && (
                             <Tip content="Open JSON / YAML from your device">
                                 <button
@@ -246,6 +287,22 @@ export default function ApiSpecificationSelectorModal({
                                 >
                                     <i className="ph ph-x text-[12px]" />
                                 </button>
+                            </div>
+                        )}
+
+                        {remoteLoadingEnabled && (
+                            <div className="mb-4">
+                                <RemoteSpecificationControls
+                                    selectedKey={selectedKey}
+                                    downloaderConfigured={downloaderConfigured}
+                                    error={remoteOpenError}
+                                    history={remoteHistory}
+                                    onOpenLoader={() => setShowRemoteLoader(true)}
+                                    onSelectHistoryEntry={onSelectRemoteHistoryEntry}
+                                    onRemoveHistoryEntry={onRemoveRemoteHistoryEntry}
+                                    onClearHistory={onClearRemoteHistory}
+                                    onLoaded={requestClose}
+                                />
                             </div>
                         )}
 
@@ -351,6 +408,21 @@ export default function ApiSpecificationSelectorModal({
                 ) : (
                     <>
                         <div className="modal-scroll-region min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                            {remoteLoadingEnabled && (
+                                <div className="mb-5">
+                                    <RemoteSpecificationControls
+                                        selectedKey={selectedKey}
+                                        downloaderConfigured={downloaderConfigured}
+                                        error={remoteOpenError}
+                                        history={remoteHistory}
+                                        onOpenLoader={() => setShowRemoteLoader(true)}
+                                        onSelectHistoryEntry={onSelectRemoteHistoryEntry}
+                                        onRemoveHistoryEntry={onRemoveRemoteHistoryEntry}
+                                        onClearHistory={onClearRemoteHistory}
+                                        onLoaded={requestClose}
+                                    />
+                                </div>
+                            )}
                             {isHybridMode && (
                                 <div className="mb-5 space-y-3">
                                     {localOpenError && (
@@ -623,15 +695,16 @@ export default function ApiSpecificationSelectorModal({
                 <footer className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-5 py-3 text-[10px] text-[var(--text-muted)]">
                     {isLocalMode ? (
                         <span>
-                            {localHistory.length} spec{localHistory.length === 1 ? '' : 's'} in local history
+                            {localHistory.length} local{remoteLoadingEnabled ? ` · ${remoteHistory.length} URL` : ''}
                         </span>
                     ) : isHybridMode ? (
                         <span>
                             {entries.length} configured · {localHistory.length} local
+                            {remoteLoadingEnabled ? ` · ${remoteHistory.length} URL` : ''}
                         </span>
                     ) : (
                         <span>
-                            {entries.length} API specification{entries.length === 1 ? '' : 's'} available
+                            {entries.length} configured{remoteLoadingEnabled ? ` · ${remoteHistory.length} URL` : ''}
                         </span>
                     )}
                     <button
@@ -643,6 +716,19 @@ export default function ApiSpecificationSelectorModal({
                     </button>
                 </footer>
             </section>
+
+            <RemoteSpecificationModal
+                isOpen={showRemoteLoader}
+                downloaderConfigured={downloaderConfigured}
+                isLoading={isLoadingRemoteSpec}
+                loadStatus={remoteLoadStatus}
+                onLoad={onLoadRemoteUrl}
+                onLoaded={() => {
+                    setShowRemoteLoader(false);
+                    requestClose();
+                }}
+                onClose={() => setShowRemoteLoader(false)}
+            />
 
             {confirmTransition.shouldRender && confirmAction && (
                 <div

@@ -81,6 +81,7 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
         selectedServer,
         setSelectedServer,
         specFetchInfo,
+        setSpecFetchInfo,
         loadSpec,
     };
 }

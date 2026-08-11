@@ -85,6 +85,13 @@ test.beforeAll(async () => {
             response.end();
             return;
         }
+        if (request.method === 'GET' && request.url === '/remote-spec.json') {
+            response.statusCode = 200;
+            response.setHeader('content-type', 'application/json');
+            response.setHeader('etag', '"remote-browser-fixture"');
+            response.end(specText());
+            return;
+        }
         requestCount += 1;
         request.resume();
         request.on('end', () => {
@@ -300,6 +307,27 @@ test('combines configured and local specifications in hybrid mode', async ({page
     await expect(page.getByText('Bundled Demo API', {exact: true})).toBeVisible();
     await page.getByText('Bundled Demo API', {exact: true}).click();
     await expect(page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true})).toBeVisible();
+});
+
+test('loads, caches and restores a remote specification URL with direct-mode CORS help', async ({page}) => {
+    await page.goto('/');
+    await page.locator('.app-topbar').getByText('Open specification', {exact: true}).click();
+    await page.getByText('Load from URL', {exact: true}).click();
+    const remoteUrl = `${apiOrigin}/remote-spec.json`;
+    await page.getByLabel('OpenAPI or Swagger URL').fill(remoteUrl);
+    await expect(page.getByText('CORS configuration help', {exact: true})).toBeVisible();
+    await page.getByRole('button', {name: 'Load URL'}).click();
+    await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
+    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
+
+    await page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true}).click();
+    await expect(page.getByText('Recent URLs · 1', {exact: true})).toBeVisible();
+    await expect(page.getByText(`${apiOrigin}/remote-spec.json`, {exact: true})).toBeVisible();
+    await page.getByRole('button', {name: 'Cancel'}).click();
+
+    await page.reload();
+    await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
+    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
 });
 
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {
