@@ -29,6 +29,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
+  - [Framework AI gateway examples](#framework-ai-gateway-examples)
 - [Local history](#local-history)
 - [Theme system](#theme-system)
 - [The "no specification" state](#the-no-specification-state)
@@ -90,6 +91,7 @@ This release focuses on predictable request execution and portable deployment:
 - self-contained emoji assets embedded in `index.css`, with no runtime image or CDN dependency;
 - optional URL specification loading with persistent history and secure multi-language downloader services;
 - explicit authentication logout and endpoint-scoped AI actions that start new conversations;
+- AI gateway integrations for Express, FastAPI, Django, Laravel, Gin, Spring Boot, ASP.NET Core, Rails, and Axum;
 - one-file JavaScript builds with Windows-compatible scripts;
 - automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
 
@@ -566,6 +568,157 @@ maximum output tokens, and an upstream timeout. Tune them with `AI_GATEWAY_RATE_
 `AI_GATEWAY_MAX_OUTPUT_TOKENS`, and `AI_GATEWAY_UPSTREAM_TIMEOUT_MS`. `/health` is intentionally
 minimal; chat and model discovery require `Authorization: Bearer <AI_GATEWAY_TOKEN>`.
 
+### Framework AI gateway examples
+
+The `ai-proxy/` directory provides explicit integrations for popular languages and frameworks—not
+just generic language samples:
+
+| Directory     | Language / framework | Form                                                |
+| ------------- | -------------------- | --------------------------------------------------- |
+| `express`     | Node.js / Express    | Standalone app and reusable `createGatewayApp()`    |
+| `fastapi`     | Python / FastAPI     | Standalone ASGI app                                 |
+| `django`      | Python / Django      | Installable app views and URL configuration         |
+| `laravel`     | PHP / Laravel        | Controller, routes, config, and service provider    |
+| `gin`         | Go / Gin             | Standalone app with reusable handler logic          |
+| `spring-boot` | Java / Spring Boot   | Controller, limits service, and standalone launcher |
+| `aspnet-core` | C# / ASP.NET Core    | Minimal host and reusable endpoint extension        |
+| `rails`       | Ruby / Rails         | API controller, initializer, and routes             |
+| `axum`        | Rust / Axum          | Standalone Tokio/Axum service                       |
+
+All examples implement the frontend's exact gateway contract:
+
+```http
+GET  /health
+POST /api/ai/models
+POST /api/ai/chat
+OPTIONS /api/ai/*
+```
+
+`/api/ai/chat` accepts the OpenDoc message payload and relays an OpenAI-compatible streaming or JSON
+response. `/api/ai/models` returns only the server-owned model or the exact server allowlist. The
+browser can never submit an API key, base URL, arbitrary upstream provider, or unapproved model.
+
+Copy `ai-proxy/config.env.example` and configure the same environment for any implementation:
+
+```env
+AI_GATEWAY_TOKEN=replace-with-a-long-random-token
+AI_GATEWAY_ORIGINS=https://docs.example.com
+AI_PROVIDER=openai
+AI_MODEL=gpt-4o-mini
+AI_BASE_URL=https://api.openai.com/v1
+AI_API_KEY=replace-with-provider-key
+
+AI_GATEWAY_ALLOW_CLIENT_MODEL=false
+AI_GATEWAY_ALLOWED_MODELS=gpt-4o-mini
+AI_GATEWAY_RATE_LIMIT=30
+AI_GATEWAY_MAX_CONCURRENT=4
+AI_GATEWAY_MAX_MESSAGES=24
+AI_GATEWAY_MAX_MESSAGE_CHARS=40000
+AI_GATEWAY_MAX_CONTEXT_CHARS=250000
+AI_GATEWAY_MAX_OUTPUT_TOKENS=2048
+AI_GATEWAY_UPSTREAM_TIMEOUT_MS=60000
+AI_GATEWAY_MAX_BODY_BYTES=1048576
+PORT=8787
+```
+
+These framework adapters deliberately target **OpenAI-compatible** upstreams: OpenAI, OpenRouter,
+Ollama, LM Studio, vLLM, and custom compatible services. Set `AI_PROVIDER=custom` for another
+compatible backend. The repository's primary Express gateway in `server/ai-gateway.ts` remains the
+full adapter when native Anthropic or Gemini protocols are required.
+
+Every adapter provides exact-origin CORS checks, bearer gateway authentication, fixed/allowlisted
+models, message/context/body limits, upstream timeouts, rate limiting, concurrency limiting,
+provider-key isolation, bounded upstream error messages, and streaming pass-through. Use a shared
+Redis/database cache for rate and concurrency counters when Laravel, Django, or Rails runs with
+multiple workers; for multiple standalone replicas, enforce an additional shared limit at the load
+balancer. Never expose a hosted gateway with `AI_GATEWAY_DEV_MODE=true`.
+
+#### Express
+
+```bash
+cd ai-proxy/express
+npm install
+npm start
+```
+
+Mount `createGatewayApp(configFromEnv())` in a larger Node service, or run `server.mjs` directly.
+
+#### FastAPI
+
+```bash
+cd ai-proxy/fastapi
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8787
+```
+
+The exported `app` can also be mounted inside an existing FastAPI/Starlette deployment.
+
+#### Laravel
+
+Copy `ai-proxy/laravel/app`, `config/opendoc-ai.php`, and `routes/opendoc-ai.php` into the matching
+Laravel directories. Register `App\Providers\OpenDocAiServiceProvider::class` in
+`bootstrap/providers.php`. The controller uses Laravel HTTP streaming, RateLimiter, and Cache; use
+Redis in production so limits are shared across workers.
+
+#### Django
+
+Install `ai-proxy/django/requirements.txt`, copy `opendoc_ai` into the project, add
+`"opendoc_ai"` to `INSTALLED_APPS`, and include its URL patterns:
+
+```python
+path("", include("opendoc_ai.urls"))
+```
+
+Use a shared Django cache backend in multi-worker deployments.
+
+#### Gin
+
+```bash
+cd ai-proxy/gin
+go run .
+```
+
+`main.go` contains the Gin middleware, gateway guards, catalog endpoint, and streaming relay in one
+copyable service.
+
+#### Spring Boot
+
+```bash
+cd ai-proxy/spring-boot
+mvn spring-boot:run
+```
+
+Existing Spring applications can register `GatewayController`, `GatewayLimits`, and
+`GatewayConfig` instead of using the included launcher.
+
+#### ASP.NET Core
+
+```bash
+cd ai-proxy/aspnet-core
+dotnet run
+```
+
+For an existing app, call `app.MapOpenDocAiGateway(config)` and install
+`GatewayEndpoints.CorsMiddleware` as shown in `Program.cs`.
+
+#### Rails
+
+Copy the controller and initializer into an API-mode Rails application, merge the supplied routes,
+and add the gems from `Gemfile.fragment`. Configure Redis-backed `Rails.cache` for multiple workers.
+
+#### Axum
+
+```bash
+cd ai-proxy/axum
+cargo run --release
+```
+
+The Axum implementation streams upstream bytes without buffering the model response and holds its
+concurrency permit until the client stream finishes.
+
+Standalone examples include Dockerfiles. Put any implementation behind HTTPS and enter either its
+origin or `/api/ai` in the OpenDoc assistant's **Gateway URL** field.
+
 ## Spec loading, caching and the refresh button
 
 When a configured spec has a `url`, the app uses the versioned `opendoc_spec_cache_v2:` /
@@ -728,6 +881,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 ```
 public/                  # static assets; config.json lives here (pre-defined mode)
 proxy/                   # hardened Node/Python/PHP/Go/Java/.NET specification downloaders
+ai-proxy/                # Express/FastAPI/Django/Laravel/Gin/Spring/.NET/Rails/Axum AI gateways
 src/
   App.tsx                # root: config bootstrap, spec loading, state, routing
   components/
