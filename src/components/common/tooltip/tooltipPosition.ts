@@ -14,25 +14,27 @@ export interface TooltipPosition {
 
 const TOOLTIP_GAP = 8;
 const TOOLTIP_EDGE = 8;
-export const INITIAL_TOOLTIP_SIZE: TooltipSize = {width: 320, height: 48};
+const clamp = (value: number, minimum: number, maximum: number): number =>
+    Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+
 export const samePosition = (left: TooltipPosition, right: TooltipPosition): boolean =>
     left.top === right.top &&
     left.left === right.left &&
     left.transform === right.transform &&
     left.placement === right.placement;
-const clampCenter = (value: number, size: number, viewport: number): number => {
-    const min = Math.min(TOOLTIP_EDGE + size / 2, viewport / 2);
-    const max = Math.max(viewport - TOOLTIP_EDGE - size / 2, viewport / 2);
-    return Math.min(Math.max(value, min), max);
-};
-export const positionFor = (rect: DOMRect, requested: TooltipPlacement, size: TooltipSize): TooltipPosition => {
+
+export const positionFor = (rect: DOMRect, requested: TooltipPlacement, rawSize: TooltipSize): TooltipPosition => {
     const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
     const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
+    const size = {
+        width: Math.max(1, rawSize.width),
+        height: Math.max(1, rawSize.height),
+    };
     const available: Record<TooltipPlacement, number> = {
-        top: rect.top,
-        bottom: viewportHeight - rect.bottom,
-        left: rect.left,
-        right: viewportWidth - rect.right,
+        top: rect.top - TOOLTIP_EDGE,
+        bottom: viewportHeight - rect.bottom - TOOLTIP_EDGE,
+        left: rect.left - TOOLTIP_EDGE,
+        right: viewportWidth - rect.right - TOOLTIP_EDGE,
     };
     const required: Record<TooltipPlacement, number> = {
         top: size.height + TOOLTIP_GAP,
@@ -48,12 +50,20 @@ export const positionFor = (rect: DOMRect, requested: TooltipPlacement, size: To
     };
     const resolved =
         fallbackOrder[requested].find(side => available[side] >= required[side]) ||
-        fallbackOrder[requested].slice().sort((a, b) => available[b] - available[a])[0];
-    const centerX = clampCenter(rect.left + rect.width / 2, size.width, viewportWidth);
-    const centerY = clampCenter(rect.top + rect.height / 2, size.height, viewportHeight);
+        fallbackOrder[requested].slice().sort((left, right) => available[right] - available[left])[0];
+    const centerX = clamp(
+        rect.left + rect.width / 2,
+        TOOLTIP_EDGE + size.width / 2,
+        viewportWidth - TOOLTIP_EDGE - size.width / 2,
+    );
+    const centerY = clamp(
+        rect.top + rect.height / 2,
+        TOOLTIP_EDGE + size.height / 2,
+        viewportHeight - TOOLTIP_EDGE - size.height / 2,
+    );
     if (resolved === 'bottom')
         return {
-            top: rect.bottom + TOOLTIP_GAP,
+            top: clamp(rect.bottom + TOOLTIP_GAP, TOOLTIP_EDGE, viewportHeight - TOOLTIP_EDGE - size.height),
             left: centerX,
             transform: 'translateX(-50%)',
             placement: resolved,
@@ -61,19 +71,19 @@ export const positionFor = (rect: DOMRect, requested: TooltipPlacement, size: To
     if (resolved === 'left')
         return {
             top: centerY,
-            left: Math.max(TOOLTIP_EDGE, rect.left - TOOLTIP_GAP),
+            left: clamp(rect.left - TOOLTIP_GAP, TOOLTIP_EDGE + size.width, viewportWidth - TOOLTIP_EDGE),
             transform: 'translate(-100%, -50%)',
             placement: resolved,
         };
     if (resolved === 'right')
         return {
             top: centerY,
-            left: Math.min(viewportWidth - TOOLTIP_EDGE, rect.right + TOOLTIP_GAP),
+            left: clamp(rect.right + TOOLTIP_GAP, TOOLTIP_EDGE, viewportWidth - TOOLTIP_EDGE - size.width),
             transform: 'translateY(-50%)',
             placement: resolved,
         };
     return {
-        top: Math.max(TOOLTIP_EDGE, rect.top - TOOLTIP_GAP),
+        top: clamp(rect.top - TOOLTIP_GAP, TOOLTIP_EDGE + size.height, viewportHeight - TOOLTIP_EDGE),
         left: centerX,
         transform: 'translate(-50%, -100%)',
         placement: resolved,

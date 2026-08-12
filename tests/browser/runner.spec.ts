@@ -186,39 +186,120 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
     await expect(page.getByRole('button', {name: 'Response history'})).toHaveCount(0);
 });
 
-test('selects response schema by default and formats example indentation', async ({page}) => {
+test('selects response examples and the current inspect schema by default', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const responseCard = page.locator('#response-400');
     await responseCard.locator('> div').first().click();
+    const exampleTab = responseCard.getByRole('button', {name: /Example Representation/i});
     const schemaTab = responseCard.getByRole('button', {name: /Unified Schema/i});
-    await expect(schemaTab).toHaveAttribute('aria-pressed', 'true');
-    await responseCard.getByRole('button', {name: /Example Representation/i}).click();
+    await expect(exampleTab).toHaveAttribute('aria-pressed', 'true');
+    await expect(schemaTab).toHaveAttribute('aria-pressed', 'false');
+    await expect(responseCard.getByRole('button', {name: /Problem/}).first()).toHaveAttribute('aria-pressed', 'true');
     const example = await responseCard.locator('pre code').last().textContent();
     expect(example).toContain('\n    "error": "bad input"');
     expect(example).toContain('\n        "field": "id"');
 });
 
-test('navigates and expands response codes with desktop and tablet layouts', async ({page}) => {
+test('uses a scroll-aware desktop response navigator and behavior-aware tooltips', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const navigator = page.getByRole('navigation', {name: 'Response code navigator'});
     await expect(navigator).toBeVisible();
+    await expect(navigator).toHaveClass(/w-16/);
+    await expect(navigator.locator('..')).toHaveClass(/w-16/);
+    await expect(navigator.locator('../..')).toHaveClass(/pl-\[68px\]/);
     await expect(navigator.getByRole('button')).toHaveCount(4);
-    await navigator.getByRole('button', {name: /Open response 422/}).click();
-    await expect(navigator.getByRole('button', {name: /Open response 422/})).toHaveAttribute('aria-pressed', 'true');
+    const collapsedIndicator = navigator.locator('[data-response-indicator="400"]');
+    await expect(collapsedIndicator).toHaveAttribute('data-expanded', 'false');
+    await expect(collapsedIndicator).toHaveClass(/border-\[var\(--method-delete\)\]/);
+
+    const response422 = navigator.getByRole('button', {name: /Open response 422/});
+    await expect(response422).toHaveClass(/gap-2/);
+    await expect(response422).not.toHaveClass(/bg-/);
+    await response422.hover();
+    await page.waitForTimeout(300);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    await page.mouse.wheel(0, 120);
+    await page.waitForTimeout(300);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    await page.mouse.move(0, 0);
+    await response422.hover();
+    await page.waitForTimeout(550);
+    const tooltip = page.getByRole('tooltip');
+    await expect(tooltip).toContainText('Validation failed');
+    await expect(tooltip).toHaveClass(/tooltip-fade-in/);
+    await page.mouse.wheel(0, 120);
+    await expect(tooltip).toHaveCount(0);
+
+    await response422.click();
+    await expect(response422).toHaveAttribute('aria-pressed', 'true');
+    await expect(response422.locator('i')).toHaveCount(0);
+    await expect(response422.locator('[data-response-code-label="422"]')).toHaveClass(
+        /text-\[var\(--method-delete\)\]/,
+    );
     await expect(page.locator('#response-422').getByText('Does not return structured body payload.')).toBeVisible();
     await expect(page.locator('#response-422')).not.toHaveClass(/ring-/);
 
+    const response500 = navigator.getByRole('button', {name: /Open response 500/});
+    await response500.click();
+    await expect(response500).toHaveAttribute('aria-pressed', 'true');
+    await expect(response422.locator('[data-response-indicator="422"]')).toHaveAttribute('data-expanded', 'true');
+    await expect(response422.locator('[data-response-indicator="422"]')).toHaveClass(/bg-\[var\(--method-delete\)\]/);
+
+    const response400 = navigator.getByRole('button', {name: /Open response 400/});
+    await response400.click();
+    await expect
+        .poll(() =>
+            page.locator('#response-400').evaluate(element => {
+                const container = element.closest('[data-endpoint-docs-scroll]');
+                if (!container) return Number.POSITIVE_INFINITY;
+                return Math.abs(element.getBoundingClientRect().top - container.getBoundingClientRect().top - 16);
+            }),
+        )
+        .toBeLessThanOrEqual(8);
+    await page.locator('#response-200').evaluate(element => element.scrollIntoView({block: 'start'}));
+    await expect(navigator.getByRole('button', {name: /Open response 200/})).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('#response-400').evaluate(element => element.scrollIntoView({block: 'start'}));
+    await expect(response400).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('#response-400 > div').first().click();
+    await expect(collapsedIndicator).toHaveAttribute('data-expanded', 'false');
+    await expect(response400).toHaveAttribute('aria-pressed', 'false');
+
     await page.setViewportSize({width: 820, height: 900});
-    await expect(navigator).toHaveClass(/top-0/);
-    await expect(navigator).toHaveClass(/-mx-1/);
-    const navigatorComesFirst = await page.evaluate(() => {
-        const nav = document.querySelector('[aria-label="Response code navigator"]');
-        const response = document.querySelector('#response-200');
-        return !!nav && !!response && Boolean(nav.compareDocumentPosition(response) & Node.DOCUMENT_POSITION_FOLLOWING);
+    await expect(navigator).toHaveCount(0);
+});
+
+test('deep-linked responses collapse siblings, align to the top and receive the border effect', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await expect(page).toHaveURL(/\/api\//);
+    await page.evaluate(() => {
+        const base = window.location.hash.replace(/#response-[^#]+$/, '');
+        window.location.hash = `${base}#response-422`;
     });
-    expect(navigatorComesFirst).toBe(true);
+
+    const selected = page.locator('#response-422');
+    await expect(selected).toHaveClass(/ring-2/);
+    await expect(selected).toHaveClass(/ring-\[var\(--primary\)\]/);
+    await expect(selected.getByText('Does not return structured body payload.')).toBeVisible();
+    await expect(page.locator('#response-200 > div')).toHaveCount(1);
+    await expect(page.locator('#response-400 > div')).toHaveCount(1);
+    await expect(page.locator('#response-500 > div')).toHaveCount(1);
+    await expect
+        .poll(() =>
+            selected.evaluate(element => {
+                const container = element.closest('[data-endpoint-docs-scroll]');
+                if (!container) return Number.POSITIVE_INFINITY;
+                return Math.abs(element.getBoundingClientRect().top - container.getBoundingClientRect().top - 16);
+            }),
+        )
+        .toBeLessThanOrEqual(8);
+    await expect(
+        page.getByRole('navigation', {name: 'Response code navigator'}).getByRole('button', {name: /422/}),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(selected).not.toHaveClass(/ring-2/, {timeout: 2500});
 });
 
 test('renders the embedded Apple sprite set without changing emoji inside code', async ({page}) => {

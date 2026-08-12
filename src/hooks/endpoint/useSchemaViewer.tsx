@@ -179,6 +179,27 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (schema === false) return <span className="text-[var(--method-delete)] italic">no value is valid</span>;
         return <div className="space-y-2">{renderSchemaType(schema)}</div>;
     };
+    const getDefaultViewerSchema = (schema: any): any => {
+        if (!schema) return schema;
+        if (schema.$ref) return resolveReference(schema) || schema;
+        if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) return schema.oneOf[0];
+        if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) return schema.anyOf[0];
+        if (Array.isArray(schema.allOf) && schema.allOf.length > 0) return schema.allOf[0];
+        if (schema.type === 'array' && schema.items) return getDefaultViewerSchema(schema.items);
+        return schema;
+    };
+    const resetViewerSchema = (code: string) => {
+        setViewerExampleSchemas(previous => {
+            const next = {...previous};
+            delete next[code];
+            return next;
+        });
+        setViewerExampleNames(previous => {
+            const next = {...previous};
+            delete next[code];
+            return next;
+        });
+    };
     const isSchemaActive = (sub: any, code: string, viewerSchema: any): boolean => {
         if (viewerSchema === undefined || viewerSchema === null) return false;
         if (sub.$ref) {
@@ -210,10 +231,11 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);
             const refSchema = spec.components?.schemas?.[refName];
-            const viewerSchema = viewerExampleSchemas[code];
+            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             const isActive = isSchemaActive(prop, code, viewerSchema);
             return (
                 <button
+                    aria-pressed={isActive}
                     onClick={() => pickViewerSchema(code, refSchema || prop, refName)}
                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
                 >
@@ -237,7 +259,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
             );
         }
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
-            const viewerSchema = viewerExampleSchemas[code];
+            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             return (
                 <div className="flex flex-col gap-1.5 items-start">
                     <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">
@@ -249,6 +271,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                             return (
                                 <button
                                     key={sIdx}
+                                    aria-pressed={isActive}
                                     onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
                                 >
@@ -261,7 +284,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
             );
         }
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
-            const viewerSchema = viewerExampleSchemas[code];
+            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             return (
                 <div className="flex flex-col gap-1.5 items-start">
                     <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">
@@ -273,6 +296,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                             return (
                                 <button
                                     key={sIdx}
+                                    aria-pressed={isActive}
                                     onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
                                 >
@@ -285,7 +309,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
             );
         }
         if (prop.allOf && Array.isArray(prop.allOf)) {
-            const viewerSchema = viewerExampleSchemas[code];
+            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             return (
                 <div className="flex flex-col gap-1.5 items-start">
                     <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">
@@ -297,6 +321,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                             return (
                                 <button
                                     key={sIdx}
+                                    aria-pressed={isActive}
                                     onClick={() => pickViewerSchema(code, sub, fallbackName)}
                                     className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
                                 >
@@ -312,12 +337,13 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
             if (prop.items.$ref) {
                 const refName = getRefName(prop.items.$ref);
                 const refSchema = spec.components?.schemas?.[refName];
-                const viewerSchema = viewerExampleSchemas[code];
+                const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
                 const isActive = isSchemaActive(prop.items, code, viewerSchema);
                 return (
                     <span className="text-xs font-sans">
                         Array&lt;
                         <button
+                            aria-pressed={isActive}
                             onClick={() => pickViewerSchema(code, refSchema || prop.items, refName)}
                             className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
                         >
@@ -346,5 +372,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         renderSchemaButton,
         renderSchemaTypeExample,
         pickViewerSchema,
+        getDefaultViewerSchema,
+        resetViewerSchema,
     };
 }
