@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.4-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.5-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -16,7 +16,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.4](#version-014)
+- [Version 0.1.5](#version-015)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
   - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
@@ -75,7 +75,7 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.4
+## Version 0.1.5
 
 This release focuses on predictable request execution and portable deployment:
 
@@ -83,7 +83,7 @@ This release focuses on predictable request execution and portable deployment:
 - one request compiler shared by the manual Runner and assistant actions;
 - required path-segment protection while other invalid inputs remain testable;
 - persistent per-endpoint response history with individual and bulk removal;
-- desktop response-code TOC with smooth navigation, smart expanded-section tracking, and deep links that collapse siblings before top-aligning and highlighting the target;
+- compact response cards with shared smooth open-and-scroll behavior, a desktop response-code TOC, smart expanded-section tracking, and deep links that collapse siblings before top-aligning and highlighting the target;
 - response examples selected by default with the currently inspected schema visibly active;
 - Swagger 2.0 and OpenAPI 3.0, 3.1, and 3.2 compatibility improvements;
 - local and constrained remote multi-document reference resolution;

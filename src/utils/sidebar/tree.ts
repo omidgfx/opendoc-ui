@@ -33,7 +33,7 @@ export interface SidebarConfig {
 }
 
 const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
-    displayRoutes: true,
+    displayRoutes: false,
     flattenTags: false,
     sortBy: 'name',
     sortDirection: 'asc',

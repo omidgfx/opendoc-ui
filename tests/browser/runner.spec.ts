@@ -208,7 +208,7 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await expect(navigator).toBeVisible();
     await expect(navigator).toHaveClass(/w-16/);
     await expect(navigator.locator('..')).toHaveClass(/w-16/);
-    await expect(navigator.locator('../..')).toHaveClass(/pl-\[68px\]/);
+    await expect(navigator.locator('../..')).toHaveClass(/\bpl-16\b/);
     await expect(navigator.getByRole('button')).toHaveCount(4);
     const collapsedIndicator = navigator.locator('[data-response-indicator="400"]');
     await expect(collapsedIndicator).toHaveAttribute('data-expanded', 'false');
@@ -248,10 +248,17 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await expect(response422.locator('[data-response-indicator="422"]')).toHaveClass(/bg-\[var\(--method-delete\)\]/);
 
     const response400 = navigator.getByRole('button', {name: /Open response 400/});
+    const response400Card = page.locator('#response-400');
+    const response400Header = response400Card.locator('> div').first();
+    const response400Body = response400Card.locator('> div').nth(1);
     await response400.click();
+    await expect(response400).toHaveAttribute('aria-pressed', 'true');
+    await expect(response400Header).toHaveClass(/\bpx-2\.5\b/);
+    await expect(response400Header).toHaveClass(/\bpy-2\b/);
+    await expect(response400Body).toHaveClass(/\bp-2\.5\b/);
     await expect
         .poll(() =>
-            page.locator('#response-400').evaluate(element => {
+            response400Card.evaluate(element => {
                 const container = element.closest('[data-endpoint-docs-scroll]');
                 if (!container) return Number.POSITIVE_INFINITY;
                 return Math.abs(element.getBoundingClientRect().top - container.getBoundingClientRect().top - 16);
@@ -263,9 +270,25 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await page.locator('#response-400').evaluate(element => element.scrollIntoView({block: 'start'}));
     await expect(response400).toHaveAttribute('aria-pressed', 'true');
 
-    await page.locator('#response-400 > div').first().click();
+    await response400Header.click();
     await expect(collapsedIndicator).toHaveAttribute('data-expanded', 'false');
     await expect(response400).toHaveAttribute('aria-pressed', 'false');
+
+    await response400Header.evaluate(element => element.scrollIntoView({block: 'center'}));
+    await response400Header.click();
+    await expect(response400Body).toBeVisible();
+    await expect
+        .poll(() =>
+            response400Card.evaluate(element => {
+                const container = element.closest('[data-endpoint-docs-scroll]');
+                if (!container) return Number.POSITIVE_INFINITY;
+                return Math.abs(element.getBoundingClientRect().top - container.getBoundingClientRect().top - 16);
+            }),
+        )
+        .toBeLessThanOrEqual(8);
+    await expect(response400).toHaveAttribute('aria-pressed', 'true');
+    await expect(response400Card).not.toHaveClass(/ring-/);
+    await expect(page.locator('#response-422').getByText('Does not return structured body payload.')).toBeVisible();
 
     await page.setViewportSize({width: 820, height: 900});
     await expect(navigator).toHaveCount(0);
@@ -324,7 +347,16 @@ test('layers the local endpoint filter over global results without searching tag
     const createEndpoint = sidebar.getByText('Create customer charge', {exact: true});
     const refundEndpoint = sidebar.getByText('Refund customer charge', {exact: true});
     const reportEndpoint = sidebar.getByText('Export monthly report', {exact: true});
+    const validationRoute = sidebar.getByText('/validate/{id}', {exact: true});
     await expect(validationEndpoint).toBeVisible();
+    await expect(validationRoute).toHaveCount(0);
+    await sidebar.getByRole('button', {name: 'Navigation settings'}).click();
+    const showEndpointRoutes = page.getByRole('menuitemcheckbox', {name: 'Show endpoint routes'});
+    await expect(showEndpointRoutes).toHaveAttribute('aria-checked', 'false');
+    await showEndpointRoutes.click();
+    await expect(showEndpointRoutes).toHaveAttribute('aria-checked', 'true');
+    await expect(validationRoute).toBeVisible();
+    await page.keyboard.press('Escape');
     const closedHeaderHeight = await navigationHeader.evaluate(element => element.getBoundingClientRect().height);
 
     await sidebar.getByRole('button', {name: 'Filter sidebar endpoints'}).click();
