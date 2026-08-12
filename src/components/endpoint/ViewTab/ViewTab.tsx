@@ -116,6 +116,7 @@ export default function ViewTab({
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const responseHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const deepLinkHandledRef = useRef('');
+    const responseInteractionCodeRef = useRef<string | null>(null);
     const scrollResponseToTop = (code: string, behavior: ScrollBehavior) => {
         const container = scrollContainerRef.current;
         const response = document.getElementById(`response-${code}`);
@@ -160,7 +161,12 @@ export default function ViewTab({
             }
         })();
         const deepLinkKey = `${activeResponseCode}:${typeof window === 'undefined' ? '' : window.location.hash}`;
-        const isNewDeepLink = hashCode === activeResponseCode && deepLinkHandledRef.current !== deepLinkKey;
+        const isDirectResponseInteraction = responseInteractionCodeRef.current === activeResponseCode;
+        responseInteractionCodeRef.current = null;
+        const isNewDeepLink =
+            !isDirectResponseInteraction &&
+            hashCode === activeResponseCode &&
+            deepLinkHandledRef.current !== deepLinkKey;
         if (!isNewDeepLink) {
             setResponseScrollTailHeight(0);
             setCollapsedResponses(previous => ({...previous, [activeResponseCode]: false}));
@@ -187,25 +193,28 @@ export default function ViewTab({
         },
         [],
     );
-    const toggleResponse = (code: string) => {
-        setResponseScrollTailHeight(0);
-        const nextCollapsed = !collapsedResponses[code];
-        setCollapsedResponses(prev => ({...prev, [code]: nextCollapsed}));
-        if (nextCollapsed && navigatorActiveCode === code) {
-            setNavigatorActiveCode(
-                responseCodes.find(candidate => candidate !== code && !collapsedResponses[candidate]) || null,
-            );
-        } else if (!nextCollapsed) {
-            setNavigatorActiveCode(code);
-        }
-        if (onSelectResponseCode) onSelectResponseCode(nextCollapsed ? null : code);
-    };
-    const openResponseFromNavigator = (code: string) => {
+    const openAndScrollToResponse = (code: string) => {
+        // Route serialization is delayed, so an interaction may briefly share the previous hash.
+        responseInteractionCodeRef.current = code;
         setResponseScrollTailHeight(0);
         setCollapsedResponses(prev => ({...prev, [code]: false}));
         setNavigatorActiveCode(code);
         onSelectResponseCode?.(code);
         requestAnimationFrame(() => scrollResponseToTop(code, 'smooth'));
+    };
+    const toggleResponse = (code: string) => {
+        if (collapsedResponses[code] ?? true) {
+            openAndScrollToResponse(code);
+            return;
+        }
+        setResponseScrollTailHeight(0);
+        setCollapsedResponses(prev => ({...prev, [code]: true}));
+        if (navigatorActiveCode === code) {
+            setNavigatorActiveCode(
+                responseCodes.find(candidate => candidate !== code && !collapsedResponses[candidate]) || null,
+            );
+        }
+        onSelectResponseCode?.(null);
     };
     const expandedResponseCodes = new Set(responseCodes.filter(code => !collapsedResponses[code]));
     useEffect(() => {
@@ -721,14 +730,14 @@ export default function ViewTab({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Response Matrix
                     </h4>
-                    <div className={clsx('relative space-y-2', !isMobile && 'pl-[68px]')}>
+                    <div className={clsx('relative space-y-2', !isMobile && 'pl-16')}>
                         {!isMobile && (
                             <div className="absolute inset-y-0 left-0 w-16">
                                 <ResponseCodeNavigator
                                     responses={operation.responses}
                                     activeCode={navigatorActiveCode}
                                     expandedCodes={expandedResponseCodes}
-                                    onSelect={openResponseFromNavigator}
+                                    onSelect={openAndScrollToResponse}
                                 />
                             </div>
                         )}
@@ -760,7 +769,7 @@ export default function ViewTab({
                                     <div
                                         onClick={() => toggleResponse(code)}
                                         className={clsx(
-                                            'px-3 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between cursor-pointer select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0',
+                                            'px-2.5 sm:px-3 py-2 flex items-center justify-between cursor-pointer select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0',
                                         )}
                                     >
                                         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 flex-wrap">
@@ -803,7 +812,7 @@ export default function ViewTab({
                                     </div>
 
                                     {!isCollapsed && (
-                                        <div className="p-3 sm:p-5 border-t space-y-4 animate-in fade-in border-[var(--border)] min-w-0">
+                                        <div className="p-2.5 sm:p-3 border-t space-y-4 animate-in fade-in border-[var(--border)] min-w-0">
                                             {resp.headers && (
                                                 <div>
                                                     <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">

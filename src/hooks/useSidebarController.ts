@@ -1,26 +1,17 @@
 import {useEffect, useState} from 'react';
-import {specStorage, uiStorage} from '../utils/storage';
+import {uiStorage} from '../utils/storage';
+import {readSidebarConfig} from '../utils/sidebar/tree';
 
 export function useSidebarController(selectedSpecKey: string, isMobile: boolean) {
-    const [sidebarDisplayRoutes, setSidebarDisplayRoutes] = useState(true);
+    const [sidebarDisplayRoutes, setSidebarDisplayRoutes] = useState(
+        () => readSidebarConfig(selectedSpecKey).displayRoutes,
+    );
     const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(
         () => uiStorage.get('sidebar_collapsed') === 'true',
     );
     const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => {
-        if (!selectedSpecKey) {
-            setSidebarDisplayRoutes(true);
-            return;
-        }
-        const saved = specStorage.getJSON<{
-            displayRoutes?: boolean;
-        }>(
-            selectedSpecKey,
-            'sidebar_config',
-            {},
-            value => !!value && typeof value === 'object' && !Array.isArray(value),
-        );
-        setSidebarDisplayRoutes(saved.displayRoutes !== false);
+        setSidebarDisplayRoutes(readSidebarConfig(selectedSpecKey).displayRoutes);
     }, [selectedSpecKey]);
     useEffect(() => {
         if (!isMobile) uiStorage.set('sidebar_collapsed', String(desktopCollapsed));

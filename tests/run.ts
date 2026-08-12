@@ -51,7 +51,7 @@ import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGener
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
 import {parseEmojis} from '@/src/data/emoji';
-import {endpointMatchesSidebarFilter} from '@/src/utils/sidebar/tree';
+import {endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {
     buildDownloaderUrl,
     normalizeDownloaderTemplate,
@@ -1039,7 +1039,9 @@ test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple spri
     assert.match(parsed, /--emoji-sheet-left:-[\d.]+em;--emoji-sheet-top:-[\d.]+em/);
     assert.match(parsed, /:not_an_emoji:/);
 });
-test('limits the local sidebar filter to endpoint text that is actually visible', () => {
+test('defaults endpoint routes off and limits the local sidebar filter to visible text', () => {
+    assert.equal(normalizeSidebarConfig(undefined).displayRoutes, false);
+    assert.equal(normalizeSidebarConfig({displayRoutes: true}).displayRoutes, true);
     const endpoint: any = {
         path: '/internal/invoice-route',
         method: 'post',
