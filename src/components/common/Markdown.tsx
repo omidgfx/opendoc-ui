@@ -4,7 +4,7 @@ import {highlightCodeString} from './CodeViewer';
 import DOMPurify from 'dompurify';
 import {useOperationLinkIndex} from '../../contexts/OperationLinkContext';
 import {rewriteInternalEndpointLinks} from '../../utils/docLinks';
-import {applyAppleEmojiImages} from '../../data/emoji';
+import {applyAppleEmojiImages} from '@opendoc-emoji';
 
 interface MarkdownProps {
     text?: string;

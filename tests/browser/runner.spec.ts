@@ -25,6 +25,7 @@ const specText = () =>
                     requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
                     security: [{bearerAuth: []}],
                     responses: {
+                        '200': {description: 'Accepted'},
                         '400': {
                             description: 'Invalid input',
                             content: {
@@ -34,6 +35,8 @@ const specText = () =>
                                 },
                             },
                         },
+                        '422': {description: 'Validation failed'},
+                        '500': {description: 'Unexpected server failure'},
                     },
                 },
             },
@@ -194,6 +197,28 @@ test('selects response schema by default and formats example indentation', async
     const example = await responseCard.locator('pre code').last().textContent();
     expect(example).toContain('\n    "error": "bad input"');
     expect(example).toContain('\n        "field": "id"');
+});
+
+test('navigates and expands response codes with desktop and tablet layouts', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    const navigator = page.getByRole('navigation', {name: 'Response code navigator'});
+    await expect(navigator).toBeVisible();
+    await expect(navigator.getByRole('button')).toHaveCount(4);
+    await navigator.getByRole('button', {name: /Open response 422/}).click();
+    await expect(navigator.getByRole('button', {name: /Open response 422/})).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#response-422').getByText('Does not return structured body payload.')).toBeVisible();
+    await expect(page.locator('#response-422')).not.toHaveClass(/ring-/);
+
+    await page.setViewportSize({width: 820, height: 900});
+    await expect(navigator).toHaveClass(/top-0/);
+    await expect(navigator).toHaveClass(/-mx-1/);
+    const navigatorComesFirst = await page.evaluate(() => {
+        const nav = document.querySelector('[aria-label="Response code navigator"]');
+        const response = document.querySelector('#response-200');
+        return !!nav && !!response && Boolean(nav.compareDocumentPosition(response) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(navigatorComesFirst).toBe(true);
 });
 
 test('renders the embedded Apple sprite set without changing emoji inside code', async ({page}) => {

@@ -12,6 +12,7 @@ import ShareModal from '../../modals/ShareModal';
 import {useEscClose} from '../../../hooks/useEscClose';
 import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
+import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {useSchemaViewer} from '@/src/hooks/endpoint/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
@@ -112,9 +113,9 @@ export default function ViewTab({
                 const el = document.getElementById(`response-${activeResponseCode}`);
                 if (el) {
                     el.scrollIntoView({behavior: 'auto', block: 'center'});
-                    el.classList.add('ring-2', 'ring-[var(--primary)]', 'response-flash');
+                    el.classList.add('response-flash');
                     const removeHighlight = setTimeout(() => {
-                        el.classList.remove('ring-2', 'ring-[var(--primary)]', 'response-flash');
+                        el.classList.remove('response-flash');
                     }, 1100);
                     return () => clearTimeout(removeHighlight);
                 }
@@ -126,6 +127,18 @@ export default function ViewTab({
         const nextCollapsed = !collapsedResponses[code];
         setCollapsedResponses(prev => ({...prev, [code]: nextCollapsed}));
         if (onSelectResponseCode) onSelectResponseCode(nextCollapsed ? null : code);
+    };
+    const responseCodes = Object.keys(operation.responses || {});
+    const navigatorActiveCode =
+        activeResponseCode && responseCodes.includes(activeResponseCode)
+            ? activeResponseCode
+            : responseCodes.find(code => !collapsedResponses[code]) || responseCodes[0] || null;
+    const openResponseFromNavigator = (code: string) => {
+        setCollapsedResponses(prev => ({...prev, [code]: false}));
+        onSelectResponseCode?.(code);
+        requestAnimationFrame(() => {
+            document.getElementById(`response-${code}`)?.scrollIntoView({behavior: 'auto', block: 'center'});
+        });
     };
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const scrollStorageKey = specStorage.key(parsableKey || 'default', `scroll:${method.toLowerCase()}:${path}`);
@@ -599,7 +612,25 @@ export default function ViewTab({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Response Matrix
                     </h4>
-                    <div className="space-y-2">
+                    {isMobile && (
+                        <ResponseCodeNavigator
+                            responses={operation.responses}
+                            activeCode={navigatorActiveCode}
+                            isMobile
+                            onSelect={openResponseFromNavigator}
+                        />
+                    )}
+                    <div className={clsx('relative space-y-2', !isMobile && 'pl-[60px]')}>
+                        {!isMobile && (
+                            <div className="absolute inset-y-0 left-0 w-12">
+                                <ResponseCodeNavigator
+                                    responses={operation.responses}
+                                    activeCode={navigatorActiveCode}
+                                    isMobile={false}
+                                    onSelect={openResponseFromNavigator}
+                                />
+                            </div>
+                        )}
                         {Object.entries(operation.responses).map(([code, resp]) => {
                             const isCollapsed = collapsedResponses[code] ?? true;
                             const isSuccess = code === 'default' || code.startsWith('2');

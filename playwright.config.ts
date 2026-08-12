@@ -17,7 +17,12 @@ export default defineConfig({
         url: 'http://127.0.0.1:3000',
         reuseExistingServer: true,
         timeout: 120_000,
-        env: {...process.env, VITE_LOAD_FROM_URL: 'true', VITE_SPEC_DOWNLOADER: ''},
+        env: {
+            ...process.env,
+            VITE_LOAD_FROM_URL: 'true',
+            VITE_SPEC_DOWNLOADER: '',
+            VITE_DISABLE_APPLE_EMOJIS: 'false',
+        },
     },
     projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
 });
