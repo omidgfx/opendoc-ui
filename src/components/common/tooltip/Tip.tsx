@@ -1,7 +1,7 @@
 import React, {useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {TooltipContext} from './TooltipContext';
-import {INITIAL_TOOLTIP_SIZE, positionFor, samePosition, type TooltipPosition} from './tooltipPosition';
+import {positionFor, samePosition, type TooltipPosition} from './tooltipPosition';
 
 interface TipProps {
     content: React.ReactNode;
@@ -17,6 +17,7 @@ interface TipProps {
 }
 
 const blockElements = new Set(['article', 'div', 'form', 'li', 'ol', 'p', 'section', 'ul']);
+
 export default function Tip({
     content,
     children,
@@ -29,46 +30,60 @@ export default function Tip({
     wrapperClassName = '',
     closable = false,
 }: TipProps) {
-    const {delay: ctxDelay} = useContext(TooltipContext);
-    const delay = delayProp ?? ctxDelay;
+    const {delay: contextDelay, claim, release} = useContext(TooltipContext);
+    const delay = delayProp ?? contextDelay;
+    const tooltipId = `tooltip-${useId().replace(/:/g, '')}`;
     const [open, setOpen] = useState(false);
+    const [pending, setPending] = useState(false);
     const [position, setPosition] = useState<TooltipPosition | null>(null);
     const timerRef = useRef<number | null>(null);
     const wrapperRef = useRef<HTMLElement | null>(null);
     const tooltipRef = useRef<HTMLSpanElement | null>(null);
+    const pointerDownAtRef = useRef(0);
     const setWrapperRef = useCallback((node: HTMLElement | null) => {
         wrapperRef.current = node;
     }, []);
-    const tooltipId = `tooltip-${useId().replace(/:/g, '')}`;
-    const clearTimer = () => {
+    const clearTimer = useCallback(() => {
         if (timerRef.current !== null) {
             window.clearTimeout(timerRef.current);
             timerRef.current = null;
         }
-    };
-    const show = () => {
+        setPending(false);
+    }, []);
+    const close = useCallback(() => {
         clearTimer();
-        if (delay <= 0) {
-            setOpen(true);
-            return;
-        }
-        timerRef.current = window.setTimeout(() => {
-            timerRef.current = null;
-            setOpen(true);
-        }, delay);
-    };
-    const showFromFocus = (event: React.FocusEvent) => {
-        const surface = (event.target as HTMLElement | null)?.closest<HTMLElement>('.modal-surface');
-        const suppressUntil = Number(surface?.dataset.suppressTooltipsUntil || 0);
-        if (suppressUntil > Date.now()) return;
-        show();
-    };
-    const close = () => {
-        clearTimer();
+        release(tooltipId);
         setOpen(false);
         setPosition(null);
-    };
-    const hide = () => {
+    }, [clearTimer, release, tooltipId]);
+    const openNow = useCallback(() => {
+        setPending(false);
+        claim(tooltipId, close);
+        setOpen(true);
+    }, [claim, close, tooltipId]);
+    const show = useCallback(() => {
+        clearTimer();
+        if (delay <= 0) {
+            openNow();
+            return;
+        }
+        setPending(true);
+        timerRef.current = window.setTimeout(() => {
+            timerRef.current = null;
+            openNow();
+        }, delay);
+    }, [clearTimer, delay, openNow]);
+    const showFromFocus = useCallback(
+        (event: React.FocusEvent) => {
+            if (Date.now() - pointerDownAtRef.current < 500) return;
+            const surface = (event.target as HTMLElement | null)?.closest<HTMLElement>('.modal-surface');
+            const suppressUntil = Number(surface?.dataset.suppressTooltipsUntil || 0);
+            if (suppressUntil > Date.now()) return;
+            show();
+        },
+        [show],
+    );
+    const hide = useCallback(() => {
         clearTimer();
         if (!interactive) {
             close();
@@ -78,40 +93,84 @@ export default function Tip({
             timerRef.current = null;
             close();
         }, 180);
-    };
-    useEffect(() => () => clearTimer(), []);
+    }, [clearTimer, close, interactive]);
     const updatePosition = useCallback(() => {
-        const node = wrapperRef.current;
-        if (!node) return;
+        const trigger = wrapperRef.current;
         const tooltip = tooltipRef.current;
-        const size = tooltip ? {width: tooltip.offsetWidth, height: tooltip.offsetHeight} : INITIAL_TOOLTIP_SIZE;
-        const next = positionFor(node.getBoundingClientRect(), placement, size);
+        if (!trigger || !tooltip) return;
+        const rect = trigger.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
+            close();
+            return;
+        }
+        const next = positionFor(rect, placement, {
+            width: tooltip.offsetWidth,
+            height: tooltip.offsetHeight,
+        });
         setPosition(current => (current && samePosition(current, next) ? current : next));
-    }, [placement]);
+    }, [close, placement]);
+
+    useEffect(
+        () => () => {
+            if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+            release(tooltipId);
+        },
+        [release, tooltipId],
+    );
+    useEffect(() => {
+        if (!open && !pending) return;
+        const closeOnScroll = () => close();
+        const closeOnResize = () => close();
+        const closeOnWindowBlur = () => close();
+        const closeOnVisibility = () => {
+            if (document.visibilityState !== 'visible') close();
+        };
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') close();
+        };
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            const target = event.target as Node | null;
+            if (target && (wrapperRef.current?.contains(target) || tooltipRef.current?.contains(target))) return;
+            close();
+        };
+        window.addEventListener('scroll', closeOnScroll, true);
+        window.addEventListener('wheel', closeOnScroll, {capture: true, passive: true});
+        window.addEventListener('touchmove', closeOnScroll, {capture: true, passive: true});
+        window.addEventListener('resize', closeOnResize);
+        window.addEventListener('blur', closeOnWindowBlur);
+        document.addEventListener('visibilitychange', closeOnVisibility);
+        document.addEventListener('keydown', closeOnEscape, true);
+        document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+        return () => {
+            window.removeEventListener('scroll', closeOnScroll, true);
+            window.removeEventListener('wheel', closeOnScroll, true);
+            window.removeEventListener('touchmove', closeOnScroll, true);
+            window.removeEventListener('resize', closeOnResize);
+            window.removeEventListener('blur', closeOnWindowBlur);
+            document.removeEventListener('visibilitychange', closeOnVisibility);
+            document.removeEventListener('keydown', closeOnEscape, true);
+            document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+        };
+    }, [open, pending, close]);
     useLayoutEffect(() => {
         if (!open) {
             setPosition(null);
             return;
         }
         updatePosition();
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-        };
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updatePosition);
+        if (wrapperRef.current) observer?.observe(wrapperRef.current);
+        if (tooltipRef.current) observer?.observe(tooltipRef.current);
+        return () => observer?.disconnect();
     }, [open, updatePosition]);
-    useLayoutEffect(() => {
-        if (!open || !position) return;
-        const frame = window.requestAnimationFrame(updatePosition);
-        return () => window.cancelAnimationFrame(frame);
-    }, [open, position, updatePosition]);
+
     const childProps = children.props as Record<string, any>;
     const existingDescribedBy =
         typeof childProps['aria-describedby'] === 'string' ? childProps['aria-describedby'] : '';
-    const describedBy = open
-        ? [existingDescribedBy, tooltipId].filter(Boolean).join(' ')
-        : existingDescribedBy || undefined;
+    const describedBy =
+        open && position
+            ? [existingDescribedBy, tooltipId].filter(Boolean).join(' ')
+            : existingDescribedBy || undefined;
     const Wrapper = typeof children.type === 'string' && blockElements.has(children.type) ? 'div' : 'span';
     const wrapperClassNameResolved =
         `${fullWidth ? 'relative block w-full' : 'relative inline-flex max-w-full'} ${wrapperClassName}`.trim();
@@ -128,13 +187,16 @@ export default function Tip({
             onMouseLeave={hide}
             onFocusCapture={showFromFocus}
             onBlurCapture={hide}
+            onPointerDownCapture={() => {
+                pointerDownAtRef.current = Date.now();
+                close();
+            }}
         >
             {React.cloneElement(children as React.ReactElement<any>, {
                 title: undefined,
                 'aria-describedby': describedBy,
             })}
             {open &&
-                position &&
                 typeof document !== 'undefined' &&
                 createPortal(
                     <span
@@ -145,12 +207,22 @@ export default function Tip({
                         onMouseLeave={interactive ? hide : undefined}
                         onFocusCapture={interactive ? show : undefined}
                         onBlurCapture={interactive ? hide : undefined}
-                        style={{
-                            top: position.top,
-                            left: position.left,
-                            transform: position.transform,
-                        }}
-                        className={`fixed z-[10000] w-max max-w-[320px] whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl sm:max-w-[380px] ${interactive || closable ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
+                        style={
+                            position
+                                ? {
+                                      top: position.top,
+                                      left: position.left,
+                                      transform: position.transform,
+                                      maxWidth: 'min(380px, calc(100vw - 16px))',
+                                  }
+                                : {
+                                      top: 0,
+                                      left: 0,
+                                      visibility: 'hidden',
+                                      maxWidth: 'min(380px, calc(100vw - 16px))',
+                                  }
+                        }
+                        className={`fixed z-[10000] w-max whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl ${position ? 'tooltip-fade-in' : ''} ${interactive || closable ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
                     >
                         {closable ? (
                             <span className="flex items-start gap-1.5">

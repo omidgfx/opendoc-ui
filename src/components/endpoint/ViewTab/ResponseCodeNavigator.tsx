@@ -1,71 +1,109 @@
 import clsx from 'clsx';
 import type {ResponseDefinition} from '../../../types';
+import {Tip} from '../../common/Tooltip';
 
 interface ResponseCodeNavigatorProps {
     responses: Record<string, ResponseDefinition>;
     activeCode: string | null;
-    isMobile: boolean;
+    expandedCodes: ReadonlySet<string>;
     onSelect: (code: string) => void;
 }
 
-const codeColor = (code: string, active: boolean): string => {
-    if (active) return 'bg-[var(--primary)] text-[var(--primary-contrast)]';
-    if (code === 'default' || code.startsWith('2'))
-        return 'bg-[var(--method-get)]/10 text-[var(--method-get)] hover:bg-[var(--method-get)]/20';
+const responseTone = (code: string) => {
+    if (code === 'default')
+        return {
+            text: 'text-[var(--method-get)]',
+            background: 'bg-[var(--method-get)]',
+            border: 'border-[var(--method-get)]',
+        };
+    if (code.startsWith('2'))
+        return {
+            text: 'text-[var(--method-get)]',
+            background: 'bg-[var(--method-get)]',
+            border: 'border-[var(--method-get)]',
+        };
     if (code.startsWith('3'))
-        return 'bg-[var(--method-put)]/10 text-[var(--method-put)] hover:bg-[var(--method-put)]/20';
-    return 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] hover:bg-[var(--method-delete)]/20';
+        return {
+            text: 'text-[var(--method-put)]',
+            background: 'bg-[var(--method-put)]',
+            border: 'border-[var(--method-put)]',
+        };
+    return {
+        text: 'text-[var(--method-delete)]',
+        background: 'bg-[var(--method-delete)]',
+        border: 'border-[var(--method-delete)]',
+    };
 };
 
-export default function ResponseCodeNavigator({responses, activeCode, isMobile, onSelect}: ResponseCodeNavigatorProps) {
+export default function ResponseCodeNavigator({
+    responses,
+    activeCode,
+    expandedCodes,
+    onSelect,
+}: ResponseCodeNavigatorProps) {
     const entries = Object.entries(responses);
     if (entries.length === 0) return null;
-    const buttons = entries.map(([code, response]) => {
-        const active = code === activeCode;
-        return (
-            <button
-                key={code}
-                type="button"
-                aria-pressed={active}
-                aria-controls={`response-${code}`}
-                aria-label={`Open response ${code}: ${response.description || 'Response details'}`}
-                title={`${code} · ${response.description || 'Response details'}`}
-                onClick={() => onSelect(code)}
-                className={clsx(
-                    'group flex shrink-0 items-center rounded-md font-mono text-[9px] font-bold transition-colors cursor-pointer',
-                    isMobile ? 'h-6 gap-1.5 px-2' : 'h-6 w-full justify-center px-1',
-                    codeColor(code, active),
-                )}
-            >
-                {!isMobile && (
-                    <span
-                        className={clsx(
-                            'size-1 rounded-full transition-colors',
-                            active ? 'bg-[var(--primary-contrast)]' : 'bg-current opacity-60',
-                        )}
-                        aria-hidden="true"
-                    />
-                )}
-                <span>{code}</span>
-            </button>
-        );
-    });
-    if (isMobile) {
-        return (
-            <nav
-                aria-label="Response code navigator"
-                className="sticky top-0 z-20 -mx-1 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]/95 p-1.5 shadow-sm backdrop-blur-sm"
-            >
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">{buttons}</div>
-            </nav>
-        );
-    }
     return (
         <nav
+            data-response-navigator="vertical"
             aria-label="Response code navigator"
-            className="sticky top-3 flex w-12 shrink-0 flex-col items-stretch gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-sm"
+            className="sticky top-3 flex w-16 shrink-0 flex-col items-center gap-2.5 px-1 py-3"
         >
-            {buttons}
+            {entries.map(([code, response]) => {
+                const active = code === activeCode;
+                const expanded = expandedCodes.has(code);
+                const tone = responseTone(code);
+                return (
+                    <Tip
+                        key={code}
+                        content={
+                            <span className="flex flex-col gap-0.5">
+                                <span className="font-mono text-[10px] font-bold">Response {code}</span>
+                                <span className="leading-snug opacity-85">
+                                    {response.description || 'Response details'}
+                                </span>
+                            </span>
+                        }
+                        placement="right"
+                        fullWidth
+                    >
+                        <button
+                            type="button"
+                            aria-pressed={active}
+                            aria-controls={`response-${code}`}
+                            aria-label={`Open response ${code}: ${response.description || 'Response details'}`}
+                            onClick={() => onSelect(code)}
+                            className={clsx(
+                                'group flex w-full items-center gap-2 text-start transition-all duration-200 cursor-pointer',
+                                active ? 'opacity-100' : 'opacity-60 hover:opacity-100',
+                            )}
+                        >
+                            <span
+                                data-response-indicator={code}
+                                data-expanded={expanded ? 'true' : 'false'}
+                                className={clsx(
+                                    'size-1.5 shrink-0 rounded-full border transition-all duration-200',
+                                    expanded
+                                        ? `${tone.background} ${tone.border} opacity-100`
+                                        : `${tone.border} opacity-60 group-hover:opacity-100`,
+                                )}
+                                aria-hidden="true"
+                            />
+                            <span
+                                data-response-code-label={code}
+                                className={clsx(
+                                    'min-w-0 flex-1 truncate font-mono text-[10px] font-semibold leading-tight transition-colors duration-200',
+                                    active
+                                        ? tone.text
+                                        : 'text-[var(--text-muted)] group-hover:text-[var(--text-heading)]',
+                                )}
+                            >
+                                {code}
+                            </span>
+                        </button>
+                    </Tip>
+                );
+            })}
         </nav>
     );
 }

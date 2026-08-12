@@ -62,6 +62,7 @@ import {
 import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
+import {positionFor} from '@/src/components/common/tooltip/tooltipPosition';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -1004,6 +1005,30 @@ test('normalizes remote specification and downloader URLs without mixed-content 
         /usernames or passwords/,
     );
     assert.throws(() => normalizeDownloaderTemplate('proxy.example.test/load'), /\{URL\}/);
+});
+test('places tooltips using their measured size and safe fallback direction', () => {
+    const nearTop = {
+        top: 2,
+        bottom: 26,
+        left: 480,
+        right: 520,
+        width: 40,
+        height: 24,
+    } as DOMRect;
+    const below = positionFor(nearTop, 'top', {width: 180, height: 44});
+    assert.equal(below.placement, 'bottom');
+    assert.equal(below.top >= 8, true);
+    const nearRight = {
+        top: 300,
+        bottom: 330,
+        left: 990,
+        right: 1020,
+        width: 30,
+        height: 30,
+    } as DOMRect;
+    const left = positionFor(nearRight, 'right', {width: 220, height: 60});
+    assert.equal(left.placement, 'left');
+    assert.equal(left.left <= 1016, true);
 });
 test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple sprites', () => {
     const parsed = parseEmojis('Launch 🚀 :fire: 👩🏽‍💻 🫩 and keep unknown :not_an_emoji:');

@@ -91,6 +91,13 @@ export default function ViewTab({
         [code: string]: string;
     }>({});
     const [requestBodyContentType, setRequestBodyContentType] = useState('');
+    const responseCodes = Object.keys(operation.responses || {});
+    const [navigatorActiveCode, setNavigatorActiveCode] = useState<string | null>(() =>
+        activeResponseCode && responseCodes.includes(activeResponseCode)
+            ? activeResponseCode
+            : responseCodes.find(code => code.startsWith('2')) || null,
+    );
+    const [responseScrollTailHeight, setResponseScrollTailHeight] = useState(0);
     const [collapsedResponses, setCollapsedResponses] = useState<{
         [code: string]: boolean;
     }>(() => {
@@ -106,41 +113,135 @@ export default function ViewTab({
     });
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+    const responseHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const deepLinkHandledRef = useRef('');
+    const scrollResponseToTop = (code: string, behavior: ScrollBehavior) => {
+        const container = scrollContainerRef.current;
+        const response = document.getElementById(`response-${code}`);
+        if (!container || !response) return;
+        const top =
+            response.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
+        container.scrollTo({top: Math.max(0, top), behavior});
+    };
+    const requiredTailHeightForTopAlignment = (code: string): number => {
+        const container = scrollContainerRef.current;
+        const response = document.getElementById(`response-${code}`);
+        if (!container || !response) return 0;
+        const targetTop =
+            response.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+        const requiredScrollTop = Math.max(0, targetTop - 16);
+        const currentMaximum = Math.max(0, container.scrollHeight - container.clientHeight);
+        return Math.ceil(Math.max(0, requiredScrollTop - currentMaximum));
+    };
+    const highlightDeepLinkedResponse = (code: string) => {
+        const response = document.getElementById(`response-${code}`);
+        if (!response) return;
+        response.classList.remove('ring-2', 'ring-[var(--primary)]', 'response-flash');
+        void response.offsetWidth;
+        response.classList.add('ring-2', 'ring-[var(--primary)]', 'response-flash');
+        if (responseHighlightTimerRef.current) clearTimeout(responseHighlightTimerRef.current);
+        responseHighlightTimerRef.current = setTimeout(() => {
+            response.classList.remove('ring-2', 'ring-[var(--primary)]', 'response-flash');
+            responseHighlightTimerRef.current = null;
+        }, 1100);
+    };
     useEffect(() => {
-        if (activeResponseCode && operation.responses?.[activeResponseCode]) {
-            setCollapsedResponses(prev => ({...prev, [activeResponseCode]: false}));
-            const raf = requestAnimationFrame(() => {
-                const el = document.getElementById(`response-${activeResponseCode}`);
-                if (el) {
-                    el.scrollIntoView({behavior: 'auto', block: 'center'});
-                    el.classList.add('response-flash');
-                    const removeHighlight = setTimeout(() => {
-                        el.classList.remove('response-flash');
-                    }, 1100);
-                    return () => clearTimeout(removeHighlight);
-                }
-            });
-            return () => cancelAnimationFrame(raf);
+        if (!activeResponseCode || !operation.responses?.[activeResponseCode]) return;
+        setNavigatorActiveCode(activeResponseCode);
+        const hashCode = (() => {
+            if (typeof window === 'undefined') return '';
+            const match = window.location.hash.match(/#response-([^#?&]+)/);
+            if (!match) return '';
+            try {
+                return decodeURIComponent(match[1]);
+            } catch {
+                return match[1];
+            }
+        })();
+        const deepLinkKey = `${activeResponseCode}:${typeof window === 'undefined' ? '' : window.location.hash}`;
+        const isNewDeepLink = hashCode === activeResponseCode && deepLinkHandledRef.current !== deepLinkKey;
+        if (!isNewDeepLink) {
+            setResponseScrollTailHeight(0);
+            setCollapsedResponses(previous => ({...previous, [activeResponseCode]: false}));
+            return;
         }
+        deepLinkHandledRef.current = deepLinkKey;
+        setCollapsedResponses(Object.fromEntries(responseCodes.map(code => [code, code !== activeResponseCode])));
+        let innerFrame: number | null = null;
+        const outerFrame = requestAnimationFrame(() => {
+            setResponseScrollTailHeight(requiredTailHeightForTopAlignment(activeResponseCode));
+            innerFrame = requestAnimationFrame(() => {
+                scrollResponseToTop(activeResponseCode, 'auto');
+                highlightDeepLinkedResponse(activeResponseCode);
+            });
+        });
+        return () => {
+            cancelAnimationFrame(outerFrame);
+            if (innerFrame !== null) cancelAnimationFrame(innerFrame);
+        };
     }, [activeResponseCode, operation.responses]);
+    useEffect(
+        () => () => {
+            if (responseHighlightTimerRef.current) clearTimeout(responseHighlightTimerRef.current);
+        },
+        [],
+    );
     const toggleResponse = (code: string) => {
+        setResponseScrollTailHeight(0);
         const nextCollapsed = !collapsedResponses[code];
         setCollapsedResponses(prev => ({...prev, [code]: nextCollapsed}));
+        if (nextCollapsed && navigatorActiveCode === code) {
+            setNavigatorActiveCode(
+                responseCodes.find(candidate => candidate !== code && !collapsedResponses[candidate]) || null,
+            );
+        } else if (!nextCollapsed) {
+            setNavigatorActiveCode(code);
+        }
         if (onSelectResponseCode) onSelectResponseCode(nextCollapsed ? null : code);
     };
-    const responseCodes = Object.keys(operation.responses || {});
-    const navigatorActiveCode =
-        activeResponseCode && responseCodes.includes(activeResponseCode)
-            ? activeResponseCode
-            : responseCodes.find(code => !collapsedResponses[code]) || responseCodes[0] || null;
     const openResponseFromNavigator = (code: string) => {
+        setResponseScrollTailHeight(0);
         setCollapsedResponses(prev => ({...prev, [code]: false}));
+        setNavigatorActiveCode(code);
         onSelectResponseCode?.(code);
-        requestAnimationFrame(() => {
-            document.getElementById(`response-${code}`)?.scrollIntoView({behavior: 'auto', block: 'center'});
-        });
+        requestAnimationFrame(() => scrollResponseToTop(code, 'smooth'));
     };
-    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+    const expandedResponseCodes = new Set(responseCodes.filter(code => !collapsedResponses[code]));
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container || isMobile) return;
+        let frame: number | null = null;
+        const updateActiveResponse = () => {
+            frame = null;
+            const containerRect = container.getBoundingClientRect();
+            const expanded = responseCodes.filter(code => !collapsedResponses[code]);
+            if (expanded.length === 0) return;
+            let reached: string | undefined;
+            const probe = container.scrollTop + 24;
+            for (const code of expanded) {
+                const response = document.getElementById(`response-${code}`);
+                if (!response) continue;
+                const top = response.getBoundingClientRect().top - containerRect.top + container.scrollTop;
+                if (top <= probe) reached = code;
+                else break;
+            }
+            if (container.scrollHeight - container.scrollTop - container.clientHeight <= 8) {
+                reached = expanded.at(-1);
+            }
+            if (reached) setNavigatorActiveCode(current => (current === reached ? current : reached));
+        };
+        const onScroll = () => {
+            if (frame !== null) cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(updateActiveResponse);
+        };
+        container.addEventListener('scroll', onScroll, {passive: true});
+        frame = requestAnimationFrame(updateActiveResponse);
+        return () => {
+            container.removeEventListener('scroll', onScroll);
+            if (frame !== null) cancelAnimationFrame(frame);
+        };
+    }, [collapsedResponses, isMobile, operation.responses]);
     const scrollStorageKey = specStorage.key(parsableKey || 'default', `scroll:${method.toLowerCase()}:${path}`);
     const initialResponseCodeRef = useRef(activeResponseCode);
     useEffect(() => {
@@ -227,8 +328,15 @@ export default function ViewTab({
             description: resp?.description || `Response ${code} for ${method.toUpperCase()} ${path}`,
         });
     };
-    const {viewerExampleSchemas, viewerExampleNames, resolveReference, renderSchemaButton, renderSchemaTypeExample} =
-        useSchemaViewer(spec, isMobile, onOpenSchemaModal);
+    const {
+        viewerExampleSchemas,
+        viewerExampleNames,
+        resolveReference,
+        renderSchemaButton,
+        renderSchemaTypeExample,
+        getDefaultViewerSchema,
+        resetViewerSchema,
+    } = useSchemaViewer(spec, isMobile, onOpenSchemaModal);
     const resolveProperties = (
         sObj: any,
         prefix = '',
@@ -335,6 +443,7 @@ export default function ViewTab({
     return (
         <div
             ref={scrollContainerRef}
+            data-endpoint-docs-scroll
             className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
             style={{maxWidth: '100%'}}
         >
@@ -612,21 +721,13 @@ export default function ViewTab({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Response Matrix
                     </h4>
-                    {isMobile && (
-                        <ResponseCodeNavigator
-                            responses={operation.responses}
-                            activeCode={navigatorActiveCode}
-                            isMobile
-                            onSelect={openResponseFromNavigator}
-                        />
-                    )}
-                    <div className={clsx('relative space-y-2', !isMobile && 'pl-[60px]')}>
+                    <div className={clsx('relative space-y-2', !isMobile && 'pl-[68px]')}>
                         {!isMobile && (
-                            <div className="absolute inset-y-0 left-0 w-12">
+                            <div className="absolute inset-y-0 left-0 w-16">
                                 <ResponseCodeNavigator
                                     responses={operation.responses}
                                     activeCode={navigatorActiveCode}
-                                    isMobile={false}
+                                    expandedCodes={expandedResponseCodes}
                                     onSelect={openResponseFromNavigator}
                                 />
                             </div>
@@ -634,7 +735,7 @@ export default function ViewTab({
                         {Object.entries(operation.responses).map(([code, resp]) => {
                             const isCollapsed = collapsedResponses[code] ?? true;
                             const isSuccess = code === 'default' || code.startsWith('2');
-                            const activeResponseTab = responseActiveTab[code] || 'schema';
+                            const activeResponseTab = responseActiveTab[code] || 'example';
                             const responseContentEntries = resp.content
                                 ? (Object.entries(resp.content) as [string, any][])
                                 : [];
@@ -769,7 +870,9 @@ export default function ViewTab({
                                                             {(() => {
                                                                 const s = resolveReference(
                                                                     viewerExampleSchemas[code] ??
-                                                                        selectedContentObj?.schema,
+                                                                        getDefaultViewerSchema(
+                                                                            selectedContentObj?.schema,
+                                                                        ),
                                                                 );
                                                                 const hasEnum =
                                                                     s?.enum &&
@@ -801,12 +904,13 @@ export default function ViewTab({
                                                                 </span>
                                                                 <CustomDropdown
                                                                     value={selectedContentType}
-                                                                    onChange={val =>
-                                                                        setResponseContentTypes(prev => ({
-                                                                            ...prev,
-                                                                            [code]: val,
-                                                                        }))
-                                                                    }
+                                                                    onChange={value => {
+                                                                        setResponseContentTypes(previous => ({
+                                                                            ...previous,
+                                                                            [code]: value,
+                                                                        }));
+                                                                        resetViewerSchema(code);
+                                                                    }}
                                                                     options={responseContentEntries.map(([mime]) => ({
                                                                         value: mime,
                                                                         label: mime,
@@ -823,7 +927,8 @@ export default function ViewTab({
                                                             const cType = selectedContentType;
                                                             const cObj = selectedContentObj;
                                                             const activeSchema =
-                                                                viewerExampleSchemas[code] ?? cObj.schema;
+                                                                viewerExampleSchemas[code] ??
+                                                                getDefaultViewerSchema(cObj.schema);
                                                             const resolvedSchema = resolveReference(activeSchema);
                                                             const isEnum =
                                                                 resolvedSchema?.enum &&
@@ -939,6 +1044,14 @@ export default function ViewTab({
                                 </div>
                             );
                         })}
+                        {responseScrollTailHeight > 0 && (
+                            <div
+                                data-response-scroll-tail
+                                aria-hidden="true"
+                                className="!mt-0 pointer-events-none"
+                                style={{height: responseScrollTailHeight}}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
