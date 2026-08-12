@@ -1,0 +1,13 @@
+.markdown-body .emoji[data-apple-emoji] {
+    display: inline-block;
+    width: 1.12em;
+    height: 1.12em;
+    margin: 0 0.08em 0 0.1em;
+    background-image: url('../../node_modules/emoji-datasource-apple/img/apple/sheets-256/20.png?inline');
+    background-position: var(--emoji-sheet-left) var(--emoji-sheet-top);
+    background-repeat: no-repeat;
+    /* 1364 px sheet / 20 px glyph × 1.12 em rendered size. */
+    background-size: 76.384em 76.384em;
+    vertical-align: -0.16em;
+    user-select: none;
+}

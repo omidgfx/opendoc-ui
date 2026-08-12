@@ -12,7 +12,8 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@opendoc-emoji": ["./src/data/emoji.disabled.ts"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

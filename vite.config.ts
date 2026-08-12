@@ -8,6 +8,9 @@ export default defineConfig(({mode}) => {
     const env = {...loadEnv(mode, process.cwd(), ''), ...process.env};
     const remoteLoadingEnabled = String(env.VITE_LOAD_FROM_URL || '').toLowerCase() === 'true';
     const downloaderTemplate = String(env.VITE_SPEC_DOWNLOADER || '').trim();
+    // Keep the default drop-in bundle lean; explicitly set this to false to
+    // include the Apple Emoji 16 metadata and embedded sprite.
+    const appleEmojisDisabled = String(env.VITE_DISABLE_APPLE_EMOJIS || 'true').toLowerCase() !== 'false';
     if (remoteLoadingEnabled && downloaderTemplate) {
         const normalized = downloaderTemplate.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
         if (!normalized.includes('{URL}'))
@@ -33,6 +36,10 @@ export default defineConfig(({mode}) => {
         plugins: [react(), svgr(), tailwindcss()],
         resolve: {
             alias: {
+                '@opendoc-emoji': path.resolve(
+                    __dirname,
+                    appleEmojisDisabled ? 'src/data/emoji.disabled.ts' : 'src/data/emoji.enabled.ts',
+                ),
                 '@': path.resolve(__dirname, '.'),
             },
         },
@@ -62,7 +69,7 @@ export default defineConfig(({mode}) => {
             },
         },
         css: {
-            devSourcemap: true,
+            devSourcemap: false,
         },
     };
 });

@@ -83,12 +83,13 @@ This release focuses on predictable request execution and portable deployment:
 - one request compiler shared by the manual Runner and assistant actions;
 - required path-segment protection while other invalid inputs remain testable;
 - persistent per-endpoint response history with individual and bulk removal;
+- responsive response-code navigator that opens response details from a vertical desktop or horizontal mobile/tablet index;
 - Swagger 2.0 and OpenAPI 3.0, 3.1, and 3.2 compatibility improvements;
 - local and constrained remote multi-document reference resolution;
 - deterministic mock validation and compile-checked TypeScript exports;
 - keyboard-accessible custom dropdowns, modal focus handling, and resizers;
-- a layered sidebar endpoint filter and comprehensive Apple Emoji 16 sprite rendering for native, shortcode, skin-tone, and ZWJ sequences;
-- self-contained emoji assets embedded in `index.css`, with no runtime image or CDN dependency;
+- a layered sidebar endpoint filter and optional Apple Emoji 16 rendering for native, shortcode, skin-tone, and ZWJ sequences;
+- Apple emoji metadata/sprite excluded from default builds, or self-contained in `index.js`/`index.css` when explicitly enabled;
 - optional URL specification loading with persistent history and secure multi-language downloader services;
 - explicit authentication logout and endpoint-scoped AI actions that start new conversations;
 - AI gateway integrations for Express, FastAPI, Django, Laravel, Gin, Spring Boot, ASP.NET Core, Rails, and Axum;
@@ -113,8 +114,19 @@ npm run build      # outputs one JavaScript bundle: dist/index.js
 npm run preview    # serves dist/ locally
 ```
 
-Build and clean scripts are shell-independent and run on Windows, macOS, and Linux. The build fails
-if more than one `.js` bundle is emitted.
+Build and clean scripts are shell-independent and run on Windows, macOS, and Linux. Production
+source maps are always disabled and verification fails if a `.map` file or `sourceMappingURL` is
+emitted. The build also fails if more than one `.js` bundle appears.
+
+Apple emoji assets are disabled by default to keep the drop-in script and stylesheet lighter:
+
+```env
+VITE_DISABLE_APPLE_EMOJIS=true
+```
+
+Set the value to `false` before building when consistent Apple Emoji 16 rendering is required. In
+that mode the complete metadata and sprite are embedded in the final `index.js`/`index.css`; no
+runtime emoji file or CDN is required.
 
 Formatting, type checks, and tests:
 
@@ -986,4 +998,4 @@ is no analytics or telemetry code in the app.
 
 MIT © Pejman Chatrrouz — see the About page inside the app for the full text.
 
-Apple emoji artwork bundled through `emoji-datasource-apple` remains © Apple Inc. and is not covered by this project's MIT license. Upstream notes that the Apple artwork is not licensed for commercial use.
+When enabled, Apple emoji artwork supplied through `emoji-datasource-apple` remains © Apple Inc. and is not covered by this project's MIT license. Upstream notes that the Apple artwork is not licensed for commercial use.
