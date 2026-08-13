@@ -9,6 +9,7 @@ import ThemeSelectorModal from '../modals/ThemeSelectorModal';
 import AISettingsModal from '../ai/AISettingsModal';
 import TabSwitcherOverlay from './TabSwitcherOverlay';
 import {getOperation} from '../../utils/openapi';
+import ViewErrorBoundary from '../common/ViewErrorBoundary';
 
 interface ShareTarget {
     url: string;
@@ -100,19 +101,25 @@ export default function AppModalLayer({
     return (
         <>
             {spec?.components?.schemas && (
-                <ModalsStack
-                    modals={schemaStack
-                        .map(name => ({
-                            schemaName: name,
-                            schema: spec.components!.schemas![name] ?? {},
-                        }))
-                        .filter(item => item.schema !== undefined && item.schema !== null)}
-                    onPopSchema={onPopSchema}
-                    onPushSchema={onPushSchema}
-                    onCloseAll={() => setSchemaStack([])}
-                    componentsSchemas={spec.components.schemas}
-                    parsableKey={specKey}
-                />
+                <ViewErrorBoundary
+                    resetKey={`schema-modal:${specKey}:${schemaStack.join(',')}`}
+                    title="Schema inspection could not be rendered"
+                >
+                    <ModalsStack
+                        spec={spec}
+                        modals={schemaStack
+                            .map(name => ({
+                                schemaName: name,
+                                schema: spec.components!.schemas![name] ?? {},
+                            }))
+                            .filter(item => item.schema !== undefined && item.schema !== null)}
+                        onPopSchema={onPopSchema}
+                        onPushSchema={onPushSchema}
+                        onCloseAll={() => setSchemaStack([])}
+                        componentsSchemas={spec.components.schemas}
+                        parsableKey={specKey}
+                    />
+                </ViewErrorBoundary>
             )}
             {codeEndpoint && spec && (
                 <CodeGeneratorModal
@@ -130,6 +137,7 @@ export default function AppModalLayer({
                 isOpen={authOpen}
                 onClose={() => setAuthOpen(false)}
                 spec={spec}
+                specKey={specKey}
                 operation={authOperation}
                 activeAuth={activeAuth}
                 onSave={setActiveAuth}

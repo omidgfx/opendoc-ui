@@ -283,6 +283,22 @@ test('cancels binary response streams without triggering a browser download', as
     expect(downloadCount).toBe(0);
 });
 
+test('copies both the endpoint path and the selected-server full URL', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.evaluate(() => {
+        (window as any).__copiedEndpoint = '';
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {writeText: async (value: string) => ((window as any).__copiedEndpoint = value)},
+        });
+    });
+    await page.getByRole('button', {name: 'Copy endpoint path'}).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__copiedEndpoint)).toBe('/validate/{id}');
+    await page.getByRole('button', {name: 'Copy full endpoint URL'}).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__copiedEndpoint)).toBe(`${apiOrigin}/validate/{id}`);
+});
+
 test('selects response examples and the current inspect schema by default', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
@@ -391,6 +407,18 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await expect(navigator).toHaveCount(0);
 });
 
+test('treats clean endpoint deep links as source of truth and opens a permanent tab', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await expect(page).toHaveURL(/\/parsable\/.*\/api\//);
+    const endpointUrl = page.url();
+    expect(endpointUrl).not.toContain('#/');
+    await page.getByRole('button', {name: /Close Send permissive validation request/i}).click();
+    await page.goto(endpointUrl);
+    await expect(page.getByText('Send permissive validation request', {exact: true}).first()).toBeVisible();
+    await expect(page.locator('[data-tab-id="post:/validate/{id}"]')).toHaveAttribute('data-tab-preview', 'false');
+});
+
 test('deep-linked responses collapse siblings, align to the top and receive the border effect', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
@@ -419,6 +447,7 @@ test('deep-linked responses collapse siblings, align to the top and receive the 
     await expect(
         page.getByRole('navigation', {name: 'Response code navigator'}).getByRole('button', {name: /422/}),
     ).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-tab-id="post:/validate/{id}"]')).toHaveAttribute('data-tab-preview', 'false');
     await expect(selected).not.toHaveClass(/ring-2/, {timeout: 2500});
 });
 
@@ -446,6 +475,14 @@ test('reports specification-wide Runner compatibility and undeclared binary unce
     await expect(report).toContainText('Declared binary or attachment responses');
     await expect(report).toContainText('/media/{file_name}');
     await expect(report).toContainText('/exports/report');
+
+    await page.getByRole('button', {name: 'Runner Compatibility'}).click();
+    await expect(page).toHaveURL(/\/compatibility$/);
+    await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
+    const matrix = page.getByRole('table');
+    await expect(matrix.getByRole('row')).toHaveCount(7);
+    await expect(matrix).toContainText('/media/{file_name}');
+    await expect(matrix).toContainText('C · 60');
 });
 
 test('layers the local endpoint filter over global results without searching tag folders', async ({page}) => {
@@ -513,6 +550,57 @@ test('layers the local endpoint filter over global results without searching tag
     await expect(sidebar.getByText('API Navigation', {exact: true})).toBeVisible();
 });
 
+test('groups configured API versions in the searchable catalog', async ({page}) => {
+    const versionedSpec = (version: string) =>
+        JSON.stringify({
+            openapi: '3.1.1',
+            info: {title: 'Catalog API', version, description: `Catalog API version ${version}`},
+            paths: {'/items': {get: {summary: 'List items', responses: {'200': {description: 'ok'}}}}},
+        });
+    await page.addInitScript(
+        ([v1, v2]) => {
+            window.INITIAL_CONFIG = {
+                parsables: {
+                    'catalog-v2': {
+                        title: 'Catalog API',
+                        group: 'catalog-api',
+                        version: '2.0',
+                        categories: ['Core'],
+                        tags: ['Items'],
+                        isCustom: true,
+                        rawSpec: v2,
+                    },
+                    'catalog-v1': {
+                        title: 'Catalog API',
+                        group: 'catalog-api',
+                        version: '1.0',
+                        categories: ['Core'],
+                        tags: ['Legacy'],
+                        isCustom: true,
+                        rawSpec: v1,
+                    },
+                },
+            };
+        },
+        [versionedSpec('1.0'), versionedSpec('2.0')],
+    );
+    await page.goto('/');
+    await expect(page.getByText('Catalog API', {exact: true}).first()).toBeVisible();
+    await page.getByRole('button', {name: 'API Catalog'}).click();
+    await expect(page).toHaveURL(/\/catalog$/);
+    await expect(page.getByRole('heading', {name: 'API Catalog'})).toBeVisible();
+    await expect(page.getByText(/1 API product/)).toBeVisible();
+    const versions = page.getByRole('button', {name: 'Select Catalog API version'});
+    await versions.click();
+    await page.getByRole('option', {name: '1.0', exact: true}).click();
+    await expect(versions).toContainText('1.0');
+    await page.getByPlaceholder(/Search APIs/).fill('Legacy');
+    await expect(page.getByText('Catalog API', {exact: true}).last()).toBeVisible();
+    await page.getByRole('button', {name: 'Open API'}).click();
+    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    await expect(page.getByText('VERSION 1.0', {exact: true})).toBeVisible();
+});
+
 test('combines configured and local specifications in hybrid mode', async ({page}) => {
     await page.addInitScript(rawSpec => {
         window.INITIAL_CONFIG = {
@@ -565,7 +653,7 @@ test('loads, caches and restores a remote specification URL with direct-mode COR
     await expect(page.getByText('CORS configuration help', {exact: true})).toBeVisible();
     await page.getByRole('button', {name: 'Load URL'}).click();
     await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
-    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
+    await expect(page).toHaveURL(/\/parsable\/remote%3A/);
 
     await page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true}).click();
     await expect(page.getByText('Recent URLs · 1', {exact: true})).toBeVisible();
@@ -574,7 +662,7 @@ test('loads, caches and restores a remote specification URL with direct-mode COR
 
     await page.reload();
     await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
-    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
+    await expect(page).toHaveURL(/\/parsable\/remote%3A/);
 });
 
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {
@@ -601,6 +689,72 @@ test('turns protected indicators green when the effective auth requirement is co
     await page.getByRole('button', {name: 'Log out'}).click();
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page.getByText('Protected', {exact: true})).toBeVisible();
+});
+
+test('shows one informational cookie authorization note without Runner cookie warnings', async ({page}) => {
+    await page.addInitScript(() => {
+        window.INITIAL_CONFIG = {
+            parsables: {
+                'cookie-api': {
+                    title: 'Cookie API',
+                    isCustom: true,
+                    rawSpec: JSON.stringify({
+                        openapi: '3.1.1',
+                        info: {title: 'Cookie API', version: '1'},
+                        security: [{session: []}],
+                        paths: {'/session': {get: {summary: 'Get session', responses: {'200': {description: 'ok'}}}}},
+                        components: {securitySchemes: {session: {type: 'apiKey', in: 'cookie', name: 'session'}}},
+                    }),
+                },
+            },
+        };
+    });
+    await page.goto('/');
+    await page.getByText('Get session', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    await expect(page.getByText(/uses browser-managed cookies for authorization/i)).toBeVisible();
+    await expect(page.getByText(/Browser fetch cannot inject/i)).toHaveCount(0);
+});
+
+test('offers native OAuth authorization-code PKCE setup from OpenAPI security flows', async ({page}) => {
+    await page.addInitScript(() => {
+        window.INITIAL_CONFIG = {
+            parsables: {
+                'oauth-api': {
+                    title: 'OAuth API',
+                    isCustom: true,
+                    rawSpec: JSON.stringify({
+                        openapi: '3.1.1',
+                        info: {title: 'OAuth API', version: '1'},
+                        security: [{oauth: ['read']}],
+                        paths: {'/me': {get: {responses: {'200': {description: 'ok'}}}}},
+                        components: {
+                            securitySchemes: {
+                                oauth: {
+                                    type: 'oauth2',
+                                    flows: {
+                                        authorizationCode: {
+                                            authorizationUrl: 'https://auth.example.test/authorize',
+                                            tokenUrl: 'https://auth.example.test/token',
+                                            scopes: {read: 'Read profile'},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    }),
+                },
+            },
+        };
+    });
+    await page.goto('/');
+    await expect(page.getByText('OAuth API', {exact: true}).first()).toBeVisible();
+    await page.getByRole('button', {name: /Authorize/i}).click();
+    const clientId = page.getByPlaceholder(/Client ID registered/);
+    await expect(clientId).toBeVisible();
+    await clientId.fill('public-docs-client');
+    await expect(page.getByRole('button', {name: /Authorize with OAuth \+ PKCE/i})).toBeVisible();
+    await expect(page.getByPlaceholder('read')).toHaveValue('');
 });
 
 test('opens navbar AI without auto-targeting and offers endpoint-specific new conversation action', async ({page}) => {
@@ -643,6 +797,41 @@ test('traps modal focus and restores it when closed', async ({page}) => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
+});
+
+test('keeps unresolved external references scoped and lets users add the missing file', async ({page}) => {
+    await page.goto('/');
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
+    let chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: /open specification file/i}).click();
+    let chooser = await chooserPromise;
+    await chooser.setFiles('tests/fixtures/external-label-root.json');
+    await expect(page.getByText('Labels & Stamps API', {exact: true}).first()).toBeVisible();
+
+    await page.getByText('Create a shipping label', {exact: true}).first().click();
+    await expect(page.getByRole('heading', {name: 'OpenDoc UI needs to recover'})).toHaveCount(0);
+
+    await page.getByRole('button', {name: /Schema Explorer/i}).click();
+    await page.getByText('Label', {exact: true}).first().click();
+    await expect(page.getByText('Referenced schema is unavailable')).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'OpenDoc UI needs to recover'})).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', {name: 'Runner Compatibility'}).click();
+    await expect(page.getByText(/label-base\.json/).first()).toBeVisible();
+    await expect(page.getByRole('table')).toContainText('D · 35');
+    chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: 'Add referenced files'}).first().click();
+    chooser = await chooserPromise;
+    await chooser.setFiles('tests/fixtures/label-base.json');
+    await expect(page.getByText('Labels & Stamps API', {exact: true}).first()).toBeVisible();
+
+    await page.getByText('Create a shipping label', {exact: true}).first().click();
+    await expect(page.getByText('shipmentId', {exact: true}).first()).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'OpenDoc UI needs to recover'})).toHaveCount(0);
 });
 
 test('loads user-selected local multi-file references', async ({page}) => {

@@ -18,7 +18,12 @@ import {useSchemaViewer} from '@/src/hooks/endpoint/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage';
-import {getMergedParameters, getRefName, resolveRequestBody} from '../../../utils/openapi';
+import {
+    getMergedParameters,
+    getRefName,
+    resolveReference as resolveOpenApiReference,
+    resolveRequestBody,
+} from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/auth';
 
 interface ViewTabProps {
@@ -29,6 +34,7 @@ interface ViewTabProps {
     operation: Operation;
     onOpenSchemaModal: (schemaName: string) => void;
     activeAuth: ActiveAuth;
+    selectedServer: string;
     activeResponseCode?: string | null;
     onSelectResponseCode?: (code: string | null) => void;
     parsableKey?: string;
@@ -48,8 +54,7 @@ const getPatternFromParam = (param: any, spec: OpenApiSpec | null): string | nul
     if (param.pattern) return param.pattern;
     if (param.schema?.pattern) return param.schema.pattern;
     if (param.schema?.$ref) {
-        const refName = getRefName(param.schema.$ref);
-        const refSchema = spec?.components?.schemas?.[refName];
+        const refSchema = resolveOpenApiReference(param.schema, spec);
         if (refSchema?.pattern) return refSchema.pattern;
         if (refSchema?.schema?.pattern) return refSchema.schema.pattern;
     }
@@ -62,12 +67,14 @@ export default function ViewTab({
     operation,
     onOpenSchemaModal,
     activeAuth,
+    selectedServer,
     activeResponseCode,
     onSelectResponseCode,
     parsableKey = '',
     isActive = true,
 }: ViewTabProps) {
     const [copiedPath, setCopiedPath] = useState(false);
+    const [copiedFullUrl, setCopiedFullUrl] = useState(false);
     const [helpModalContent, setHelpModalContent] = useState<{
         title: string;
         content: string;
@@ -358,11 +365,11 @@ export default function ViewTab({
             [name: string]: any;
         } = {};
         if (sObj.$ref) {
-            const refName = getRefName(sObj.$ref);
-            if (visited.has(refName)) return {};
-            visited.add(refName);
-            const refSchema = spec.components?.schemas?.[refName];
-            if (refSchema) props = {...props, ...resolveProperties(refSchema, prefix, visited)};
+            const ref = String(sObj.$ref);
+            if (visited.has(ref)) return {};
+            visited.add(ref);
+            const refSchema = resolveReference(sObj);
+            if (refSchema && refSchema !== sObj) props = {...props, ...resolveProperties(refSchema, prefix, visited)};
             return props;
         }
         if (sObj.allOf && Array.isArray(sObj.allOf))
@@ -449,6 +456,7 @@ export default function ViewTab({
         : null;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
+    const fullEndpointUrl = selectedServer ? `${selectedServer.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : path;
     return (
         <div
             ref={scrollContainerRef}
@@ -481,6 +489,26 @@ export default function ViewTab({
                                         <i className="ph ph-check text-[var(--method-get)] text-[11px]"></i>
                                     ) : (
                                         <i className="ph ph-copy text-[11px]"></i>
+                                    )}
+                                </button>
+                            </Tip>
+                            <Tip content="Copy full URL from selected server">
+                                <button
+                                    aria-label="Copy full endpoint URL"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(fullEndpointUrl);
+                                        setCopiedFullUrl(true);
+                                        setTimeout(() => setCopiedFullUrl(false), 2000);
+                                    }}
+                                    className={clsx(
+                                        'w-7 h-7 rounded flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
+                                        copiedFullUrl ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
+                                    )}
+                                >
+                                    {copiedFullUrl ? (
+                                        <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
+                                    ) : (
+                                        <i className="ph ph-link-simple text-[12px]" />
                                     )}
                                 </button>
                             </Tip>

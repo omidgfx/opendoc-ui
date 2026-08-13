@@ -1,5 +1,6 @@
 import {createZipBlob, downloadBlob} from './zip';
 import {generateValidatedMock} from './mockGenerator';
+import {toCleanRouteHref} from './routing';
 
 export function getRefName(ref: string): string {
     if (!ref) return '';
@@ -419,8 +420,7 @@ function buildModelDocBlock(schemaName: string, schema: any, exampleValue: any, 
     const encodedKey = encodeURIComponent(parsableKey);
     const encodedSchema = encodeURIComponent(schemaName);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://opendoc.local';
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
-    const fullLink = `${origin}${pathname}#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`;
+    const fullLink = `${origin}${toCleanRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`)}`;
     const schemaObject = isPlainObject(schema) ? schema : {};
     const description =
         schemaObject.description ||

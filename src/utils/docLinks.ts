@@ -1,5 +1,5 @@
 import type {OpenApiSpec} from '../types';
-import {getEndpointId} from './routing';
+import {getEndpointId, toCleanRouteHref} from './routing';
 import {getDocumentOperations} from './openapi/operations';
 
 export interface OperationLinkTarget {
@@ -40,7 +40,7 @@ export function rewriteInternalEndpointLinks(
     anchors.forEach(a => {
         const href = a.getAttribute('href');
         if (!href) return;
-        if (href.startsWith('#/parsable/')) return;
+        if (href.startsWith('#/parsable/') || href.startsWith('/parsable/')) return;
         if (href.startsWith('mailto:') || href.startsWith('tel:')) return;
         try {
             const withoutHash = href.split('#')[0];
@@ -70,7 +70,7 @@ export function rewriteInternalEndpointLinks(
                 let newHref = `#/parsable/${encodeURIComponent(parsableKey)}/api/${encodeURIComponent(match.endpointId)}`;
                 const responseMatch = href.match(RESPONSE_FRAGMENT_RE);
                 if (responseMatch) newHref += `#response-${responseMatch[1]}`;
-                a.setAttribute('href', newHref);
+                a.setAttribute('href', toCleanRouteHref(newHref));
                 a.removeAttribute('target');
                 a.setAttribute('data-internal-endpoint-link', 'true');
             }

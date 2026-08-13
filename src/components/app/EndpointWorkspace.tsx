@@ -7,6 +7,7 @@ import FocusPane from '../common/FocusPane';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
 import {getOperation} from '../../utils/openapi';
+import ViewErrorBoundary from '../common/ViewErrorBoundary';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -79,37 +80,43 @@ export default function EndpointWorkspace({
     if (!operation) return null;
     const docsActive = selectedTab !== 'both' || activeSplitPane === 'docs';
     const runnerActive = selectedTab !== 'both' || activeSplitPane === 'examine';
+    const endpointKey = `${endpoint.method.toLowerCase()}:${endpoint.path}`;
     const docs = (
-        <ViewTab
-            key={`${endpoint.path}-${endpoint.method}`}
-            spec={spec}
-            path={endpoint.path}
-            method={endpoint.method}
-            operation={operation}
-            onOpenSchemaModal={onOpenSchema}
-            activeAuth={activeAuth}
-            activeResponseCode={activeResponseCode}
-            onSelectResponseCode={setActiveResponseCode}
-            parsableKey={parsableKey}
-            isActive={docsActive}
-        />
+        <ViewErrorBoundary resetKey={`docs:${endpointKey}`} title="Endpoint documentation could not be rendered">
+            <ViewTab
+                key={`${endpoint.path}-${endpoint.method}`}
+                spec={spec}
+                path={endpoint.path}
+                method={endpoint.method}
+                operation={operation}
+                onOpenSchemaModal={onOpenSchema}
+                activeAuth={activeAuth}
+                selectedServer={selectedServer}
+                activeResponseCode={activeResponseCode}
+                onSelectResponseCode={setActiveResponseCode}
+                parsableKey={parsableKey}
+                isActive={docsActive}
+            />
+        </ViewErrorBoundary>
     );
     const runner = (
-        <ExamineTab
-            spec={spec}
-            path={endpoint.path}
-            method={endpoint.method}
-            operation={operation}
-            activeAuth={activeAuth}
-            selectedServer={selectedServer}
-            parsableKey={parsableKey}
-            themeMode={resolvedThemeMode}
-            responseHistory={responseHistory}
-            isActive={runnerActive}
-            onResponseChange={onResponseChange}
-            onDeleteResponse={onDeleteResponse}
-            onClearResponse={onClearResponse}
-        />
+        <ViewErrorBoundary resetKey={`runner:${endpointKey}`} title="API Runner form could not be rendered">
+            <ExamineTab
+                spec={spec}
+                path={endpoint.path}
+                method={endpoint.method}
+                operation={operation}
+                activeAuth={activeAuth}
+                selectedServer={selectedServer}
+                parsableKey={parsableKey}
+                themeMode={resolvedThemeMode}
+                responseHistory={responseHistory}
+                isActive={runnerActive}
+                onResponseChange={onResponseChange}
+                onDeleteResponse={onDeleteResponse}
+                onClearResponse={onClearResponse}
+            />
+        </ViewErrorBoundary>
     );
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">

@@ -2,6 +2,30 @@ import type {EndpointRef, OpenApiSpec, ParsedRoute} from '../types';
 import {getDocumentOperations, getOperation, OAS_FIXED_HTTP_METHODS} from './openapi/operations';
 
 export const HTTP_METHODS = [...OAS_FIXED_HTTP_METHODS];
+
+export const getRouteBasePath = (): string => {
+    const value = String((import.meta as any).env?.BASE_URL || '/');
+    const normalized = `/${value.replace(/^\/+|\/+$/g, '')}`;
+    return normalized === '/' ? '/' : `${normalized}/`;
+};
+
+const stripBasePath = (pathname: string): string => {
+    const base = getRouteBasePath();
+    if (base !== '/' && pathname.startsWith(base)) return `/${pathname.slice(base.length)}`;
+    return pathname || '/';
+};
+
+export const getCurrentSmartRoute = (): string => {
+    if (typeof window === 'undefined') return '/';
+    if (window.location.hash.startsWith('#/')) return window.location.hash;
+    return `${stripBasePath(window.location.pathname)}${window.location.search}${window.location.hash}`;
+};
+
+export const toCleanRouteHref = (route: string): string => {
+    if (!route.startsWith('#/')) return route;
+    const base = getRouteBasePath().replace(/\/$/, '');
+    return `${base}${route.slice(1)}` || '/';
+};
 export const getEndpointId = (operation: any, path: string, method: string): string => {
     if (operation?.operationId) return operation.operationId;
     return `${method}-${path.replace(/^\//, '').replace(/\//g, '-')}`;
@@ -17,6 +41,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     const empty: ParsedRoute = {
         parsableKey: '',
         showSchemaExplorer: false,
+        showCompatibility: false,
+        showCatalog: false,
         showHome: true,
         showAbout: false,
         showAssistant: false,
@@ -30,8 +56,13 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         searchTags: [],
         searchSecured: null,
     };
-    if (!hash || hash === '#/' || hash === '#') return empty;
-    let raw = hash.substring(1);
+    if (!hash || hash === '#/' || hash === '#' || hash === '/') return empty;
+    let raw = hash.startsWith('#') ? hash.substring(1) : hash;
+    if (/^https?:\/\//i.test(raw)) {
+        const parsedUrl = new URL(raw);
+        raw = `${stripBasePath(parsedUrl.pathname)}${parsedUrl.search}${parsedUrl.hash}`;
+    }
+    raw = stripBasePath(raw);
     let responseCode: string | null = null;
     const responseMatch = raw.match(/#response-([a-zA-Z0-9_-]+)/);
     if (responseMatch) {
@@ -96,11 +127,19 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     if (parts[0] === 'schema-explorer') {
         return {...empty, showSchemaExplorer: true, showHome: false, schemas, responseCode, searchQuery};
     }
+    if (parts[0] === 'compatibility') {
+        return {...empty, showCompatibility: true, showHome: false, responseCode, searchQuery};
+    }
+    if (parts[0] === 'catalog') {
+        return {...empty, showCatalog: true, showHome: false, responseCode, searchQuery};
+    }
     if (parts[0] === 'assistant') {
         return {...empty, showAssistant: true, showHome: false, responseCode, searchQuery};
     }
     let parsableKey = '';
     let showSchemaExplorer = false;
+    let showCompatibility = false;
+    let showCatalog = false;
     let showAssistant = false;
     let showHome = false;
     let endpoint: EndpointRef | null = null;
@@ -108,12 +147,18 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         parsableKey = decodeURIComponent(parts[1]);
         if (parts[2] === 'schema-explorer') {
             showSchemaExplorer = true;
+        } else if (parts[2] === 'compatibility') {
+            showCompatibility = true;
+        } else if (parts[2] === 'catalog') {
+            showCatalog = true;
         } else if (parts[2] === 'assistant') {
             showAssistant = true;
         } else if (parts[2] === 'api' && parts[3]) {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
+                showCompatibility: false,
+                showCatalog: false,
                 showHome: false,
                 showAbout: false,
                 showAssistant: false,
@@ -131,6 +176,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
+                showCompatibility: false,
+                showCatalog: false,
                 showHome: false,
                 showAbout: true,
                 showAssistant: false,
@@ -153,6 +200,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     return {
         parsableKey,
         showSchemaExplorer,
+        showCompatibility,
+        showCatalog,
         showHome,
         showAbout: false,
         showAssistant,
@@ -174,6 +223,8 @@ interface BuildRouteOpts {
     showAbout: boolean;
     showAssistant: boolean;
     showSchemaExplorer: boolean;
+    showCompatibility?: boolean;
+    showCatalog?: boolean;
     endpoint: EndpointRef | null;
     tab: string;
     schemaModals: Array<{
@@ -195,6 +246,8 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         showAbout,
         showAssistant,
         showSchemaExplorer,
+        showCompatibility = false,
+        showCatalog = false,
         endpoint,
         tab,
         schemaModals,
@@ -205,12 +258,16 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         searchSecured,
         activeSpec,
     } = state;
-    if (!parsableKey) return showAbout ? '#/about' : showAssistant ? '#/assistant' : '#/';
-    if (showAbout) return `#/parsable/${encodeURIComponent(parsableKey)}/about`;
-    if (showAssistant) return `#/parsable/${encodeURIComponent(parsableKey)}/assistant`;
+    if (!parsableKey) return toCleanRouteHref(showAbout ? '#/about' : showAssistant ? '#/assistant' : '#/');
+    if (showAbout) return toCleanRouteHref(`#/parsable/${encodeURIComponent(parsableKey)}/about`);
+    if (showAssistant) return toCleanRouteHref(`#/parsable/${encodeURIComponent(parsableKey)}/assistant`);
     let route = `#/parsable/${encodeURIComponent(parsableKey)}`;
     if (showSchemaExplorer) {
         route += `/schema-explorer`;
+    } else if (showCompatibility) {
+        route += `/compatibility`;
+    } else if (showCatalog) {
+        route += `/catalog`;
     } else if (endpoint) {
         let endpointId = '';
         if (activeSpec) {
@@ -232,5 +289,5 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     const qs = qp.toString();
     if (qs) route += `?${qs}`;
     if (responseCode) route += `#response-${responseCode}`;
-    return route;
+    return toCleanRouteHref(route);
 };

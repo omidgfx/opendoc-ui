@@ -193,6 +193,7 @@ export default function EndpointTabs({
                             >
                                 <div
                                     data-tab-id={tab.id}
+                                    data-tab-preview={tab.isPreview ? 'true' : 'false'}
                                     draggable
                                     onDragStart={e => handleDragStart(e, index)}
                                     onDragEnd={handleDragEnd}

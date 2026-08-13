@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import {applyAuthToRequest, createEmptyAuth, isOperationAuthenticated, isOperationProtected} from '../src/utils/auth';
+import {
+    applyAuthToRequest,
+    createEmptyAuth,
+    isOperationAuthenticated,
+    isOperationProtected,
+    operationUsesCookieAuthentication,
+} from '../src/utils/auth';
 import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/aiContext';
 import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
@@ -24,6 +30,8 @@ import {
     usesDescriptionTooltip,
 } from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
 import {
+    collectReferenceIssues,
+    createBundledOpenApiDocument,
     getDocumentOperations,
     getMergedParameters,
     getOperation,
@@ -33,6 +41,7 @@ import {
     queryStringFromPairs,
     resolveJsonPointer,
     resolveReference,
+    resolveReferenceResult,
     resolveRequestBody,
     serializeOpenApiParameter,
     validateOpenApiDocument,
@@ -63,6 +72,8 @@ import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/util
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {positionFor} from '@/src/components/common/tooltip/tooltipPosition';
+import {oauthAuthorizationFlow} from '@/src/utils/oauthFlow';
+import {createLlmsText} from '@/src/utils/llmsExport';
 import {
     declaredContentIsBinary,
     isBinaryResponseMediaType,
@@ -70,6 +81,7 @@ import {
     responseHeadersIndicateBinary,
 } from '@/src/utils/runnerResponse';
 import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
+import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -335,12 +347,79 @@ test('resolves JSON pointers, escaped names, and cyclic refs safely', () => {
     const resolved = resolveReference({$ref: '#/components/schemas/A'}, spec);
     assert.equal(typeof resolved, 'object');
     assert.equal(resolved.$ref, '#/components/schemas/A');
+    assert.equal(resolveReferenceResult({$ref: '#/components/schemas/A'}, spec).status, 'circular');
+    assert.doesNotThrow(() => JSON.stringify(createBundledOpenApiDocument(spec)));
+});
+test('preserves unresolved external references without recursive crashes', () => {
+    const root = JSON.parse(readFileSync(resolve('tests/fixtures/external-label-root.json'), 'utf8'));
+    const label = root.components.schemas.Label;
+    const result = resolveReferenceResult(label, root);
+    assert.equal(result.status, 'unresolved');
+    assert.equal(result.ref, 'label-base.json#/components/schemas/Label');
+    assert.ok(collectReferenceIssues(root).some(issue => issue.ref.includes('label-base.json')));
+    const before = JSON.stringify(root);
+    const bundled = createBundledOpenApiDocument(root);
+    assert.equal(bundled.components.schemas.Label.$ref, 'label-base.json#/components/schemas/Label');
+    assert.equal(JSON.stringify(root), before);
+});
+test('discovers native OAuth authorization-code and implicit browser flows', () => {
+    assert.equal(
+        oauthAuthorizationFlow({
+            type: 'oauth2',
+            flows: {
+                authorizationCode: {
+                    authorizationUrl: 'https://auth.example.test/authorize',
+                    tokenUrl: 'https://auth.example.test/token',
+                },
+            },
+        })?.kind,
+        'authorizationCode',
+    );
+    assert.equal(
+        oauthAuthorizationFlow({
+            type: 'oauth2',
+            flows: {implicit: {authorizationUrl: 'https://auth.example.test/authorize'}},
+        })?.kind,
+        'implicit',
+    );
+    assert.equal(
+        oauthAuthorizationFlow({type: 'oauth2', flows: {clientCredentials: {tokenUrl: 'https://auth'}}}),
+        null,
+    );
 });
 test('derives protected indicators from effective security including anonymous alternatives', () => {
     const protectedSpec: any = {...baseSpec, security: [{auth: []}]};
     assert.equal(isOperationProtected(protectedSpec, {responses: {}} as any), true);
     assert.equal(isOperationProtected(protectedSpec, {security: [], responses: {}} as any), false);
     assert.equal(isOperationProtected({...baseSpec, security: [{}, {auth: []}]}, {responses: {}} as any), false);
+});
+test('treats cookie authorization as browser-managed information without Runner warnings', () => {
+    const operation: any = {security: [{cookieAuth: []}], responses: {'200': {description: 'ok'}}};
+    const spec: any = {
+        ...baseSpec,
+        paths: {'/session': {get: operation}},
+        components: {securitySchemes: {cookieAuth: {type: 'apiKey', in: 'cookie', name: 'session'}}},
+    };
+    const auth: any = {
+        ...createEmptyAuth(),
+        activeScheme: 'cookieAuth',
+        selectedSchemes: ['cookieAuth'],
+        schemeValues: {cookieAuth: {schemeId: 'cookieAuth', type: 'apiKey', in: 'cookie', name: 'session'}},
+    };
+    const plan = compileBrowserRequest({
+        spec,
+        path: '/session',
+        method: 'get',
+        operation,
+        selectedServer: 'https://api.example.test',
+        activeAuth: auth,
+    });
+    assert.equal(operationUsesCookieAuthentication(spec, operation), true);
+    assert.equal(plan.fetchCredentials, 'include');
+    assert.equal(
+        plan.diagnostics.some(item => /COOKIE|AUTH_NOTICE/.test(item.code)),
+        false,
+    );
 });
 test('marks protected operations authorized only when every selected requirement is configured', () => {
     const spec: any = {...baseSpec, security: [{clientId: [], tenant: []}]};
@@ -711,6 +790,50 @@ test('discovers OAS 3.2 QUERY and arbitrary additional operations through one op
         true,
     );
 });
+test('generates and parses clean routes for endpoints and compatibility views', () => {
+    const operation: any = {operationId: 'listItems', responses: {'200': {description: 'ok'}}};
+    const spec: any = {...baseSpec, paths: {'/items': {get: operation}}};
+    assert.equal(
+        generateSmartRoute({
+            parsableKey: 'Catalog API',
+            showHome: false,
+            showAbout: false,
+            showAssistant: false,
+            showSchemaExplorer: false,
+            endpoint: {path: '/items', method: 'get'},
+            tab: 'docs',
+            schemaModals: [],
+            activeSpec: spec,
+        }),
+        '/parsable/Catalog%20API/api/listItems',
+    );
+    const compatibility = parseSmartRoute('/parsable/Catalog%20API/compatibility');
+    assert.equal(compatibility.parsableKey, 'Catalog API');
+    assert.equal(compatibility.showCompatibility, true);
+    assert.equal(parseSmartRoute('#/parsable/Catalog%20API/catalog').showCatalog, true);
+});
+test('exports specification-native operations and schemas as llms.txt without mutating the source', () => {
+    const spec: any = {
+        ...baseSpec,
+        info: {title: 'LLM API', version: '2', description: 'Reference documentation'},
+        paths: {
+            '/items': {
+                get: {
+                    summary: 'List items',
+                    parameters: [{name: 'limit', in: 'query', schema: {type: 'integer'}}],
+                    responses: {'200': {description: 'ok', content: {'application/json': {}}}},
+                },
+            },
+        },
+        components: {schemas: {Item: {type: 'object', properties: {id: {type: 'string'}}}}},
+    };
+    const before = JSON.stringify(spec);
+    const output = createLlmsText(spec);
+    assert.match(output, /# LLM API/);
+    assert.match(output, /### GET \/items/);
+    assert.match(output, /### Item/);
+    assert.equal(JSON.stringify(spec), before);
+});
 test('keeps the immutable raw document available beside the normalized semantic document', () => {
     const raw =
         'openapi: 3.0.4\ninfo:\n  title: Raw\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    Value:\n      type: string\n      nullable: true\n';
@@ -799,7 +922,7 @@ test('summarizes unfamiliar specification Runner limits without guessing from en
     assert.equal(report.unresolvedOperations, 1);
     assert.ok(report.findings.some(item => item.id === 'missing-success-responses'));
     assert.ok(report.findings.some(item => item.id === 'binary-success-responses'));
-    assert.ok(report.findings.some(item => item.id === 'browser-cookie-auth'));
+    assert.ok(report.findings.some(item => item.id === 'browser-managed-auth'));
     assert.ok(report.findings.some(item => item.id === 'multipart-part-headers'));
     assert.ok(report.findings.some(item => item.id === 'unresolved-references'));
 });

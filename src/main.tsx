@@ -4,6 +4,7 @@ import App from './App.tsx';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import './index.css';
 import {hydrateStorageFromIndexedDb} from './utils/storage';
+import {handleOAuthCallback, recoverFromOAuthCallbackError} from './utils/oauthFlow';
 
 const mount = () =>
     createRoot(document.getElementById('root')!).render(
@@ -13,8 +14,12 @@ const mount = () =>
             </AppErrorBoundary>
         </StrictMode>,
     );
-void hydrateStorageFromIndexedDb()
-    .catch(error => {
+void Promise.all([
+    hydrateStorageFromIndexedDb().catch(error => {
         console.warn('IndexedDB hydration failed; using the localStorage fallback.', error);
-    })
-    .finally(mount);
+    }),
+    handleOAuthCallback().catch(error => {
+        console.error('OAuth callback failed.', error);
+        recoverFromOAuthCallbackError();
+    }),
+]).finally(mount);

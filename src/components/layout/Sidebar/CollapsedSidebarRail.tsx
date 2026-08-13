@@ -5,18 +5,26 @@ import pkg from '../../../../package.json';
 interface CollapsedSidebarRailProps {
     isOverview: boolean;
     showSchemaExplorer: boolean;
+    showCompatibility: boolean;
+    showCatalog: boolean;
     showAbout: boolean;
     onOpenHome: () => void;
     onOpenSchemaExplorer: () => void;
+    onOpenCompatibility: () => void;
+    onOpenCatalog: () => void;
     onOpenAbout: () => void;
 }
 
 export default function CollapsedSidebarRail({
     isOverview,
     showSchemaExplorer,
+    showCompatibility,
+    showCatalog,
     showAbout,
     onOpenHome,
     onOpenSchemaExplorer,
+    onOpenCompatibility,
+    onOpenCatalog,
     onOpenAbout,
 }: CollapsedSidebarRailProps) {
     return (
@@ -49,6 +57,32 @@ export default function CollapsedSidebarRail({
                         )}
                     >
                         <i className="ph-fill ph-diamonds-four text-[16px]" />
+                    </button>
+                </Tip>
+                <Tip content="Runner Compatibility">
+                    <button
+                        onClick={onOpenCompatibility}
+                        className={clsx(
+                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                            showCompatibility
+                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                        )}
+                    >
+                        <i className="ph-fill ph-shield-check text-[16px]" />
+                    </button>
+                </Tip>
+                <Tip content="API Catalog">
+                    <button
+                        onClick={onOpenCatalog}
+                        className={clsx(
+                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                            showCatalog
+                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                        )}
+                    >
+                        <i className="ph-fill ph-books text-[16px]" />
                     </button>
                 </Tip>
                 <Tip content="About">

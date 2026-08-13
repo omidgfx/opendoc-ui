@@ -55,27 +55,51 @@ export const resolveRefTarget = (
     if (!document) return null;
     return resolveJsonPointer(document, pointer);
 };
-const resolveWithCycleGuard = (
-    item: any,
-    spec: OpenApiSpec | any | null,
-    documents: ReferenceDocuments,
-    visited: Set<string>,
-    depth: number,
-): any => {
-    if (!item || typeof item !== 'object' || typeof item.$ref !== 'string') return item;
-    if (depth > 64 || visited.has(item.$ref)) return item;
-    const target = resolveRefTarget(item.$ref, spec, documents);
-    if (!target) return item;
-    const nextVisited = new Set(visited);
-    nextVisited.add(item.$ref);
-    const resolved = resolveWithCycleGuard(target, spec, documents, nextVisited, depth + 1);
-    const siblings = Object.fromEntries(Object.entries(item).filter(([key]) => key !== '$ref'));
+export type ReferenceResolutionStatus = 'resolved' | 'unresolved' | 'circular' | 'max-depth';
+
+export interface ReferenceResolution {
+    status: ReferenceResolutionStatus;
+    value: any;
+    ref?: string;
+    chain: string[];
+}
+
+const mergeReferenceSiblings = (item: any, resolved: any): any => {
+    const siblings = Object.fromEntries(Object.entries(item || {}).filter(([key]) => key !== '$ref'));
     return Object.keys(siblings).length > 0 && resolved && typeof resolved === 'object' && !Array.isArray(resolved)
         ? {...resolved, ...siblings}
         : resolved;
 };
+
+const resolveReferenceResultInternal = (
+    item: any,
+    spec: OpenApiSpec | any | null,
+    documents: ReferenceDocuments,
+    visited: Set<string>,
+    chain: string[],
+    depth: number,
+): ReferenceResolution => {
+    if (!item || typeof item !== 'object' || typeof item.$ref !== 'string')
+        return {status: 'resolved', value: item, chain};
+    const ref = item.$ref;
+    if (depth >= 64) return {status: 'max-depth', value: item, ref, chain: [...chain, ref]};
+    if (visited.has(ref)) return {status: 'circular', value: item, ref, chain: [...chain, ref]};
+    const target = resolveRefTarget(ref, spec, documents);
+    if (!target) return {status: 'unresolved', value: item, ref, chain: [...chain, ref]};
+    const nextVisited = new Set(visited);
+    nextVisited.add(ref);
+    const child = resolveReferenceResultInternal(target, spec, documents, nextVisited, [...chain, ref], depth + 1);
+    return {...child, value: mergeReferenceSiblings(item, child.value)};
+};
+
+export const resolveReferenceResult = (
+    item: any,
+    spec: OpenApiSpec | null,
+    documents: ReferenceDocuments = {},
+): ReferenceResolution => resolveReferenceResultInternal(item, spec, documents, new Set<string>(), [], 0);
+
 export const resolveReference = (item: any, spec: OpenApiSpec | null, documents: ReferenceDocuments = {}): any =>
-    resolveWithCycleGuard(item, spec, documents, new Set<string>(), 0);
+    resolveReferenceResult(item, spec, documents).value;
 export const resolveSchema = (refName: string, spec: OpenApiSpec | null): any => {
     if (!spec || !refName) return null;
     const pointerName = refName.replace(/~/g, '~0').replace(/\//g, '~1');
@@ -147,4 +171,76 @@ export const getMergedParameters = (pathItem: any, operation: any, spec: OpenApi
     pathParams.forEach(param => addParam(param));
     operationParams.forEach(param => addParam(param, true));
     return list;
+};
+
+export interface ReferenceIssue {
+    status: Exclude<ReferenceResolutionStatus, 'resolved'>;
+    ref: string;
+    path: string;
+    chain: string[];
+}
+
+export const collectReferenceIssuesIn = (value: any, spec: OpenApiSpec | any, rootPath = '#'): ReferenceIssue[] => {
+    const issues = new Map<string, ReferenceIssue>();
+    const seenObjects = new Set<object>();
+    const visit = (current: any, path: string) => {
+        const value = current;
+        if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
+        seenObjects.add(value);
+        if (Array.isArray(value)) {
+            value.forEach((item, index) => visit(item, `${path}/${index}`));
+            return;
+        }
+        if (typeof value.$ref === 'string') {
+            const result = resolveReferenceResult(value, spec);
+            if (result.status !== 'resolved' && result.ref) {
+                const issue = {status: result.status, ref: result.ref, path, chain: result.chain} as ReferenceIssue;
+                issues.set(`${issue.status}\u0000${issue.ref}\u0000${issue.path}`, issue);
+            }
+            if (result.status === 'resolved' && result.value !== value) visit(result.value, path);
+            return;
+        }
+        Object.entries(value).forEach(([key, child]) =>
+            visit(child, `${path}/${key.replace(/~/g, '~0').replace(/\//g, '~1')}`),
+        );
+    };
+    visit(value, rootPath);
+    return Array.from(issues.values());
+};
+
+export const collectReferenceIssues = (spec: OpenApiSpec | any): ReferenceIssue[] =>
+    collectReferenceIssuesIn(spec, spec);
+
+export const missingReferenceDocuments = (spec: OpenApiSpec | any): string[] =>
+    Array.from(
+        new Set(
+            collectReferenceIssues(spec)
+                .filter(issue => issue.status === 'unresolved' && !issue.ref.startsWith('#'))
+                .map(issue => issue.ref.split('#', 1)[0])
+                .filter(Boolean),
+        ),
+    ).sort();
+
+/** Create a derived, self-contained view where resolvable references are expanded. */
+export const createBundledOpenApiDocument = (spec: OpenApiSpec): OpenApiSpec => {
+    const cloned = new WeakMap<object, any>();
+    const visit = (value: any, depth = 0): any => {
+        if (!value || typeof value !== 'object' || depth > 128) return value;
+        if (cloned.has(value)) return cloned.get(value);
+        if (typeof value.$ref === 'string') {
+            const result = resolveReferenceResult(value, spec);
+            if (result.status === 'resolved' && result.value !== value) {
+                if (result.value && typeof result.value === 'object' && cloned.has(result.value)) {
+                    return Array.isArray(value) ? [...value] : {...value};
+                }
+                return visit(result.value, depth + 1);
+            }
+        }
+        const output: any = Array.isArray(value) ? [] : {};
+        cloned.set(value, output);
+        if (Array.isArray(value)) value.forEach(item => output.push(visit(item, depth + 1)));
+        else Object.entries(value).forEach(([key, child]) => (output[key] = visit(child, depth + 1)));
+        return output;
+    };
+    return visit(spec) as OpenApiSpec;
 };

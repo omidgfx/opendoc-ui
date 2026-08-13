@@ -15,6 +15,7 @@ import BodyEditor from './BodyEditor';
 import ResponsePanel from './ResponsePanel';
 import {specStorage} from '../../../utils/storage';
 import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
+import {operationUsesCookieAuthentication} from '../../../utils/auth';
 
 interface ExamineTabProps {
     spec: OpenApiSpec;
@@ -316,6 +317,7 @@ export default function ExamineTab({
     const queryParams = mergedParams.filter((p: any) => p.in === 'query' || p.in === 'querystring');
     const headerParams = mergedParams.filter((p: any) => p.in === 'header');
     const cookieParams = mergedParams.filter((p: any) => p.in === 'cookie');
+    const usesCookieAuthentication = operationUsesCookieAuthentication(spec, operation);
     const parameterTypeLabel = (param: any) => {
         const value = param.schema?.type ?? param.type ?? 'string';
         return Array.isArray(value) ? value.join(' | ') : String(value);
@@ -434,17 +436,18 @@ export default function ExamineTab({
                 </div>
             </div>
 
+            {usesCookieAuthentication && (
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2 text-[10px] text-[var(--text-muted)]">
+                    <i className="ph ph-cookie text-[15px] text-[var(--primary)]" />
+                    This endpoint uses browser-managed cookies for authorization. Requests include available cookies.
+                </div>
+            )}
+
             <div className="space-y-6 w-full">
                 {renderParamBlock('Path Parameters', pathParams)}
                 {renderParamBlock('Query Parameters', queryParams)}
                 {renderParamBlock('Header Parameters', headerParams)}
                 {renderParamBlock('Cookie Parameters', cookieParams)}
-                {cookieParams.length > 0 && (
-                    <p className="rounded-xl border border-[var(--method-put)]/25 bg-[var(--method-put)]/5 px-3 py-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                        Browser fetch cannot inject a manual Cookie header. These values are serialized for diagnostics,
-                        while only cookies already managed by this browser can be sent.
-                    </p>
-                )}
                 {Object.keys(headers).length > 0 && (
                     <div className="space-y-2">
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
