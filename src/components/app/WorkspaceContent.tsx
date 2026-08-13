@@ -1,5 +1,5 @@
 import type {Dispatch, KeyboardEvent, MouseEvent, RefObject, SetStateAction} from 'react';
-import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from '../../types';
+import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
 import SearchResultsView from '@/src/pages/search/SearchResultsPage';
 import AboutView from '@/src/pages/about/AboutPage';
 import HomeView from '@/src/pages/home/HomePage';
@@ -7,7 +7,6 @@ import NoSpecView from '@/src/pages/status/NoSpecPage';
 import WelcomeView from '@/src/pages/status/WelcomePage';
 import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
 import RunnerCompatibilityPage from '@/src/pages/compatibility/RunnerCompatibilityPage';
-import ApiCatalogPage from '@/src/pages/catalog/ApiCatalogPage';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
@@ -17,11 +16,9 @@ import {appendResponseHistory, clearResponseHistory, removeResponseHistoryAt} fr
 interface WorkspaceContentProps {
     spec: OpenApiSpec | null;
     specKey: string;
-    parsables: ParsableConfig;
     canOpenLocal: boolean;
     onOpenLocalFile: () => void;
     onAddReferencedFiles?: () => void;
-    onSelectParsable: (key: string) => void;
     showAbout: boolean;
     showWelcome: boolean;
     assistantActive: boolean;
@@ -61,10 +58,10 @@ interface WorkspaceContentProps {
     setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     showSchemaExplorer: boolean;
     showCompatibility: boolean;
-    showCatalog: boolean;
     showHome: boolean;
     onOpenAbout: () => void;
     onOpenHome: () => void;
+    onOpenCompatibility: () => void;
     onOpenSchema: (name: string) => void;
     onSearchChange: (query: string) => void;
     onSelectEndpoint: (path: string, method: string) => void;
@@ -80,11 +77,9 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     const {
         spec,
         specKey,
-        parsables,
         canOpenLocal,
         onOpenLocalFile,
         onAddReferencedFiles,
-        onSelectParsable,
         showAbout,
         showWelcome,
         assistantActive,
@@ -121,10 +116,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         setExamineResponses,
         showSchemaExplorer,
         showCompatibility,
-        showCatalog,
         showHome,
         onOpenAbout,
         onOpenHome,
+        onOpenCompatibility,
         onOpenSchema,
         onSearchChange,
         onSelectEndpoint,
@@ -136,7 +131,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         onHidePageViews,
     } = props;
     if (!spec) {
-        if (showAbout) return <AboutView specTitle={undefined} parsableKey={specKey} spec={spec} />;
+        if (showAbout) return <AboutView />;
         return <NoSpecView canOpenLocal={canOpenLocal} onOpenLocalFile={onOpenLocalFile} onOpenAbout={onOpenAbout} />;
     }
     if (showWelcome && !assistantActive) {
@@ -264,18 +259,15 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
             </ViewErrorBoundary>
         );
     }
-    if (showCatalog) {
-        return (
-            <ApiCatalogPage parsables={parsables} selectedKey={specKey} activeSpec={spec} onSelect={onSelectParsable} />
-        );
-    }
-    if (showAbout) return <AboutView specTitle={spec.info?.title} parsableKey={specKey} spec={spec} />;
+    if (showAbout) return <AboutView />;
     if (showHome) {
         return (
             <HomeView
                 spec={spec}
+                specKey={specKey}
                 selectedEndpoint={selectedEndpoint}
                 onSelectEndpoint={onSelectEndpoint}
+                onOpenCompatibility={onOpenCompatibility}
                 selectedServer={selectedServer}
                 onSelectServer={setSelectedServer}
                 activeAuth={activeAuth}

@@ -22,7 +22,6 @@ type NavigationSnapshot = {
     searchQuery: string;
     showSchemaExplorer: boolean;
     showCompatibility: boolean;
-    showCatalog: boolean;
     showAbout: boolean;
     showAssistant: boolean;
     showHome: boolean;
@@ -54,8 +53,6 @@ interface UseWorkspaceTabsOptions {
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
     showCompatibility: boolean;
     setShowCompatibility: Dispatch<SetStateAction<boolean>>;
-    showCatalog: boolean;
-    setShowCatalog: Dispatch<SetStateAction<boolean>>;
     showAbout: boolean;
     setShowAbout: Dispatch<SetStateAction<boolean>>;
     showAssistant: boolean;
@@ -87,8 +84,6 @@ export function useWorkspaceTabs({
     setShowSchemaExplorer,
     showCompatibility,
     setShowCompatibility,
-    showCatalog,
-    setShowCatalog,
     showAbout,
     setShowAbout,
     showAssistant,
@@ -112,11 +107,10 @@ export function useWorkspaceTabs({
             setShowHome(view === 'home');
             setShowSchemaExplorer(view === 'schemas');
             setShowCompatibility(view === 'compatibility');
-            setShowCatalog(view === 'catalog');
             setShowAbout(view === 'about');
             setShowAssistant(view === 'assistant');
         },
-        [setShowHome, setShowSchemaExplorer, setShowCompatibility, setShowCatalog, setShowAbout, setShowAssistant],
+        [setShowHome, setShowSchemaExplorer, setShowCompatibility, setShowAbout, setShowAssistant],
     );
     const withPreviewLast = useCallback((list: TabItem[]): TabItem[] => {
         const previewIdx = list.findIndex(t => t.isPreview);
@@ -398,7 +392,6 @@ export function useWorkspaceTabs({
         searchQuery: '',
         showSchemaExplorer: false,
         showCompatibility: false,
-        showCatalog: false,
         showAbout: false,
         showAssistant: false,
         showHome: true,
@@ -411,7 +404,6 @@ export function useWorkspaceTabs({
         searchQuery,
         showSchemaExplorer,
         showCompatibility,
-        showCatalog,
         showAbout,
         showAssistant,
         showHome,
@@ -425,7 +417,6 @@ export function useWorkspaceTabs({
             searchQuery?: string;
             showSchemaExplorer?: boolean;
             showCompatibility?: boolean;
-            showCatalog?: boolean;
             showAbout?: boolean;
             showAssistant?: boolean;
             showHome?: boolean;
@@ -444,13 +435,11 @@ export function useWorkspaceTabs({
                       ? 'schemas'
                       : s.showCompatibility
                         ? 'compatibility'
-                        : s.showCatalog
-                          ? 'catalog'
-                          : s.showAssistant
-                            ? 'assistant'
-                            : s.showAbout
-                              ? 'about'
-                              : null;
+                        : s.showAssistant
+                          ? 'assistant'
+                          : s.showAbout
+                            ? 'about'
+                            : null;
             if (s.showWelcome && !expected) return;
             if (!expected) return;
             if (expected === 'assistant') setAssistantUnread(false);

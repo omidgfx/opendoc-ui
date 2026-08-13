@@ -24,12 +24,47 @@ const downloadText = (text: string, fileName: string, type: string) => {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 };
 
-const ratingTone: Record<RunnerCompatibilityRating, string> = {
-    A: 'bg-[var(--method-get)]/10 text-[var(--method-get)] border-[var(--method-get)]/25',
-    B: 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/25',
-    C: 'bg-[var(--method-put)]/10 text-[var(--method-put)] border-[var(--method-put)]/25',
-    D: 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] border-[var(--method-delete)]/25',
+const ratingPresentation: Record<
+    RunnerCompatibilityRating,
+    {
+        label: string;
+        detail: string;
+        icon: string;
+        color: string;
+        tone: string;
+    }
+> = {
+    A: {
+        label: 'Ready',
+        detail: 'No static browser limitation',
+        icon: 'ph-fill ph-check-circle',
+        color: 'var(--method-get)',
+        tone: 'bg-[var(--method-get)]/10 text-[var(--method-get)] border-[var(--method-get)]/25',
+    },
+    B: {
+        label: 'Browser-limited',
+        detail: 'Browser-managed behavior',
+        icon: 'ph-fill ph-browser',
+        color: 'var(--primary)',
+        tone: 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/25',
+    },
+    C: {
+        label: 'Review',
+        detail: 'Partial static support',
+        icon: 'ph-fill ph-warning',
+        color: 'var(--method-put)',
+        tone: 'bg-[var(--method-put)]/10 text-[var(--method-put)] border-[var(--method-put)]/25',
+    },
+    D: {
+        label: 'Unresolved',
+        detail: 'References or auth are missing',
+        icon: 'ph-fill ph-link-break',
+        color: 'var(--method-delete)',
+        tone: 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] border-[var(--method-delete)]/25',
+    },
 };
+
+const RATINGS: RunnerCompatibilityRating[] = ['A', 'B', 'C', 'D'];
 
 export default function RunnerCompatibilityPage({
     spec,
@@ -54,15 +89,49 @@ export default function RunnerCompatibilityPage({
             endpoint.notes.some(note => note.toLowerCase().includes(needle))
         );
     });
+    const ratingCounts = useMemo(
+        () =>
+            Object.fromEntries(
+                RATINGS.map(current => [
+                    current,
+                    report.endpoints.filter(endpoint => endpoint.rating === current).length,
+                ]),
+            ) as Record<RunnerCompatibilityRating, number>,
+        [report.endpoints],
+    );
+    const readinessScore = report.totalOperations
+        ? Math.round(report.endpoints.reduce((total, endpoint) => total + endpoint.score, 0) / report.totalOperations)
+        : 100;
+    const readinessColor =
+        readinessScore >= 90
+            ? 'var(--method-get)'
+            : readinessScore >= 75
+              ? 'var(--primary)'
+              : readinessScore >= 55
+                ? 'var(--method-put)'
+                : 'var(--method-delete)';
     const safeName = (spec.info?.title || specKey || 'openapi').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '');
     const raw = getRawSpecDocument(spec);
+    const hasUnresolvedReferences = issues.some(issue => issue.status === 'unresolved');
     return (
         <div className="flex-1 h-full overflow-y-auto p-3 sm:p-5 md:p-7 scrollbar-thin">
             <div className="space-y-4">
-                <header className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 lg:flex-row lg:items-start lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
-                        <h1 className="text-xl font-extrabold text-[var(--text-heading)]">Runner Compatibility</h1>
-                        <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-[var(--text-muted)]">
+                        <div className="flex items-center gap-2">
+                            <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                <i className="ph-fill ph-shield-check text-[19px]" />
+                            </span>
+                            <div>
+                                <h1 className="text-xl font-extrabold text-[var(--text-heading)]">
+                                    Runner Compatibility
+                                </h1>
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                                    Overview report
+                                </span>
+                            </div>
+                        </div>
+                        <p className="mt-2 max-w-3xl text-[11px] leading-relaxed text-[var(--text-muted)]">
                             Static endpoint-level compatibility for the browser Runner. Runtime CORS, DNS, server
                             behavior, and credentials remain environment-dependent.
                         </p>
@@ -74,18 +143,23 @@ export default function RunnerCompatibilityPage({
                                 downloadText(
                                     raw?.text || JSON.stringify(spec, null, 2),
                                     `${safeName || 'openapi'}-original.${raw?.text && !raw.text.trimStart().startsWith('{') ? 'yaml' : 'json'}`,
-                                    'application/json',
+                                    raw?.text && !raw.text.trimStart().startsWith('{')
+                                        ? 'application/yaml'
+                                        : 'application/json',
                                 )
                             }
-                            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold hover:bg-[var(--surface-hover)] cursor-pointer"
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[10px] font-extrabold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
                         >
-                            <i className="ph ph-download-simple me-1" /> Original
+                            <span className="flex size-6 items-center justify-center rounded-lg bg-[var(--background)] text-[var(--text-muted)]">
+                                <i className="ph ph-download-simple text-[17px]" />
+                            </span>
+                            Original
                         </button>
                         <button
                             type="button"
-                            disabled={issues.some(issue => issue.status === 'unresolved')}
+                            disabled={hasUnresolvedReferences}
                             title={
-                                issues.some(issue => issue.status === 'unresolved')
+                                hasUnresolvedReferences
                                     ? 'Add the missing referenced files before creating a bundled copy.'
                                     : 'Download a derived self-contained copy; the original remains unchanged.'
                             }
@@ -96,42 +170,144 @@ export default function RunnerCompatibilityPage({
                                     'application/json',
                                 )
                             }
-                            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-3 text-[10px] font-extrabold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/14 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                         >
-                            <i className="ph ph-package me-1" /> Bundled copy
+                            <span className="flex size-6 items-center justify-center rounded-lg bg-[var(--accent)]/10">
+                                <i className="ph ph-package text-[17px]" />
+                            </span>
+                            Bundled copy
                         </button>
                         <button
                             type="button"
                             onClick={() =>
                                 downloadText(createLlmsText(spec), `${safeName || 'openapi'}-llms.txt`, 'text/plain')
                             }
-                            className="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer"
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/8 px-3 text-[10px] font-extrabold text-[var(--primary)] transition-colors hover:bg-[var(--primary)]/14 cursor-pointer"
                         >
-                            <i className="ph ph-robot me-1" /> llms.txt
+                            <span className="flex size-6 items-center justify-center rounded-lg bg-[var(--primary)]/10">
+                                <i className="ph ph-robot text-[17px]" />
+                            </span>
+                            llms.txt
                         </button>
                     </div>
                 </header>
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-                    {[
-                        ['Operations', report.totalOperations],
-                        ['Standard', report.standardOperations],
-                        ['Review', report.reviewOperations],
-                        ['Browser', report.browserLimitedOperations],
-                        ['Binary', report.binaryOperations],
-                        ['Unresolved', report.unresolvedOperations],
-                    ].map(([label, value]) => (
-                        <div
-                            key={String(label)}
-                            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
-                        >
-                            <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                                {label}
-                            </span>
-                            <strong className="mt-1 block text-xl text-[var(--text-heading)]">{value}</strong>
-                        </div>
-                    ))}
+                <div
+                    role="note"
+                    className="flex items-start gap-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/6 px-3 py-2.5 text-[10px] leading-relaxed text-[var(--text-muted)]"
+                >
+                    <i className="ph-fill ph-info text-[17px] text-[var(--accent)]" />
+                    <p>
+                        <strong className="text-[var(--text-heading)]">Bundled copy</strong> creates a derived,
+                        self-contained JSON file by embedding references that OpenDoc can resolve. It helps consumers
+                        and tools that require one file.{' '}
+                        <strong className="text-[var(--text-heading)]">Original</strong> downloads the untouched source,
+                        while <strong className="text-[var(--text-heading)]">llms.txt</strong> exports a compact text
+                        index. None of these exports changes the loaded OpenAPI document.
+                    </p>
                 </div>
+
+                <section
+                    data-compatibility-statistics
+                    aria-label="Runner compatibility statistics"
+                    className="grid gap-3 lg:grid-cols-[250px_minmax(0,1fr)]"
+                >
+                    <div className="flex items-center gap-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                        <div
+                            className="relative flex size-28 shrink-0 items-center justify-center rounded-full p-2"
+                            style={{
+                                background: `conic-gradient(${readinessColor} ${readinessScore}%, var(--border) ${readinessScore}% 100%)`,
+                            }}
+                        >
+                            <div className="flex size-full flex-col items-center justify-center rounded-full bg-[var(--surface)] shadow-inner">
+                                <strong className="text-2xl font-black text-[var(--text-heading)]">
+                                    {readinessScore}
+                                </strong>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                                    score
+                                </span>
+                            </div>
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                                Overall readiness
+                            </span>
+                            <strong className="mt-1 block text-lg font-black text-[var(--text-heading)]">
+                                {report.totalOperations} operations
+                            </strong>
+                            <p className="mt-1 text-[9px] leading-relaxed text-[var(--text-muted)]">
+                                Average of every endpoint&apos;s static Runner score.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-xs font-extrabold text-[var(--text-heading)]">
+                                    Rating distribution
+                                </h2>
+                                <p className="mt-0.5 text-[9px] text-[var(--text-muted)]">
+                                    Exclusive A–D rating assigned to every operation
+                                </p>
+                            </div>
+                            <i className="ph ph-chart-donut text-[19px] text-[var(--text-muted)]" />
+                        </div>
+                        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-[var(--background)]">
+                            {RATINGS.map(current => {
+                                const percentage = report.totalOperations
+                                    ? (ratingCounts[current] / report.totalOperations) * 100
+                                    : 0;
+                                return percentage > 0 ? (
+                                    <span
+                                        key={current}
+                                        title={`${current}: ${ratingCounts[current]} (${Math.round(percentage)}%)`}
+                                        style={{
+                                            width: `${percentage}%`,
+                                            backgroundColor: ratingPresentation[current].color,
+                                        }}
+                                    />
+                                ) : null;
+                            })}
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
+                            {RATINGS.map(current => {
+                                const presentation = ratingPresentation[current];
+                                const percentage = report.totalOperations
+                                    ? Math.round((ratingCounts[current] / report.totalOperations) * 100)
+                                    : 0;
+                                return (
+                                    <div
+                                        key={current}
+                                        className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-2.5 py-2"
+                                    >
+                                        <span
+                                            className="flex size-7 shrink-0 items-center justify-center rounded-lg"
+                                            style={{
+                                                color: presentation.color,
+                                                backgroundColor: `color-mix(in srgb, ${presentation.color} 12%, transparent)`,
+                                            }}
+                                        >
+                                            <i className={`${presentation.icon} text-[14px]`} />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <div className="flex items-baseline gap-1.5">
+                                                <strong className="text-sm font-black text-[var(--text-heading)]">
+                                                    {ratingCounts[current]}
+                                                </strong>
+                                                <span className="text-[8px] font-bold text-[var(--text-muted)]">
+                                                    {percentage}%
+                                                </span>
+                                            </div>
+                                            <span className="block truncate text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                                {current} · {presentation.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
 
                 {issues.length > 0 && (
                     <div className="space-y-2">
@@ -184,9 +360,10 @@ export default function RunnerCompatibilityPage({
 
                 <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                     <div className="max-h-[62vh] overflow-auto scrollbar-thin">
-                        <table className="w-full min-w-[980px] border-collapse text-left text-[10px]">
+                        <table className="w-full min-w-[1020px] border-collapse text-left text-[10px]">
                             <thead className="sticky top-0 z-10 bg-[var(--background)] text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
                                 <tr>
+                                    <th className="w-10 px-2 py-2 text-right">#</th>
                                     <th className="px-2 py-2">Rating</th>
                                     <th className="px-2 py-2">Operation</th>
                                     <th className="px-2 py-2">Summary</th>
@@ -198,14 +375,17 @@ export default function RunnerCompatibilityPage({
                                 </tr>
                             </thead>
                             <tbody>
-                                {endpoints.map(endpoint => (
+                                {endpoints.map((endpoint, index) => (
                                     <tr
                                         key={`${endpoint.method}:${endpoint.path}`}
                                         className="border-t border-[var(--border)] hover:bg-[var(--surface-hover)]"
                                     >
+                                        <td className="px-2 py-1.5 text-right font-mono font-bold text-[var(--text-muted)]">
+                                            {index + 1}
+                                        </td>
                                         <td className="px-2 py-1.5">
                                             <span
-                                                className={`inline-flex min-w-12 items-center justify-center rounded-md border px-1.5 py-1 font-black ${ratingTone[endpoint.rating]}`}
+                                                className={`inline-flex min-w-12 items-center justify-center rounded-md border px-1.5 py-1 font-black ${ratingPresentation[endpoint.rating].tone}`}
                                             >
                                                 {endpoint.rating} · {endpoint.score}
                                             </span>

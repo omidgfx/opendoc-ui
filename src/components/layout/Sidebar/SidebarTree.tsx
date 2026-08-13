@@ -7,7 +7,6 @@ import {Tip} from '@/src/components/common/Tooltip';
 import TreeExpander from './TreeExpander';
 import SearchHighlightedText from './SearchHighlightedText';
 
-const ROW_ELBOW_Y = 20;
 const GUIDE_X = 13;
 const ELBOW_W = 11;
 type Endpoint = {
@@ -118,28 +117,29 @@ export default function SidebarTree(props: SidebarTreeProps) {
             })),
         ];
         const pathRowIndex = rows.findIndex(r => r.onPath);
-        const renderGuides = (i: number, onPath: boolean) => {
+        const renderGuides = (i: number, onPath: boolean, kind: Row['kind']) => {
             const isLastRow = i === rows.length - 1;
+            const elbowY = kind === 'folder' ? 12 : sidebarConfig.displayRoutes ? 21 : 14;
             const accent =
                 pathRowIndex < 0 ? 'none' : i < pathRowIndex ? 'full' : i === pathRowIndex ? 'elbow' : 'none';
             return (
                 <>
                     <span
                         className={clsx('absolute h-px', onPath ? 'bg-[var(--primary)]' : 'bg-[var(--text)]/25')}
-                        style={{left: -GUIDE_X + 1, top: ROW_ELBOW_Y, width: ELBOW_W}}
+                        style={{left: -GUIDE_X + 1, top: elbowY, width: ELBOW_W}}
                         aria-hidden="true"
                     />
 
                     <span
                         className="absolute top-0 w-px bg-[var(--text)]/25"
-                        style={{left: -GUIDE_X, ...(isLastRow ? {height: ROW_ELBOW_Y + 1} : {bottom: 0})}}
+                        style={{left: -GUIDE_X, ...(isLastRow ? {height: elbowY + 1} : {bottom: 0})}}
                         aria-hidden="true"
                     />
 
                     {accent !== 'none' && (
                         <span
                             className="absolute top-0 w-px bg-[var(--primary)]"
-                            style={{left: -GUIDE_X, ...(accent === 'full' ? {bottom: 0} : {height: ROW_ELBOW_Y + 1})}}
+                            style={{left: -GUIDE_X, ...(accent === 'full' ? {bottom: 0} : {height: elbowY + 1})}}
                             aria-hidden="true"
                         />
                     )}
@@ -175,7 +175,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                             if (row.kind === 'folder') {
                                 return (
                                     <div key={row.key} className="relative">
-                                        {renderGuides(idx, row.onPath)}
+                                        {renderGuides(idx, row.onPath, row.kind)}
                                         {render(node.children[row.childName], row.childPath)}
                                     </div>
                                 );
@@ -192,7 +192,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                             const summary = ep.operation?.summary || ep.path;
                             return (
                                 <div key={row.key} className="relative">
-                                    {renderGuides(idx, row.onPath)}
+                                    {renderGuides(idx, row.onPath, row.kind)}
                                     <Tip
                                         placement="right"
                                         fullWidth

@@ -15,10 +15,7 @@ export interface SidebarProps {
     onToggleCollapse: () => void;
     onOpenSchemaExplorer: () => void;
     showSchemaExplorer: boolean;
-    onOpenCompatibility: () => void;
     showCompatibility: boolean;
-    onOpenCatalog: () => void;
-    showCatalog: boolean;
     selectedMethods: string[];
     setSelectedMethods: Dispatch<SetStateAction<string[]>>;
     selectedTags: string[];

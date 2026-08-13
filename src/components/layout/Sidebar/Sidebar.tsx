@@ -26,10 +26,6 @@ import {
     type TreeNode,
 } from '@/src/utils/sidebar/tree';
 
-const ROW_HEIGHT = 40;
-const ROW_ELBOW_Y = ROW_HEIGHT / 2;
-const GUIDE_X = 13;
-const ELBOW_W = 11;
 export default function Sidebar(props: SidebarProps) {
     const {
         spec,
@@ -42,10 +38,7 @@ export default function Sidebar(props: SidebarProps) {
         onToggleCollapse,
         onOpenSchemaExplorer,
         showSchemaExplorer,
-        onOpenCompatibility,
         showCompatibility,
-        onOpenCatalog,
-        showCatalog,
         selectedMethods,
         selectedTags,
         onlyProtected,
@@ -557,7 +550,7 @@ export default function Sidebar(props: SidebarProps) {
         return () => clearTimeout(t);
     }, [scrollIntent, setScrollIntent]);
     useSwipeEdgeOpen(isMobile && !mobileOpen, onOpenMobile);
-    const isOverview = showHome && !showSchemaExplorer && !showAbout && !selectedEndpoint;
+    const isOverview = (showHome || showCompatibility) && !showSchemaExplorer && !showAbout && !selectedEndpoint;
     const findEndpointAncestorPath = useMemo((): string[] | null => {
         if (!selectedEndpoint) return null;
         if (showHome || showSchemaExplorer || showAbout) return null;
@@ -621,13 +614,9 @@ export default function Sidebar(props: SidebarProps) {
             <CollapsedSidebarRail
                 isOverview={isOverview}
                 showSchemaExplorer={showSchemaExplorer}
-                showCompatibility={showCompatibility}
-                showCatalog={showCatalog}
                 showAbout={showAbout}
                 onOpenHome={onOpenHome}
                 onOpenSchemaExplorer={onOpenSchemaExplorer}
-                onOpenCompatibility={onOpenCompatibility}
-                onOpenCatalog={onOpenCatalog}
                 onOpenAbout={onOpenAbout}
             />
         );
@@ -638,13 +627,9 @@ export default function Sidebar(props: SidebarProps) {
             overviewActive={isOverview}
             aboutActive={showAbout}
             schemasActive={showSchemaExplorer}
-            compatibilityActive={showCompatibility}
-            catalogActive={showCatalog}
             onOpenHome={navTo(onOpenHome)}
             onOpenAbout={navTo(onOpenAbout)}
             onOpenSchemas={navTo(onOpenSchemaExplorer)}
-            onOpenCompatibility={navTo(onOpenCompatibility)}
-            onOpenCatalog={navTo(onOpenCatalog)}
             onOpenPermanent={onOpenViewPermanent}
             onContextMenu={(event, view) =>
                 openContextMenu(event, {

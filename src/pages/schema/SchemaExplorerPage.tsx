@@ -5,6 +5,7 @@ import ShareModal from '@/src/components/modals/ShareModal';
 import {useEscClose} from '../../hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
 import {toCleanRouteHref} from '@/src/utils/routing';
+import SearchHighlightedText from '@/src/components/layout/Sidebar/SearchHighlightedText';
 
 interface SchemaExplorerProps {
     schemas:
@@ -323,6 +324,8 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                             {filteredSchemas.map(([name, schema]) => {
                                 const propsCount = getPropertiesCount(schema);
                                 const isObject = schema.type === 'object' || !!schema.properties || !!schema.allOf;
+                                const textHighlight = searchTerm.trim() || (letterFilter ? name.slice(0, 1) : '');
+                                const highlightStartOnly = !searchTerm.trim() && !!letterFilter;
                                 return (
                                     <div
                                         key={name}
@@ -344,13 +347,21 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                                         className="font-medium text-xs tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words"
                                                         title={name}
                                                     >
-                                                        {humanizeName(name)}
+                                                        <SearchHighlightedText
+                                                            text={humanizeName(name)}
+                                                            query={textHighlight}
+                                                            startOnly={highlightStartOnly}
+                                                        />
                                                     </h3>
                                                     <p
                                                         className="mt-0.5 truncate text-[10px] font-mono text-[var(--text-muted)]"
                                                         title={name}
                                                     >
-                                                        {name}
+                                                        <SearchHighlightedText
+                                                            text={name}
+                                                            query={textHighlight}
+                                                            startOnly={highlightStartOnly}
+                                                        />
                                                     </p>
                                                 </div>
                                                 <span className="px-1 py-0.5 rounded text-[9px] uppercase select-none shrink-0 bg-[var(--background)] text-[var(--text-muted)]">

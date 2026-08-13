@@ -24,7 +24,6 @@ CORS-enabled providers directly or an optional gateway.
   - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
   - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
   - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
-- [API Catalog and version groups](#api-catalog-and-version-groups)
 - [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
   - [Build-time settings](#build-time-settings)
   - [Downloader services](#downloader-services)
@@ -60,7 +59,7 @@ CORS-enabled providers directly or an optional gateway.
   with method/tag/security filters that sync with the sidebar.
 - **Themes** — 15+ hand-picked palettes, per-spec memory, light / dark / **system** modes.
 - **Deep links** — every endpoint, open tab, response code and schema modal is encoded in the
-  URL hash, so any view is shareable and re-openable.
+  URL, so any view is shareable and re-openable.
 - **View tabs** — the specification overview, global search, schema explorer, about page, and
   AI assistant open as tabs in the same bar as endpoints: preview/pin, close, reorder,
   middle-click and context-menu all behave identically.
@@ -72,10 +71,9 @@ CORS-enabled providers directly or an optional gateway.
 - **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
-  revalidation; large raw documents use IndexedDB instead of consuming the localStorage quota.
+  revalidation; persistent state and raw documents use IndexedDB instead of consuming the localStorage quota.
 - **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; missing local files can be added after the root is opened.
-- **API Catalog and versions** — configured APIs can be searched, categorized, and grouped into product versions without modifying their OpenAPI documents.
-- **Clean routes** — endpoint, schema, catalog, compatibility, and assistant links use normal paths while retaining legacy hash-link compatibility.
+- **Clean routes** — endpoint, schema, compatibility, and assistant links use normal paths while retaining legacy hash-link compatibility.
 - **Crash recovery** — view-level boundaries isolate malformed endpoint/schema content, while the global recovery screen remains the final fallback.
 
 ---
@@ -246,20 +244,13 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 Supported keys per entry:
 
-| Key                 | Type     | Description                                                                                                                                         |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`               | string   | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
-| `title`             | string   | Display name in the selector, navbar, and catalog. Defaults to the object key.                                                                      |
-| `description`       | string   | Optional catalog description when metadata cannot be read before loading.                                                                           |
-| `version`           | string   | Optional catalog/version-selector label; the loaded document's native `info.version` wins.                                                          |
-| `group`             | string   | Groups several configured documents as versions of one catalog API product.                                                                         |
-| `categories`        | string[] | Catalog category filters stored in OpenDoc configuration, not in the OpenAPI document.                                                              |
-| `tags`              | string[] | Additional catalog search labels stored outside the OpenAPI document.                                                                               |
-| `icon`              | string   | Optional Phosphor icon class for the catalog card.                                                                                                  |
-| `hiddenFromCatalog` | boolean  | Hides the configured entry from the catalog without changing the specification.                                                                     |
-| `theme`             | string   | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
-| `isCustom`          | boolean  | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
-| `rawSpec`           | string   | The full spec document as a string (JSON or YAML).                                                                                                  |
+| Key        | Type    | Description                                                                                                                                         |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
+| `title`    | string  | Display name in the selector and navbar. Defaults to the object key.                                                                                |
+| `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
+| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
+| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
 
 The **first entry** is selected on first visit; afterwards the app remembers the last selection,
 and an explicit clean route or legacy hash deep link is the source of truth.
@@ -315,37 +306,6 @@ Run the app with **no** `window.INITIAL_CONFIG` and **no** `public/config.json` 
 Files are read with the browser's File API — **nothing is uploaded anywhere**. Everything
 stays in your browser. Each opened spec is recorded in the history (see
 [Local history](#local-history)) so you can reopen it after a reload.
-
----
-
-## API Catalog and version groups
-
-The optional **API Catalog** sidebar page searches and filters configured API products. Catalog
-metadata lives in OpenDoc configuration and never rewrites the OpenAPI source. Entries sharing the
-same `group` are shown as versions of one API; the active document's native `info.version` is used
-when available.
-
-```json
-{
-  "parsables": {
-    "labels-v3": {
-      "title": "Labels API",
-      "group": "labels",
-      "version": "3.0",
-      "categories": ["Core"],
-      "tags": ["Printing"],
-      "url": "/specs/labels-v3.json"
-    },
-    "labels-v2": {
-      "title": "Labels API",
-      "group": "labels",
-      "version": "2.0",
-      "categories": ["Core"],
-      "url": "/specs/labels-v2.json"
-    }
-  }
-}
-```
 
 ---
 
@@ -598,7 +558,7 @@ detects `application/*+json`, shows the substituted request URL, and supports a 
 30-second timeout. When actual `Content-Type` or `Content-Disposition` headers identify binary or
 attachment data, the Runner cancels the body stream immediately after headers, saves no file, creates
 no download link, and shows metadata only. Every endpoint keeps its **last 10 transaction outcomes**
-per specification in IndexedDB-backed storage (with localStorage fallback), including HTTP responses,
+per specification in IndexedDB-backed storage (with an emergency localStorage fallback only when IndexedDB is unavailable), including HTTP responses,
 browser/network failures, validation outcomes, timeouts, and cancellations.
 
 The Overview page keeps a specification-wide **Runner Compatibility** summary. A dedicated sidebar
@@ -844,8 +804,8 @@ When a configured spec has a `url`, the app uses the versioned `opendoc_spec_cac
 IndexedDB cache. A fresh entry is used for five minutes; after that the app revalidates with
 `If-None-Match` and/or `If-Modified-Since` when the server supplied those headers. A failed
 revalidation may use the stale entry as an offline fallback, but stale data is never treated as
-fresh indefinitely. Large raw documents are stored in IndexedDB and only small entries use a
-localStorage fallback.
+fresh indefinitely. Validated cache indexes and large raw documents are stored in IndexedDB;
+localStorage is used only as an emergency fallback when IndexedDB is unavailable or a write fails.
 
 The **refresh button** (circular arrows, next to the spec selector in the navbar and in the
 mobile sidebar toolbar) drops the cache and reloads: it clears every cached spec and
@@ -858,8 +818,8 @@ text. The icon spins while a refresh is in flight.
 ## Local history
 
 In **local mode**, every spec opened from disk is saved to browser persistent storage
-(`opendoc_local_history`), most recent first. IndexedDB is used through the storage facade when
-available, with localStorage as a fallback. The spec selector modal lists the history with the
+(`opendoc_local_history`), most recent first. IndexedDB is the primary store; localStorage is used
+only as an emergency fallback when IndexedDB is unavailable or a write fails. The spec selector modal lists the history with the
 spec title, file name and relative open time; entries can be re-opened with one click or removed
 individually, and the whole history can be cleared from the modal footer.
 
@@ -928,7 +888,6 @@ OpenDoc uses clean History API routes and still accepts legacy `#/...` links. Ma
 | `/parsable/<key>/api/<endpointId>`             | A specific endpoint in a permanent tab     |
 | `/parsable/<key>/schema-explorer?schemas=name` | Schema Explorer with a schema open         |
 | `/parsable/<key>/compatibility`                | Endpoint Runner compatibility matrix       |
-| `/parsable/<key>/catalog`                      | Configured API Catalog                     |
 | `/parsable/<key>/about`                        | About page for that specification          |
 | `/parsable/<key>/assistant`                    | OpenDoc UI assistant                       |
 | `/oauth/callback`                              | Native OAuth authorization callback        |
@@ -964,16 +923,16 @@ endpoint to pin a permanent tab, double-click to keep the preview tab, etc.).
 All persistence goes through `src/utils/storage.ts` — an IndexedDB-first synchronous facade that
 hydrates before React starts. It never throws, validates every JSON read, self-repairs corrupt
 entries, and falls back to localStorage only when IndexedDB is unavailable or a write fails.
-Large specification cache records and AI conversations also have dedicated IndexedDB records;
-reset actions delete both the dedicated records and the fallback mirror.
+Large specification cache records and AI conversations also have dedicated IndexedDB records.
+Older localStorage data is migrated once and removed after IndexedDB confirms the write.
 
 State is split into three namespaces:
 
 | Namespace                                                                 | Contains                                                                                                                                                                   |
 | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `opendoc:ui:<name>`                                                       | Global UI state — sidebar width & collapsed state, collapsed tag folders, last selected spec, split-view width, non-secret AI settings/profiles, and cached model catalogs |
-| `opendoc:spec:<encoded spec key>:<encoded name>`                          | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation fallback mirror                   |
-| `opendoc_spec_cache_v2:<url>` / IndexedDB / local and remote history keys | Small cache fallback, large spec cache, local-file history, and recent remote URLs                                                                                         |
+| `opendoc:spec:<encoded spec key>:<encoded name>`                          | Per-spec state — theme name, theme mode, tab mode, open tabs, per-endpoint runner inputs, docs scroll position, and bounded conversation index                             |
+| `opendoc_spec_cache_v2:<url>` / IndexedDB / local and remote history keys | Validated cache index, large spec cache, local-file history, and recent remote URLs                                                                                        |
 
 Per-spec data is pruned automatically when a spec disappears from the configuration, and
 legacy v0.1.0 keys are migrated into the namespaces once on first run. Known keys:
@@ -993,7 +952,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 | `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint                                                            |
 | `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                                                               |
 | `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification                                                   |
-| `opendoc_spec_cache_v2:<url>`                               | Small/legacy fallback copy of a remotely loaded spec; large copies use IndexedDB                |
+| `opendoc_spec_cache_v2:<url>`                               | Validated generic cache record; large raw copies use dedicated IndexedDB records                |
 | `opendoc_local_history`                                     | Recently opened local files                                                                     |
 | `opendoc_remote_spec_history`                               | Last 12 URL-loaded specifications; complete URLs stay in this browser                           |
 | `sessionStorage:opendoc_ui_session_secrets`                 | Session-only AI keys/tokens when remember-secrets is off                                        |
@@ -1020,10 +979,10 @@ src/
   hooks/                 # breakpoints, resize split, swipe-to-open, esc-to-close
   utils/
     openapi/             # Swagger→OpenAPI 3 normalization, ref resolution
-    specCache.ts         # bounded-TTL remote cache with IndexedDB/local fallback
-    indexedDb.ts         # large persistent document adapter
+    specCache.ts         # bounded-TTL remote cache backed by IndexedDB
+    indexedDb.ts         # primary browser persistence adapter
     localHistory.ts      # local-file history persistence
-    routing.ts           # hash routing helpers
+    routing.ts           # clean History API routing helpers
   data/themes.ts         # theme palettes
   types/                 # shared TypeScript types
 ```

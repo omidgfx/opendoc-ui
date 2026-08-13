@@ -43,8 +43,6 @@ interface UseWorkspaceRoutingOptions {
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
     showCompatibility: boolean;
     setShowCompatibility: Dispatch<SetStateAction<boolean>>;
-    showCatalog: boolean;
-    setShowCatalog: Dispatch<SetStateAction<boolean>>;
     selectedEndpoint: Endpoint | null;
     setSelectedEndpoint: Dispatch<SetStateAction<Endpoint | null>>;
     selectedViewMode: ViewMode;
@@ -116,8 +114,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowSchemaExplorer,
         showCompatibility,
         setShowCompatibility,
-        showCatalog,
-        setShowCatalog,
         selectedEndpoint,
         setSelectedEndpoint,
         selectedViewMode,
@@ -155,7 +151,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             setShowHome(false);
             setShowSchemaExplorer(false);
             setShowCompatibility(false);
-            setShowCatalog(false);
             setShowAbout(false);
             setShowAssistant(false);
             setAssistantContextEndpoints([]);
@@ -187,7 +182,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowCompatibility(parsed.showCompatibility);
-        setShowCatalog(parsed.showCatalog);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
         if (parsed.legacyOperationId && spec) {
@@ -197,7 +191,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowCompatibility(false);
-                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             } else setSelectedEndpoint(null);
@@ -218,7 +211,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
                 showCompatibility: parsed.showCompatibility,
-                showCatalog: parsed.showCatalog,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
                 showHome: parsed.showHome,
@@ -280,7 +272,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             showAssistant,
             showSchemaExplorer,
             showCompatibility,
-            showCatalog,
             endpoint: selectedEndpoint,
             tab: selectedViewMode,
             schemaModals: modalStack.map(name => ({schemaName: name, schema: spec.components?.schemas?.[name] || {}})),
@@ -309,7 +300,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showAssistant,
         showSchemaExplorer,
         showCompatibility,
-        showCatalog,
         selectedEndpoint,
         selectedViewMode,
         modalStack,
@@ -341,7 +331,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
         setShowCompatibility(parsed.showCompatibility);
-        setShowCatalog(parsed.showCatalog);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
         setShowWelcome(false);
@@ -353,7 +342,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowCompatibility(false);
-                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             } else setSelectedEndpoint(null);
@@ -370,7 +358,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
                 showCompatibility: parsed.showCompatibility,
-                showCatalog: parsed.showCatalog,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
                 showHome: parsed.showHome,
@@ -429,7 +416,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showAbout,
         showSchemaExplorer,
         showCompatibility,
-        showCatalog,
         selectedEndpoint,
         selectedViewMode,
         modalStack,

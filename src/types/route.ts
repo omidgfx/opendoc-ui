@@ -7,7 +7,6 @@ export interface ParsedRoute {
     parsableKey: string;
     showSchemaExplorer: boolean;
     showCompatibility: boolean;
-    showCatalog: boolean;
     showHome: boolean;
     showAbout: boolean;
     showAssistant: boolean;
