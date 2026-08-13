@@ -177,7 +177,23 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
     // Clear-all uses the shared confirmation modal and persists the empty state.
     await restoredHistory.click();
     await page.getByRole('button', {name: 'Clear all'}).click();
-    await expect(page.getByRole('dialog')).toContainText('Clear response history?');
+    const clearHistoryDialog = page.getByRole('dialog');
+    const confirmModalRoot = page.locator('[data-confirm-modal-root]');
+    await expect(clearHistoryDialog).toContainText('Clear response history?');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    expect(
+        await confirmModalRoot.evaluate(element => {
+            const rect = element.getBoundingClientRect();
+            return {
+                parentIsBody: element.parentElement === document.body,
+                fillsViewport:
+                    Math.abs(rect.top) <= 1 &&
+                    Math.abs(rect.left) <= 1 &&
+                    Math.abs(rect.right - window.innerWidth) <= 1 &&
+                    Math.abs(rect.bottom - window.innerHeight) <= 1,
+            };
+        }),
+    ).toEqual({parentIsBody: true, fillsViewport: true});
     await page.getByRole('button', {name: 'Clear history'}).click();
     await expect(restoredHistory).toBeHidden();
     await page.reload();
