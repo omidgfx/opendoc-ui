@@ -878,7 +878,7 @@ reload.
 | `Ctrl / ⌘ + K`                      | Focus global search                                                                                                 |
 | `Esc`                               | Close the top-most modal / overlay                                                                                  |
 | `Alt + ←` / `Alt + →`               | Previous / next endpoint tab                                                                                        |
-| `Ctrl + \`` /`Ctrl + Shift + \``   | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
+| `Ctrl + \`` /`Ctrl + Shift + \``    | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
 | `Ctrl+Enter` (in runner)            | Send the request from the active pane                                                                               |
 | `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes                                                                            |
 
