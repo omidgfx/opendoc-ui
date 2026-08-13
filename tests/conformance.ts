@@ -63,7 +63,7 @@ try {
     assert.equal(recordedUrl.searchParams.get('code'), 'wrong-pattern');
     assert.equal(recorded.headers['x-region'], 'eu');
     assert.equal(recorded.headers.authorization, undefined, 'public operation must not receive the configured token');
-    assert.equal(recorded.headers.accept, 'application/problem+json');
+    assert.equal(recorded.headers.accept, 'application/problem+json, */*');
     assert.equal(recorded.body.toString(), '{deliberately invalid json');
     assert.ok(result.diagnostics?.some(item => item.code === 'RUN_PARAMETER_PATTERN_MISMATCH'));
     assert.ok(result.diagnostics?.some(item => item.code === 'RUN_BODY_JSON_INVALID'));

@@ -99,6 +99,22 @@ export const OPENAPI_CAPABILITIES: OpenApiCapability[] = [
         note: 'Browser FormData cannot emit arbitrary custom part headers.',
     },
     {
+        id: 'responses.binary',
+        label: 'Binary and attachment responses',
+        dialects: ['swagger2', 'oas3.0', 'oas3.1', 'oas3.2'],
+        consumers: ['execute'],
+        status: 'supported',
+        note: 'Browser requests are sent, then detected binary streams are cancelled after headers and shown as metadata; no file download is started.',
+    },
+    {
+        id: 'runner.compatibility-report',
+        label: 'Specification Runner compatibility report',
+        dialects: ['swagger2', 'oas3.0', 'oas3.1', 'oas3.2'],
+        consumers: ['document', 'execute'],
+        status: 'supported',
+        note: 'Static findings disclose partial, browser-limited, binary, and unresolved operation features.',
+    },
+    {
         id: 'security.cookies',
         label: 'Manual Cookie header',
         dialects: ['swagger2', 'oas3.0', 'oas3.1', 'oas3.2'],

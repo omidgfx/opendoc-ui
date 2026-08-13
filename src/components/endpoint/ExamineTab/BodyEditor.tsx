@@ -2,6 +2,7 @@ import {lazy, Suspense, useEffect, useState} from 'react';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
+import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
 import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
 
 const SchemaJsonEditor = lazy(() => import('../../schema/SchemaJsonEditor'));
@@ -86,7 +87,7 @@ export default function BodyEditor(props: BodyEditorProps) {
         const jsonText = JSON.stringify(value, null, 2);
         setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType));
     };
-    const isTopLevelBinary = resolvedSchema?.type === 'string' && resolvedSchema?.format === 'binary';
+    const isTopLevelBinary = schemaDeclaresBinary(resolvedSchema);
     if (bodyEditorMode === 'form' && resolvedSchema === null) {
         return (
             <p className="py-2 text-xs italic text-[var(--text-muted)]">

@@ -1,6 +1,8 @@
-import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../types';
+import {diagnostic, type ActiveAuth, type ExamineResponse, type OpenApiSpec, type Operation} from '../types';
+import {resolveReference} from './openapi';
 import {isJsonMediaType} from './openapi/serialization';
 import {compileBrowserRequest, type ParameterValueState, type RunnerInputValue} from './requestPlan';
+import {declaredContentIsBinary, declaredContentLength, responseHeadersIndicateBinary} from './runnerResponse';
 
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -71,6 +73,21 @@ const readResponseBody = async (
     return {text: new TextDecoder().decode(merged), bytes, truncated};
 };
 
+const operationDeclaresBinaryResponse = (operation: Operation, spec: OpenApiSpec, status: number): boolean => {
+    const responses = operation.responses || {};
+    const response =
+        responses[String(status)] ||
+        responses[`${String(status)[0]}XX`] ||
+        responses[`${String(status)[0]}xx`] ||
+        responses.default;
+    if (!response) return false;
+    const resolvedResponse = resolveReference(response, spec) || response;
+    return Object.entries(resolvedResponse.content || {}).some(([mediaType, media]: [string, any]) => {
+        const schema = media?.schema ? resolveReference(media.schema, spec) || media.schema : null;
+        return declaredContentIsBinary(mediaType, schema);
+    });
+};
+
 export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise<ExamineResponse> => {
     const startedAt = Date.now();
     const plan = compileBrowserRequest(input);
@@ -113,24 +130,59 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             responseHeaders[key] = value;
         });
         const contentType = response.headers.get('Content-Type') || '';
+        const contentDisposition = response.headers.get('Content-Disposition') || '';
         const binary =
-            !isJsonMediaType(contentType) &&
-            !/^text\//i.test(contentType) &&
-            !/javascript|xml|event-stream|graphql/i.test(contentType);
+            responseHeadersIndicateBinary(contentType, contentDisposition) ||
+            operationDeclaresBinaryResponse(input.operation, input.spec, response.status);
+        if (binary) {
+            const declaredBytes = declaredContentLength(response.headers.get('Content-Length'));
+            if (response.body) {
+                try {
+                    await response.body.cancel();
+                } catch {
+                    // The browser may have already closed an empty response stream.
+                }
+            }
+            const metadata = [
+                '[Binary response omitted from preview]',
+                `Content-Type: ${contentType || 'unknown'}`,
+                ...(contentDisposition ? [`Content-Disposition: ${contentDisposition}`] : []),
+                `Declared size: ${declaredBytes === undefined ? 'unknown' : `${declaredBytes.toLocaleString()} bytes`}`,
+                'The response stream was cancelled after headers; no file was saved.',
+            ];
+            return {
+                status: response.status,
+                headers: responseHeaders,
+                body: metadata.join('\n'),
+                isJson: false,
+                timestamp: Date.now(),
+                requestUrl,
+                durationMs: Date.now() - startedAt,
+                bodyBytes: declaredBytes,
+                truncated: false,
+                isBinary: true,
+                diagnostics: [
+                    ...plan.diagnostics,
+                    diagnostic(
+                        'RUN_BINARY_RESPONSE_BODY_CANCELLED',
+                        'Binary or attachment response detected from its headers or OpenAPI response definition. The body stream was cancelled and no file was saved.',
+                        {severity: 'info', transport: 'browser'},
+                    ),
+                ],
+            };
+        }
         const body = await readResponseBody(response);
         return {
             status: response.status,
             headers: responseHeaders,
-            body: binary
-                ? `[Binary response omitted from preview]\nContent-Type: ${contentType || 'unknown'}\nBytes read: ${body.bytes}${body.truncated ? ' (truncated)' : ''}`
-                : body.text,
+            body: body.text,
             isJson: isJsonMediaType(contentType),
             timestamp: Date.now(),
             requestUrl,
             durationMs: Date.now() - startedAt,
             bodyBytes: body.bytes,
             truncated: body.truncated,
-            isBinary: binary,
+            isBinary: false,
             diagnostics: plan.diagnostics,
         };
     } catch (error: any) {

@@ -84,6 +84,7 @@ This release focuses on predictable request execution and portable deployment:
 - one request compiler shared by the manual Runner and assistant actions;
 - required path-segment protection while other invalid inputs remain testable;
 - persistent per-endpoint response history with individual and bulk removal;
+- typed-but-permissive Runner parameters, a specification compatibility report, and binary stream cancellation without file downloads;
 - compact response cards with shared smooth open-and-scroll behavior, a desktop response-code TOC, smart expanded-section tracking, and deep links that collapse siblings before top-aligning and highlighting the target;
 - response examples selected by default with the currently inspected schema visibly active;
 - Swagger 2.0 and OpenAPI 3.0, 3.1, and 3.2 compatibility improvements;
@@ -557,12 +558,22 @@ or other provider models can be entered or selected without an app update.
 The API Runner is manual-first and remains fully usable without an AI profile or gateway. The API Runner serializes query, path, header, and cookie parameters using OpenAPI styles
 including `form`, `simple`, `label`, `matrix`, `deepObject`, `spaceDelimited`, and
 `pipeDelimited`, with `explode` and `allowReserved` handling. Swagger 2 `collectionFormat`
-values are mapped during compatibility conversion. The response reader is bounded at 2 MiB,
-detects `application/*+json`, shows the substituted request URL, and supports a Cancel button
-plus a 30-second timeout. Binary bodies are represented as bounded metadata instead of being
-converted to an unbounded text string. Every endpoint keeps its **last 10 transaction outcomes**
+values are mapped during compatibility conversion. Enum and boolean parameters use rich documented-value
+controls with an explicit custom-value mode, while numeric, UUID, date, and other scalar inputs remain
+permissive text so negative tests can still reach the API. The response reader is bounded at 2 MiB,
+detects `application/*+json`, shows the substituted request URL, and supports a Cancel button plus a
+30-second timeout. When actual `Content-Type` or `Content-Disposition` headers identify binary or
+attachment data, the Runner cancels the body stream immediately after headers, saves no file, creates
+no download link, and shows metadata only. Every endpoint keeps its **last 10 transaction outcomes**
 per specification in IndexedDB-backed storage (with localStorage fallback), including HTTP responses,
 browser/network failures, validation outcomes, timeouts, and cancellations.
+
+The Overview page includes a specification-wide **Runner Compatibility** report. It identifies partial,
+browser-limited, declared-binary, and unresolved operation features before testing. The report is a
+static preflight—not a promise about CORS, DNS, authentication state, server behavior, or success
+payloads missing from the specification. File-serving operations should declare a 2xx response media
+type and a `string` schema with `format: binary`; when that success response is omitted, OpenDoc can
+only recognize binary data from the real response headers after the request has been sent.
 
 Request bodies have two complementary paths: the manual recursive form handles nested objects,
 arrays of objects, arrays of arrays, enums, defaults, examples, and add/remove/reorder controls;
