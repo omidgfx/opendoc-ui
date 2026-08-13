@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.5-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -16,7 +16,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.5](#version-015)
+- [Version 0.1.6](#version-016)
 - [Quick start](#quick-start)
 - [Docker](#docker)
 - [Configuration](#configuration)
@@ -76,7 +76,7 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.5
+## Version 0.1.6
 
 This release focuses on predictable request execution and portable deployment:
 
@@ -95,7 +95,7 @@ This release focuses on predictable request execution and portable deployment:
 - optional URL specification loading with persistent history and secure multi-language downloader services;
 - explicit authentication logout and endpoint-scoped AI actions that start new conversations;
 - AI gateway integrations for Express, FastAPI, Django, Laravel, Gin, Spring Boot, ASP.NET Core, Rails, and Axum;
-- one-file JavaScript builds with Windows-compatible scripts;
+- one-file JavaScript builds plus a health-checked Docker/nginx image with Compose and Windows/POSIX helpers;
 - automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
 
 ---
