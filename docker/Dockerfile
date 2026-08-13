@@ -11,6 +11,7 @@ RUN npm run build
 
 # 2. Executable artifact seved by nginx
 FROM nginx:1.31.2-alpine-slim AS final
+RUN apk update && apk add curl
 COPY --from=builder /app/dist/            /usr/share/nginx/html
 #COPY                docker/config.json    /usr/share/nginx/html
 COPY                docker/nginx.conf     /etc/nginx/conf.d/default.conf
