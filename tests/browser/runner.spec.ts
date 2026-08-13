@@ -21,6 +21,9 @@ const specText = () =>
                     summary: 'Send permissive validation request',
                     parameters: [
                         {name: 'id', in: 'path', required: true, schema: {type: 'string', pattern: '^[0-9]+$'}},
+                        {name: 'sort', in: 'query', schema: {type: 'string', enum: ['name', '-name']}},
+                        {name: 'active', in: 'query', schema: {type: 'boolean'}},
+                        {name: 'page', in: 'query', schema: {type: 'integer'}},
                     ],
                     requestBody: {required: true, content: {'application/json': {schema: {type: 'object'}}}},
                     security: [{bearerAuth: []}],
@@ -37,6 +40,26 @@ const specText = () =>
                         },
                         '422': {description: 'Validation failed'},
                         '500': {description: 'Unexpected server failure'},
+                    },
+                },
+            },
+            '/media/{file_name}': {
+                get: {
+                    tags: ['Media'],
+                    summary: 'Serve private media',
+                    parameters: [{name: 'file_name', in: 'path', required: true, schema: {type: 'string'}}],
+                    responses: {'401': {description: 'Unauthorized', content: {'application/json': {}}}},
+                },
+            },
+            '/exports/report': {
+                get: {
+                    tags: ['Reports'],
+                    summary: 'Download report',
+                    responses: {
+                        '200': {
+                            description: 'PDF report',
+                            content: {'application/pdf': {schema: {type: 'string', format: 'binary'}}},
+                        },
                     },
                 },
             },
@@ -93,6 +116,17 @@ test.beforeAll(async () => {
             response.setHeader('content-type', 'application/json');
             response.setHeader('etag', '"remote-browser-fixture"');
             response.end(specText());
+            return;
+        }
+        if (request.method === 'GET' && request.url === '/exports/report') {
+            const payload = Buffer.from('%PDF-1.7\nOpenDoc binary fixture\n%%EOF');
+            requestCount += 1;
+            response.statusCode = 200;
+            response.setHeader('content-type', 'application/pdf');
+            response.setHeader('content-disposition', 'attachment; filename="report.pdf"');
+            response.setHeader('content-length', String(payload.byteLength));
+            response.setHeader('access-control-expose-headers', 'Content-Disposition, Content-Length');
+            response.end(payload);
             return;
         }
         requestCount += 1;
@@ -200,6 +234,53 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     await page.getByRole('button', {name: /API Runner/i}).click();
     await expect(page.getByRole('button', {name: 'Response history'})).toHaveCount(0);
+});
+
+test('offers typed parameter suggestions without blocking custom negative-test values', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    const runner = page.locator('form');
+
+    const sort = runner.getByRole('button', {name: 'sort documented values'});
+    await sort.click();
+    await page.getByRole('option', {name: 'name', exact: true}).click();
+    await expect(sort).toContainText('name');
+    await sort.click();
+    await page.getByRole('option', {name: 'Custom value…', exact: true}).click();
+    const customSort = runner.getByRole('textbox', {name: 'sort custom value'});
+    await expect(customSort).toBeFocused();
+    await customSort.fill('unsupported-sort');
+    await expect(customSort).toHaveValue('unsupported-sort');
+
+    const active = runner.getByRole('button', {name: 'active documented values'});
+    await active.click();
+    await page.getByRole('option', {name: 'false', exact: true}).click();
+    await expect(active).toContainText('false');
+
+    const pageNumber = runner.getByRole('textbox', {name: 'page value'});
+    await expect(pageNumber).toHaveAttribute('inputmode', 'numeric');
+    await pageNumber.fill('not-a-number');
+    await expect(pageNumber).toHaveValue('not-a-number');
+});
+
+test('cancels binary response streams without triggering a browser download', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Download report', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    let downloadCount = 0;
+    page.on('download', download => {
+        downloadCount += 1;
+        void download.cancel();
+    });
+    const runner = page.locator('form');
+    await runner.getByRole('button', {name: /Send API Request/i}).click();
+    await expect(runner.getByText('200', {exact: true})).toBeVisible();
+    await expect(runner.getByText(/Binary response omitted from preview/)).toBeVisible();
+    await expect(runner).toContainText('no file was saved');
+    await expect(runner.getByText('RUN_BINARY_RESPONSE_BODY_CANCELLED')).toBeVisible();
+    await page.waitForTimeout(200);
+    expect(downloadCount).toBe(0);
 });
 
 test('selects response examples and the current inspect schema by default', async ({page}) => {
@@ -353,6 +434,18 @@ test('renders the embedded Apple sprite set without changing emoji inside code',
         .evaluate(element => getComputedStyle(element).backgroundImage);
     expect(backgroundImage).toContain('data:image/png;base64,');
     await expect(page.locator('code').filter({hasText: '🚀'})).toBeVisible();
+});
+
+test('reports specification-wide Runner compatibility and undeclared binary uncertainty', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    const report = page.locator('[data-runner-compatibility-report]');
+    await expect(report).toBeVisible();
+    await expect(report).toContainText('Runner Compatibility');
+    await expect(report).toContainText('No successful response is declared');
+    await expect(report).toContainText('Declared binary or attachment responses');
+    await expect(report).toContainText('/media/{file_name}');
+    await expect(report).toContainText('/exports/report');
 });
 
 test('layers the local endpoint filter over global results without searching tag folders', async ({page}) => {

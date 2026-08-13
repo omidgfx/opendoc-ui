@@ -9,8 +9,9 @@ import {
     serializeOpenApiParameter,
     type SerializedPair,
 } from './openapi/serialization';
-import {getMergedParameters, resolveParameter, resolveRequestBody} from './openapi';
+import {getMergedParameters, resolveParameter, resolveReference, resolveRequestBody} from './openapi';
 import {resolveEffectiveServer, type ResolvedServer} from './serverResolver';
+import {schemaDeclaresBinary} from './runnerResponse';
 
 export type RunnerInputValue = unknown;
 export type ParameterValueState = Record<string, RunnerInputValue>;
@@ -111,11 +112,21 @@ const valueForParameter = (input: CompileRequestInput, parameter: any): unknown 
 
 const collectAcceptTypes = (operation: Operation): string[] => {
     const result: string[] = [];
-    Object.values(operation.responses || {}).forEach((response: any) => {
+    const entries = Object.entries(operation.responses || {});
+    const successful = entries.filter(([code]) => /^2(?:\d{2}|xx)$/i.test(code));
+    const append = (response: any) => {
         Object.keys(response?.content || {}).forEach(mediaType => {
             if (!result.some(value => value.toLowerCase() === mediaType.toLowerCase())) result.push(mediaType);
         });
-    });
+    };
+    successful.forEach(([, response]) => append(response));
+    entries.filter(([code]) => !/^2(?:\d{2}|xx)$/i.test(code)).forEach(([, response]) => append(response));
+    if (
+        (successful.length === 0 ||
+            !successful.some(([, response]) => Object.keys((response as any)?.content || {}).length > 0)) &&
+        !result.includes('*/*')
+    )
+        result.push('*/*');
     return result;
 };
 
@@ -170,7 +181,11 @@ const createBodyIntent = (input: CompileRequestInput, diagnostics: Diagnostic[])
     }
 
     const normalized = mediaType.toLowerCase().split(';', 1)[0].trim();
-    if (normalized === 'application/octet-stream' && input.selectedFile) {
+    const resolvedMediaSchema = media.schema ? resolveReference(media.schema, input.spec) || media.schema : null;
+    if (
+        input.selectedFile &&
+        (normalized === 'application/octet-stream' || schemaDeclaresBinary(resolvedMediaSchema))
+    ) {
         return {kind: 'binary', mediaType, file: input.selectedFile};
     }
     if (normalized === 'multipart/form-data') {

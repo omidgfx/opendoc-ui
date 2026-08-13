@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import {applyAuthToRequest, isOperationAuthenticated, isOperationProtected} from '../src/utils/auth';
+import {applyAuthToRequest, createEmptyAuth, isOperationAuthenticated, isOperationProtected} from '../src/utils/auth';
 import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/aiContext';
 import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
@@ -63,6 +63,13 @@ import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/util
 import {registerSpecDiagnostics} from '@/src/utils/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {positionFor} from '@/src/components/common/tooltip/tooltipPosition';
+import {
+    declaredContentIsBinary,
+    isBinaryResponseMediaType,
+    isTextualResponseMediaType,
+    responseHeadersIndicateBinary,
+} from '@/src/utils/runnerResponse';
+import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -120,12 +127,54 @@ test('compiles a permissive request with canonical inputs and advisory diagnosti
     assert.equal(plan.url, 'https://api.example.test/users/{id}');
     assert.equal(plan.headers.Authorization, undefined);
     assert.equal(plan.headers.region, 'eu');
-    assert.equal(plan.headers.Accept, 'application/problem+json');
+    assert.equal(plan.headers.Accept, 'application/problem+json, */*');
     assert.ok(plan.diagnostics.some(item => item.code === 'RUN_REQUIRED_PARAMETER_MISSING' && item.blocking));
     assert.ok(plan.diagnostics.some(item => item.code === 'RUN_PARAMETER_PATTERN_MISMATCH'));
     assert.ok(plan.diagnostics.some(item => item.code === 'RUN_BODY_JSON_INVALID'));
     // GET bodies are a browser limitation, not a semantic validation failure.
     assert.equal(plan.body, null);
+});
+test('serializes admin-style integer, enum, UUID, text and boolean query parameters permissively', () => {
+    const operation: any = {
+        parameters: [
+            {$ref: '#/components/parameters/PageParam'},
+            {name: 'sort', in: 'query', schema: {type: 'string', enum: ['name', '-name']}},
+            {name: 'filter[province]', in: 'query', schema: {type: 'string', format: 'uuid'}},
+            {name: 'filter[keyword]', in: 'query', schema: {type: 'string', maxLength: 128}},
+            {name: 'filter[is_active]', in: 'query', schema: {type: 'boolean'}},
+        ],
+        responses: {'200': {description: 'ok', content: {'application/json': {}}}},
+    };
+    const spec: any = {
+        ...baseSpec,
+        servers: [{url: 'https://api.example.test'}],
+        paths: {'/cities': {get: operation}},
+        components: {
+            ...baseSpec.components,
+            parameters: {PageParam: {name: 'page', in: 'query', schema: {type: 'integer'}}},
+        },
+    };
+    const plan = compileBrowserRequest({
+        spec,
+        path: '/cities',
+        method: 'get',
+        operation,
+        selectedServer: 'https://api.example.test',
+        activeAuth: createEmptyAuth(),
+        parameterValues: {
+            'query:page': 'not-an-integer',
+            'query:sort': 'unsupported-sort',
+            'query:filter[province]': 'not-a-uuid',
+            'query:filter[keyword]': 'x'.repeat(140),
+            'query:filter[is_active]': 'false',
+        },
+    });
+    const url = new URL(plan.url);
+    assert.equal(url.searchParams.get('page'), 'not-an-integer');
+    assert.equal(url.searchParams.get('sort'), 'unsupported-sort');
+    assert.equal(url.searchParams.get('filter[province]'), 'not-a-uuid');
+    assert.equal(url.searchParams.get('filter[keyword]'), 'x'.repeat(140));
+    assert.equal(url.searchParams.get('filter[is_active]'), 'false');
 });
 test('resolves operation server variables ahead of path and root servers', () => {
     const operation: any = {
@@ -673,8 +722,86 @@ test('keeps the immutable raw document available beside the normalized semantic 
 });
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {
     assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'references.local' && item.status === 'supported'));
+    assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'responses.binary' && item.status === 'supported'));
     assert.ok(capabilitiesFor('oas3.2', 'execute').some(item => item.id === 'operations.additional'));
     assert.ok(capabilitiesFor('oas3.1', 'execute').some(item => item.status === 'transport-dependent'));
+});
+test('classifies textual, binary and attachment response media without triggering downloads', () => {
+    assert.equal(isTextualResponseMediaType('application/problem+json; charset=utf-8'), true);
+    assert.equal(isTextualResponseMediaType('application/x-ndjson'), true);
+    assert.equal(isTextualResponseMediaType('image/svg+xml'), true);
+    assert.equal(isBinaryResponseMediaType('image/jpeg'), true);
+    assert.equal(isBinaryResponseMediaType('application/pdf'), true);
+    assert.equal(responseHeadersIndicateBinary('text/plain', 'attachment; filename="report.txt"'), true);
+    assert.equal(declaredContentIsBinary('application/octet-stream', {type: 'string'}), true);
+    assert.equal(declaredContentIsBinary('text/plain', {type: 'string', format: 'binary'}), true);
+});
+test('summarizes unfamiliar specification Runner limits without guessing from endpoint names', () => {
+    const report = analyzeRunnerCompatibility({
+        openapi: '3.2.0',
+        info: {title: 'Compatibility fixture', version: '1'},
+        paths: {
+            '/cities': {
+                get: {
+                    parameters: [
+                        {name: 'sort', in: 'query', schema: {type: 'string', enum: ['name', '-name']}},
+                        {name: 'active', in: 'query', schema: {type: 'boolean'}},
+                    ],
+                    security: [{cookieAuth: []}],
+                    responses: {'200': {description: 'ok', content: {'application/json': {}}}},
+                },
+            },
+            '/media/{id}': {
+                get: {
+                    parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string'}}],
+                    responses: {'401': {description: 'unauthorized', content: {'application/json': {}}}},
+                },
+            },
+            '/download': {
+                get: {
+                    responses: {
+                        '200': {
+                            description: 'image',
+                            content: {'image/jpeg': {schema: {type: 'string', format: 'binary'}}},
+                        },
+                    },
+                },
+            },
+            '/upload': {
+                post: {
+                    requestBody: {
+                        content: {
+                            'multipart/form-data': {
+                                schema: {type: 'object'},
+                                encoding: {metadata: {headers: {'X-Part': {schema: {type: 'string'}}}}},
+                            },
+                        },
+                    },
+                    responses: {'204': {description: 'uploaded'}},
+                },
+            },
+            '/broken': {
+                get: {
+                    parameters: [{$ref: './parameters.yaml#/Missing'}],
+                    responses: {'200': {description: 'ok'}},
+                },
+            },
+        },
+        components: {
+            securitySchemes: {cookieAuth: {type: 'apiKey', in: 'cookie', name: 'session'}},
+        },
+    } as any);
+    assert.equal(report.totalOperations, 5);
+    assert.equal(report.standardOperations, 1);
+    assert.equal(report.reviewOperations, 3);
+    assert.equal(report.browserLimitedOperations, 1);
+    assert.equal(report.binaryOperations, 1);
+    assert.equal(report.unresolvedOperations, 1);
+    assert.ok(report.findings.some(item => item.id === 'missing-success-responses'));
+    assert.ok(report.findings.some(item => item.id === 'binary-success-responses'));
+    assert.ok(report.findings.some(item => item.id === 'browser-cookie-auth'));
+    assert.ok(report.findings.some(item => item.id === 'multipart-part-headers'));
+    assert.ok(report.findings.some(item => item.id === 'unresolved-references'));
 });
 test('generates canonical request snippets with placeholders and no live credentials', () => {
     const operation: any = {
@@ -963,6 +1090,8 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.equal(validateBodyText('{"broken":', 'application/x-www-form-urlencoded') !== null, true);
     assert.match(formatBodyText('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded').text, /"name": "OpenDoc"/);
     assert.equal(bodyTypeSupportsForm('application/json; charset=utf-8'), true);
+    assert.equal(bodyTypeSupportsForm('image/png', {type: 'string', format: 'binary'}), true);
+    assert.equal(bodyEditorModeForMediaType('form', 'image/png', {type: 'string', format: 'binary'}), 'form');
     assert.equal(bodyEditorModeForMediaType('raw', 'application/json'), 'raw');
     assert.equal(bodyEditorModeForMediaType('raw', 'application/x-www-form-urlencoded'), 'raw');
     assert.equal(bodyEditorModeForMediaType('form', 'application/xml'), 'raw');
@@ -978,6 +1107,31 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {
         tags: ['one', 'two'],
     });
+});
+test('materializes top-level binary uploads for their declared media type', () => {
+    const file = new Blob(['binary fixture'], {type: 'image/png'});
+    const operation: any = {
+        requestBody: {content: {'image/png': {schema: {type: 'string', format: 'binary'}}}},
+        responses: {'204': {description: 'uploaded'}},
+    };
+    const spec: any = {
+        ...baseSpec,
+        servers: [{url: 'https://upload.example.test'}],
+        paths: {'/avatar': {post: operation}},
+    };
+    const plan = compileBrowserRequest({
+        spec,
+        path: '/avatar',
+        method: 'post',
+        operation,
+        selectedServer: 'https://upload.example.test',
+        activeAuth: createEmptyAuth(),
+        bodyType: 'image/png',
+        selectedFile: file,
+    });
+    assert.equal(plan.body, file);
+    assert.equal(plan.headers['Content-Type'], 'image/png');
+    assert.equal(plan.headers.Accept, '*/*');
 });
 test('normalizes remote specification and downloader URLs without mixed-content proxy calls', () => {
     const target = normalizeRemoteSpecUrl(' https://api.example.test/openapi.yaml#section ');

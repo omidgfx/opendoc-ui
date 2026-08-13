@@ -14,6 +14,7 @@ interface CustomDropdownProps {
     className?: string;
     placeholder?: string;
     disabled?: boolean;
+    ariaLabel?: string;
 }
 
 export default function CustomDropdown({
@@ -24,6 +25,7 @@ export default function CustomDropdown({
     className = '',
     placeholder = 'Select...',
     disabled = false,
+    ariaLabel,
 }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -167,6 +169,7 @@ export default function CustomDropdown({
                 ref={triggerRef}
                 type="button"
                 disabled={disabled}
+                aria-label={ariaLabel}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
                 aria-controls={isOpen ? listboxId : undefined}

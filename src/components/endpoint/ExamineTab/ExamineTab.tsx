@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
-import {getMergedParameters, resolveRequestBody} from '../../../utils/openapi';
+import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/bodyFormats';
 import {executeRunnerRequest} from '../../../utils/runnerExecution';
 import {parameterStateKey} from '../../../utils/requestPlan';
@@ -14,6 +14,7 @@ import ParameterInput from './ParameterInput';
 import BodyEditor from './BodyEditor';
 import ResponsePanel from './ResponsePanel';
 import {specStorage} from '../../../utils/storage';
+import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
 
 interface ExamineTabProps {
     spec: OpenApiSpec;
@@ -63,6 +64,12 @@ export default function ExamineTab({
     const [isRunning, setIsRunning] = useState(false);
     const [response, setResponse] = useState<ExamineResponse | null>(responseHistory[0] || null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
+    const selectedRequestMedia = resolvedRequestBody?.content?.[requestBodyType];
+    const selectedRequestSchema = selectedRequestMedia?.schema
+        ? resolveReference(selectedRequestMedia.schema, spec) || selectedRequestMedia.schema
+        : null;
+    const requestBodySupportsForm = bodyTypeSupportsForm(requestBodyType, selectedRequestSchema);
     const canonicalizeInputs = useCallback(
         (incomingParams: Record<string, string | string[]> = {}, incomingHeaders: Record<string, string> = {}) => {
             const pathItem = (spec.paths as any)[path] || {};
@@ -127,14 +134,18 @@ export default function ExamineTab({
         loadInputs();
     }, [loadInputs]);
     useEffect(() => {
-        if (!bodyTypeSupportsForm(requestBodyType)) setBodyEditorMode('raw');
-    }, [requestBodyType, setBodyEditorMode]);
+        if (!requestBodySupportsForm) setBodyEditorMode('raw');
+    }, [requestBodySupportsForm, setBodyEditorMode]);
     useEffect(() => {
         const content = resolveRequestBody(operation.requestBody, spec)?.content || {};
         const mediaTypes = Object.keys(content);
         if (mediaTypes.length > 0 && !mediaTypes.includes(requestBodyType)) {
-            setRequestBodyType(mediaTypes[0]);
-            setBodyEditorMode(current => bodyEditorModeForMediaType(current, mediaTypes[0]));
+            const nextMediaType = mediaTypes[0];
+            const nextSchema = content[nextMediaType]?.schema
+                ? resolveReference(content[nextMediaType].schema, spec) || content[nextMediaType].schema
+                : null;
+            setRequestBodyType(nextMediaType);
+            setBodyEditorMode(current => bodyEditorModeForMediaType(current, nextMediaType, nextSchema));
         }
     }, [operation.requestBody, requestBodyType, spec]);
     useEffect(
@@ -197,8 +208,12 @@ export default function ExamineTab({
                 const example = contentObj.example ?? firstExample?.value ?? firstExample?.dataValue;
                 if (example !== undefined)
                     setRequestBodyText(typeof example === 'string' ? example : JSON.stringify(example, null, 2));
-                else if (contentObj.schema) setRequestBodyText(getMockSnippet(contentObj.schema, spec, 'request'));
-                else setRequestBodyText('{\n \n}');
+                else if (contentObj.schema) {
+                    const schema = resolveReference(contentObj.schema, spec) || contentObj.schema;
+                    setRequestBodyText(
+                        schemaDeclaresBinary(schema) ? '' : getMockSnippet(contentObj.schema, spec, 'request'),
+                    );
+                } else setRequestBodyText('{\n \n}');
             }
         } else {
             setRequestBodyText('');
@@ -297,10 +312,14 @@ export default function ExamineTab({
     }, [isRunning, isActive]);
     const pathItemObj = (spec.paths as any)[path] || {};
     const mergedParams = getMergedParameters(pathItemObj, operation, spec);
-    const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
     const pathParams = mergedParams.filter((p: any) => p.in === 'path');
     const queryParams = mergedParams.filter((p: any) => p.in === 'query' || p.in === 'querystring');
     const headerParams = mergedParams.filter((p: any) => p.in === 'header');
+    const cookieParams = mergedParams.filter((p: any) => p.in === 'cookie');
+    const parameterTypeLabel = (param: any) => {
+        const value = param.schema?.type ?? param.type ?? 'string';
+        return Array.isArray(value) ? value.join(' | ') : String(value);
+    };
     const renderParamBlock = (title: string, list: any[]) => {
         if (list.length === 0) return null;
         return (
@@ -311,7 +330,7 @@ export default function ExamineTab({
                 <div className="space-y-3 p-4 border rounded-xl bg-[var(--surface)] border-[var(--border)]">
                     {list.map((param: any) => (
                         <div
-                            key={param.name}
+                            key={`${param.in}:${param.name}`}
                             className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 sm:items-center"
                         >
                             <span className="text-xs font-semibold text-[var(--text-heading)] sm:col-span-1">
@@ -335,7 +354,7 @@ export default function ExamineTab({
                                 />
                                 <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] font-mono opacity-65 select-none px-1">
                                     <span className="px-1 py-0.2 rounded bg-black/5 bg-[var(--text)]/5 font-semibold text-[var(--primary)]">
-                                        {param.schema?.type || param.type || 'string'}
+                                        {parameterTypeLabel(param)}
                                     </span>
                                     {(param.schema?.format || param.format) && (
                                         <span className="opacity-75">
@@ -364,7 +383,7 @@ export default function ExamineTab({
         e.preventDefault();
         if (!isRunning) executeRequest();
     };
-    const bodySupportsForm = bodyTypeSupportsForm(requestBodyType);
+    const bodySupportsForm = requestBodySupportsForm;
     return (
         <form
             onSubmit={handleFormSubmit}
@@ -415,39 +434,45 @@ export default function ExamineTab({
                 </div>
             </div>
 
-            {(headerParams.length > 0 || Object.keys(headers).length > 0) && (
-                <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                        Headers
-                    </label>
-                    <div className="space-y-2 p-4 border rounded-xl bg-[var(--surface)] border-[var(--border)]">
-                        {headerParams.map((param: any) => (
-                            <div
-                                key={param.name}
-                                className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center"
-                            >
-                                <span className="text-xs font-semibold">{param.name}</span>
-                                <input
-                                    type="text"
-                                    value={String(params[parameterStateKey(param.in, param.name)] ?? '')}
-                                    onChange={e =>
-                                        setParams(prev => ({
-                                            ...prev,
-                                            [parameterStateKey(param.in, param.name)]: e.target.value,
-                                        }))
-                                    }
-                                    placeholder={param.description || ''}
-                                    className="sm:col-span-3 w-full px-3 py-2 border rounded-lg text-xs outline-none focus:border-[var(--primary)] bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]"
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             <div className="space-y-6 w-full">
                 {renderParamBlock('Path Parameters', pathParams)}
                 {renderParamBlock('Query Parameters', queryParams)}
+                {renderParamBlock('Header Parameters', headerParams)}
+                {renderParamBlock('Cookie Parameters', cookieParams)}
+                {cookieParams.length > 0 && (
+                    <p className="rounded-xl border border-[var(--method-put)]/25 bg-[var(--method-put)]/5 px-3 py-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                        Browser fetch cannot inject a manual Cookie header. These values are serialized for diagnostics,
+                        while only cookies already managed by this browser can be sent.
+                    </p>
+                )}
+                {Object.keys(headers).length > 0 && (
+                    <div className="space-y-2">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            Additional Headers
+                        </label>
+                        <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                            {Object.entries(headers).map(([name, value]) => (
+                                <div
+                                    key={name}
+                                    className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4"
+                                >
+                                    <span className="font-mono text-xs font-semibold text-[var(--text-heading)]">
+                                        {name}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        aria-label={`${name} header value`}
+                                        value={value}
+                                        onChange={event =>
+                                            setHeaders(current => ({...current, [name]: event.target.value}))
+                                        }
+                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)] sm:col-span-3"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {resolvedRequestBody?.content && (
                     <div className="space-y-2">
@@ -493,8 +518,14 @@ export default function ExamineTab({
                                     <CustomDropdown
                                         value={requestBodyType}
                                         onChange={val => {
+                                            const mediaSchema = resolvedRequestBody.content?.[val]?.schema;
+                                            const nextSchema = mediaSchema
+                                                ? resolveReference(mediaSchema, spec) || mediaSchema
+                                                : null;
                                             setRequestBodyType(val);
-                                            setBodyEditorMode(current => bodyEditorModeForMediaType(current, val));
+                                            setBodyEditorMode(current =>
+                                                bodyEditorModeForMediaType(current, val, nextSchema),
+                                            );
                                         }}
                                         options={Object.keys(resolvedRequestBody.content || {}).map(mime => ({
                                             value: mime,

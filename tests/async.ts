@@ -251,6 +251,67 @@ try {
     assert.match(runnerBody, /mobile=09356413497/);
     assert.match(runnerBody, /password=password/);
     console.log('✓ executes a Runner action directly without navigating to the endpoint tab');
+
+    let binaryStreamCancelled = false;
+    const binaryStream = new ReadableStream<Uint8Array>({
+        pull(controller) {
+            controller.enqueue(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]));
+        },
+        cancel() {
+            binaryStreamCancelled = true;
+        },
+    });
+    globalThis.fetch = (async () =>
+        new Response(binaryStream, {
+            status: 200,
+            headers: {
+                'content-type': 'image/jpeg',
+                'content-disposition': 'attachment; filename="preview.jpg"',
+                'content-length': '10000000',
+            },
+        })) as typeof fetch;
+    const binaryResult = await executeRunnerRequest({
+        spec: {
+            openapi: '3.2.0',
+            info: {title: 'Binary fixture', version: '1'},
+            paths: {
+                '/media/{id}': {
+                    get: {
+                        parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string'}}],
+                        responses: {'401': {description: 'unauthorized', content: {'application/json': {}}}},
+                    },
+                },
+            },
+        } as any,
+        path: '/media/{id}',
+        method: 'get',
+        operation: {
+            parameters: [{name: 'id', in: 'path', required: true, schema: {type: 'string'}}],
+            responses: {'401': {description: 'unauthorized', content: {'application/json': {}}}},
+        },
+        selectedServer: 'https://api.example.test',
+        parameterValues: {'path:id': 'asset-id'},
+        activeAuth: {
+            activeScheme: 'none',
+            selectedSchemes: [],
+            schemeValues: {},
+            cookieValues: {},
+            bearerToken: '',
+            apiKeyName: '',
+            apiKeyValue: '',
+            apiKeyIn: 'header',
+            basicUsername: '',
+            basicPassword: '',
+        },
+    });
+    assert.equal(binaryResult.status, 200);
+    assert.equal(binaryResult.isBinary, true);
+    assert.equal(binaryResult.bodyBytes, 10_000_000);
+    assert.equal(binaryResult.truncated, false);
+    assert.equal(binaryStreamCancelled, true);
+    assert.match(binaryResult.body, /no file was saved/i);
+    assert.ok(binaryResult.diagnostics?.some(item => item.code === 'RUN_BINARY_RESPONSE_BODY_CANCELLED'));
+    console.log('✓ cancels binary response streams after headers without starting a file download');
     (globalThis as any).window = originalWindow;
 } finally {
     globalThis.fetch = originalFetch;

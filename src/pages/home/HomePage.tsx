@@ -6,6 +6,7 @@ import {useEscClose} from '@/src/hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
 import {getDocumentOperations, getPathItemOperations} from '@/src/utils/openapi';
 import MethodBadge from '@/src/components/common/MethodBadge';
+import RunnerCompatibilityReport from './RunnerCompatibilityReport';
 
 interface HomeViewProps {
     spec: OpenApiSpec | null;
@@ -175,6 +176,8 @@ export default function HomeView({
                     <i className="ph ph-file-text text-[160px] text-[var(--primary)]"></i>
                 </div>
             </div>
+
+            <RunnerCompatibilityReport spec={spec} onSelectEndpoint={onSelectEndpoint} />
 
             <div className="w-full flex flex-col md:flex-row gap-8 items-start">
                 <div className="flex-1 min-w-0 space-y-8">

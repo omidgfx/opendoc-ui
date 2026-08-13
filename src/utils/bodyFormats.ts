@@ -1,4 +1,5 @@
 import * as jsYaml from 'js-yaml';
+import {schemaDeclaresBinary} from './runnerResponse';
 
 export type BodyLanguage = 'json' | 'yaml' | 'xml' | 'plaintext' | 'javascript' | 'html';
 
@@ -12,9 +13,10 @@ export interface BodyFormat {
 }
 
 export type BodyEditorMode = 'form' | 'raw';
-export const bodyTypeSupportsForm = (mediaType: string): boolean => {
+export const bodyTypeSupportsForm = (mediaType: string, schema?: any): boolean => {
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     return (
+        schemaDeclaresBinary(schema) ||
         normalized.includes('json') ||
         normalized.includes('yaml') ||
         normalized === 'application/x-www-form-urlencoded' ||
@@ -22,8 +24,8 @@ export const bodyTypeSupportsForm = (mediaType: string): boolean => {
         normalized === 'application/octet-stream'
     );
 };
-export const bodyEditorModeForMediaType = (current: BodyEditorMode, mediaType: string): BodyEditorMode =>
-    current === 'raw' ? 'raw' : bodyTypeSupportsForm(mediaType) ? 'form' : 'raw';
+export const bodyEditorModeForMediaType = (current: BodyEditorMode, mediaType: string, schema?: any): BodyEditorMode =>
+    current === 'raw' ? 'raw' : bodyTypeSupportsForm(mediaType, schema) ? 'form' : 'raw';
 export const getBodyFormat = (mediaType: string): BodyFormat => {
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     const isJson = normalized === 'application/json' || normalized.endsWith('+json') || normalized === 'text/json';
