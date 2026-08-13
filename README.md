@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.7-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -16,7 +16,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.6](#version-016)
+- [Version 0.1.7](#version-017)
 - [Quick start](#quick-start)
 - [Docker](#docker)
 - [Configuration](#configuration)
@@ -76,28 +76,19 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.6
+## Version 0.1.7
 
-This release focuses on predictable request execution and portable deployment:
+This release focuses on Runner compatibility, permissive typed inputs, and binary response safety:
 
-- specification-scoped authentication with operation-level security handling;
-- one request compiler shared by the manual Runner and assistant actions;
-- required path-segment protection while other invalid inputs remain testable;
-- persistent per-endpoint response history with individual and bulk removal;
-- typed-but-permissive Runner parameters, a specification compatibility report, and binary stream cancellation without file downloads;
-- compact response cards with shared smooth open-and-scroll behavior, a desktop response-code TOC, smart expanded-section tracking, and deep links that collapse siblings before top-aligning and highlighting the target;
-- response examples selected by default with the currently inspected schema visibly active;
-- Swagger 2.0 and OpenAPI 3.0, 3.1, and 3.2 compatibility improvements;
-- local and constrained remote multi-document reference resolution;
-- deterministic mock validation and compile-checked TypeScript exports;
-- keyboard-accessible custom dropdowns, modal focus handling, resizers, and behavior-aware tooltips that close on scroll;
-- a layered sidebar endpoint filter and optional Apple Emoji 16 rendering for native, shortcode, skin-tone, and ZWJ sequences;
-- Apple emoji metadata/sprite excluded from default builds, or self-contained in `index.js`/`index.css` when explicitly enabled;
-- optional URL specification loading with persistent history and secure multi-language downloader services;
-- explicit authentication logout and endpoint-scoped AI actions that start new conversations;
-- AI gateway integrations for Express, FastAPI, Django, Laravel, Gin, Spring Boot, ASP.NET Core, Rails, and Axum;
-- one-file JavaScript builds plus a health-checked Docker/nginx image with Compose and Windows/POSIX helpers;
-- automated contract, Windows, browser, accessibility, and GitHub Pages workflows.
+- adds a specification-wide **Runner Compatibility** report to the Overview page, grouping standard, partial, browser-limited, declared-binary, and unresolved operation behavior;
+- adds `CustomDropdown` controls for enum and boolean parameters with an explicit custom-value mode for undocumented and malformed negative tests;
+- improves integer, number, UUID, date, string, array, object, header, cookie, and additional-header input handling without turning advisory schema constraints into blockers;
+- serializes admin-style filters such as `filter[province]` and `filter[is_active]` while preserving invalid values for real server validation;
+- detects binary and attachment responses from actual headers or matching OpenAPI response definitions, cancels their body streams after headers, and stores metadata without creating a browser download;
+- broadens `Accept` with `*/*` when successful response media is missing, allowing incomplete file-serving specifications to return their actual payload type;
+- supports top-level binary request bodies for their declared media type instead of limiting file uploads to `application/octet-stream`;
+- flags operations without a declared 2xx/default response so undocumented success and binary behavior is visible before testing;
+- extends the public capability contract and automated coverage for compatibility reporting, binary cancellation, browser download prevention, typed custom values, admin-style serialization, and binary uploads.
 
 ---
 
