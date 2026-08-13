@@ -10,7 +10,8 @@ import {
 import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
 import {processLocalOpenApiBundle} from '../utils/openapi/engine';
 import {registerRawSpecDocument, registerSpecDiagnostics} from '../utils/specSource';
-import {validateOpenApiDocument} from '../utils/openapi';
+import {collectReferenceIssues, validateOpenApiDocument} from '../utils/openapi';
+import {diagnostic} from '../types';
 import * as jsYaml from 'js-yaml';
 
 const stableTextHash = (text: string): string => {
@@ -43,6 +44,7 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
     const [localHistory, setLocalHistory] = useState<LocalHistoryEntry[]>(() => readLocalHistory());
     const [localOpenError, setLocalOpenError] = useState<string | null>(null);
     const hiddenFileInputRef = useRef<HTMLInputElement | null>(null);
+    const appendReferencedFilesRef = useRef(false);
 
     const storeAndApply = useCallback(
         (options: {
@@ -82,7 +84,18 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
     const applyLocalSpec = useCallback(
         (raw: string, fileName: string, file: File | null) => {
             const document = parseSpecDraft(raw);
-            return storeAndApply({raw, fileName, file, document});
+            const diagnostics = collectReferenceIssues(document).map(issue =>
+                diagnostic(
+                    issue.status === 'unresolved'
+                        ? 'OAS_REFERENCE_UNRESOLVED'
+                        : issue.status === 'circular'
+                          ? 'OAS_REFERENCE_CIRCULAR'
+                          : 'OAS_REFERENCE_DEPTH_LIMIT',
+                    `${issue.status === 'unresolved' ? 'Unresolved' : issue.status === 'circular' ? 'Circular' : 'Overly deep'} reference '${issue.ref}' at ${issue.path}.`,
+                    {severity: issue.status === 'circular' ? 'info' : 'warning', source: {pointer: issue.path}},
+                ),
+            );
+            return storeAndApply({raw, fileName, file, document, diagnostics});
         },
         [storeAndApply],
     );
@@ -110,10 +123,24 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
     const handleFileChosen = useCallback(
         async (event: ChangeEvent<HTMLInputElement>) => {
             const chosen = Array.from(event.target.files || []);
+            const appendReferencedFiles = appendReferencedFilesRef.current;
+            appendReferencedFilesRef.current = false;
             event.target.value = '';
             if (chosen.length === 0) return;
             setLocalOpenError(null);
             try {
+                if (appendReferencedFiles && localSpec) {
+                    const bundle: Record<string, string> = {
+                        ...(localSpec.bundle || {[localSpec.fileName]: localSpec.raw}),
+                    };
+                    await Promise.all(
+                        chosen.map(async file => {
+                            bundle[file.webkitRelativePath || file.name] = await file.text();
+                        }),
+                    );
+                    await applyLocalBundle(bundle, localSpec.file);
+                    return;
+                }
                 if (chosen.length === 1) {
                     const file = chosen[0];
                     applyLocalSpec(await file.text(), file.name, file);
@@ -131,7 +158,7 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
                 console.error('Failed to open local specification files', error);
             }
         },
-        [applyLocalSpec, applyLocalBundle],
+        [applyLocalSpec, applyLocalBundle, localSpec],
     );
 
     const handleSelectHistoryEntry = useCallback(
@@ -159,6 +186,10 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
         clearLocalHistory();
         setLocalHistory([]);
     }, []);
+    const openReferencedFilePicker = useCallback(() => {
+        appendReferencedFilesRef.current = true;
+        hiddenFileInputRef.current?.click();
+    }, []);
     return {
         localSpec,
         localHistory,
@@ -171,5 +202,6 @@ export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpeci
         handleSelectHistoryEntry,
         handleRemoveHistoryEntry,
         handleClearHistory,
+        openReferencedFilePicker,
     };
 }

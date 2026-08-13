@@ -1,7 +1,7 @@
 import {type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useState} from 'react';
 import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../types';
 import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
-import {generateSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
+import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
 import {specStorage} from '../utils/storage';
 import {hasExplicitSpecRoute} from '../utils/tabPersistence';
 
@@ -41,6 +41,10 @@ interface UseWorkspaceRoutingOptions {
     setShowAssistant: Dispatch<SetStateAction<boolean>>;
     showSchemaExplorer: boolean;
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
+    showCompatibility: boolean;
+    setShowCompatibility: Dispatch<SetStateAction<boolean>>;
+    showCatalog: boolean;
+    setShowCatalog: Dispatch<SetStateAction<boolean>>;
     selectedEndpoint: Endpoint | null;
     setSelectedEndpoint: Dispatch<SetStateAction<Endpoint | null>>;
     selectedViewMode: ViewMode;
@@ -64,19 +68,20 @@ interface UseWorkspaceRoutingOptions {
     setViewModes: Dispatch<SetStateAction<Record<string, ViewMode>>>;
     setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     setAssistantContextEndpoints: Dispatch<SetStateAction<Endpoint[]>>;
-    openEndpointPreview: (path: string, method: string) => void;
     openEndpointPermanent: (path: string, method: string) => void;
-    openViewTab: (view: ViewTabKind, query?: string) => void;
     openViewTabPermanent: (view: ViewTabKind, query?: string) => void;
     ensureViewTabFromState: (override?: any) => void;
 }
 
-const hasExplicitTab = () => window.location.hash.includes('?tab=') || window.location.hash.includes('&tab=');
+const hasExplicitTab = () => {
+    const route = getCurrentSmartRoute();
+    return route.includes('?tab=') || route.includes('&tab=');
+};
 const routeMode = (mode: 'view' | 'examine' | 'both'): ViewMode =>
     mode === 'examine' ? 'examine' : mode === 'both' ? 'both' : 'docs';
 const storedMode = (mode: ViewMode): string => (mode === 'examine' ? 'examine' : mode === 'both' ? 'both' : 'view');
 const hasEmptySearchRoute = (route: ParsedRoute): boolean =>
-    /[?&]search(?:=|&|$)/.test(window.location.hash) &&
+    /[?&]search(?:=|&|$)/.test(getCurrentSmartRoute()) &&
     !route.searchQuery &&
     route.searchMethods.length === 0 &&
     route.searchTags.length === 0 &&
@@ -109,6 +114,10 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowAssistant,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showCompatibility,
+        setShowCompatibility,
+        showCatalog,
+        setShowCatalog,
         selectedEndpoint,
         setSelectedEndpoint,
         selectedViewMode,
@@ -132,14 +141,12 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setViewModes,
         setExamineResponses,
         setAssistantContextEndpoints,
-        openEndpointPreview,
         openEndpointPermanent,
-        openViewTab,
         openViewTabPermanent,
         ensureViewTabFromState,
     } = options;
     const syncHashToState = useCallback(() => {
-        const parsed = parseSmartRoute(window.location.hash);
+        const parsed = parseSmartRoute(getCurrentSmartRoute());
         if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey && parsables[parsed.parsableKey]) {
             setSpec(null);
             setLoadedSpecKey('');
@@ -147,6 +154,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             setShowWelcome(false);
             setShowHome(false);
             setShowSchemaExplorer(false);
+            setShowCompatibility(false);
+            setShowCatalog(false);
             setShowAbout(false);
             setShowAssistant(false);
             setAssistantContextEndpoints([]);
@@ -168,7 +177,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             specRouteReadyRef.current !== selectedSpecKey
         )
             return;
-        if (!hasExplicitSpecRoute(parsed, window.location.hash)) return;
+        if (!hasExplicitSpecRoute(parsed, getCurrentSmartRoute())) return;
         if (navStateRef.current.showWelcome) setShowWelcome(false);
         setSearchQuery(parsed.searchQuery || '');
         setResultsQuery(parsed.searchQuery || '');
@@ -177,19 +186,23 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
+        setShowCompatibility(parsed.showCompatibility);
+        setShowCatalog(parsed.showCatalog);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
         if (parsed.legacyOperationId && spec) {
             const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
             if (resolved) {
-                openEndpointPreview(resolved.path, resolved.method);
+                openEndpointPermanent(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowCompatibility(false);
+                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             } else setSelectedEndpoint(null);
         } else if (parsed.endpoint) {
-            openEndpointPreview(parsed.endpoint.path, parsed.endpoint.method);
+            openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
         } else {
             setSelectedEndpoint(null);
         }
@@ -199,11 +212,13 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             const valid = parsed.schemas.filter(name => spec.components!.schemas![name]);
             setModalStack(valid.length ? valid : []);
         }
-        if (hasEmptySearchRoute(parsed)) openViewTab('search');
+        if (hasEmptySearchRoute(parsed)) openViewTabPermanent('search');
         else
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
+                showCompatibility: parsed.showCompatibility,
+                showCatalog: parsed.showCatalog,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
                 showHome: parsed.showHome,
@@ -238,11 +253,11 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setViewModes,
         setExamineResponses,
         setSelectedSpecKey,
-        openEndpointPreview,
+        openEndpointPermanent,
         setSelectedViewMode,
         setActiveResponseCode,
         setModalStack,
-        openViewTab,
+        openViewTabPermanent,
         ensureViewTabFromState,
     ]);
     const updateHashFromState = useCallback(() => {
@@ -264,6 +279,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             showAbout,
             showAssistant,
             showSchemaExplorer,
+            showCompatibility,
+            showCatalog,
             endpoint: selectedEndpoint,
             tab: selectedViewMode,
             schemaModals: modalStack.map(name => ({schemaName: name, schema: spec.components?.schemas?.[name] || {}})),
@@ -274,7 +291,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             searchSecured: searchInUrl ? onlyProtected : null,
             activeSpec: spec,
         });
-        if (window.location.hash !== hash) window.location.hash = hash;
+        if (getCurrentSmartRoute() !== hash) window.history.replaceState(window.history.state, '', hash);
         setIsUpdatingHash(false);
     }, [
         isLoadingSpec,
@@ -291,6 +308,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showAbout,
         showAssistant,
         showSchemaExplorer,
+        showCompatibility,
+        showCatalog,
         selectedEndpoint,
         selectedViewMode,
         modalStack,
@@ -308,9 +327,9 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             tabsRestoredForKey !== selectedSpecKey
         )
             return;
-        const parsed = parseSmartRoute(window.location.hash);
+        const parsed = parseSmartRoute(getCurrentSmartRoute());
         if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey) return;
-        if (!hasExplicitSpecRoute(parsed, window.location.hash)) {
+        if (!hasExplicitSpecRoute(parsed, getCurrentSmartRoute())) {
             specRouteReadyRef.current = selectedSpecKey;
             return;
         }
@@ -321,6 +340,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
+        setShowCompatibility(parsed.showCompatibility);
+        setShowCatalog(parsed.showCatalog);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
         setShowWelcome(false);
@@ -331,6 +352,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 openEndpointPermanent(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowCompatibility(false);
+                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             } else setSelectedEndpoint(null);
@@ -346,6 +369,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
+                showCompatibility: parsed.showCompatibility,
+                showCatalog: parsed.showCatalog,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
                 showHome: parsed.showHome,
@@ -382,7 +407,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
     const [modeRestoredForKey, setModeRestoredForKey] = useState('');
     useEffect(() => {
         if (!selectedSpecKey) return;
-        if (hasExplicitTab()) setSelectedViewMode(routeMode(parseSmartRoute(window.location.hash).tab));
+        if (hasExplicitTab()) setSelectedViewMode(routeMode(parseSmartRoute(getCurrentSmartRoute()).tab));
         else {
             const mode = specStorage.get(selectedSpecKey, 'tab_mode');
             setSelectedViewMode(mode === 'examine' ? 'examine' : mode === 'both' ? 'both' : 'docs');
@@ -403,6 +428,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showHome,
         showAbout,
         showSchemaExplorer,
+        showCompatibility,
+        showCatalog,
         selectedEndpoint,
         selectedViewMode,
         modalStack,
@@ -413,10 +440,14 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         updateHashFromState,
     ]);
     useEffect(() => {
-        const onHashChange = () => {
+        const onRouteChange = () => {
             if (!isUpdatingHash && !isLoadingSpec) syncHashToState();
         };
-        window.addEventListener('hashchange', onHashChange);
-        return () => window.removeEventListener('hashchange', onHashChange);
+        window.addEventListener('hashchange', onRouteChange);
+        window.addEventListener('popstate', onRouteChange);
+        return () => {
+            window.removeEventListener('hashchange', onRouteChange);
+            window.removeEventListener('popstate', onRouteChange);
+        };
     }, [isLoadingSpec, isUpdatingHash, syncHashToState]);
 }

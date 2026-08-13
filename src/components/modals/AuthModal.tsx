@@ -4,6 +4,7 @@ import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useEscClose} from '../../hooks/useEscClose';
+import {beginOAuthAuthorization, oauthAuthorizationFlow} from '../../utils/oauthFlow';
 import {
     createEmptyAuth,
     getAuthSchemeLabel,
@@ -15,6 +16,7 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     spec: OpenApiSpec | null;
+    specKey: string;
     operation?: Operation | null;
     activeAuth: ActiveAuth;
     onSave: (auth: ActiveAuth) => void;
@@ -29,13 +31,14 @@ const legacyOptions = [
 ];
 const fieldClass =
     'w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)]';
-export default function AuthModal({isOpen, onClose, spec, operation, activeAuth, onSave}: AuthModalProps) {
+export default function AuthModal({isOpen, onClose, spec, specKey, operation, activeAuth, onSave}: AuthModalProps) {
     const options = useMemo(
         () => (spec?.components?.securitySchemes ? getSecurityRequirementOptions(spec, operation) : legacyOptions),
         [spec, operation],
     );
     const [selectedRequirement, setSelectedRequirement] = useState('none');
     const [credentials, setCredentials] = useState<Record<string, AuthCredential>>({});
+    const [oauthError, setOauthError] = useState<string | null>(null);
     const credentialsRef = useRef<Record<string, AuthCredential>>({});
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, requestClose);
@@ -59,6 +62,7 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
             options.find(option => option.id === `requirement:${normalized.requirementIndex ?? -1}`) ||
             options[0];
         setSelectedRequirement(requirement?.id || 'none');
+        setOauthError(null);
         credentialsRef.current = {...normalized.schemeValues};
         setCredentials(credentialsRef.current);
     }, [isOpen, activeAuth, options]);
@@ -193,6 +197,15 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
                         </p>
                     </div>
 
+                    {oauthError && (
+                        <div
+                            role="alert"
+                            className="rounded-lg border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-2 text-[10px] text-[var(--method-delete)]"
+                        >
+                            {oauthError}
+                        </div>
+                    )}
+
                     {schemeIds.length === 0 && (
                         <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs leading-relaxed text-[var(--text-muted)]">
                             No credentials will be added to runner requests.
@@ -241,27 +254,26 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
                                                 readOnly={Boolean(scheme?.name)}
                                             />
                                         </label>
-                                        <label className="block space-y-1">
-                                            <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
-                                                {isCookie ? 'Cookie value (not sent in browser mode)' : 'Key value'}
-                                            </span>
-                                            <input
-                                                type="password"
-                                                className={fieldClass}
-                                                value={credential.value || ''}
-                                                onChange={event => updateCredential(id, {value: event.target.value})}
-                                                placeholder={
-                                                    isCookie ? 'Not injected by browser fetch' : 'Secret value'
-                                                }
-                                            />
-                                        </label>
+                                        {!isCookie && (
+                                            <label className="block space-y-1">
+                                                <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                    Key value
+                                                </span>
+                                                <input
+                                                    type="password"
+                                                    className={fieldClass}
+                                                    value={credential.value || ''}
+                                                    onChange={event =>
+                                                        updateCredential(id, {value: event.target.value})
+                                                    }
+                                                    placeholder="Secret value"
+                                                />
+                                            </label>
+                                        )}
                                         {isCookie && (
-                                            <p className="rounded-lg border border-[var(--method-put)]/30 bg-[var(--method-put)]/10 p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                                Browsers forbid JavaScript from setting the Cookie request header.
-                                                Runner browser mode only sends existing same-site cookies with
-                                                credentials: include. Use the a separate trusted API runner agent for
-                                                manual cookie injection. The optional AI gateway does not proxy Runner
-                                                requests.
+                                            <p className="rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                                This scheme uses cookies managed by the browser. Available cookies are
+                                                included automatically with Runner requests.
                                             </p>
                                         )}
                                     </>
@@ -269,22 +281,79 @@ export default function AuthModal({isOpen, onClose, spec, operation, activeAuth,
                                 {(credential.type === 'bearer' ||
                                     credential.type === 'oauth2' ||
                                     credential.type === 'openIdConnect') && (
-                                    <label className="block space-y-1">
-                                        <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
-                                            Access token
-                                        </span>
-                                        <input
-                                            type="password"
-                                            className={fieldClass}
-                                            value={credential.value || ''}
-                                            onChange={event => updateCredential(id, {value: event.target.value})}
-                                            placeholder="Bearer access token"
-                                        />
-                                        <span className="block text-[10px] text-[var(--text-muted)]">
-                                            OAuth authorization-code, PKCE, scopes and refresh are not performed
-                                            automatically; paste an access token or use a gateway.
-                                        </span>
-                                    </label>
+                                    <div className="space-y-3">
+                                        <label className="block space-y-1">
+                                            <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                Access token
+                                            </span>
+                                            <input
+                                                type="password"
+                                                className={fieldClass}
+                                                value={credential.value || ''}
+                                                onChange={event => updateCredential(id, {value: event.target.value})}
+                                                placeholder="Bearer access token"
+                                            />
+                                        </label>
+                                        {credential.type === 'oauth2' && oauthAuthorizationFlow(scheme) && (
+                                            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                                                <label className="block space-y-1">
+                                                    <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                        Public OAuth client ID
+                                                    </span>
+                                                    <input
+                                                        className={fieldClass}
+                                                        value={credential.clientId || ''}
+                                                        onChange={event =>
+                                                            updateCredential(id, {clientId: event.target.value})
+                                                        }
+                                                        placeholder="Client ID registered for this documentation origin"
+                                                    />
+                                                </label>
+                                                <label className="block space-y-1">
+                                                    <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                        Scopes
+                                                    </span>
+                                                    <input
+                                                        className={fieldClass}
+                                                        value={(credential.scopes || []).join(' ')}
+                                                        onChange={event =>
+                                                            updateCredential(id, {
+                                                                scopes: event.target.value.split(/\s+/).filter(Boolean),
+                                                            })
+                                                        }
+                                                        placeholder={Object.keys(
+                                                            oauthAuthorizationFlow(scheme)?.scopes || {},
+                                                        ).join(' ')}
+                                                    />
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOauthError(null);
+                                                        void beginOAuthAuthorization({
+                                                            schemeId: id,
+                                                            specKey,
+                                                            scheme,
+                                                            credential: credentialFor(id),
+                                                        }).catch(error =>
+                                                            setOauthError(
+                                                                error instanceof Error
+                                                                    ? error.message
+                                                                    : 'OAuth authorization could not start.',
+                                                            ),
+                                                        );
+                                                    }}
+                                                    className="w-full rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:opacity-90 cursor-pointer"
+                                                >
+                                                    <i className="ph ph-browser me-1.5" /> Authorize with OAuth + PKCE
+                                                </button>
+                                                <p className="text-[9px] leading-relaxed text-[var(--text-muted)]">
+                                                    The provider must allow this origin and token-endpoint CORS. No
+                                                    client secret is stored or sent.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                                 {credential.type === 'basic' && (
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

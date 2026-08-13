@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build && node scripts/verify-single-bundle.mjs",
+    "build": "vite build && node scripts/create-spa-fallback.mjs && node scripts/verify-single-bundle.mjs",
     "preview": "vite preview",
     "ai-gateway": "tsx server/ai-gateway.ts",
     "clean": "node scripts/clean.mjs",

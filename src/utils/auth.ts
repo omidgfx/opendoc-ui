@@ -63,6 +63,17 @@ export const isOperationProtected = (spec: OpenApiSpec | null, operation?: Opera
     return !requirements.some(requirement => Object.keys(requirement || {}).length === 0);
 };
 
+export const operationUsesCookieAuthentication = (spec: OpenApiSpec | null, operation?: Operation | null): boolean => {
+    const requirements = resolveEffectiveSecurity(spec, operation) || [];
+    const schemes = spec?.components?.securitySchemes || {};
+    return requirements.some(requirement =>
+        Object.keys(requirement || {}).some(id => {
+            const scheme: any = schemes[id];
+            return scheme?.type === 'apiKey' && scheme?.in === 'cookie';
+        }),
+    );
+};
+
 export const getSecurityRequirementOptions = (
     spec: OpenApiSpec | null,
     operation?: Operation | null,
@@ -323,9 +334,6 @@ export const applyAuthToRequest = (
             else if (location === 'cookie') {
                 credentials = 'include';
                 if (value) cookies.push({name, value});
-                warnings.push(
-                    `Browser fetch cannot set a Cookie header for '${id}'. The configured manual value is not transmitted; credentials: include can only send cookies already accepted by the browser.`,
-                );
             }
             return;
         }

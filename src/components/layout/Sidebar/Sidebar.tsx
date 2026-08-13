@@ -42,6 +42,10 @@ export default function Sidebar(props: SidebarProps) {
         onToggleCollapse,
         onOpenSchemaExplorer,
         showSchemaExplorer,
+        onOpenCompatibility,
+        showCompatibility,
+        onOpenCatalog,
+        showCatalog,
         selectedMethods,
         selectedTags,
         onlyProtected,
@@ -617,9 +621,13 @@ export default function Sidebar(props: SidebarProps) {
             <CollapsedSidebarRail
                 isOverview={isOverview}
                 showSchemaExplorer={showSchemaExplorer}
+                showCompatibility={showCompatibility}
+                showCatalog={showCatalog}
                 showAbout={showAbout}
                 onOpenHome={onOpenHome}
                 onOpenSchemaExplorer={onOpenSchemaExplorer}
+                onOpenCompatibility={onOpenCompatibility}
+                onOpenCatalog={onOpenCatalog}
                 onOpenAbout={onOpenAbout}
             />
         );
@@ -630,9 +638,13 @@ export default function Sidebar(props: SidebarProps) {
             overviewActive={isOverview}
             aboutActive={showAbout}
             schemasActive={showSchemaExplorer}
+            compatibilityActive={showCompatibility}
+            catalogActive={showCatalog}
             onOpenHome={navTo(onOpenHome)}
             onOpenAbout={navTo(onOpenAbout)}
             onOpenSchemas={navTo(onOpenSchemaExplorer)}
+            onOpenCompatibility={navTo(onOpenCompatibility)}
+            onOpenCatalog={navTo(onOpenCatalog)}
             onOpenPermanent={onOpenViewPermanent}
             onContextMenu={(event, view) =>
                 openContextMenu(event, {

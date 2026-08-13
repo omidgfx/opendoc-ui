@@ -12,8 +12,13 @@ import {useEscClose} from '../../../hooks/useEscClose';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
 import {getMockSnippet as generateMockSnippet} from '../../../utils/mockGenerator';
+import type {OpenApiSpec} from '../../../types';
+import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
+import {toCleanRouteHref} from '../../../utils/routing';
+import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
 
 interface ModalsStackProps {
+    spec: OpenApiSpec;
     modals: Array<{
         schemaName: string;
         schema: any;
@@ -30,6 +35,7 @@ interface ModalsStackProps {
 }
 
 export default function ModalsStack({
+    spec,
     modals,
     componentsSchemas,
     onPushSchema,
@@ -120,27 +126,15 @@ export default function ModalsStack({
     }
     const activeIndex = modals.length - 1;
     const activeModal = modals[activeIndex];
-    const getRefName = (refStr: string): string => {
-        if (!refStr) return '';
-        const parts = refStr.split('/');
-        return parts[parts.length - 1];
-    };
-    const resolveReference = (item: any): any => {
-        if (!item) return item;
-        if (item.$ref) {
-            const refName = getRefName(item.$ref);
-            const refSchema = componentsSchemas?.[refName];
-            if (refSchema) {
-                return resolveReference(refSchema);
-            }
-        }
-        return item;
-    };
+    const resolveReference = (item: any): any => resolveOpenApiReference(item, spec);
     const getSchemaShareUrl = (schemaName: string) => {
         if (typeof window === 'undefined') return '';
         const encodedKey = encodeURIComponent(parsableKey);
         const encodedSchema = encodeURIComponent(schemaName);
-        return `${window.location.origin}${window.location.pathname}#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`;
+        return new URL(
+            toCleanRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`),
+            window.location.origin,
+        ).href;
     };
     const handleShareSchema = (schemaName: string) => {
         const url = getSchemaShareUrl(schemaName);
@@ -162,13 +156,11 @@ export default function ModalsStack({
             [name: string]: any;
         } = {};
         if (schema.$ref) {
-            const refName = getRefName(schema.$ref);
-            if (visited.has(refName)) return {};
-            visited.add(refName);
-            const refSchema = componentsSchemas?.[refName];
-            if (refSchema) {
-                return traverseSchemaProperties(refSchema, prefix, visited);
-            }
+            const ref = String(schema.$ref);
+            if (visited.has(ref)) return {};
+            visited.add(ref);
+            const refSchema = resolveReference(schema);
+            if (refSchema && refSchema !== schema) return traverseSchemaProperties(refSchema, prefix, visited);
             return {};
         }
         if (schema.allOf && Array.isArray(schema.allOf)) {
@@ -396,7 +388,8 @@ export default function ModalsStack({
     };
     const activeSchemaObj = modals[modals.length - 1];
     const activeModalIndex = modals.length - 1;
-    const resolvedSchema = resolveReference(activeSchemaObj.schema) || activeSchemaObj.schema;
+    const activeResolution = resolveReferenceResult(activeSchemaObj.schema, spec);
+    const resolvedSchema = activeResolution.value || activeSchemaObj.schema;
     const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
     const activeTab = activeTabs[activeModalIndex] || 'table';
     const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
@@ -435,6 +428,11 @@ export default function ModalsStack({
                     />
 
                     <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto max-h-[calc(85vh-8rem)] font-sans scrollbar-thin">
+                        {activeResolution.status !== 'resolved' && (
+                            <div className="mb-4">
+                                <ReferenceStatusNotice resolution={activeResolution} />
+                            </div>
+                        )}
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
                                 <button

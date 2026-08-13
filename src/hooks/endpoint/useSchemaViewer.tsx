@@ -1,7 +1,7 @@
 import type React from 'react';
 import {useState} from 'react';
 import type {OpenApiSpec} from '@/src/types';
-import {getRefName} from '@/src/utils/openapi';
+import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
 import {Tip} from '@/src/components/common/Tooltip';
 
 export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSchemaModal: (name: string) => void) {
@@ -23,15 +23,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (t) return additionalProperties.format ? `${t} (${additionalProperties.format})` : `${t}`;
         return 'any';
     };
-    const resolveReference = (item: any): any => {
-        if (!item) return item;
-        if (item.$ref) {
-            const refName = getRefName(item.$ref);
-            const refSchema = spec.components?.schemas?.[refName];
-            if (refSchema) return resolveReference(refSchema);
-        }
-        return item;
-    };
+    const resolveReference = (item: any): any => resolveOpenApiReference(item, spec);
     const pickViewerSchema = (code: string, sub: any, fallbackName?: string | null) => {
         let name: string | null = null;
         if (sub?.$ref) name = getRefName(sub.$ref);
@@ -230,7 +222,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         };
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);
-            const refSchema = spec.components?.schemas?.[refName];
+            const refSchema = resolveReference(prop);
             const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             const isActive = isSchemaActive(prop, code, viewerSchema);
             return (
@@ -336,7 +328,7 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
         if (prop.type === 'array' && prop.items) {
             if (prop.items.$ref) {
                 const refName = getRefName(prop.items.$ref);
-                const refSchema = spec.components?.schemas?.[refName];
+                const refSchema = resolveReference(prop.items);
                 const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
                 const isActive = isSchemaActive(prop.items, code, viewerSchema);
                 return (

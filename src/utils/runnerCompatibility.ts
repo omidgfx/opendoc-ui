@@ -1,8 +1,8 @@
 import type {OpenApiSpec, Operation} from '../types';
 import {
+    collectReferenceIssuesIn,
     getDocumentOperations,
     getMergedParameters,
-    resolveRefTarget,
     resolveReference,
     resolveRequestBody,
 } from './openapi';
@@ -24,6 +24,19 @@ export interface RunnerCompatibilityFinding {
     endpoints: RunnerCompatibilityEndpoint[];
 }
 
+export type RunnerCompatibilityRating = 'A' | 'B' | 'C' | 'D';
+
+export interface RunnerEndpointCompatibility extends RunnerCompatibilityEndpoint {
+    rating: RunnerCompatibilityRating;
+    score: number;
+    categories: RunnerCompatibilityCategory[];
+    notes: string[];
+    parameterCount: number;
+    requestMediaTypes: string[];
+    responseMediaTypes: string[];
+    auth: string;
+}
+
 export interface RunnerCompatibilityReport {
     totalOperations: number;
     standardOperations: number;
@@ -32,6 +45,7 @@ export interface RunnerCompatibilityReport {
     binaryOperations: number;
     unresolvedOperations: number;
     findings: RunnerCompatibilityFinding[];
+    endpoints: RunnerEndpointCompatibility[];
 }
 
 const SUPPORTED_PARAMETER_LOCATIONS = new Set(['path', 'query', 'querystring', 'header', 'cookie']);
@@ -68,20 +82,6 @@ const normalizedSchemaTypes = (schema: any): string[] => {
     return Array.isArray(schema.type) ? schema.type.map(String) : [String(schema.type)];
 };
 
-const hasUnresolvedReference = (value: unknown, spec: OpenApiSpec, seen = new Set<object>()): boolean => {
-    if (!value || typeof value !== 'object' || seen.has(value as object)) return false;
-    seen.add(value as object);
-    if (Array.isArray(value)) return value.some(item => hasUnresolvedReference(item, spec, seen));
-    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-        if (key === '$ref' && typeof child === 'string') {
-            if (!child.startsWith('#') || !resolveRefTarget(child, spec)) return true;
-            continue;
-        }
-        if (hasUnresolvedReference(child, spec, seen)) return true;
-    }
-    return false;
-};
-
 export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibilityReport => {
     const operations = getDocumentOperations(spec);
     const findingMap = new Map<string, RunnerCompatibilityFinding>();
@@ -115,7 +115,7 @@ export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibili
         };
         const pathItem = (spec.paths as any)?.[path] || {};
 
-        if (hasUnresolvedReference({pathItem, operation}, spec)) {
+        if (collectReferenceIssuesIn({pathItem, operation}, spec).length > 0) {
             addFinding(
                 'unresolved-references',
                 'unresolved',
@@ -247,58 +247,58 @@ export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibili
         }
 
         const effectiveSecurity = operation.security === undefined ? spec.security || [] : operation.security || [];
-        const schemeIds = new Set(effectiveSecurity.flatMap(requirement => Object.keys(requirement || {})));
-        schemeIds.forEach(schemeId => {
-            const rawScheme = spec.components?.securitySchemes?.[schemeId] as any;
-            const scheme = rawScheme ? resolveReference(rawScheme, spec) || rawScheme : null;
-            if (!scheme) {
-                addFinding(
-                    'unresolved-security-schemes',
-                    'unresolved',
-                    'Missing security scheme definitions',
-                    'At least one operation references a security scheme that is absent or unresolved.',
-                    endpoint,
-                );
-                return;
-            }
-            const schemeType = String(scheme.type || '').toLowerCase();
-            if (
-                (schemeType === 'apikey' && String(scheme.in || '').toLowerCase() === 'cookie') ||
-                schemeType === 'cookie'
-            ) {
-                addFinding(
-                    'browser-cookie-auth',
-                    'browser',
-                    'Browser-managed cookie authentication',
-                    'The Runner uses credentials: include, but JavaScript cannot create an arbitrary Cookie header. Authentication works only when the target cookie already exists and browser CORS/SameSite rules permit it.',
-                    endpoint,
-                );
-            } else if (schemeType === 'mutualtls') {
-                addFinding(
-                    'browser-mtls',
-                    'browser',
-                    'Mutual TLS is browser-managed',
-                    'Client certificate selection is controlled by the browser and operating system rather than OpenDoc.',
-                    endpoint,
-                );
-            } else if (schemeType === 'oauth2' || schemeType === 'openidconnect') {
-                addFinding(
-                    'oauth-token-only',
-                    'partial',
-                    'OAuth/OIDC token entry only',
-                    'OpenDoc can send an access token but does not perform interactive authorization, refresh, or device-code flows.',
-                    endpoint,
-                );
-            } else if (!['apikey', 'http'].includes(schemeType)) {
-                addFinding(
-                    'uncommon-security-schemes',
-                    'partial',
-                    'Uncommon security schemes',
-                    'These security definitions are preserved for documentation but may require a custom trusted Runner transport.',
-                    endpoint,
-                );
-            }
+        type SecurityAssessment = {category: 'supported' | 'browser' | 'partial' | 'unresolved'; schemeIds: string[]};
+        const assessments: SecurityAssessment[] = effectiveSecurity.map(requirement => {
+            const schemeIds = Object.keys(requirement || {});
+            let category: SecurityAssessment['category'] = 'supported';
+            schemeIds.forEach(schemeId => {
+                const rawScheme = spec.components?.securitySchemes?.[schemeId] as any;
+                const scheme = rawScheme ? resolveReference(rawScheme, spec) || rawScheme : null;
+                if (!scheme) category = 'unresolved';
+                else if (category !== 'unresolved') {
+                    const type = String(scheme.type || '').toLowerCase();
+                    const cookie = type === 'apikey' && String(scheme.in || '').toLowerCase() === 'cookie';
+                    const oauthInteractive =
+                        type === 'oauth2' &&
+                        Boolean(
+                            scheme.flows?.authorizationCode?.authorizationUrl ||
+                            scheme.flows?.implicit?.authorizationUrl,
+                        );
+                    if (cookie || type === 'mutualtls' || oauthInteractive)
+                        category = category === 'partial' ? 'partial' : 'browser';
+                    else if (type === 'oauth2' && !oauthInteractive) category = 'partial';
+                    else if (!['apikey', 'http', 'oauth2', 'openidconnect'].includes(type)) category = 'partial';
+                }
+            });
+            return {category, schemeIds};
         });
+        const rank = {supported: 0, browser: 1, partial: 2, unresolved: 3};
+        const best = assessments.sort((left, right) => rank[left.category] - rank[right.category])[0];
+        if (best?.category === 'browser') {
+            addFinding(
+                'browser-managed-auth',
+                'browser',
+                'Browser-managed authentication',
+                'The best available security alternative relies on browser-managed cookies, client certificates, or an interactive OAuth redirect and token-endpoint CORS.',
+                endpoint,
+            );
+        } else if (best?.category === 'partial') {
+            addFinding(
+                'partial-security-schemes',
+                'partial',
+                'Security flow needs manual setup',
+                'The best available security alternative requires a manually supplied token or a custom trusted transport.',
+                endpoint,
+            );
+        } else if (best?.category === 'unresolved') {
+            addFinding(
+                'unresolved-security-schemes',
+                'unresolved',
+                'Missing security scheme definitions',
+                'Every security alternative references an absent or unresolved scheme.',
+                endpoint,
+            );
+        }
     });
 
     const endpointsWith = (...categories: RunnerCompatibilityCategory[]) =>
@@ -318,6 +318,56 @@ export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibili
             left.title.localeCompare(right.title)
         );
     });
+    const endpointReports: RunnerEndpointCompatibility[] = operations.map(({path, method, operation}) => {
+        const key = `${method.toLowerCase()}:${path}`;
+        const categories = Array.from(endpointCategories.get(key) || []).sort(
+            (left, right) => categoryOrder.indexOf(left) - categoryOrder.indexOf(right),
+        );
+        const has = (category: RunnerCompatibilityCategory) => categories.includes(category);
+        const rating: RunnerCompatibilityRating = has('unresolved')
+            ? 'D'
+            : has('partial')
+              ? 'C'
+              : has('browser')
+                ? 'B'
+                : 'A';
+        const score = has('unresolved') ? 35 : has('partial') ? 60 : has('browser') ? 78 : has('binary') ? 95 : 100;
+        const pathItem = (spec.paths as any)?.[path] || {};
+        const requestBody = resolveRequestBody(operation.requestBody, spec);
+        const responseMediaTypes = Array.from(
+            new Set(
+                Object.values(operation.responses || {}).flatMap((response: any) => {
+                    const resolved = resolveReference(response, spec) || response;
+                    return Object.keys(resolved?.content || {});
+                }),
+            ),
+        );
+        const security = operation.security === undefined ? spec.security || [] : operation.security || [];
+        const auth =
+            security.length === 0
+                ? 'Public'
+                : security.map(requirement => Object.keys(requirement || {}).join(' + ') || 'Anonymous').join(' OR ');
+        const notes = findings
+            .filter(finding =>
+                finding.endpoints.some(
+                    endpoint => endpoint.path === path && endpoint.method.toLowerCase() === method.toLowerCase(),
+                ),
+            )
+            .map(finding => finding.title);
+        return {
+            path,
+            method: method.toUpperCase(),
+            summary: operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`,
+            rating,
+            score,
+            categories,
+            notes,
+            parameterCount: getMergedParameters(pathItem, operation, spec).length,
+            requestMediaTypes: Object.keys(requestBody?.content || {}),
+            responseMediaTypes,
+            auth,
+        };
+    });
 
     return {
         totalOperations: operations.length,
@@ -327,5 +377,6 @@ export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibili
         binaryOperations: endpointsWith('binary'),
         unresolvedOperations: endpointsWith('unresolved'),
         findings,
+        endpoints: endpointReports,
     };
 };

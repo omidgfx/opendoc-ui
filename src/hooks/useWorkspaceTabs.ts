@@ -21,6 +21,8 @@ export type WorkspaceViewMode = 'docs' | 'examine' | 'both';
 type NavigationSnapshot = {
     searchQuery: string;
     showSchemaExplorer: boolean;
+    showCompatibility: boolean;
+    showCatalog: boolean;
     showAbout: boolean;
     showAssistant: boolean;
     showHome: boolean;
@@ -50,6 +52,10 @@ interface UseWorkspaceTabsOptions {
     setShowHome: Dispatch<SetStateAction<boolean>>;
     showSchemaExplorer: boolean;
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
+    showCompatibility: boolean;
+    setShowCompatibility: Dispatch<SetStateAction<boolean>>;
+    showCatalog: boolean;
+    setShowCatalog: Dispatch<SetStateAction<boolean>>;
     showAbout: boolean;
     setShowAbout: Dispatch<SetStateAction<boolean>>;
     showAssistant: boolean;
@@ -79,6 +85,10 @@ export function useWorkspaceTabs({
     setShowHome,
     showSchemaExplorer,
     setShowSchemaExplorer,
+    showCompatibility,
+    setShowCompatibility,
+    showCatalog,
+    setShowCatalog,
     showAbout,
     setShowAbout,
     showAssistant,
@@ -97,6 +107,17 @@ export function useWorkspaceTabs({
     const activeTabIdForAssistantRef = useRef<string | null>(null);
     activeTabIdForAssistantRef.current = activeTabId;
     const [tabViewModes, setTabViewModes] = useState<Record<string, 'docs' | 'examine' | 'both'>>({});
+    const setViewVisibility = useCallback(
+        (view: ViewTabKind | null) => {
+            setShowHome(view === 'home');
+            setShowSchemaExplorer(view === 'schemas');
+            setShowCompatibility(view === 'compatibility');
+            setShowCatalog(view === 'catalog');
+            setShowAbout(view === 'about');
+            setShowAssistant(view === 'assistant');
+        },
+        [setShowHome, setShowSchemaExplorer, setShowCompatibility, setShowCatalog, setShowAbout, setShowAssistant],
+    );
     const withPreviewLast = useCallback((list: TabItem[]): TabItem[] => {
         const previewIdx = list.findIndex(t => t.isPreview);
         if (previewIdx < 0 || previewIdx === list.length - 1) return list;
@@ -207,13 +228,10 @@ export function useWorkspaceTabs({
             setActiveTabId(id);
             setSelectedEndpoint({path, method: method.toLowerCase()});
             setShowWelcome(false);
-            setShowHome(false);
-            setShowSchemaExplorer(false);
-            setShowAbout(false);
-            setShowAssistant(false);
+            setViewVisibility(null);
             setSelectedTab('docs');
         },
-        [getEndpointLabel],
+        [getEndpointLabel, setViewVisibility],
     );
     const stashSearchTab = useCallback(() => {
         setEndpointTabs(prev =>
@@ -238,10 +256,7 @@ export function useWorkspaceTabs({
             if (!tab) return;
             if (tab.kind && tab.kind !== 'endpoint') {
                 setSelectedEndpoint(null);
-                setShowHome(tab.kind === 'home');
-                setShowSchemaExplorer(tab.kind === 'schemas');
-                setShowAbout(tab.kind === 'about');
-                setShowAssistant(tab.kind === 'assistant');
+                setViewVisibility(tab.kind);
                 if (tab.kind === 'search') {
                     setSearchQuery(tab.query || '');
                     setResultsQuery(tab.query || '');
@@ -256,13 +271,10 @@ export function useWorkspaceTabs({
                 return;
             }
             setSelectedEndpoint({path: tab.path, method: tab.method});
-            setShowHome(false);
-            setShowSchemaExplorer(false);
-            setShowAbout(false);
-            setShowAssistant(false);
+            setViewVisibility(null);
             setSearchQuery('');
         },
-        [endpointTabs, activeTabId, stashSearchTab],
+        [endpointTabs, activeTabId, stashSearchTab, setViewVisibility],
     );
     const {switcherOpen, switcherIndex, setSwitcherOpen, cancelSwitcher, openSwitcher} = useTabSwitcher({
         tabs: endpointTabs,
@@ -270,49 +282,49 @@ export function useWorkspaceTabs({
         modalCount,
         onSelectTab: handleSelectTab,
     });
-    const openViewTab = useCallback((view: ViewTabKind, query = '') => {
-        setShowWelcome(false);
-        const id = `view:${view}`;
-        const label = view === 'search' ? (query ? `Search: ${query}` : 'Search') : VIEW_TAB_META[view].label;
-        setEndpointTabs(prev => {
-            const existing = prev.find(t => t.id === id);
-            if (existing) {
-                return prev.map(t =>
-                    t.id === id
-                        ? {
-                              ...t,
-                              isPreview: view === 'assistant' ? false : t.isPreview,
-                              query: view === 'search' ? query : undefined,
-                          }
-                        : t,
-                );
-            }
-            const newTab: TabItem = {
-                id,
-                path: '',
-                method: '',
-                isPreview: view === 'assistant' ? false : true,
-                label,
-                kind: view,
-                query: view === 'search' ? query : undefined,
-            };
-            const previewIdx = prev.findIndex(t => t.isPreview);
-            if (previewIdx >= 0) {
-                const oldId = prev[previewIdx].id;
-                return withPreviewLast(prev.map(t => (t.id === oldId ? newTab : t)));
-            }
-            return [...prev, newTab];
-        });
-        setActiveTabId(id);
-        setSelectedEndpoint(null);
-        setShowHome(view === 'home');
-        setShowSchemaExplorer(view === 'schemas');
-        setShowAbout(view === 'about');
-        setShowAssistant(view === 'assistant');
-        setSearchQuery(view === 'search' ? query : '');
-        setActiveResponseCode(null);
-        setModalStack([]);
-    }, []);
+    const openViewTab = useCallback(
+        (view: ViewTabKind, query = '') => {
+            setShowWelcome(false);
+            const id = `view:${view}`;
+            const label = view === 'search' ? (query ? `Search: ${query}` : 'Search') : VIEW_TAB_META[view].label;
+            setEndpointTabs(prev => {
+                const existing = prev.find(t => t.id === id);
+                if (existing) {
+                    return prev.map(t =>
+                        t.id === id
+                            ? {
+                                  ...t,
+                                  isPreview: view === 'assistant' ? false : t.isPreview,
+                                  query: view === 'search' ? query : undefined,
+                              }
+                            : t,
+                    );
+                }
+                const newTab: TabItem = {
+                    id,
+                    path: '',
+                    method: '',
+                    isPreview: view === 'assistant' ? false : true,
+                    label,
+                    kind: view,
+                    query: view === 'search' ? query : undefined,
+                };
+                const previewIdx = prev.findIndex(t => t.isPreview);
+                if (previewIdx >= 0) {
+                    const oldId = prev[previewIdx].id;
+                    return withPreviewLast(prev.map(t => (t.id === oldId ? newTab : t)));
+                }
+                return [...prev, newTab];
+            });
+            setActiveTabId(id);
+            setSelectedEndpoint(null);
+            setViewVisibility(view);
+            setSearchQuery(view === 'search' ? query : '');
+            setActiveResponseCode(null);
+            setModalStack([]);
+        },
+        [setViewVisibility],
+    );
     const openViewTabPermanent = useCallback(
         (view: ViewTabKind, query = '') => {
             setShowWelcome(false);
@@ -343,57 +355,50 @@ export function useWorkspaceTabs({
             });
             setActiveTabId(id);
             setSelectedEndpoint(null);
-            setShowHome(view === 'home');
-            setShowSchemaExplorer(view === 'schemas');
-            setShowAbout(view === 'about');
-            setShowAssistant(view === 'assistant');
+            setViewVisibility(view);
             setSearchQuery(view === 'search' ? query : '');
             setActiveResponseCode(null);
             setModalStack([]);
         },
-        [orderTabs],
+        [orderTabs, setViewVisibility],
     );
-    const applyTabViewState = useCallback((tab: TabItem | null) => {
-        if (!tab) {
-            setSelectedEndpoint(null);
-            setShowHome(false);
-            setShowSchemaExplorer(false);
-            setShowAbout(false);
-            setShowAssistant(false);
-            setSearchQuery('');
-            setShowWelcome(true);
-            return;
-        }
-        setShowWelcome(false);
-        if (tab.kind && tab.kind !== 'endpoint') {
-            setSelectedEndpoint(null);
-            setShowHome(tab.kind === 'home');
-            setShowSchemaExplorer(tab.kind === 'schemas');
-            setShowAbout(tab.kind === 'about');
-            setShowAssistant(tab.kind === 'assistant');
-            if (tab.kind === 'search') {
-                setSearchQuery(tab.query || '');
-                setResultsQuery(tab.query || '');
-                setSelectedMethods(tab.filters?.methods || []);
-                setSelectedTags(tab.filters?.tags || []);
-                setOnlyProtected(tab.filters?.onlyProtected ?? null);
-            } else {
+    const applyTabViewState = useCallback(
+        (tab: TabItem | null) => {
+            if (!tab) {
+                setSelectedEndpoint(null);
+                setViewVisibility(null);
                 setSearchQuery('');
-                setResultsQuery('');
+                setShowWelcome(true);
+                return;
             }
-            setScrollIntent({type: 'view', id: tab.id});
-            return;
-        }
-        setSelectedEndpoint({path: tab.path, method: tab.method});
-        setShowHome(false);
-        setShowSchemaExplorer(false);
-        setShowAbout(false);
-        setShowAssistant(false);
-        setSearchQuery('');
-    }, []);
+            setShowWelcome(false);
+            if (tab.kind && tab.kind !== 'endpoint') {
+                setSelectedEndpoint(null);
+                setViewVisibility(tab.kind);
+                if (tab.kind === 'search') {
+                    setSearchQuery(tab.query || '');
+                    setResultsQuery(tab.query || '');
+                    setSelectedMethods(tab.filters?.methods || []);
+                    setSelectedTags(tab.filters?.tags || []);
+                    setOnlyProtected(tab.filters?.onlyProtected ?? null);
+                } else {
+                    setSearchQuery('');
+                    setResultsQuery('');
+                }
+                setScrollIntent({type: 'view', id: tab.id});
+                return;
+            }
+            setSelectedEndpoint({path: tab.path, method: tab.method});
+            setViewVisibility(null);
+            setSearchQuery('');
+        },
+        [setViewVisibility],
+    );
     const navStateRef = useRef({
         searchQuery: '',
         showSchemaExplorer: false,
+        showCompatibility: false,
+        showCatalog: false,
         showAbout: false,
         showAssistant: false,
         showHome: true,
@@ -405,6 +410,8 @@ export function useWorkspaceTabs({
     navStateRef.current = {
         searchQuery,
         showSchemaExplorer,
+        showCompatibility,
+        showCatalog,
         showAbout,
         showAssistant,
         showHome,
@@ -417,6 +424,8 @@ export function useWorkspaceTabs({
         (override?: {
             searchQuery?: string;
             showSchemaExplorer?: boolean;
+            showCompatibility?: boolean;
+            showCatalog?: boolean;
             showAbout?: boolean;
             showAssistant?: boolean;
             showHome?: boolean;
@@ -433,11 +442,15 @@ export function useWorkspaceTabs({
                     ? 'search'
                     : s.showSchemaExplorer
                       ? 'schemas'
-                      : s.showAssistant
-                        ? 'assistant'
-                        : s.showAbout
-                          ? 'about'
-                          : null;
+                      : s.showCompatibility
+                        ? 'compatibility'
+                        : s.showCatalog
+                          ? 'catalog'
+                          : s.showAssistant
+                            ? 'assistant'
+                            : s.showAbout
+                              ? 'about'
+                              : null;
             if (s.showWelcome && !expected) return;
             if (!expected) return;
             if (expected === 'assistant') setAssistantUnread(false);
@@ -622,14 +635,12 @@ export function useWorkspaceTabs({
             if (nextTab) {
                 setActiveTabId(nextTab.id);
                 setSelectedEndpoint({path: nextTab.path, method: nextTab.method});
-                setShowHome(false);
-                setShowSchemaExplorer(false);
-                setShowAbout(false);
+                setViewVisibility(null);
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [endpointTabs, activeTabId, modalCount]);
+    }, [endpointTabs, activeTabId, modalCount, setViewVisibility]);
     return {
         selectedEndpoint,
         setSelectedEndpoint,

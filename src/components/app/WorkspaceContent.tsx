@@ -1,11 +1,14 @@
 import type {Dispatch, KeyboardEvent, MouseEvent, RefObject, SetStateAction} from 'react';
-import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
+import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from '../../types';
 import SearchResultsView from '@/src/pages/search/SearchResultsPage';
 import AboutView from '@/src/pages/about/AboutPage';
 import HomeView from '@/src/pages/home/HomePage';
 import NoSpecView from '@/src/pages/status/NoSpecPage';
 import WelcomeView from '@/src/pages/status/WelcomePage';
 import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
+import RunnerCompatibilityPage from '@/src/pages/compatibility/RunnerCompatibilityPage';
+import ApiCatalogPage from '@/src/pages/catalog/ApiCatalogPage';
+import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
 import {getOperation} from '../../utils/openapi';
@@ -14,8 +17,11 @@ import {appendResponseHistory, clearResponseHistory, removeResponseHistoryAt} fr
 interface WorkspaceContentProps {
     spec: OpenApiSpec | null;
     specKey: string;
+    parsables: ParsableConfig;
     canOpenLocal: boolean;
     onOpenLocalFile: () => void;
+    onAddReferencedFiles?: () => void;
+    onSelectParsable: (key: string) => void;
     showAbout: boolean;
     showWelcome: boolean;
     assistantActive: boolean;
@@ -54,6 +60,8 @@ interface WorkspaceContentProps {
     examineResponses: Record<string, ExamineResponse[]>;
     setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     showSchemaExplorer: boolean;
+    showCompatibility: boolean;
+    showCatalog: boolean;
     showHome: boolean;
     onOpenAbout: () => void;
     onOpenHome: () => void;
@@ -72,8 +80,11 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     const {
         spec,
         specKey,
+        parsables,
         canOpenLocal,
         onOpenLocalFile,
+        onAddReferencedFiles,
+        onSelectParsable,
         showAbout,
         showWelcome,
         assistantActive,
@@ -109,6 +120,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         examineResponses,
         setExamineResponses,
         showSchemaExplorer,
+        showCompatibility,
+        showCatalog,
         showHome,
         onOpenAbout,
         onOpenHome,
@@ -230,7 +243,30 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     }
     if (showSchemaExplorer) {
         return (
-            <SchemaExplorer schemas={spec.components?.schemas} onSelectSchema={onOpenSchema} parsableKey={specKey} />
+            <ViewErrorBoundary resetKey={`schemas:${specKey}`} title="Schema Explorer could not be rendered">
+                <SchemaExplorer
+                    schemas={spec.components?.schemas}
+                    onSelectSchema={onOpenSchema}
+                    parsableKey={specKey}
+                />
+            </ViewErrorBoundary>
+        );
+    }
+    if (showCompatibility) {
+        return (
+            <ViewErrorBoundary resetKey={`compatibility:${specKey}`} title="Compatibility report could not be rendered">
+                <RunnerCompatibilityPage
+                    spec={spec}
+                    specKey={specKey}
+                    onSelectEndpoint={onOpenEndpointPermanent}
+                    onAddReferencedFiles={onAddReferencedFiles}
+                />
+            </ViewErrorBoundary>
+        );
+    }
+    if (showCatalog) {
+        return (
+            <ApiCatalogPage parsables={parsables} selectedKey={specKey} activeSpec={spec} onSelect={onSelectParsable} />
         );
     }
     if (showAbout) return <AboutView specTitle={spec.info?.title} parsableKey={specKey} spec={spec} />;

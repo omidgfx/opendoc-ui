@@ -561,16 +561,6 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
             );
         }
     });
-    if (intent.cookies.length > 0) {
-        diagnostics.push(
-            diagnostic(
-                'RUN_BROWSER_MANUAL_COOKIES_NOT_SENT',
-                `Manual cookie values (${intent.cookies.map(cookie => cookie.name).join(', ')}) cannot be injected by browser fetch. Existing browser-managed cookies may still be sent.`,
-                {transport: 'browser'},
-            ),
-        );
-    }
-
     let body: BodyInit | null = null;
     const bodyIntent = intent.body;
     if (bodyIntent.kind === 'raw') {

@@ -37,6 +37,13 @@ export interface Parsable {
     theme: string;
     url: string;
     title?: string;
+    description?: string;
+    version?: string;
+    group?: string;
+    categories?: string[];
+    tags?: string[];
+    icon?: string;
+    hiddenFromCatalog?: boolean;
     isCustom?: boolean;
     rawSpec?: string;
 }
@@ -209,6 +216,7 @@ export interface AuthCredential {
     value?: string;
     username?: string;
     password?: string;
+    clientId?: string;
     scopes?: string[];
 }
 

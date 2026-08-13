@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {AIStreamError, fetchProviderModelCatalog, streamAIResponse} from '../src/utils/aiProviders';
 import {executeRunnerRequest} from '../src/utils/runnerExecution';
 import type {AISettings} from '../src/types';
@@ -7,6 +8,7 @@ import {processLocalOpenApiBundle} from '../src/utils/openapi/engine';
 import {clearCachedSpec, fetchSpec, writeCachedSpec} from '../src/utils/specCache';
 import {parseSpecDraft} from '../src/utils/appSpec';
 import {createRemoteSpecRequester, RemoteSpecRequestError} from '../src/utils/remoteSpec';
+import {beginOAuthAuthorization, consumeOAuthResult, handleOAuthCallback} from '../src/utils/oauthFlow';
 const originalFetch = globalThis.fetch;
 const settings: AISettings = {
     transport: 'direct',
@@ -69,6 +71,67 @@ try {
         error => error instanceof Error && /exceeds/.test(error.message),
     );
     console.log('✓ applies proxy/direct/scheme fallback policy and remote size limits');
+
+    const preOAuthWindow = (globalThis as any).window;
+    const preOAuthStorage = (globalThis as any).sessionStorage;
+    const oauthStorage = new Map<string, string>();
+    let assignedAuthorizationUrl = '';
+    const oauthLocation: any = {
+        origin: 'https://docs.example.test',
+        href: 'https://docs.example.test/parsable/oauth-api',
+        pathname: '/parsable/oauth-api',
+        search: '',
+        hash: '',
+        assign: (value: string) => {
+            assignedAuthorizationUrl = value;
+        },
+    };
+    (globalThis as any).window = {
+        location: oauthLocation,
+        history: {replaceState: (_state: unknown, _unused: string, value: string) => (oauthLocation.href = value)},
+    };
+    (globalThis as any).sessionStorage = {
+        getItem: (key: string) => oauthStorage.get(key) ?? null,
+        setItem: (key: string, value: string) => oauthStorage.set(key, value),
+        removeItem: (key: string) => oauthStorage.delete(key),
+    };
+    await beginOAuthAuthorization({
+        schemeId: 'oauth',
+        specKey: 'oauth-api',
+        scheme: {
+            type: 'oauth2',
+            flows: {
+                authorizationCode: {
+                    authorizationUrl: 'https://auth.example.test/authorize',
+                    tokenUrl: 'https://auth.example.test/token',
+                    scopes: {read: 'Read'},
+                },
+            },
+        },
+        credential: {schemeId: 'oauth', type: 'oauth2', clientId: 'public-client', scopes: ['read']},
+    });
+    const authorization = new URL(assignedAuthorizationUrl);
+    assert.equal(authorization.searchParams.get('response_type'), 'code');
+    assert.equal(authorization.searchParams.get('code_challenge_method'), 'S256');
+    oauthLocation.pathname = '/oauth/callback';
+    oauthLocation.search = `?code=authorization-code&state=${authorization.searchParams.get('state')}`;
+    oauthLocation.hash = '';
+    globalThis.fetch = (async () =>
+        new Response(JSON.stringify({access_token: 'oauth-access-token', scope: 'read'}), {
+            status: 200,
+            headers: {'content-type': 'application/json'},
+        })) as typeof fetch;
+    assert.equal(await handleOAuthCallback(), true);
+    assert.deepEqual(consumeOAuthResult(), {
+        schemeId: 'oauth',
+        specKey: 'oauth-api',
+        accessToken: 'oauth-access-token',
+        scopes: ['read'],
+    });
+    (globalThis as any).window = preOAuthWindow;
+    (globalThis as any).sessionStorage = preOAuthStorage;
+    globalThis.fetch = originalFetch;
+    console.log('✓ completes native OAuth authorization-code PKCE callbacks without a client secret');
 
     globalThis.fetch = (async () =>
         new Response(
@@ -176,6 +239,19 @@ try {
     assert.equal(localBundle.externalDocumentsLoaded, true);
     assert.ok(localBundle.diagnostics.some(item => item.code === 'OAS_LOCAL_BUNDLE_RESOLVED'));
     console.log('✓ resolves user-approved local multi-file references without network access');
+    const externalBundle = await processLocalOpenApiBundle([
+        {
+            name: 'openapi.json',
+            raw: await readFile('tests/fixtures/external-label-root.json', 'utf8'),
+        },
+        {
+            name: 'label-base.json',
+            raw: await readFile('tests/fixtures/label-base.json', 'utf8'),
+        },
+    ]);
+    assert.equal(externalBundle.externalDocumentsLoaded, true);
+    assert.equal((externalBundle.document.components?.schemas?.Label as any)?.type, 'object');
+    console.log('✓ resolves the external Cosmo label schema bundle without altering its raw root');
     const cacheUrl = 'https://cache.example.test/openapi.yaml';
     const validCached = 'openapi: 3.1.1\ninfo: {title: Cached, version: "1"}\npaths: {}\n';
     const preCacheWindow = (globalThis as any).window;

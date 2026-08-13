@@ -24,6 +24,7 @@ CORS-enabled providers directly or an optional gateway.
   - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
   - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
   - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+- [API Catalog and version groups](#api-catalog-and-version-groups)
 - [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
   - [Build-time settings](#build-time-settings)
   - [Downloader services](#downloader-services)
@@ -72,7 +73,10 @@ CORS-enabled providers directly or an optional gateway.
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; large raw documents use IndexedDB instead of consuming the localStorage quota.
-- **Crash recovery** — unexpected UI errors show refresh, full-reset, error details, and a GitHub issue-report link.
+- **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; missing local files can be added after the root is opened.
+- **API Catalog and versions** — configured APIs can be searched, categorized, and grouped into product versions without modifying their OpenAPI documents.
+- **Clean routes** — endpoint, schema, catalog, compatibility, and assistant links use normal paths while retaining legacy hash-link compatibility.
+- **Crash recovery** — view-level boundaries isolate malformed endpoint/schema content, while the global recovery screen remains the final fallback.
 
 ---
 
@@ -242,16 +246,23 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 Supported keys per entry:
 
-| Key        | Type    | Description                                                                                                                                         |
-| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
-| `title`    | string  | Display name in the selector / navbar. Defaults to the object key.                                                                                  |
-| `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
-| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
-| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
+| Key                 | Type     | Description                                                                                                                                         |
+| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`               | string   | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
+| `title`             | string   | Display name in the selector, navbar, and catalog. Defaults to the object key.                                                                      |
+| `description`       | string   | Optional catalog description when metadata cannot be read before loading.                                                                           |
+| `version`           | string   | Optional catalog/version-selector label; the loaded document's native `info.version` wins.                                                          |
+| `group`             | string   | Groups several configured documents as versions of one catalog API product.                                                                         |
+| `categories`        | string[] | Catalog category filters stored in OpenDoc configuration, not in the OpenAPI document.                                                              |
+| `tags`              | string[] | Additional catalog search labels stored outside the OpenAPI document.                                                                               |
+| `icon`              | string   | Optional Phosphor icon class for the catalog card.                                                                                                  |
+| `hiddenFromCatalog` | boolean  | Hides the configured entry from the catalog without changing the specification.                                                                     |
+| `theme`             | string   | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
+| `isCustom`          | boolean  | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
+| `rawSpec`           | string   | The full spec document as a string (JSON or YAML).                                                                                                  |
 
-The **first entry** is selected on first visit; afterwards the app remembers the last
-selection, and the URL hash wins over both.
+The **first entry** is selected on first visit; afterwards the app remembers the last selection,
+and an explicit clean route or legacy hash deep link is the source of truth.
 
 ### Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)
 
@@ -304,6 +315,37 @@ Run the app with **no** `window.INITIAL_CONFIG` and **no** `public/config.json` 
 Files are read with the browser's File API — **nothing is uploaded anywhere**. Everything
 stays in your browser. Each opened spec is recorded in the history (see
 [Local history](#local-history)) so you can reopen it after a reload.
+
+---
+
+## API Catalog and version groups
+
+The optional **API Catalog** sidebar page searches and filters configured API products. Catalog
+metadata lives in OpenDoc configuration and never rewrites the OpenAPI source. Entries sharing the
+same `group` are shown as versions of one API; the active document's native `info.version` is used
+when available.
+
+```json
+{
+  "parsables": {
+    "labels-v3": {
+      "title": "Labels API",
+      "group": "labels",
+      "version": "3.0",
+      "categories": ["Core"],
+      "tags": ["Printing"],
+      "url": "/specs/labels-v3.json"
+    },
+    "labels-v2": {
+      "title": "Labels API",
+      "group": "labels",
+      "version": "2.0",
+      "categories": ["Core"],
+      "url": "/specs/labels-v2.json"
+    }
+  }
+}
+```
 
 ---
 
@@ -559,10 +601,12 @@ no download link, and shows metadata only. Every endpoint keeps its **last 10 tr
 per specification in IndexedDB-backed storage (with localStorage fallback), including HTTP responses,
 browser/network failures, validation outcomes, timeouts, and cancellations.
 
-The Overview page includes a specification-wide **Runner Compatibility** report. It identifies partial,
-browser-limited, declared-binary, and unresolved operation features before testing. The report is a
-static preflight—not a promise about CORS, DNS, authentication state, server behavior, or success
-payloads missing from the specification. File-serving operations should declare a 2xx response media
+The Overview page keeps a specification-wide **Runner Compatibility** summary. A dedicated sidebar
+page adds a compact endpoint matrix with A–D ratings, numeric scores, auth, parameter counts, request
+and response media, and scoped findings. It also lists missing reference files, can append them to a
+local bundle, exports the immutable original or a derived bundled copy, and generates `llms.txt`.
+Compatibility remains a static preflight—not a promise about CORS, DNS, authentication state, server
+behavior, or payloads missing from the specification. File-serving operations should declare a 2xx response media
 type and a `string` schema with `format: binary`; when that success response is omitted, OpenDoc can
 only recognize binary data from the real response headers after the request has been sent.
 
@@ -581,17 +625,19 @@ hidden.
 
 Authentication keeps actual OpenAPI security-scheme IDs and can apply composed requirements
 simultaneously, with credentials isolated per specification and operation-level security overrides
-honored. Browser mode deliberately cannot inject a `Cookie` header; it can send existing same-site
-cookies with `credentials: include`. A manual cookie requires a separate trusted Runner agent—the
-optional AI gateway does not proxy API requests. OAuth/OIDC flows accept a supplied access token but
-do not silently perform authorization-code or refresh flows.
+honored. Cookie-secured operations show one informational note and send browser-managed cookies with
+`credentials: include` without repetitive Runner warnings. Native OAuth 2 authorization-code and
+implicit flows can launch interactively; authorization-code uses PKCE and requires token-endpoint
+CORS because OpenDoc remains a public browser client. Manual access-token entry remains available.
 
-Documents retain their immutable raw source and dialect alongside the internal semantic document.
-OpenDoc supports Swagger 2.0 and OpenAPI 3.0/3.1/3.2, including OAS 3.2 `QUERY` and
-`additionalOperations`. Same-origin remote external references are loaded with count, size, timeout,
-redirect, and origin limits. For local multi-document APIs, select all related JSON/YAML files in the
-file chooser; they are resolved entirely in memory and remain on the device. Cross-origin references
-must be bundled by the API publisher.
+Documents retain their immutable raw source and dialect alongside a separate semantic graph. OpenDoc
+supports Swagger 2.0 and OpenAPI 3.0/3.1/3.2, including OAS 3.2 `QUERY` and `additionalOperations`.
+Reference resolution is centralized and cycle-safe; unresolved references remain unchanged and are
+shown as scoped diagnostics instead of recursive crashes. Same-origin remote external references are
+loaded with count, size, timeout, redirect, and origin limits. For local multi-document APIs, missing
+referenced files can be added after opening the root document; resolution remains entirely in memory.
+The Compatibility page can download the untouched original or a derived bundled copy when every
+required document is available.
 
 ## Optional AI gateway
 
@@ -873,19 +919,24 @@ is loaded.
 
 ## URL routing & deep links
 
-The app is hash-routed. Main shapes:
+OpenDoc uses clean History API routes and still accepts legacy `#/...` links. Main shapes:
 
-| Hash                                              | Meaning                                    |
-| ------------------------------------------------- | ------------------------------------------ |
-| `#/`                                              | Home (no spec)                             |
-| `#/parsable/<key>`                                | Home of the spec with the given config key |
-| `#/parsable/<key>/api/<endpointId>`               | A specific endpoint (docs view)            |
-| `#/parsable/<key>/about`                          | About page for that spec                   |
-| `#/parsable/<key>/assistant`                      | OpenDoc UI assistant for that spec         |
-| `#/parsable/<key>/schema-explorer?schemas=<name>` | Schema explorer with a schema open         |
-| `#/about`                                         | About page without a spec                  |
+| Route                                          | Meaning                                    |
+| ---------------------------------------------- | ------------------------------------------ |
+| `/`                                            | Home (no spec)                             |
+| `/parsable/<key>`                              | Home of the configured/local specification |
+| `/parsable/<key>/api/<endpointId>`             | A specific endpoint in a permanent tab     |
+| `/parsable/<key>/schema-explorer?schemas=name` | Schema Explorer with a schema open         |
+| `/parsable/<key>/compatibility`                | Endpoint Runner compatibility matrix       |
+| `/parsable/<key>/catalog`                      | Configured API Catalog                     |
+| `/parsable/<key>/about`                        | About page for that specification          |
+| `/parsable/<key>/assistant`                    | OpenDoc UI assistant                       |
+| `/oauth/callback`                              | Native OAuth authorization callback        |
 
-Query params: `?tab=examine|doc`, `?schemas=a,b`, `?search=...` and `#response-<code>`.
+Query parameters include `?tab=examine|doc`, `?schemas=a,b`, and `?search=...`; response deep links
+append `#response-<code>`. Endpoint links are authoritative: loading or refreshing one always opens
+that endpoint as a permanent tab. Static deployments must serve `index.html` for unknown routes;
+OpenDoc builds `dist/404.html`, and the included nginx configuration already provides SPA fallback.
 
 In local mode the key is `local:<fileName>`, and it maps back into the local history on
 reload.

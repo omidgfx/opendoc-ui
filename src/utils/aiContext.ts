@@ -1,5 +1,5 @@
 import type {AIContextInput, AIContextResult, AISettings, AISourceRef} from '../types';
-import {getEndpointId} from './routing';
+import {getEndpointId, toCleanRouteHref} from './routing';
 import {OPENDOC_UI_BRIDGE_INSTRUCTIONS} from './aiBridge';
 import {renderAISkillPackContent} from './aiSkills';
 import {getDocumentOperations} from './openapi/operations';
@@ -79,7 +79,9 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
             label: `${method.toUpperCase()} ${path}${operation.summary ? ` — ${safeText(operation.summary, 180)}` : ''}`,
             path,
             method: method.toUpperCase(),
-            href: `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(operation, path, method))}`,
+            href: toCleanRouteHref(
+                `#/parsable/${encodeURIComponent(input.specKey)}/api/${encodeURIComponent(getEndpointId(operation, path, method))}`,
+            ),
         };
         sources.push(source);
         endpoints.push({path, method: method.toLowerCase(), operation, source, tags: tagList});
@@ -95,7 +97,9 @@ export const buildAIContext = (input: AIContextInput): AIContextResult => {
                 kind: 'schema',
                 label: `Schema: ${schemaName}`,
                 schemaName,
-                href: `#/parsable/${encodeURIComponent(input.specKey)}/schema-explorer?schemas=${encodeURIComponent(schemaName)}`,
+                href: toCleanRouteHref(
+                    `#/parsable/${encodeURIComponent(input.specKey)}/schema-explorer?schemas=${encodeURIComponent(schemaName)}`,
+                ),
             }),
         );
     Object.keys(input.spec?.components?.securitySchemes || {})

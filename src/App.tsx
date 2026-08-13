@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from './types';
-import {generateSmartRoute, getEndpointId} from './utils/routing';
+import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute} from './utils/routing';
+import {hasExplicitSpecRoute} from './utils/tabPersistence';
 import {getDocumentOperations, getOperation} from './utils/openapi';
 import {uiStorage} from './utils/storage';
 import {useBreakpoint} from './hooks/useBreakpoint';
@@ -38,6 +39,7 @@ import {useWorkspaceRouting} from './hooks/useWorkspaceRouting';
 import {useConfigBootstrap} from './hooks/useConfigBootstrap';
 import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
 import {useSpecificationActions} from './hooks/useSpecificationActions';
+import {consumeOAuthResult} from './utils/oauthFlow';
 
 declare global {
     interface Window {
@@ -70,6 +72,8 @@ export default function App() {
     const [showWelcome, setShowWelcome] = useState(false);
     const [showHome, setShowHome] = useState(true);
     const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
+    const [showCompatibility, setShowCompatibility] = useState(false);
+    const [showCatalog, setShowCatalog] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
     const [assistantContextEndpoints, setAssistantContextEndpoints] = useState<
@@ -138,6 +142,31 @@ export default function App() {
         },
         [authScopeKey],
     );
+    useEffect(() => {
+        const result = consumeOAuthResult();
+        if (!result) return;
+        setAuthBySpec(current => {
+            const previous = current[result.specKey] || createEmptyAuth();
+            const credential = {
+                ...(previous.schemeValues[result.schemeId] || {
+                    schemeId: result.schemeId,
+                    type: 'oauth2' as const,
+                }),
+                value: result.accessToken,
+                scopes: result.scopes,
+            };
+            return {
+                ...current,
+                [result.specKey]: {
+                    ...previous,
+                    activeScheme: result.schemeId,
+                    selectedSchemes: [result.schemeId],
+                    schemeValues: {...previous.schemeValues, [result.schemeId]: credential},
+                    bearerToken: result.accessToken,
+                },
+            };
+        });
+    }, []);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse[]>>({});
@@ -200,6 +229,10 @@ export default function App() {
         setShowHome,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showCompatibility,
+        setShowCompatibility,
+        showCatalog,
+        setShowCatalog,
         showAbout,
         setShowAbout,
         showAssistant,
@@ -268,6 +301,8 @@ export default function App() {
             setShowWelcome(false);
             setShowHome(false);
             setShowSchemaExplorer(false);
+            setShowCompatibility(false);
+            setShowCatalog(false);
             setShowAbout(false);
             setShowAssistant(false);
             setAssistantContextEndpoints([]);
@@ -285,8 +320,22 @@ export default function App() {
             setTabViewModes({});
             setExamineResponses({});
             setIsUpdatingHash(true);
-            const hash = `#/parsable/${encodeURIComponent(key)}`;
-            if (window.location.hash !== hash) window.location.hash = hash;
+            const currentRoute = getCurrentSmartRoute();
+            const parsedRoute = parseSmartRoute(currentRoute);
+            if (!(parsedRoute.parsableKey === key && hasExplicitSpecRoute(parsedRoute, currentRoute))) {
+                const route = generateSmartRoute({
+                    parsableKey: key,
+                    showHome: true,
+                    showAbout: false,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: null,
+                    tab: 'docs',
+                    schemaModals: [],
+                    activeSpec: document,
+                });
+                window.history.replaceState(window.history.state, '', route);
+            }
             setIsUpdatingHash(false);
         },
         [],
@@ -303,6 +352,7 @@ export default function App() {
         handleSelectHistoryEntry,
         handleRemoveHistoryEntry,
         handleClearHistory,
+        openReferencedFilePicker,
     } = useLocalSpecifications({
         selectedSpecKey: selectedParsableKey,
         onApply: handleApplyLocalSpec,
@@ -383,6 +433,10 @@ export default function App() {
         setShowAssistant,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showCompatibility,
+        setShowCompatibility,
+        showCatalog,
+        setShowCatalog,
         selectedEndpoint,
         setSelectedEndpoint,
         selectedViewMode: selectedTab,
@@ -406,9 +460,7 @@ export default function App() {
         setViewModes: setTabViewModes,
         setExamineResponses,
         setAssistantContextEndpoints,
-        openEndpointPreview,
         openEndpointPermanent,
-        openViewTab,
         openViewTabPermanent,
         ensureViewTabFromState,
     });
@@ -421,23 +473,42 @@ export default function App() {
         description?: string;
     } | null>(null);
     const endpointDeepLink = useCallback(
-        (path: string, method: string) => {
-            const op = getOperation(spec, path, method) || {};
-            const opId = getEndpointId(op, path, method);
-            return `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}/api/${encodeURIComponent(opId)}`;
-        },
+        (path: string, method: string) =>
+            new URL(
+                generateSmartRoute({
+                    parsableKey: selectedParsableKey,
+                    showHome: false,
+                    showAbout: false,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: {path, method},
+                    tab: 'docs',
+                    schemaModals: [],
+                    activeSpec: spec,
+                }),
+                window.location.origin,
+            ).href,
         [spec, selectedParsableKey],
     );
     const viewDeepLink = useCallback(
         (view: ViewTabKind) => {
-            const base = `${window.location.origin}${window.location.pathname}#/parsable/${encodeURIComponent(selectedParsableKey)}`;
-            if (view === 'about') return `${base}/about`;
-            if (view === 'schemas') return `${base}/schema-explorer`;
-            if (view === 'assistant') return `${base}/assistant`;
-            if (view === 'search') return `${base}?search=`;
-            return base;
+            let route = generateSmartRoute({
+                parsableKey: selectedParsableKey,
+                showHome: view === 'home',
+                showAbout: view === 'about',
+                showAssistant: view === 'assistant',
+                showSchemaExplorer: view === 'schemas',
+                showCompatibility: view === 'compatibility',
+                showCatalog: view === 'catalog',
+                endpoint: null,
+                tab: 'docs',
+                schemaModals: [],
+                activeSpec: spec,
+            });
+            if (view === 'search') route += `${route.includes('?') ? '&' : '?'}search=`;
+            return new URL(route, window.location.origin).href;
         },
-        [selectedParsableKey],
+        [selectedParsableKey, spec],
     );
     const openEndpointInBrowserTab = useCallback(
         (path: string, method: string) => {
@@ -563,6 +634,8 @@ export default function App() {
         openEndpointPreview(path, method);
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowCompatibility(false);
+        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
         setActiveResponseCode(null);
@@ -642,34 +715,82 @@ export default function App() {
                 setActiveTabId(null);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowCompatibility(false);
+                setShowCatalog(false);
                 setShowAbout(false);
                 setSearchQuery('');
                 setResultsQuery('');
                 setShowWelcome(true);
-                const clean = window.location.hash.replace(/[?&]search=[^&]*/, '');
-                if (clean !== window.location.hash) {
-                    setIsUpdatingHash(true);
-                    window.location.hash = clean;
-                    setIsUpdatingHash(false);
-                }
+                const clean = generateSmartRoute({
+                    parsableKey: selectedParsableKey,
+                    showHome: true,
+                    showAbout: false,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: null,
+                    tab: 'docs',
+                    schemaModals: [],
+                    activeSpec: spec,
+                });
+                setIsUpdatingHash(true);
+                window.history.replaceState(window.history.state, '', clean);
+                setIsUpdatingHash(false);
             }
         }
     };
     const handleOpenHome = () => {
         setScrollIntent({type: 'view', id: 'view:home'});
         openViewTab('home');
-        if (!spec) window.location.hash = '#/';
+        if (!spec)
+            window.history.replaceState(
+                window.history.state,
+                '',
+                generateSmartRoute({
+                    parsableKey: '',
+                    showHome: true,
+                    showAbout: false,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: null,
+                    tab: 'docs',
+                    schemaModals: [],
+                }),
+            );
         closeMobileIfNeeded();
     };
     const handleOpenAbout = () => {
         setScrollIntent({type: 'view', id: 'view:about'});
         openViewTab('about');
-        if (!spec) window.location.hash = '#/about';
+        if (!spec)
+            window.history.replaceState(
+                window.history.state,
+                '',
+                generateSmartRoute({
+                    parsableKey: '',
+                    showHome: false,
+                    showAbout: true,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: null,
+                    tab: 'docs',
+                    schemaModals: [],
+                }),
+            );
         closeMobileIfNeeded();
     };
     const handleOpenSchemaExplorer = () => {
         setScrollIntent({type: 'view', id: 'view:schemas'});
         openViewTab('schemas');
+        closeMobileIfNeeded();
+    };
+    const handleOpenCompatibility = () => {
+        setScrollIntent({type: 'view', id: 'view:compatibility'});
+        openViewTab('compatibility');
+        closeMobileIfNeeded();
+    };
+    const handleOpenCatalog = () => {
+        setScrollIntent({type: 'view', id: 'view:catalog'});
+        openViewTab('catalog');
         closeMobileIfNeeded();
     };
     const handleOpenAssistant = () => {
@@ -682,6 +803,8 @@ export default function App() {
         setSelectedTab('examine');
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowCompatibility(false);
+        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
     };
@@ -806,6 +929,8 @@ export default function App() {
         setShowWelcome(false);
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowCompatibility(false);
+        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
         setAssistantContextEndpoints([]);
@@ -824,8 +949,18 @@ export default function App() {
         setSelectedParsableKey(k);
         setExamineResponses({});
         setIsUpdatingHash(true);
-        const h = `#/parsable/${encodeURIComponent(k)}`;
-        if (window.location.hash !== h) window.location.hash = h;
+        const route = generateSmartRoute({
+            parsableKey: k,
+            showHome: true,
+            showAbout: false,
+            showAssistant: false,
+            showSchemaExplorer: false,
+            endpoint: null,
+            tab: 'docs',
+            schemaModals: [],
+            activeSpec: null,
+        });
+        window.history.replaceState(window.history.state, '', route);
         setIsUpdatingHash(false);
         closeMobileIfNeeded();
     };
@@ -836,8 +971,11 @@ export default function App() {
         <WorkspaceContent
             spec={spec}
             specKey={selectedParsableKey}
+            parsables={parsables}
             canOpenLocal={canOpenLocal}
             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+            onAddReferencedFiles={localSpec?.key === selectedParsableKey ? openReferencedFilePicker : undefined}
+            onSelectParsable={handleSelectParsable}
             showAbout={showAbout}
             showWelcome={showWelcome}
             assistantActive={assistantTabActive}
@@ -873,6 +1011,8 @@ export default function App() {
             examineResponses={examineResponses}
             setExamineResponses={setExamineResponses}
             showSchemaExplorer={showSchemaExplorer}
+            showCompatibility={showCompatibility}
+            showCatalog={showCatalog}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
@@ -887,6 +1027,8 @@ export default function App() {
             onHidePageViews={() => {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowCompatibility(false);
+                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             }}
@@ -981,6 +1123,10 @@ export default function App() {
                                     onToggleCollapse={() => setDesktopCollapsed(c => !c)}
                                     onOpenSchemaExplorer={handleOpenSchemaExplorer}
                                     showSchemaExplorer={showSchemaExplorer}
+                                    onOpenCompatibility={handleOpenCompatibility}
+                                    showCompatibility={showCompatibility}
+                                    onOpenCatalog={handleOpenCatalog}
+                                    showCatalog={showCatalog}
                                     selectedMethods={selectedMethods}
                                     setSelectedMethods={setSelectedMethods}
                                     selectedTags={selectedTags}

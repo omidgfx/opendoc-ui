@@ -2,7 +2,7 @@ import {type Dispatch, type SetStateAction, useEffect} from 'react';
 import type {AISettings, ParsableConfig} from '../types';
 import {findLocalHistoryEntry, readLocalHistory} from '../utils/localHistory';
 import {readRemoteHistory} from '../utils/remoteHistory';
-import {parseSmartRoute} from '../utils/routing';
+import {getCurrentSmartRoute, parseSmartRoute} from '../utils/routing';
 import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage';
 import type {ConfigSource} from '../utils/appSpec';
 
@@ -71,6 +71,13 @@ export function useConfigBootstrap({
                         theme: value.theme || 'Default Slate',
                         url: value.url || '',
                         title: value.title || key,
+                        description: value.description || '',
+                        version: value.version || '',
+                        group: value.group || '',
+                        categories: Array.isArray(value.categories) ? value.categories.map(String) : [],
+                        tags: Array.isArray(value.tags) ? value.tags.map(String) : [],
+                        icon: value.icon || '',
+                        hiddenFromCatalog: value.hiddenFromCatalog === true,
                         isCustom: value.isCustom === true || !!value.rawSpec,
                         rawSpec: value.rawSpec || '',
                     };
@@ -78,7 +85,7 @@ export function useConfigBootstrap({
             }
             setParsables(loaded);
             if (Object.keys(loaded).length > 0) {
-                const route = parseSmartRoute(window.location.hash);
+                const route = parseSmartRoute(getCurrentSmartRoute());
                 let restoredAdHocSpecification = false;
                 if (canOpenLocal && route.parsableKey && !loaded[route.parsableKey]) {
                     const entry = findLocalHistoryEntry(route.parsableKey);
@@ -114,8 +121,8 @@ export function useConfigBootstrap({
                     ...(remoteLoadingEnabled ? readRemoteHistory().map(entry => entry.key) : []),
                 ];
                 specStorage.prune(retainedKeys);
-            } else if (window.location.hash) {
-                const route = parseSmartRoute(window.location.hash);
+            } else if (getCurrentSmartRoute() !== '/') {
+                const route = parseSmartRoute(getCurrentSmartRoute());
                 if (route.parsableKey) {
                     let restored = false;
                     const entry = findLocalHistoryEntry(route.parsableKey);

@@ -1,6 +1,6 @@
 import type {Diagnostic, OpenApiSpec} from '../types';
 import {diagnostic} from '../types';
-import {getRefName, resolveSchema} from './openapi';
+import {resolveReferenceResult} from './openapi';
 
 const mockFromPattern = (pattern: string): string => {
     if (!pattern) return 'string';
@@ -64,13 +64,13 @@ export function generateMock(
     if (schema === undefined || schema === null) return null;
     if (depth > 64) return {};
     if (schema.$ref) {
-        const refName = getRefName(schema.$ref);
-        if (visited.has(refName)) return {};
+        const ref = String(schema.$ref);
+        if (visited.has(ref)) return {};
         const nextVisited = new Set(visited);
-        nextVisited.add(refName);
-        const refSchema = resolveSchema(refName, spec);
-        return refSchema !== null && refSchema !== undefined
-            ? generateMock(refSchema, spec, depth + 1, nextVisited, usage)
+        nextVisited.add(ref);
+        const resolution = resolveReferenceResult(schema, spec);
+        return resolution.status === 'resolved' && resolution.value !== schema
+            ? generateMock(resolution.value, spec, depth + 1, nextVisited, usage)
             : {};
     }
     if (schema.const !== undefined) return schema.const;
@@ -149,13 +149,13 @@ export const validateMockValue = (
     if (schema === true || schema === undefined || schema === null) return [];
     if (schema === false) return [`${path}: boolean schema false rejects every value`];
     if (schema.$ref) {
-        const name = getRefName(schema.$ref);
-        if (visited.has(name)) return [];
-        const resolved = resolveSchema(name, spec);
-        if (resolved === null || resolved === undefined) return [`${path}: unresolved schema reference ${schema.$ref}`];
+        const ref = String(schema.$ref);
+        if (visited.has(ref)) return [];
+        const resolution = resolveReferenceResult(schema, spec);
+        if (resolution.status !== 'resolved') return [`${path}: unresolved schema reference ${schema.$ref}`];
         const next = new Set(visited);
-        next.add(name);
-        return validateMockValue(resolved, value, spec, path, next, usage);
+        next.add(ref);
+        return validateMockValue(resolution.value, value, spec, path, next, usage);
     }
     if (schema.const !== undefined && !Object.is(schema.const, value)) return [`${path}: value does not equal const`];
     if (Array.isArray(schema.enum) && !schema.enum.some((item: unknown) => Object.is(item, value)))
