@@ -10,3 +10,4 @@ coverage/
 .vite
 public/specs
 public/config.json
+obj/

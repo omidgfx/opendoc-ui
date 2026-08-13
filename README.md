@@ -15,32 +15,51 @@ CORS-enabled providers directly or an optional gateway.
 
 ## Table of contents
 
-- [Features](#features)
-- [Version 0.1.5](#version-015)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-  - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
-  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
-- [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
-  - [Build-time settings](#build-time-settings)
-  - [Downloader services](#downloader-services)
-- [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
-- [OpenDoc UI assistant](#opendoc-ui-assistant)
-- [Optional AI gateway](#optional-ai-gateway)
-  - [Framework AI gateway examples](#framework-ai-gateway-examples)
-- [Local history](#local-history)
-- [Theme system](#theme-system)
-- [The "no specification" state](#the-no-specification-state)
-- [URL routing & deep links](#url-routing--deep-links)
-- [Keyboard shortcuts](#keyboard-shortcuts)
-- [Browser persistence](#browser-persistence)
-- [Project structure](#project-structure)
-- [Deployment notes](#deployment-notes)
-  - [GitHub Pages demo](#github-pages-demo)
-- [FAQ](#faq)
-- [License](#license)
+- [OpenDoc UI](#opendoc-ui)
+  - [Table of contents](#table-of-contents)
+  - [Features](#features)
+  - [Version 0.1.5](#version-015)
+  - [Quick start](#quick-start)
+  - [Docker Version](#docker-version)
+  - [Configuration](#configuration)
+    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+    - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
+    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+  - [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
+    - [Build-time settings](#build-time-settings)
+    - [Downloader services](#downloader-services)
+      - [Node.js 22](#nodejs-22)
+      - [Python 3.11+](#python-311)
+      - [PHP 8.1+](#php-81)
+      - [Go 1.23+](#go-123)
+      - [Java 21 / Spring Boot](#java-21--spring-boot)
+      - [C# / ASP.NET Core 8](#c--aspnet-core-8)
+  - [OpenDoc UI assistant](#opendoc-ui-assistant)
+  - [Runner safety and OpenAPI behavior](#runner-safety-and-openapi-behavior)
+  - [Optional AI gateway](#optional-ai-gateway)
+    - [Framework AI gateway examples](#framework-ai-gateway-examples)
+      - [Express](#express)
+      - [FastAPI](#fastapi)
+      - [Laravel](#laravel)
+      - [Django](#django)
+      - [Gin](#gin)
+      - [Spring Boot](#spring-boot)
+      - [ASP.NET Core](#aspnet-core)
+      - [Rails](#rails)
+      - [Axum](#axum)
+  - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
+  - [Local history](#local-history)
+  - [Theme system](#theme-system)
+  - [The "no specification" state](#the-no-specification-state)
+  - [URL routing \& deep links](#url-routing--deep-links)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
+  - [Browser persistence](#browser-persistence)
+  - [Project structure](#project-structure)
+  - [Deployment notes](#deployment-notes)
+    - [GitHub Pages demo](#github-pages-demo)
+  - [FAQ](#faq)
+  - [License](#license)
 
 ---
 
@@ -146,6 +165,26 @@ remain server-side.
 
 > The repository intentionally ships **without** a `config.json` or sample spec files, so each
 > deployment keeps its own. Until you add one, the app runs in [local mode](#mode-3--no-configuration-local-mode).
+
+---
+
+## Docker Version
+
+You can get a Docker container running in two simple steps.
+
+**Prerequirements**: Docker CLI & Bash
+
+Build the image:
+
+```bash
+./docker/build.sh
+```
+
+Run the container:
+
+```bash
+./docker/run.sh
+```
 
 ---
 
@@ -839,7 +878,7 @@ reload.
 | `Ctrl / ⌘ + K`                      | Focus global search                                                                                                 |
 | `Esc`                               | Close the top-most modal / overlay                                                                                  |
 | `Alt + ←` / `Alt + →`               | Previous / next endpoint tab                                                                                        |
-| `Ctrl + \`` / `Ctrl + Shift + \``   | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
+| `Ctrl + \`` /`Ctrl + Shift + \``   | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
 | `Ctrl+Enter` (in runner)            | Send the request from the active pane                                                                               |
 | `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes                                                                            |
 
