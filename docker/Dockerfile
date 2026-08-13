@@ -1,21 +1,31 @@
-# 1. Build project
-FROM node:26.7.0-alpine3.24 AS builder  
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine AS builder
 WORKDIR /app
-RUN npx playwright install      
-COPY package.json .
-RUN npm i
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
 COPY . .
-RUN npm run format
-# RUN npm run test:all  ## commented so far as not all tests are passing at linux
+
+ARG VITE_DISABLE_APPLE_EMOJIS=true
+ARG VITE_LOAD_FROM_URL=false
+ARG VITE_SPEC_DOWNLOADER=
+ARG VITE_BASE_PATH=/
+ENV VITE_DISABLE_APPLE_EMOJIS=${VITE_DISABLE_APPLE_EMOJIS} \
+    VITE_LOAD_FROM_URL=${VITE_LOAD_FROM_URL} \
+    VITE_SPEC_DOWNLOADER=${VITE_SPEC_DOWNLOADER} \
+    VITE_BASE_PATH=${VITE_BASE_PATH}
+
 RUN npm run build
 
-# 2. Executable artifact seved by nginx
-FROM nginx:1.31.2-alpine-slim AS final
-COPY --from=builder /app/dist/            /usr/share/nginx/html
-#COPY                docker/config.json    /usr/share/nginx/html
-COPY                docker/nginx.conf     /etc/nginx/conf.d/default.conf
+FROM nginx:1.31.2-alpine-slim AS runtime
+
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/config.json /usr/share/nginx/html/config.json
+COPY --from=builder /app/dist/ /usr/share/nginx/html/
+
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost/index.html
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]

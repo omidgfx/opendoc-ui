@@ -15,51 +15,33 @@ CORS-enabled providers directly or an optional gateway.
 
 ## Table of contents
 
-- [OpenDoc UI](#opendoc-ui)
-  - [Table of contents](#table-of-contents)
-  - [Features](#features)
-  - [Version 0.1.5](#version-015)
-  - [Quick start](#quick-start)
-  - [Docker Version](#docker-version)
-  - [Configuration](#configuration)
-    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-    - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
-    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
-  - [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
-    - [Build-time settings](#build-time-settings)
-    - [Downloader services](#downloader-services)
-      - [Node.js 22](#nodejs-22)
-      - [Python 3.11+](#python-311)
-      - [PHP 8.1+](#php-81)
-      - [Go 1.23+](#go-123)
-      - [Java 21 / Spring Boot](#java-21--spring-boot)
-      - [C# / ASP.NET Core 8](#c--aspnet-core-8)
-  - [OpenDoc UI assistant](#opendoc-ui-assistant)
-  - [Runner safety and OpenAPI behavior](#runner-safety-and-openapi-behavior)
-  - [Optional AI gateway](#optional-ai-gateway)
-    - [Framework AI gateway examples](#framework-ai-gateway-examples)
-      - [Express](#express)
-      - [FastAPI](#fastapi)
-      - [Laravel](#laravel)
-      - [Django](#django)
-      - [Gin](#gin)
-      - [Spring Boot](#spring-boot)
-      - [ASP.NET Core](#aspnet-core)
-      - [Rails](#rails)
-      - [Axum](#axum)
-  - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
-  - [Local history](#local-history)
-  - [Theme system](#theme-system)
-  - [The "no specification" state](#the-no-specification-state)
-  - [URL routing \& deep links](#url-routing--deep-links)
-  - [Keyboard shortcuts](#keyboard-shortcuts)
-  - [Browser persistence](#browser-persistence)
-  - [Project structure](#project-structure)
-  - [Deployment notes](#deployment-notes)
-    - [GitHub Pages demo](#github-pages-demo)
-  - [FAQ](#faq)
-  - [License](#license)
+- [Features](#features)
+- [Version 0.1.5](#version-015)
+- [Quick start](#quick-start)
+- [Docker](#docker)
+- [Configuration](#configuration)
+  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+  - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
+  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+- [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
+  - [Build-time settings](#build-time-settings)
+  - [Downloader services](#downloader-services)
+- [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
+- [OpenDoc UI assistant](#opendoc-ui-assistant)
+- [Optional AI gateway](#optional-ai-gateway)
+  - [Framework AI gateway examples](#framework-ai-gateway-examples)
+- [Local history](#local-history)
+- [Theme system](#theme-system)
+- [The "no specification" state](#the-no-specification-state)
+- [URL routing & deep links](#url-routing--deep-links)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Browser persistence](#browser-persistence)
+- [Project structure](#project-structure)
+- [Deployment notes](#deployment-notes)
+  - [GitHub Pages demo](#github-pages-demo)
+- [FAQ](#faq)
+- [License](#license)
 
 ---
 
@@ -163,28 +145,65 @@ be dropped on any static host (nginx, GitHub Pages, S3, `python -m http.server`,
 AI gateway is only needed for providers that do not support browser CORS or when you want keys to
 remain server-side.
 
-> The repository intentionally ships **without** a `config.json` or sample spec files, so each
-> deployment keeps its own. Until you add one, the app runs in [local mode](#mode-3--no-configuration-local-mode).
+> Regular non-Docker builds intentionally ship **without** `public/config.json` or sample spec files,
+> so each deployment keeps its own. Until you add one, the app runs in
+> [local mode](#mode-3--no-configuration-local-mode). The Docker image uses `docker/config.json`.
 
 ---
 
-## Docker Version
+## Docker
 
-You can get a Docker container running in two simple steps.
+Docker Desktop, or Docker Engine with the Compose plugin, is the only prerequisite. The image uses a
+lockfile-based `npm ci` builder and serves the verified static bundle from nginx.
 
-**Prerequirements**: Docker CLI & Bash
+The cross-platform path is Docker Compose:
 
-Build the image:
-
-```bash
-./docker/build.sh
+```console
+docker compose up --build --detach
 ```
 
-Run the container:
+Open <http://localhost:3000>. Stop and remove the container with:
+
+```console
+docker compose down
+```
+
+`docker/config.json` is mounted into the container and defaults to hybrid local-file mode. Edit that
+file to add configured specifications, then reload the browser; rebuilding the image is unnecessary.
+The file is served without browser caching.
+
+Build-time frontend options can be supplied through environment variables. For example, in Windows
+PowerShell:
+
+```powershell
+$env:VITE_LOAD_FROM_URL = 'true'
+$env:VITE_SPEC_DOWNLOADER = 'https://proxy.example.com/download?spec_url={URL}'
+docker compose up --build --detach
+```
+
+The supported build variables are `VITE_DISABLE_APPLE_EMOJIS`, `VITE_LOAD_FROM_URL`,
+`VITE_SPEC_DOWNLOADER`, and `VITE_BASE_PATH`. Set `OPENDOC_PORT` to change the host port.
+
+Equivalent helper scripts are included for direct `docker build` / `docker run` workflows:
+
+```powershell
+# Windows PowerShell
+.\docker\build.ps1
+.\docker\run.ps1
+```
 
 ```bash
-./docker/run.sh
+# macOS, Linux, WSL, or Git Bash
+sh ./docker/build.sh
+sh ./docker/run.sh
 ```
+
+The run scripts replace an existing OpenDoc UI container, mount `docker/config.json` read-only, and
+publish port `3000` by default. Override the image, container, configuration, port, or restart policy
+with `OPENDOC_IMAGE_NAME`, `OPENDOC_CONTAINER_NAME`, `OPENDOC_CONFIG_FILE`, `OPENDOC_PORT`, and
+`OPENDOC_RESTART_POLICY`.
+
+The container exposes `/healthz` and includes a working Docker health check.
 
 ---
 
@@ -878,7 +897,7 @@ reload.
 | `Ctrl / ⌘ + K`                      | Focus global search                                                                                                 |
 | `Esc`                               | Close the top-most modal / overlay                                                                                  |
 | `Alt + ←` / `Alt + →`               | Previous / next endpoint tab                                                                                        |
-| `Ctrl + \`` /`Ctrl + Shift + \``    | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
+| `Ctrl + \`` / `Ctrl + Shift + \``   | Open the tab switcher and move to the next / previous tab (Windows Alt+Tab style; release to switch, Esc to cancel) |
 | `Ctrl+Enter` (in runner)            | Send the request from the active pane                                                                               |
 | `Ctrl+↑` / `Ctrl+↓` (in split view) | Move focus between docs and runner panes                                                                            |
 
@@ -931,6 +950,8 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 ## Project structure
 
 ```
+compose.yaml             # cross-platform OpenDoc UI container deployment
+docker/                  # production image, nginx, config, and helper scripts
 public/                  # static assets; config.json lives here (pre-defined mode)
 proxy/                   # hardened Node/Python/PHP/Go/Java/.NET specification downloaders
 ai-proxy/                # Express/FastAPI/Django/Laravel/Gin/Spring/.NET/Rails/Axum AI gateways
@@ -966,6 +987,8 @@ src/
   browser will block the fetch. Relative URLs (`/specs/...`) avoid this entirely.
 - **Local mode:** simply don't ship a config source — a 404 on `/config.json` is what
   enables local file loading.
+- **Docker:** `docker/config.json` enables local files through hybrid mode and can be replaced with
+  deployment-specific configured specifications.
 - The API runner calls endpoints directly from the visitor's browser. If your API does not
   allow CORS, the runner will show the browser's CORS error — the docs still work.
 
