@@ -9,6 +9,7 @@ import {
 interface RunnerCompatibilityReportProps {
     spec: OpenApiSpec;
     onSelectEndpoint: (path: string, method: string) => void;
+    onOpenCompatibility: () => void;
 }
 
 const presentation: Record<
@@ -93,7 +94,11 @@ const Finding = ({
     );
 };
 
-export default function RunnerCompatibilityReport({spec, onSelectEndpoint}: RunnerCompatibilityReportProps) {
+export default function RunnerCompatibilityReport({
+    spec,
+    onSelectEndpoint,
+    onOpenCompatibility,
+}: RunnerCompatibilityReportProps) {
     const report = useMemo(() => analyzeRunnerCompatibility(spec), [spec]);
     const summary = [
         {
@@ -130,15 +135,27 @@ export default function RunnerCompatibilityReport({spec, onSelectEndpoint}: Runn
 
     return (
         <section data-runner-compatibility-report className="space-y-3">
-            <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Runner Compatibility
-                </h2>
-                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                    A static preflight of this specification against OpenDoc&apos;s browser Runner. This report cannot
-                    predict CORS, DNS, authentication state, server behavior, or payloads omitted or mislabeled by the
-                    specification.
-                </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        Runner Compatibility
+                    </h2>
+                    <p className="mt-1 max-w-4xl text-[11px] leading-relaxed text-[var(--text-muted)]">
+                        A static preflight of this specification against OpenDoc&apos;s browser Runner. This report
+                        cannot predict CORS, DNS, authentication state, server behavior, or payloads omitted or
+                        mislabeled by the specification.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onOpenCompatibility}
+                    aria-label="Open Runner Compatibility"
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/8 px-3 text-[10px] font-extrabold text-[var(--primary)] transition-colors hover:bg-[var(--primary)]/14 cursor-pointer"
+                >
+                    <i className="ph-fill ph-chart-bar text-[15px]" />
+                    Full compatibility matrix
+                    <i className="ph ph-arrow-right text-[13px]" />
+                </button>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                 {summary.map(item => (

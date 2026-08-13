@@ -167,6 +167,25 @@ async function loadSpecification(page: Page) {
     await expect(page.getByText('Browser Runner Fixture', {exact: true}).first()).toBeVisible();
 }
 
+async function readIndexedDbRecord(page: Page, key: string): Promise<unknown> {
+    return page.evaluate(
+        recordKey =>
+            new Promise(resolve => {
+                const open = indexedDB.open('opendoc-ui');
+                open.onerror = () => resolve(null);
+                open.onsuccess = () => {
+                    const request = open.result
+                        .transaction('records', 'readonly')
+                        .objectStore('records')
+                        .get(recordKey);
+                    request.onerror = () => resolve(null);
+                    request.onsuccess = () => resolve(request.result?.value ?? null);
+                };
+            }),
+        key,
+    );
+}
+
 test('runs deliberately invalid requests and keeps the last ten outcomes', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
@@ -407,16 +426,84 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await expect(navigator).toHaveCount(0);
 });
 
+test('migrates legacy localStorage state once and keeps IndexedDB as the primary store', async ({page}) => {
+    await page.addInitScript(() => localStorage.setItem('sidebar_width', '312'));
+    await page.goto('/');
+    await expect.poll(async () => await readIndexedDbRecord(page, 'storage:opendoc:ui:sidebar_width')).toBe('312');
+    expect(
+        await page.evaluate(() => ({
+            legacy: localStorage.getItem('sidebar_width'),
+            current: localStorage.getItem('opendoc:ui:sidebar_width'),
+        })),
+    ).toEqual({legacy: null, current: null});
+});
+
 test('treats clean endpoint deep links as source of truth and opens a permanent tab', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     await expect(page).toHaveURL(/\/parsable\/.*\/api\//);
     const endpointUrl = page.url();
     expect(endpointUrl).not.toContain('#/');
+    await expect.poll(async () => Boolean(await readIndexedDbRecord(page, 'storage:opendoc_local_history'))).toBe(true);
+    expect(
+        await page.evaluate(() => Object.keys(localStorage).filter(key => key.toLowerCase().startsWith('opendoc'))),
+    ).toEqual([]);
     await page.getByRole('button', {name: /Close Send permissive validation request/i}).click();
     await page.goto(endpointUrl);
     await expect(page.getByText('Send permissive validation request', {exact: true}).first()).toBeVisible();
     await expect(page.locator('[data-tab-id="post:/validate/{id}"]')).toHaveAttribute('data-tab-preview', 'false');
+});
+
+test('anchors configured specs to the app root across clean deep links, reloads, and browser history', async ({
+    page,
+}) => {
+    const configRequests: string[] = [];
+    const specificationRequests: string[] = [];
+    const configuredSpec = JSON.stringify({
+        openapi: '3.1.1',
+        info: {title: 'Deep Link Config API', version: '1'},
+        paths: {
+            '/deep': {
+                get: {
+                    operationId: 'listDeep',
+                    summary: 'List deep-link records',
+                    responses: {'200': {description: 'OK'}},
+                },
+            },
+        },
+    });
+    await page.route('**/config.json', async route => {
+        configRequests.push(new URL(route.request().url()).pathname);
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({
+                parsables: {
+                    configured: {
+                        title: 'Deep Link Config API',
+                        url: 'fixtures/deep.json',
+                    },
+                },
+            }),
+        });
+    });
+    await page.route('**/fixtures/deep.json', async route => {
+        specificationRequests.push(new URL(route.request().url()).pathname);
+        await route.fulfill({contentType: 'application/json', body: configuredSpec});
+    });
+
+    const deepLink = '/parsable/configured/api/listDeep';
+    await page.goto(deepLink);
+    await expect(page.getByText('List deep-link records', {exact: true}).first()).toBeVisible();
+    await expect(page.locator('[data-tab-id="get:/deep"]')).toHaveAttribute('data-tab-preview', 'false');
+    await page.reload();
+    await expect(page.getByText('List deep-link records', {exact: true}).first()).toBeVisible();
+
+    await page.goto('/');
+    await expect(page.getByText('Deep Link Config API', {exact: true}).first()).toBeVisible();
+    await page.goBack();
+    await expect(page.getByText('List deep-link records', {exact: true}).first()).toBeVisible();
+    expect(new Set(configRequests)).toEqual(new Set(['/config.json']));
+    expect(new Set(specificationRequests)).toEqual(new Set(['/fixtures/deep.json']));
 });
 
 test('deep-linked responses collapse siblings, align to the top and receive the border effect', async ({page}) => {
@@ -453,7 +540,7 @@ test('deep-linked responses collapse siblings, align to the top and receive the 
 
 test('renders the embedded Apple sprite set without changing emoji inside code', async ({page}) => {
     await loadSpecification(page);
-    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    await page.locator('[data-nav-view="view:home"]').click();
     await expect(page.locator('span.emoji[aria-label="🚀"]')).toHaveCount(1);
     await expect(page.locator('span.emoji[aria-label=":fire:"]')).toHaveCount(1);
     await expect(page.locator('span.emoji[aria-label="👩🏽‍💻"]')).toHaveCount(1);
@@ -467,7 +554,8 @@ test('renders the embedded Apple sprite set without changing emoji inside code',
 
 test('reports specification-wide Runner compatibility and undeclared binary uncertainty', async ({page}) => {
     await loadSpecification(page);
-    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    await page.locator('[data-nav-view="view:home"]').click();
+    await expect(page.locator('[data-specification-statistics]')).toContainText('Operations by method');
     const report = page.locator('[data-runner-compatibility-report]');
     await expect(report).toBeVisible();
     await expect(report).toContainText('Runner Compatibility');
@@ -476,11 +564,15 @@ test('reports specification-wide Runner compatibility and undeclared binary unce
     await expect(report).toContainText('/media/{file_name}');
     await expect(report).toContainText('/exports/report');
 
-    await page.getByRole('button', {name: 'Runner Compatibility'}).click();
+    await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
     await expect(page).toHaveURL(/\/compatibility$/);
     await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
+    await expect(page.locator('[data-compatibility-statistics]')).toBeVisible();
+    await expect(page.locator('[data-nav-view="view:home"]')).toHaveAttribute('aria-current', 'page');
     const matrix = page.getByRole('table');
     await expect(matrix.getByRole('row')).toHaveCount(7);
+    await expect(matrix.getByRole('columnheader').first()).toHaveText('#');
+    await expect(matrix.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('1');
     await expect(matrix).toContainText('/media/{file_name}');
     await expect(matrix).toContainText('C · 60');
 });
@@ -548,57 +640,6 @@ test('layers the local endpoint filter over global results without searching tag
     await expect(layeredInput).toHaveCount(0);
     await expect(globalSearch).toHaveValue('Billing Folder');
     await expect(sidebar.getByText('API Navigation', {exact: true})).toBeVisible();
-});
-
-test('groups configured API versions in the searchable catalog', async ({page}) => {
-    const versionedSpec = (version: string) =>
-        JSON.stringify({
-            openapi: '3.1.1',
-            info: {title: 'Catalog API', version, description: `Catalog API version ${version}`},
-            paths: {'/items': {get: {summary: 'List items', responses: {'200': {description: 'ok'}}}}},
-        });
-    await page.addInitScript(
-        ([v1, v2]) => {
-            window.INITIAL_CONFIG = {
-                parsables: {
-                    'catalog-v2': {
-                        title: 'Catalog API',
-                        group: 'catalog-api',
-                        version: '2.0',
-                        categories: ['Core'],
-                        tags: ['Items'],
-                        isCustom: true,
-                        rawSpec: v2,
-                    },
-                    'catalog-v1': {
-                        title: 'Catalog API',
-                        group: 'catalog-api',
-                        version: '1.0',
-                        categories: ['Core'],
-                        tags: ['Legacy'],
-                        isCustom: true,
-                        rawSpec: v1,
-                    },
-                },
-            };
-        },
-        [versionedSpec('1.0'), versionedSpec('2.0')],
-    );
-    await page.goto('/');
-    await expect(page.getByText('Catalog API', {exact: true}).first()).toBeVisible();
-    await page.getByRole('button', {name: 'API Catalog'}).click();
-    await expect(page).toHaveURL(/\/catalog$/);
-    await expect(page.getByRole('heading', {name: 'API Catalog'})).toBeVisible();
-    await expect(page.getByText(/1 API product/)).toBeVisible();
-    const versions = page.getByRole('button', {name: 'Select Catalog API version'});
-    await versions.click();
-    await page.getByRole('option', {name: '1.0', exact: true}).click();
-    await expect(versions).toContainText('1.0');
-    await page.getByPlaceholder(/Search APIs/).fill('Legacy');
-    await expect(page.getByText('Catalog API', {exact: true}).last()).toBeVisible();
-    await page.getByRole('button', {name: 'Open API'}).click();
-    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
-    await expect(page.getByText('VERSION 1.0', {exact: true})).toBeVisible();
 });
 
 test('combines configured and local specifications in hybrid mode', async ({page}) => {
@@ -768,6 +809,17 @@ test('opens navbar AI without auto-targeting and offers endpoint-specific new co
     await expect(page.getByLabel('Targeted in AI assistant')).toHaveCount(1);
 });
 
+test('highlights schema search matches and the selected first-letter filter', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByRole('button', {name: /Schema Explorer/i}).click();
+    const search = page.getByPlaceholder(/Search schemas/);
+    await search.fill('Tiny');
+    await expect(page.locator('mark').filter({hasText: 'Tiny'}).first()).toBeVisible();
+    await search.fill('');
+    await page.getByRole('button', {name: 'T', exact: true}).click();
+    await expect(page.locator('mark').filter({hasText: 'T'}).first()).toBeVisible();
+});
+
 test('keeps a small desktop schema modal content-sized without an empty lower body', async ({page}) => {
     await loadSpecification(page);
     await page.getByRole('button', {name: /Schema Explorer/i}).click();
@@ -820,7 +872,8 @@ test('keeps unresolved external references scoped and lets users add the missing
     await expect(page.getByRole('heading', {name: 'OpenDoc UI needs to recover'})).toHaveCount(0);
     await page.keyboard.press('Escape');
 
-    await page.getByRole('button', {name: 'Runner Compatibility'}).click();
+    await page.locator('[data-nav-view="view:home"]').click();
+    await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
     await expect(page.getByText(/label-base\.json/).first()).toBeVisible();
     await expect(page.getByRole('table')).toContainText('D · 35');
     chooserPromise = page.waitForEvent('filechooser');
@@ -880,7 +933,7 @@ test('accepts and documents a pathless OAS 3.1 webhook document', async ({page})
         ),
     });
     await expect(page.getByText('Webhook Only', {exact: true}).first()).toBeVisible();
-    await page.getByRole('button', {name: /Overview & Statistics/i}).click();
+    await page.locator('[data-nav-view="view:home"]').click();
     await expect(page.getByRole('heading', {name: 'Webhooks'})).toBeVisible();
     await expect(page.getByText('Receive payment event')).toBeVisible();
     await expect(page.getByText('Documentation only')).toBeVisible();

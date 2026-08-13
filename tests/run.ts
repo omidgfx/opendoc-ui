@@ -54,7 +54,7 @@ import {
     toSafeGeneratedFileName,
 } from '@/src/utils/schemaExport';
 import {sanitizeZipEntryName} from '@/src/utils/zip';
-import {generateValidatedMock} from '@/src/utils/mockGenerator';
+import {generateValidatedMock, getMockSnippet} from '@/src/utils/mockGenerator';
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/appSpec';
@@ -660,6 +660,27 @@ test('generates deterministic mocks that validate for the supported constraint s
     assert.equal(impossible.ok, false);
     assert.equal(impossible.diagnostics[0].code, 'MOCK_GENERATION_IMPOSSIBLE');
 });
+test('keeps explicit response examples visible when a source declares an unknown schema type', () => {
+    const spec: any = {
+        ...baseSpec,
+        components: {
+            ...baseSpec.components,
+            schemas: {
+                Page: {
+                    type: 'object',
+                    properties: {
+                        previous: {
+                            type: ['url', 'null'],
+                            example: 'https://example.com/items?page=1',
+                        },
+                    },
+                },
+            },
+        },
+    };
+    const snippet = getMockSnippet({$ref: '#/components/schemas/Page'}, spec, 'response');
+    assert.deepEqual(JSON.parse(snippet), {previous: 'https://example.com/items?page=1'});
+});
 test('applies readOnly and writeOnly semantics to request and response mocks', () => {
     const schema = {
         type: 'object',
@@ -795,7 +816,7 @@ test('generates and parses clean routes for endpoints and compatibility views', 
     const spec: any = {...baseSpec, paths: {'/items': {get: operation}}};
     assert.equal(
         generateSmartRoute({
-            parsableKey: 'Catalog API',
+            parsableKey: 'Route API',
             showHome: false,
             showAbout: false,
             showAssistant: false,
@@ -805,12 +826,11 @@ test('generates and parses clean routes for endpoints and compatibility views', 
             schemaModals: [],
             activeSpec: spec,
         }),
-        '/parsable/Catalog%20API/api/listItems',
+        '/parsable/Route%20API/api/listItems',
     );
-    const compatibility = parseSmartRoute('/parsable/Catalog%20API/compatibility');
-    assert.equal(compatibility.parsableKey, 'Catalog API');
+    const compatibility = parseSmartRoute('/parsable/Route%20API/compatibility');
+    assert.equal(compatibility.parsableKey, 'Route API');
     assert.equal(compatibility.showCompatibility, true);
-    assert.equal(parseSmartRoute('#/parsable/Catalog%20API/catalog').showCatalog, true);
 });
 test('exports specification-native operations and schemas as llms.txt without mutating the source', () => {
     const spec: any = {

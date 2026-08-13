@@ -10,8 +10,10 @@ import RunnerCompatibilityReport from './RunnerCompatibilityReport';
 
 interface HomeViewProps {
     spec: OpenApiSpec | null;
+    specKey: string;
     activeAuth: ActiveAuth;
     onSelectEndpoint: (path: string, method: string) => void;
+    onOpenCompatibility: () => void;
     selectedEndpoint?: {
         path: string;
         method: string;
@@ -23,8 +25,10 @@ interface HomeViewProps {
 
 export default function HomeView({
     spec,
+    specKey,
     activeAuth,
     onSelectEndpoint,
+    onOpenCompatibility,
     selectedEndpoint,
     selectedServer,
     onSelectServer,
@@ -75,6 +79,39 @@ export default function HomeView({
         return list;
     };
     const allEndpoints = getEndpointsList();
+    const methodCounts = allEndpoints.reduce<Record<string, number>>((counts, endpoint) => {
+        const method = endpoint.method.toUpperCase();
+        counts[method] = (counts[method] || 0) + 1;
+        return counts;
+    }, {});
+    const methodStatistics = Object.entries(methodCounts).sort(([left], [right]) => {
+        const order = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT', 'QUERY'];
+        const leftIndex = order.indexOf(left);
+        const rightIndex = order.indexOf(right);
+        return (leftIndex < 0 ? order.length : leftIndex) - (rightIndex < 0 ? order.length : rightIndex);
+    });
+    const largestMethodCount = Math.max(...methodStatistics.map(([, count]) => count), 1);
+    const specificationStatistics = [
+        {label: 'Operations', value: allEndpoints.length, icon: 'ph-fill ph-path', color: 'var(--primary)'},
+        {
+            label: 'Schemas',
+            value: Object.keys(spec.components?.schemas || {}).length,
+            icon: 'ph-fill ph-diamonds-four',
+            color: 'var(--accent)',
+        },
+        {
+            label: 'Tags',
+            value: new Set(allEndpoints.flatMap(endpoint => endpoint.tags)).size,
+            icon: 'ph-fill ph-tag',
+            color: 'var(--method-put)',
+        },
+        {
+            label: 'Servers',
+            value: spec.servers?.length || 0,
+            icon: 'ph-fill ph-hard-drives',
+            color: 'var(--method-get)',
+        },
+    ];
     const filteredEndpoints = allEndpoints.filter(ep => {
         const term = searchTerm.toLowerCase();
         return (
@@ -177,7 +214,113 @@ export default function HomeView({
                 </div>
             </div>
 
-            <RunnerCompatibilityReport spec={spec} onSelectEndpoint={onSelectEndpoint} />
+            <section data-specification-statistics className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            Specification Statistics
+                        </h2>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                            Loaded as{' '}
+                            <code className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                                {specKey || 'default'}
+                            </code>
+                        </p>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                        Method bars use the active theme&apos;s HTTP colors.
+                    </span>
+                </div>
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,0.85fr)_minmax(460px,1.15fr)]">
+                    <div className="grid grid-cols-2 gap-2">
+                        {specificationStatistics.map(statistic => (
+                            <div
+                                key={statistic.label}
+                                className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4"
+                            >
+                                <span
+                                    className="flex size-8 items-center justify-center rounded-xl"
+                                    style={{
+                                        backgroundColor: `color-mix(in srgb, ${statistic.color} 12%, transparent)`,
+                                        color: statistic.color,
+                                    }}
+                                >
+                                    <i className={`${statistic.icon} text-[16px]`} />
+                                </span>
+                                <strong className="mt-3 block text-2xl font-black text-[var(--text-heading)]">
+                                    {statistic.value}
+                                </strong>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                    {statistic.label}
+                                </span>
+                                <span
+                                    className="absolute inset-x-0 bottom-0 h-0.5"
+                                    style={{backgroundColor: statistic.color}}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 className="text-xs font-extrabold text-[var(--text-heading)]">
+                                    Operations by method
+                                </h3>
+                                <p className="mt-0.5 text-[9px] text-[var(--text-muted)]">
+                                    Relative operation count in this document
+                                </p>
+                            </div>
+                            <i className="ph ph-chart-bar text-[18px] text-[var(--text-muted)]" />
+                        </div>
+                        {methodStatistics.length > 0 ? (
+                            <div className="mt-4 flex h-44 min-w-0 items-end gap-2 border-b border-[var(--border)] px-1 sm:gap-3">
+                                {methodStatistics.map(([method, count]) => {
+                                    const color = `var(--method-${method.toLowerCase()}, var(--primary))`;
+                                    const height = Math.max(10, (count / largestMethodCount) * 100);
+                                    return (
+                                        <div
+                                            key={method}
+                                            className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
+                                            title={`${method}: ${count} operation${count === 1 ? '' : 's'}`}
+                                        >
+                                            <span className="font-mono text-[10px] font-black text-[var(--text-heading)]">
+                                                {count}
+                                            </span>
+                                            <div className="flex h-[118px] w-full max-w-12 items-end rounded-t-lg bg-[var(--background)]">
+                                                <div
+                                                    className="w-full rounded-t-lg transition-[height,opacity] duration-300 group-hover:opacity-80"
+                                                    style={{height: `${height}%`, backgroundColor: color}}
+                                                />
+                                            </div>
+                                            <span
+                                                className="max-w-full truncate font-mono text-[8px] font-black"
+                                                style={{color}}
+                                            >
+                                                {method}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="mt-4 flex h-44 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-xs text-[var(--text-muted)]">
+                                No path operations are declared.
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                    OpenDoc renders from a derived in-memory view for consistent browsing; the original OpenAPI or
+                    Swagger source remains unchanged. Runner requests are sent directly from this browser to the
+                    selected server.
+                </p>
+            </section>
+
+            <RunnerCompatibilityReport
+                spec={spec}
+                onSelectEndpoint={onSelectEndpoint}
+                onOpenCompatibility={onOpenCompatibility}
+            />
 
             <div className="w-full flex flex-col md:flex-row gap-8 items-start">
                 <div className="flex-1 min-w-0 space-y-8">

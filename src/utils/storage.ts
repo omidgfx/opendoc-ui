@@ -2,43 +2,30 @@ import {idbClearPrefix, idbDelete, idbGetAll, idbSet} from './indexedDb';
 
 const IDB_STORAGE_PREFIX = 'storage:';
 const LOCAL_DELETE_MARKER = '__opendoc_ui_deleted_v1__';
-const memoryStore = new Map<string, string>();
-let storageHydrated = false;
-let indexedDbEnabled = false;
-export const hydrateStorageFromIndexedDb = async (): Promise<boolean> => {
-    if (storageHydrated) return indexedDbEnabled;
-    const records = await idbGetAll<string>(IDB_STORAGE_PREFIX);
-    if (records === null) {
-        storageHydrated = true;
-        indexedDbEnabled = false;
-        return false;
-    }
-    indexedDbEnabled = true;
-    records.forEach(record => memoryStore.set(String(record.key).slice(IDB_STORAGE_PREFIX.length), record.value));
-    try {
-        const localKeys = Object.keys(window.localStorage);
-        for (const key of localKeys) {
-            if (key === '__opendoc_storage_test__') {
-                window.localStorage.removeItem(key);
-                continue;
-            }
-            const value = window.localStorage.getItem(key);
-            if (value === null) continue;
-            if (value === LOCAL_DELETE_MARKER) {
-                memoryStore.delete(key);
-                await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
-                continue;
-            }
-            memoryStore.set(key, value);
-            await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value);
-        }
-    } catch {}
-    storageHydrated = true;
-    return true;
-};
+const LOCAL_FALLBACK_PREFIX = '__opendoc_ui_idb_fallback_v2__:';
 const TEST_KEY = '__opendoc_storage_test__';
 const LOCAL_STORAGE_BUDGET_BYTES = 4500000;
+const memoryStore = new Map<string, string>();
+const pendingOperations = new Map<string, Promise<void>>();
+let storageHydrated = false;
+let hydrationPromise: Promise<boolean> | null = null;
+let indexedDbEnabled = false;
 let lastWriteError: string | null = null;
+
+const LEGACY_EXACT_KEYS = new Set([
+    'sidebar_collapsed',
+    'sidebar_width',
+    'collapsed_tags',
+    'selected_parsable_key',
+    'endpoint_split_docs_width',
+]);
+const LEGACY_KEY_PREFIXES = ['selected_theme_name_', 'theme_mode_', 'preferred_tab_', 'endpoint_tabs_'];
+const isOpenDocOwnedKey = (key: string): boolean =>
+    key.startsWith('opendoc') ||
+    key.startsWith('__opendoc_') ||
+    LEGACY_EXACT_KEYS.has(key) ||
+    LEGACY_KEY_PREFIXES.some(prefix => key.startsWith(prefix));
+
 const byteLength = (value: string): number => {
     try {
         return new TextEncoder().encode(value).byteLength;
@@ -46,20 +33,40 @@ const byteLength = (value: string): number => {
         return value.length * 2;
     }
 };
-const readRaw = (key: string): string | null => {
-    if (memoryStore.has(key)) return memoryStore.get(key) || '';
+
+const decodeLocalValue = (value: string | null): string | null => {
+    if (value === null || value === LOCAL_DELETE_MARKER) return null;
+    return value.startsWith(LOCAL_FALLBACK_PREFIX) ? value.slice(LOCAL_FALLBACK_PREFIX.length) : value;
+};
+
+const localKeys = (): string[] => {
     try {
-        const value = window.localStorage.getItem(key);
-        return value === LOCAL_DELETE_MARKER ? null : value;
+        return Object.keys(window.localStorage).filter(isOpenDocOwnedKey);
+    } catch {
+        return [];
+    }
+};
+
+const readLocalRaw = (key: string): string | null => {
+    try {
+        return decodeLocalValue(window.localStorage.getItem(key));
     } catch {
         return null;
     }
 };
-const currentUsageBytes = (): number => {
+
+const deleteLocalRaw = (key: string): void => {
+    try {
+        window.localStorage.removeItem(key);
+    } catch {}
+};
+
+const currentLocalUsageBytes = (): number => {
     try {
         let total = 0;
         for (let index = 0; index < window.localStorage.length; index += 1) {
             const key = window.localStorage.key(index) || '';
+            if (!isOpenDocOwnedKey(key)) continue;
             total += byteLength(key) + byteLength(window.localStorage.getItem(key) || '');
         }
         return total;
@@ -67,35 +74,110 @@ const currentUsageBytes = (): number => {
         return 0;
     }
 };
-const writeRaw = (key: string, value: string): boolean => {
+
+const writeLocalRaw = (key: string, value: string): boolean => {
     try {
         const previous = window.localStorage.getItem(key) || '';
-        const projected =
-            currentUsageBytes() - byteLength(previous) - byteLength(key) + byteLength(value) + byteLength(key);
+        const projected = currentLocalUsageBytes() - byteLength(previous) + byteLength(value);
         if (projected > LOCAL_STORAGE_BUDGET_BYTES) {
-            lastWriteError = `Storage budget exceeded (${Math.round(projected / 1024)} KiB requested).`;
-            console.warn(`localStorage write skipped for "${key}": ${lastWriteError}`);
+            lastWriteError = `Fallback storage budget exceeded (${Math.round(projected / 1024)} KiB requested).`;
+            console.warn(`localStorage fallback write skipped for "${key}": ${lastWriteError}`);
             return false;
         }
         window.localStorage.setItem(key, value);
         lastWriteError = null;
         return true;
-    } catch (e) {
-        lastWriteError = e instanceof Error ? e.message : 'localStorage is unavailable.';
-        console.warn(`localStorage write failed for "${key}"`, e);
+    } catch (error) {
+        lastWriteError = error instanceof Error ? error.message : 'The localStorage fallback is unavailable.';
+        console.warn(`localStorage fallback write failed for "${key}"`, error);
         return false;
     }
 };
-const deleteRaw = (key: string) => {
-    try {
-        window.localStorage.removeItem(key);
-    } catch {}
+
+const queueIndexedDbOperation = (
+    key: string,
+    operation: () => Promise<boolean>,
+    onFailure: () => boolean,
+): Promise<void> => {
+    const previous = pendingOperations.get(key) || Promise.resolve();
+    const next = previous
+        .catch(() => undefined)
+        .then(async () => {
+            const succeeded = await operation();
+            if (succeeded) {
+                deleteLocalRaw(key);
+                lastWriteError = null;
+                return;
+            }
+            const fallbackWritten = onFailure();
+            lastWriteError = fallbackWritten
+                ? 'IndexedDB write failed; the emergency localStorage fallback is being used.'
+                : 'IndexedDB write failed and the emergency localStorage fallback is unavailable.';
+        });
+    pendingOperations.set(key, next);
+    void next.finally(() => {
+        if (pendingOperations.get(key) === next) pendingOperations.delete(key);
+    });
+    return next;
 };
-const markRawDeleted = (key: string) => {
-    try {
-        window.localStorage.setItem(key, LOCAL_DELETE_MARKER);
-    } catch {}
+
+const hydrate = async (): Promise<boolean> => {
+    const records = await idbGetAll<string>(IDB_STORAGE_PREFIX);
+    if (records === null) {
+        storageHydrated = true;
+        indexedDbEnabled = false;
+        return false;
+    }
+
+    indexedDbEnabled = true;
+    records.forEach(record => memoryStore.set(String(record.key).slice(IDB_STORAGE_PREFIX.length), record.value));
+
+    // One-time migration from older builds. Their localStorage mirror was
+    // synchronous, so migrate its latest value before removing that mirror.
+    for (const key of localKeys()) {
+        let stored: string | null = null;
+        try {
+            stored = window.localStorage.getItem(key);
+        } catch {
+            continue;
+        }
+        if (stored === LOCAL_DELETE_MARKER) {
+            memoryStore.delete(key);
+            if (await idbDelete(`${IDB_STORAGE_PREFIX}${key}`)) deleteLocalRaw(key);
+            continue;
+        }
+        if (stored === null) continue;
+        const value = decodeLocalValue(stored);
+        if (value === null) continue;
+        memoryStore.set(key, value);
+        if (await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value)) deleteLocalRaw(key);
+    }
+
+    storageHydrated = true;
+    return true;
 };
+
+export const hydrateStorageFromIndexedDb = (): Promise<boolean> => {
+    if (storageHydrated) return Promise.resolve(indexedDbEnabled);
+    if (!hydrationPromise) hydrationPromise = hydrate().finally(() => (hydrationPromise = null));
+    return hydrationPromise;
+};
+
+const readRaw = (key: string): string | null => {
+    if (memoryStore.has(key)) return memoryStore.get(key) ?? '';
+    if (indexedDbEnabled) return null;
+    return readLocalRaw(key);
+};
+
+const currentUsageBytes = (): number => {
+    if (!indexedDbEnabled) return currentLocalUsageBytes();
+    let total = 0;
+    memoryStore.forEach((value, key) => {
+        total += byteLength(key) + byteLength(value);
+    });
+    return total;
+};
+
 export const storage = {
     available(): boolean {
         if (indexedDbEnabled) return true;
@@ -116,38 +198,35 @@ export const storage = {
     },
     set(key: string, value: string): boolean {
         const normalized = String(value);
-        if (indexedDbEnabled) {
-            memoryStore.set(key, normalized);
-            const mirrored = writeRaw(key, normalized);
-            if (!mirrored) deleteRaw(key);
-            void idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized).then(written => {
-                if (!written) {
-                    lastWriteError = mirrored
-                        ? 'IndexedDB write failed; the synchronous mirror is being used.'
-                        : 'IndexedDB write failed and the synchronous mirror was unavailable.';
-                }
-            });
-            return true;
-        }
-        return writeRaw(key, normalized);
+        if (!indexedDbEnabled) return writeLocalRaw(key, normalized);
+        memoryStore.set(key, normalized);
+        void queueIndexedDbOperation(
+            key,
+            () => idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized),
+            () => writeLocalRaw(key, `${LOCAL_FALLBACK_PREFIX}${normalized}`),
+        );
+        return true;
     },
     remove(key: string) {
         void this.removeAsync(key);
     },
     async removeAsync(key: string): Promise<void> {
         memoryStore.delete(key);
-        if (indexedDbEnabled) {
-            markRawDeleted(key);
-            await idbDelete(`${IDB_STORAGE_PREFIX}${key}`);
-        } else {
-            deleteRaw(key);
+        if (!indexedDbEnabled) {
+            deleteLocalRaw(key);
+            return;
         }
+        await queueIndexedDbOperation(
+            key,
+            () => idbDelete(`${IDB_STORAGE_PREFIX}${key}`),
+            () => writeLocalRaw(key, LOCAL_DELETE_MARKER),
+        );
     },
     usageBytes(): number {
         return currentUsageBytes();
     },
     budgetBytes(): number {
-        return LOCAL_STORAGE_BUDGET_BYTES;
+        return indexedDbEnabled ? Number.MAX_SAFE_INTEGER : LOCAL_STORAGE_BUDGET_BYTES;
     },
     lastError(): string | null {
         return lastWriteError;
@@ -177,9 +256,7 @@ export const storage = {
     },
     keys(prefix: string): string[] {
         const keys = new Set<string>(memoryStore.keys());
-        try {
-            Object.keys(window.localStorage).forEach(key => keys.add(key));
-        } catch {}
+        if (!indexedDbEnabled) localKeys().forEach(key => keys.add(key));
         return Array.from(keys).filter(key => key.startsWith(prefix) && readRaw(key) !== null);
     },
     async clearPrefix(prefix: string): Promise<void> {
@@ -188,6 +265,7 @@ export const storage = {
         if (indexedDbEnabled) await idbClearPrefix(`${IDB_STORAGE_PREFIX}${prefix}`);
     },
 };
+
 export const sessionStore = {
     get(key: string, fallback = ''): string {
         try {

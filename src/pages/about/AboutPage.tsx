@@ -1,9 +1,7 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {motion} from 'motion/react';
 import pkg from '@/package.json';
-import type {OpenApiSpec} from '@/src/types';
-import {getDocumentOperations} from '@/src/utils/openapi';
 import {
     fadeUp,
     FEATURES,
@@ -15,20 +13,7 @@ import {
     TOC_SECTIONS,
 } from '@/src/data/about';
 
-interface AboutViewProps {
-    specTitle?: string;
-    parsableKey?: string;
-    spec?: OpenApiSpec | null;
-}
-
-export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps) {
-    const methodCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        getDocumentOperations(spec).forEach(({method}) => {
-            counts[method.toUpperCase()] = (counts[method.toUpperCase()] || 0) + 1;
-        });
-        return counts;
-    }, [spec]);
+export default function AboutView() {
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const tocRailRef = useRef<HTMLDivElement | null>(null);
     const [activeSection, setActiveSection] = useState('why');
@@ -179,11 +164,6 @@ export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps
                                     <span className="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]">
                                         version {pkg.version}
                                     </span>
-                                    {specTitle && (
-                                        <span className="px-2 py-0.5 rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)] truncate max-w-full">
-                                            {specTitle}
-                                        </span>
-                                    )}
                                 </motion.div>
                             </div>
                         </motion.section>
@@ -278,9 +258,9 @@ export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps
                                 </p>
                                 <p>
                                     Theme preferences, collapsed tag folders, sidebar width, tabs, cache and chat
-                                    history use browser <code className="font-mono">IndexedDB</code> first, with a
-                                    localStorage fallback, so the UI returns to exactly how you left it on your next
-                                    visit.
+                                    history are stored in browser <code className="font-mono">IndexedDB</code>. An
+                                    emergency localStorage fallback is used only when IndexedDB is unavailable, so the
+                                    UI can still recover your workspace on the next visit.
                                 </p>
                             </div>
                         </motion.section>
@@ -524,52 +504,6 @@ export default function AboutView({specTitle, parsableKey, spec}: AboutViewProps
                                     The active theme and mode are stored per specification, so switching documents
                                     preserves the visual workspace you chose for each API. System mode follows your
                                     operating system, while explicit light and dark modes override it.
-                                </p>
-                            </div>
-                        </motion.section>
-
-                        <motion.section variants={fadeUp} id="about">
-                            <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 sm:mb-4">
-                                About the loaded specification
-                            </h2>
-                            <div className="rounded-xl border p-4 sm:p-5 bg-[var(--surface)]/70 border-[var(--border)] text-xs sm:text-sm leading-relaxed text-[var(--text)] space-y-2 backdrop-blur-sm">
-                                <p>
-                                    <span className="font-bold text-[var(--text-heading)]">Title:</span>{' '}
-                                    {specTitle || 'No specification loaded'}
-                                </p>
-                                <p>
-                                    <span className="font-bold text-[var(--text-heading)]">Config key:</span>{' '}
-                                    <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">
-                                        {parsableKey || '—'}
-                                    </code>
-                                </p>
-                                <div className="pt-3 mt-3 border-t border-[var(--border)]">
-                                    <p className="font-bold text-[var(--text-heading)] mb-2">Operations by method</p>
-                                    <div className="space-y-1.5">
-                                        {Object.entries(methodCounts).map(([method, count]) => {
-                                            const max = Math.max(...Object.values(methodCounts), 1);
-                                            return (
-                                                <div key={method} className="flex items-center gap-2 text-[10px]">
-                                                    <span className="w-12 font-mono text-[var(--text-muted)]">
-                                                        {method}
-                                                    </span>
-                                                    <div className="h-2 flex-1 rounded-full bg-[var(--background)] overflow-hidden">
-                                                        <div
-                                                            className="h-full rounded-full bg-[var(--primary)]"
-                                                            style={{width: `${(count / max) * 100}%`}}
-                                                        />
-                                                    </div>
-                                                    <span className="w-5 text-right font-mono">{count}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <p className="text-[var(--text-muted)]">
-                                    Swagger 2.x and OpenAPI 3.x descriptors are accepted in JSON or YAML and normalized
-                                    before rendering, so every view works the same regardless of the source format.
-                                    Requests made through the API Runner go directly from your browser to the API's
-                                    servers, exactly as a client application would send them.
                                 </p>
                             </div>
                         </motion.section>

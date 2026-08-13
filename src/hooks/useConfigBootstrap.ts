@@ -37,12 +37,15 @@ export function useConfigBootstrap({
             migrateLegacyStorage();
             let data: any = null;
             let source: ConfigSource = 'none';
+            const appBaseUrl = new URL(String((import.meta as any).env?.BASE_URL || '/'), window.location.origin);
+            let configBaseUrl = appBaseUrl;
             if (window.INITIAL_CONFIG) {
                 data = window.INITIAL_CONFIG;
                 source = 'initial';
             } else {
                 try {
-                    const configUrl = new URL('config.json', document.baseURI).href;
+                    const configUrl = new URL('config.json', appBaseUrl);
+                    configBaseUrl = configUrl;
                     const response = await fetch(configUrl, {cache: 'no-store'});
                     if (response.ok) {
                         data = await response.json();
@@ -67,17 +70,11 @@ export function useConfigBootstrap({
             const loaded: ParsableConfig = {};
             if (data?.parsables && typeof data.parsables === 'object') {
                 Object.entries(data.parsables).forEach(([key, value]: [string, any]) => {
+                    const configuredUrl = String(value.url || '').trim();
                     loaded[key] = {
                         theme: value.theme || 'Default Slate',
-                        url: value.url || '',
+                        url: configuredUrl ? new URL(configuredUrl, configBaseUrl).href : '',
                         title: value.title || key,
-                        description: value.description || '',
-                        version: value.version || '',
-                        group: value.group || '',
-                        categories: Array.isArray(value.categories) ? value.categories.map(String) : [],
-                        tags: Array.isArray(value.tags) ? value.tags.map(String) : [],
-                        icon: value.icon || '',
-                        hiddenFromCatalog: value.hiddenFromCatalog === true,
                         isCustom: value.isCustom === true || !!value.rawSpec,
                         rawSpec: value.rawSpec || '',
                     };

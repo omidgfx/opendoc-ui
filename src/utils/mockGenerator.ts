@@ -129,6 +129,8 @@ export function generateMock(
     return null;
 }
 
+const KNOWN_SCHEMA_TYPES = new Set(['null', 'array', 'object', 'integer', 'number', 'string', 'boolean']);
+
 const valueTypeMatches = (type: string, value: unknown): boolean => {
     if (type === 'null') return value === null;
     if (type === 'array') return Array.isArray(value);
@@ -177,7 +179,8 @@ export const validateMockValue = (
     }
     const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
     if (schema.nullable === true) types.push('null');
-    if (types.length > 0 && !types.some((type: string) => valueTypeMatches(type, value)))
+    const hasUnknownType = types.some((type: string) => !KNOWN_SCHEMA_TYPES.has(type));
+    if (!hasUnknownType && types.length > 0 && !types.some((type: string) => valueTypeMatches(type, value)))
         return [`${path}: value does not match type ${types.join(' | ')}`];
 
     const errors: string[] = [];

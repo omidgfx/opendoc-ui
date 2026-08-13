@@ -73,7 +73,6 @@ export default function App() {
     const [showHome, setShowHome] = useState(true);
     const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
     const [showCompatibility, setShowCompatibility] = useState(false);
-    const [showCatalog, setShowCatalog] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
     const [assistantContextEndpoints, setAssistantContextEndpoints] = useState<
@@ -231,8 +230,6 @@ export default function App() {
         setShowSchemaExplorer,
         showCompatibility,
         setShowCompatibility,
-        showCatalog,
-        setShowCatalog,
         showAbout,
         setShowAbout,
         showAssistant,
@@ -302,7 +299,6 @@ export default function App() {
             setShowHome(false);
             setShowSchemaExplorer(false);
             setShowCompatibility(false);
-            setShowCatalog(false);
             setShowAbout(false);
             setShowAssistant(false);
             setAssistantContextEndpoints([]);
@@ -435,8 +431,6 @@ export default function App() {
         setShowSchemaExplorer,
         showCompatibility,
         setShowCompatibility,
-        showCatalog,
-        setShowCatalog,
         selectedEndpoint,
         setSelectedEndpoint,
         selectedViewMode: selectedTab,
@@ -499,7 +493,6 @@ export default function App() {
                 showAssistant: view === 'assistant',
                 showSchemaExplorer: view === 'schemas',
                 showCompatibility: view === 'compatibility',
-                showCatalog: view === 'catalog',
                 endpoint: null,
                 tab: 'docs',
                 schemaModals: [],
@@ -635,7 +628,6 @@ export default function App() {
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowCompatibility(false);
-        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
         setActiveResponseCode(null);
@@ -716,7 +708,6 @@ export default function App() {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowCompatibility(false);
-                setShowCatalog(false);
                 setShowAbout(false);
                 setSearchQuery('');
                 setResultsQuery('');
@@ -788,11 +779,6 @@ export default function App() {
         openViewTab('compatibility');
         closeMobileIfNeeded();
     };
-    const handleOpenCatalog = () => {
-        setScrollIntent({type: 'view', id: 'view:catalog'});
-        openViewTab('catalog');
-        closeMobileIfNeeded();
-    };
     const handleOpenAssistant = () => {
         setAssistantUnread(false);
         openViewTab('assistant');
@@ -804,7 +790,6 @@ export default function App() {
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowCompatibility(false);
-        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
     };
@@ -930,7 +915,6 @@ export default function App() {
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowCompatibility(false);
-        setShowCatalog(false);
         setShowAbout(false);
         setShowAssistant(false);
         setAssistantContextEndpoints([]);
@@ -971,11 +955,9 @@ export default function App() {
         <WorkspaceContent
             spec={spec}
             specKey={selectedParsableKey}
-            parsables={parsables}
             canOpenLocal={canOpenLocal}
             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
             onAddReferencedFiles={localSpec?.key === selectedParsableKey ? openReferencedFilePicker : undefined}
-            onSelectParsable={handleSelectParsable}
             showAbout={showAbout}
             showWelcome={showWelcome}
             assistantActive={assistantTabActive}
@@ -1012,10 +994,10 @@ export default function App() {
             setExamineResponses={setExamineResponses}
             showSchemaExplorer={showSchemaExplorer}
             showCompatibility={showCompatibility}
-            showCatalog={showCatalog}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
+            onOpenCompatibility={handleOpenCompatibility}
             onOpenSchema={handlePushSchema}
             onSearchChange={handleSearchChange}
             onSelectEndpoint={handleSelectEndpoint}
@@ -1028,7 +1010,6 @@ export default function App() {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
                 setShowCompatibility(false);
-                setShowCatalog(false);
                 setShowAbout(false);
                 setShowAssistant(false);
             }}
@@ -1123,10 +1104,7 @@ export default function App() {
                                     onToggleCollapse={() => setDesktopCollapsed(c => !c)}
                                     onOpenSchemaExplorer={handleOpenSchemaExplorer}
                                     showSchemaExplorer={showSchemaExplorer}
-                                    onOpenCompatibility={handleOpenCompatibility}
                                     showCompatibility={showCompatibility}
-                                    onOpenCatalog={handleOpenCatalog}
-                                    showCatalog={showCatalog}
                                     selectedMethods={selectedMethods}
                                     setSelectedMethods={setSelectedMethods}
                                     selectedTags={selectedTags}

@@ -12,7 +12,6 @@ export const TOC_SECTIONS: Array<{
     {id: 'preview', label: 'Preview', icon: 'ph ph-eye'},
     {id: 'reading', label: 'Reading', icon: 'ph ph-book-open'},
     {id: 'theme-system', label: 'Theme system', icon: 'ph ph-paint-brush'},
-    {id: 'about', label: 'About', icon: 'ph ph-info'},
     {id: 'license', label: 'License', icon: 'ph ph-scroll'},
 ];
 export const FEATURES: Array<{
