@@ -34,6 +34,18 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Validate Docker PowerShell helpers
+        shell: pwsh
+        run: |
+          foreach ($file in @('docker/build.ps1', 'docker/run.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file`: $($_.Message)" }
+              exit 1
+            }
+          }
 
   browser:
     runs-on: ubuntu-latest
@@ -46,3 +58,45 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      OPENDOC_IMAGE_NAME: opendoc-ui-smoke
+      OPENDOC_CONTAINER_NAME: opendoc-ui-smoke
+      OPENDOC_PORT: 18080
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate shell helpers
+        run: sh -n docker/build.sh docker/run.sh
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build container image
+        run: sh docker/build.sh ci
+      - name: Start container
+        run: sh docker/run.sh ci
+      - name: Verify health and static configuration
+        run: |
+          for attempt in {1..30}; do
+            status="$(docker inspect --format='{{.State.Health.Status}}' opendoc-ui-smoke)"
+            if [ "$status" = healthy ]; then
+              curl --fail --silent --show-error http://127.0.0.1:18080/index.html >/dev/null
+              curl --fail --silent --show-error http://127.0.0.1:18080/config.json | grep --quiet 'allowLocalSpecifications'
+              curl --fail --silent --show-error --head http://127.0.0.1:18080/config.json | grep --ignore-case --quiet 'cache-control:.*no-store'
+              exit 0
+            fi
+            if [ "$status" = unhealthy ]; then
+              docker logs opendoc-ui-smoke
+              exit 1
+            fi
+            echo "Waiting for container health ($attempt/30): $status"
+            sleep 2
+          done
+          docker logs opendoc-ui-smoke
+          exit 1
+      - name: Show container logs
+        if: always()
+        run: docker logs opendoc-ui-smoke || true
+      - name: Remove smoke-test container
+        if: always()
+        run: docker rm --force opendoc-ui-smoke || true

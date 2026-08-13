@@ -1,0 +1,20 @@
+services:
+  opendoc-ui:
+    image: '${OPENDOC_IMAGE_NAME:-opendoc-ui}:local'
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        VITE_DISABLE_APPLE_EMOJIS: '${VITE_DISABLE_APPLE_EMOJIS:-true}'
+        VITE_LOAD_FROM_URL: '${VITE_LOAD_FROM_URL:-false}'
+        VITE_SPEC_DOWNLOADER: '${VITE_SPEC_DOWNLOADER:-}'
+        VITE_BASE_PATH: '${VITE_BASE_PATH:-/}'
+    container_name: '${OPENDOC_CONTAINER_NAME:-opendoc-ui}'
+    ports:
+      - '${OPENDOC_PORT:-3000}:80'
+    volumes:
+      - type: bind
+        source: '${OPENDOC_CONFIG_FILE:-./docker/config.json}'
+        target: /usr/share/nginx/html/config.json
+        read_only: true
+    restart: '${OPENDOC_RESTART_POLICY:-unless-stopped}'
