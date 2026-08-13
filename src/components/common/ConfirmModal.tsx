@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
@@ -24,9 +25,10 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
     const transition = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, transition.requestClose);
-    if (!transition.shouldRender) return null;
-    return (
+    if (!transition.shouldRender || typeof document === 'undefined') return null;
+    return createPortal(
         <div
+            data-confirm-modal-root
             className={`${transition.backdropClassName} fixed inset-0 z-[5000] bg-black/50 backdrop-blur-[2px]`}
             onMouseDown={event => {
                 if (event.target === event.currentTarget) transition.requestClose();
@@ -61,6 +63,7 @@ export default function ConfirmModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
