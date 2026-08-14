@@ -54,6 +54,11 @@ export const FEATURES: Array<{
         title: 'Share Deep Links',
         desc: 'Every endpoint, tab, response and schema modal lives in the URL hash for perfect link sharing.',
     },
+    {
+        icon: 'ph-fill ph-note',
+        title: 'Local Notes & Todos',
+        desc: 'Private per-endpoint Markdown notes and todos with fourteen tones and hide-on-complete workflows, plus JSON export/import that detects orphaned notes.',
+    },
 ];
 type Shortcut = {
     k: string;
