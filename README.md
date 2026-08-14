@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.8-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.9-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -16,6 +16,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
+- [Version 0.1.9](#version-019)
 - [Version 0.1.8](#version-018)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -81,6 +82,35 @@ CORS-enabled providers directly or an optional gateway.
 - **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; recursive property matrices and Runner forms stop at cycle boundaries, and missing local files can be added after the root is opened.
 - **Clean routes** — endpoint, schema, compatibility, and assistant links use normal paths while retaining legacy hash-link compatibility.
 - **Crash recovery** — view-level boundaries isolate malformed endpoint/schema content, while the global recovery screen remains the final fallback.
+
+---
+
+## Version 0.1.9
+
+This release refines the notes workspace into a safe trash/orphaned workflow, detaches Runner
+Compatibility into its own sidebar page, and polishes the Runner form and local notes toolbar:
+
+- adds a spec-scoped **Trash** with restore, permanent delete, and empty-trash actions — deleting a note
+  no longer destroys it, and every destructive action asks for confirmation;
+- adds a dedicated **Orphaned** list parallel to the trash: notes whose endpoint disappears from the
+  loaded specification (removed, renamed, or imported from another spec) land there, can be re-assigned
+  to another endpoint through a compact searchable picker, or deleted permanently with confirmation;
+- **Move all to trash** only moves active notes; orphaned notes are never touched by bulk deletion, and
+  restoring a trashed note whose endpoint is missing returns it to the Orphaned list;
+- importing notes exported from another specification warns clearly that they may not belong to the
+  current spec before anything is merged;
+- detaches **Runner Compatibility** from the Overview view into its own sidebar page, with a matching
+  collapsed-rail and mobile entry, and removes its back-to-overview button;
+- exposes named oneOf/anyOf branch alternatives (referenced schema names) in the Runner request body and
+  the View Documentation request-body matrix, keeps a restored body on its edited branch, and produces
+  JSON `null` for pure-null alternatives;
+- marks recursive and reused schemas with a loop icon across schema tables, example representations,
+  schema modals, and the Runner's circular-reference guard;
+- adds JSON export/import of all notes (`opendoc-endpoint-notes`) with orphaned-note detection;
+- removes the hover focus-steal from Runner field frames so clicking the request body never jumps focus
+  into its first input, and aligns the notes-sidebar resize handle with the main sidebar style;
+- reorganizes the Local Notes page around a toolbar holding New note, Import, Export, Orphaned, Trash,
+  and Move all to trash.
 
 ---
 
