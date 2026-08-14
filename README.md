@@ -548,9 +548,16 @@ simple-note/todo filters.
   restore notes from such a file. Export detects notes whose endpoint no longer exists in the loaded
   specification, asks before writing them, and records their ids as `orphanedNoteIds` so nothing is
   silently lost. Import validates the file, classifies notes against the current specification
-  (matching, orphaned, or already present), and lets you import everything or only the matching notes;
-  orphaned notes stay available under the **Unavailable endpoint** group and respect per-endpoint
-  capacity limits and id deduplication.
+  (matching, orphaned, or already present), warns clearly when the file was exported from a different
+  specification, and lets you import everything or only the matching notes; imported notes respect
+  per-endpoint capacity limits and id deduplication.
+- **Trash.** Deleting a note moves it to the spec-scoped trash instead of removing it forever. The
+  Local Notes page shows a **Trash** button that opens a modal with restore, permanent delete, and
+  empty-trash actions.
+- **Orphaned notes.** Notes whose endpoint disappears from the loaded specification (removed, renamed,
+  or imported from another spec) are kept in a dedicated **Orphaned** list instead of mixing into the
+  page. From the Orphaned modal each note can be re-assigned to another endpoint or deleted
+  permanently, so nothing is lost when an endpoint is renamed.
 
 Resetting one specification preserves its local notes by default. The reset confirmation includes an
 unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all
