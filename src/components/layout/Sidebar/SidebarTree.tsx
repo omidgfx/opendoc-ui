@@ -328,7 +328,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                                     ? 'text-[var(--primary-contrast)]'
                                                                     : ep.isHidden
                                                                       ? 'text-[var(--text-muted)]'
-                                                                      : 'text-[#f59e0b] group-hover:text-[var(--primary)]',
+                                                                      : 'text-[#f59e0b]',
                                                             )}
                                                             aria-label={`${noteCount} local notes`}
                                                         />

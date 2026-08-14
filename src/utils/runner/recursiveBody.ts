@@ -14,16 +14,29 @@ export const containsMarkdown = (description?: string): boolean => {
 };
 export const usesDescriptionTooltip = (description?: string): boolean =>
     !!description && (description.trim().length > DESCRIPTION_TOOLTIP_THRESHOLD || containsMarkdown(description));
-export const resolved = (schema: any, spec: OpenApiSpec): any => {
-    if (schema === true) return {'x-opendoc-boolean-schema': true};
-    if (schema === false) return {'x-opendoc-boolean-schema': false, title: 'No value satisfies this schema'};
-    const source = schema?.$ref ? resolveReference(schema, spec) || schema : (schema ?? {});
+export const RUNNER_BOOLEAN_SCHEMA = Symbol('runner-boolean-schema');
+export const RUNNER_ALLOF_CONFLICTS = Symbol('runner-all-of-conflicts');
+
+export const resolved = (schema: any, spec: OpenApiSpec, ancestorRefs = new Set<string>(), depth = 0): any => {
+    if (schema === true) return {[RUNNER_BOOLEAN_SCHEMA]: true};
+    if (schema === false) return {[RUNNER_BOOLEAN_SCHEMA]: false, title: 'No value satisfies this schema'};
+    if (depth > 64) return schema ?? {};
+
+    let source = schema ?? {};
+    const refs = new Set(ancestorRefs);
+    if (source?.$ref) {
+        const ref = String(source.$ref);
+        if (refs.has(ref)) return source;
+        refs.add(ref);
+        source = resolveReference(source, spec) || source;
+    }
     if (!Array.isArray(source.allOf)) return source;
+
     const merged: any = {...source, properties: {...(source.properties || {})}, required: [...(source.required || [])]};
     delete merged.allOf;
     const conflicts: string[] = [];
     source.allOf.forEach((part: any) => {
-        const child = resolved(part, spec);
+        const child = resolved(part, spec, new Set(refs), depth + 1);
         const {properties, required, ...childMetadata} = child;
         Object.entries(childMetadata).forEach(([key, value]) => {
             if (merged[key] === undefined) merged[key] = value;
@@ -39,21 +52,53 @@ export const resolved = (schema: any, spec: OpenApiSpec): any => {
         });
         merged.required = Array.from(new Set([...(merged.required || []), ...(required || [])]));
     });
-    if (conflicts.length > 0) merged['x-opendoc-allOf-conflicts'] = Array.from(new Set(conflicts));
+    if (conflicts.length > 0) merged[RUNNER_ALLOF_CONFLICTS] = Array.from(new Set(conflicts));
     return merged;
 };
-export const defaultBodyValue = (schema: any, spec: OpenApiSpec): any => {
-    const current = resolved(schema, spec);
+
+export const defaultBodyValue = (
+    schema: any,
+    spec: OpenApiSpec,
+    depth = 0,
+    ancestorRefs = new Set<string>(),
+    ancestorObjects = new Set<object>(),
+): any => {
+    if (depth > 64) return {};
+    if (schema === true) return null;
+    if (schema === false) return null;
+
+    let source = schema ?? {};
+    const refs = new Set(ancestorRefs);
+    if (source?.$ref) {
+        const ref = String(source.$ref);
+        if (refs.has(ref)) return {};
+        refs.add(ref);
+        const target = resolveReference(source, spec);
+        if (!target || target === source) return {};
+        source = target;
+    }
+    if (source && typeof source === 'object') {
+        if (ancestorObjects.has(source)) return {};
+    }
+    const objects = new Set(ancestorObjects);
+    if (source && typeof source === 'object') objects.add(source);
+    const current = resolved(source, spec, refs, depth);
+
     if (current.example !== undefined) return current.example;
     if (current.default !== undefined) return current.default;
     if (Array.isArray(current.enum) && current.enum.length > 0) return current.enum[0];
-    if (current.oneOf?.length) return defaultBodyValue(current.oneOf[0], spec);
-    if (current.anyOf?.length) return defaultBodyValue(current.anyOf[0], spec);
+    if (current.oneOf?.length)
+        return defaultBodyValue(current.oneOf[0], spec, depth + 1, new Set(refs), new Set(objects));
+    if (current.anyOf?.length)
+        return defaultBodyValue(current.anyOf[0], spec, depth + 1, new Set(refs), new Set(objects));
     if (current.type === 'object' || current.properties) {
         return Object.fromEntries(
             Object.entries(current.properties || {})
                 .filter(([, child]: [string, any]) => child?.readOnly !== true)
-                .map(([key, child]) => [key, defaultBodyValue(child, spec)]),
+                .map(([key, child]) => [
+                    key,
+                    defaultBodyValue(child, spec, depth + 1, new Set(refs), new Set(objects)),
+                ]),
         );
     }
     if (current.type === 'array') return [];

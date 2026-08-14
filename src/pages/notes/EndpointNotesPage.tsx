@@ -67,9 +67,9 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                             type="button"
                             aria-label="New note"
                             onClick={() => openCreateNote()}
-                            className="group inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
                         >
-                            <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary-contrast)] group-active:text-[var(--primary-contrast)]" />
+                            <i className="ph-fill ph-note text-[15px]" />
                             New note
                         </button>
                     </div>
@@ -217,7 +217,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                                             openNote(note.id);
                                                         }
                                                     }}
-                                                    className="relative overflow-hidden rounded-xl border p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 cursor-pointer"
+                                                    className="relative overflow-hidden rounded-lg border p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 cursor-pointer"
                                                     style={{
                                                         backgroundColor: color.background,
                                                         borderColor: color.border,

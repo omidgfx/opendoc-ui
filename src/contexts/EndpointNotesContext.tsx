@@ -8,8 +8,10 @@ import {
     MAX_NOTE_TITLE_CHARS,
     noteCharacterCount,
     readEndpointNotes,
+    readExpandedEndpointNoteIds,
     readHiddenEndpoints,
     writeEndpointNotes,
+    writeExpandedEndpointNoteIds,
     writeHiddenEndpoints,
 } from '../utils/endpointNotes';
 
@@ -95,6 +97,11 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             setNotes(current => {
                 const next = updater(current);
                 writeEndpointNotes(specKey, next);
+                const validNoteIds = new Set(next.map(note => note.id));
+                const expandedNoteIds = readExpandedEndpointNoteIds(specKey);
+                const cleanedExpandedNoteIds = expandedNoteIds.filter(noteId => validNoteIds.has(noteId));
+                if (cleanedExpandedNoteIds.length !== expandedNoteIds.length)
+                    writeExpandedEndpointNoteIds(specKey, cleanedExpandedNoteIds);
                 return next;
             });
         },

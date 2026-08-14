@@ -3,6 +3,7 @@ import {specStorage} from './storage';
 
 export const ENDPOINT_NOTES_STORAGE_NAME = 'endpoint_notes';
 export const HIDDEN_ENDPOINTS_STORAGE_NAME = 'hidden_endpoints';
+export const ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME = 'endpoint_note_panel_expanded';
 export const MAX_NOTES_PER_ENDPOINT = 100;
 export const MAX_NOTE_TITLE_CHARS = 128;
 export const MAX_NOTE_CONTENT_CHARS = 4096;
@@ -40,6 +41,8 @@ export const ENDPOINT_NOTE_COLORS: EndpointNoteColorOption[] = [
     noteColor('lime', 'Lime', '#84cc16'),
     noteColor('sand', 'Sand', '#eab308'),
     noteColor('slate', 'Slate', '#64748b'),
+    noteColor('white', 'White', '#ffffff'),
+    noteColor('black', 'Black', '#000000'),
 ];
 
 const COLOR_IDS = new Set(ENDPOINT_NOTE_COLORS.map(color => color.id));
@@ -111,6 +114,20 @@ export const readHiddenEndpoints = (specKey: string): string[] => {
 
 export const writeHiddenEndpoints = (specKey: string, endpointKeys: string[]): boolean =>
     !!specKey && specStorage.setJSON(specKey, HIDDEN_ENDPOINTS_STORAGE_NAME, Array.from(new Set(endpointKeys)).sort());
+
+export const readExpandedEndpointNoteIds = (specKey: string): string[] => {
+    if (!specKey) return [];
+    return specStorage.getJSON<string[]>(
+        specKey,
+        ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME,
+        [],
+        value => Array.isArray(value) && value.every(item => typeof item === 'string'),
+    );
+};
+
+export const writeExpandedEndpointNoteIds = (specKey: string, noteIds: string[]): boolean =>
+    !!specKey &&
+    specStorage.setJSON(specKey, ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME, Array.from(new Set(noteIds)).sort());
 
 export const endpointNoteColor = (id: EndpointNoteColor): EndpointNoteColorOption =>
     ENDPOINT_NOTE_COLORS.find(color => color.id === id) || ENDPOINT_NOTE_COLORS[0];

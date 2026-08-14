@@ -1,4 +1,12 @@
-import type {Dispatch, KeyboardEvent, MouseEvent, RefObject, SetStateAction} from 'react';
+import {
+    useEffect,
+    useState,
+    type Dispatch,
+    type KeyboardEvent,
+    type MouseEvent,
+    type RefObject,
+    type SetStateAction,
+} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec} from '../../types';
 import ExamineTab from '../endpoint/ExamineTab/ExamineTab';
@@ -9,6 +17,7 @@ import {Tip} from '../common/Tooltip';
 import {getOperation} from '../../utils/openapi';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
+import EndpointNotesSidebar from '../notes/EndpointNotesSidebar';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -78,12 +87,23 @@ export default function EndpointWorkspace({
     onAskAINewConversation,
 }: EndpointWorkspaceProps) {
     const {noteCountForEndpoint, openEndpointNotes} = useEndpointNotes();
+    const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
+    useEffect(() => {
+        if (selectedTab === 'both') setNotesSidebarOpen(false);
+    }, [selectedTab]);
     const operation = getOperation(spec, endpoint.path, endpoint.method);
     if (!operation) return null;
     const docsActive = selectedTab !== 'both' || activeSplitPane === 'docs';
     const runnerActive = selectedTab !== 'both' || activeSplitPane === 'examine';
     const endpointKey = `${endpoint.method.toLowerCase()}:${endpoint.path}`;
     const endpointNoteCount = noteCountForEndpoint(endpoint.path, endpoint.method);
+    const handleOpenEndpointNotes = () => {
+        if (selectedTab === 'both') {
+            openEndpointNotes(endpoint.path, endpoint.method);
+            return;
+        }
+        setNotesSidebarOpen(current => !current);
+    };
     const docs = (
         <ViewErrorBoundary resetKey={`docs:${endpointKey}`} title="Endpoint documentation could not be rendered">
             <ViewTab
@@ -126,13 +146,23 @@ export default function EndpointWorkspace({
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
             <div className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
                 <div className="flex items-center gap-1.5 text-[10.5px] min-w-0 overflow-hidden">
-                    <Tip content="Open endpoint notes">
+                    <Tip
+                        content={
+                            selectedTab === 'both'
+                                ? 'Open endpoint notes in a modal'
+                                : notesSidebarOpen
+                                  ? 'Close endpoint notes sidebar'
+                                  : 'Open endpoint notes sidebar'
+                        }
+                    >
                         <button
                             type="button"
                             data-endpoint-notes-button
-                            onClick={() => openEndpointNotes(endpoint.path, endpoint.method)}
+                            onClick={handleOpenEndpointNotes}
                             aria-label={`Open endpoint notes (${endpointNoteCount})`}
-                            className="group inline-flex h-8.5 min-w-8.5 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                            aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
+                            aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
+                            className="group inline-flex h-8.5 w-[60px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
                         >
                             <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
                             <span data-endpoint-note-count>{endpointNoteCount}</span>
@@ -288,10 +318,20 @@ export default function EndpointWorkspace({
                             </div>
                         </div>
                     )
-                ) : selectedTab === 'docs' ? (
-                    docs
                 ) : (
-                    runner
+                    <div className="relative flex h-full min-h-0 min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden">{selectedTab === 'docs' ? docs : runner}</div>
+                        {notesSidebarOpen && (
+                            <EndpointNotesSidebar
+                                spec={spec}
+                                specKey={parsableKey}
+                                path={endpoint.path}
+                                method={endpoint.method}
+                                overlay={isMobile}
+                                onClose={() => setNotesSidebarOpen(false)}
+                            />
+                        )}
+                    </div>
                 )}
             </div>
         </div>

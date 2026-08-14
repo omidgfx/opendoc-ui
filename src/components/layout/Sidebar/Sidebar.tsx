@@ -430,7 +430,11 @@ export default function Sidebar(props: SidebarProps) {
     } | null>(null);
     useEffect(() => {
         if (!contextMenu) return;
-        const close = () => setContextMenu(null);
+        const close = (event: MouseEvent) => {
+            const target = event.target;
+            if (target instanceof Element && target.closest('[data-confirm-modal-root]')) return;
+            setContextMenu(null);
+        };
         window.addEventListener('click', close);
         window.addEventListener('scroll', close, true);
         return () => {
@@ -594,6 +598,7 @@ export default function Sidebar(props: SidebarProps) {
     };
     const renderTree = (node: TreeNode, nodePath: string) => (
         <SidebarTree
+            key={nodePath}
             node={node}
             nodePath={nodePath}
             collapsedNodes={endpointFilterQuery ? {} : collapsedNodes}

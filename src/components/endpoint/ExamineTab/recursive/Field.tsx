@@ -8,7 +8,13 @@ import CustomDropdown from '../../../common/CustomDropdown';
 import RunnerFieldFrame from '../RunnerFieldFrame';
 import {enumDropdownOptions} from '@/src/utils/enumOptions';
 import type {FieldProps} from '@/src/types/recursiveBody';
-import {defaultBodyValue, removeAtPath, resolved} from '@/src/utils/runner/recursiveBody';
+import {
+    defaultBodyValue,
+    removeAtPath,
+    resolved,
+    RUNNER_ALLOF_CONFLICTS,
+    RUNNER_BOOLEAN_SCHEMA,
+} from '@/src/utils/runner/recursiveBody';
 
 const fieldClass =
     'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]';
@@ -21,6 +27,7 @@ export default function Field({
     required,
     path,
     depth,
+    ancestorRefs = new Set<string>(),
     onChange,
     setPatternToTest,
     selectedFiles,
@@ -30,7 +37,11 @@ export default function Field({
     setFocusedPath,
     actions,
 }: FieldProps) {
-    const current = resolved(schema, spec);
+    const schemaRef = typeof schema?.$ref === 'string' ? String(schema.$ref) : null;
+    const circularReference = !!schemaRef && ancestorRefs.has(schemaRef);
+    const nextAncestorRefs = new Set(ancestorRefs);
+    if (schemaRef) nextAncestorRefs.add(schemaRef);
+    const current = circularReference ? schema : resolved(schema, spec, new Set(ancestorRefs));
     const [variantIndex, setVariantIndex] = useState(0);
     const [pendingKey, setPendingKey] = useState('');
     const type = Array.isArray(current.type) ? current.type.find((item: string) => item !== 'null') : current.type;
@@ -39,7 +50,33 @@ export default function Field({
     const fileKey = path.map(part => String(part)).join('.');
     const fieldFocused =
         !!focusedPath && focusedPath.length === path.length && focusedPath.every((part, index) => part === path[index]);
-    if (current['x-opendoc-boolean-schema'] === false) {
+    if (circularReference) {
+        return (
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} recursive reference field`}
+                className="px-2 py-2"
+            >
+                <FieldHeader
+                    label={label}
+                    required={required}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={schema}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
+                    typeLabel="recursive reference"
+                    actions={actions}
+                />
+                <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                    This reference points back to a schema already shown in this branch. Inspect the linked schema or
+                    use Raw mode to edit the recursive value directly.
+                </p>
+            </RunnerFieldFrame>
+        );
+    }
+    if (current[RUNNER_BOOLEAN_SCHEMA] === false) {
         return (
             <RunnerFieldFrame
                 active={fieldFocused}
@@ -112,6 +149,7 @@ export default function Field({
                         label="Value"
                         path={path}
                         depth={depth + 1}
+                        ancestorRefs={nextAncestorRefs}
                         onChange={onChange}
                         setPatternToTest={setPatternToTest}
                         selectedFiles={selectedFiles}
@@ -218,14 +256,13 @@ export default function Field({
                     typeLabel={additionalSchema ? 'object / map' : 'object'}
                     actions={actions}
                 />
-                {Array.isArray(current['x-opendoc-allOf-conflicts']) &&
-                    current['x-opendoc-allOf-conflicts'].length > 0 && (
-                        <p className="mt-1 rounded-lg border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-2 text-[9px] leading-relaxed text-[var(--text-muted)]">
-                            This allOf composition contains conflicting constraints (
-                            {current['x-opendoc-allOf-conflicts'].join(', ')}). The form shows a conservative merged
-                            view; Raw mode can send any test payload to the server.
-                        </p>
-                    )}
+                {Array.isArray(current[RUNNER_ALLOF_CONFLICTS]) && current[RUNNER_ALLOF_CONFLICTS].length > 0 && (
+                    <p className="mt-1 rounded-lg border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 p-2 text-[9px] leading-relaxed text-[var(--text-muted)]">
+                        This allOf composition contains conflicting constraints (
+                        {current[RUNNER_ALLOF_CONFLICTS].join(', ')}). The form shows a conservative merged view; Raw
+                        mode can send any test payload to the server.
+                    </p>
+                )}
                 <GuideBranch focusedPath={focusedPath}>
                     {Object.entries(properties)
                         .filter(([, childSchema]: [string, any]) => childSchema?.readOnly !== true)
@@ -239,6 +276,7 @@ export default function Field({
                                 required={Array.isArray(current.required) && current.required.includes(key)}
                                 path={[...path, key]}
                                 depth={depth + 1}
+                                ancestorRefs={nextAncestorRefs}
                                 onChange={onChange}
                                 setPatternToTest={setPatternToTest}
                                 selectedFiles={selectedFiles}
@@ -257,6 +295,7 @@ export default function Field({
                             label={key}
                             path={[...path, key]}
                             depth={depth + 1}
+                            ancestorRefs={nextAncestorRefs}
                             onChange={onChange}
                             setPatternToTest={setPatternToTest}
                             selectedFiles={selectedFiles}
@@ -392,6 +431,7 @@ export default function Field({
                             label={`Item ${index + 1}`}
                             path={[...path, index]}
                             depth={depth + 1}
+                            ancestorRefs={nextAncestorRefs}
                             onChange={onChange}
                             setPatternToTest={setPatternToTest}
                             selectedFiles={selectedFiles}

@@ -25,6 +25,7 @@ import {
     resolveRequestBody,
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/auth';
+import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 
 interface ViewTabProps {
     key: any;
@@ -353,63 +354,7 @@ export default function ViewTab({
         getDefaultViewerSchema,
         resetViewerSchema,
     } = useSchemaViewer(spec, isMobile, onOpenSchemaModal);
-    const resolveProperties = (
-        sObj: any,
-        prefix = '',
-        visited = new Set<string>(),
-    ): {
-        [name: string]: any;
-    } => {
-        if (!sObj) return {};
-        let props: {
-            [name: string]: any;
-        } = {};
-        if (sObj.$ref) {
-            const ref = String(sObj.$ref);
-            if (visited.has(ref)) return {};
-            visited.add(ref);
-            const refSchema = resolveReference(sObj);
-            if (refSchema && refSchema !== sObj) props = {...props, ...resolveProperties(refSchema, prefix, visited)};
-            return props;
-        }
-        if (sObj.allOf && Array.isArray(sObj.allOf))
-            sObj.allOf.forEach((sub: any) => {
-                props = {...props, ...resolveProperties(sub, prefix, new Set(visited))};
-            });
-        if (sObj.properties) {
-            Object.entries(sObj.properties).forEach(([name, prop]: [string, any]) => {
-                const key = prefix ? `${prefix}.${name}` : name;
-                props[key] = prop;
-                const resolved = resolveReference(prop);
-                if (resolved && (resolved.type === 'object' || resolved.properties || resolved.allOf)) {
-                    const nested = resolveProperties(resolved, key, new Set(visited));
-                    props = {...props, ...nested};
-                } else if (resolved && resolved.type === 'array' && resolved.items) {
-                    const resolvedItems = resolveReference(resolved.items);
-                    if (
-                        resolvedItems &&
-                        (resolvedItems.type === 'object' || resolvedItems.properties || resolvedItems.allOf)
-                    ) {
-                        const nested = resolveProperties(resolvedItems, `${key}.*`, new Set(visited));
-                        props = {...props, ...nested};
-                    }
-                }
-            });
-        }
-        if (sObj.oneOf && Array.isArray(sObj.oneOf))
-            sObj.oneOf.forEach((sub: any) => {
-                props = {...props, ...resolveProperties(sub, prefix, new Set(visited))};
-            });
-        if (sObj.anyOf && Array.isArray(sObj.anyOf))
-            sObj.anyOf.forEach((sub: any) => {
-                props = {...props, ...resolveProperties(sub, prefix, new Set(visited))};
-            });
-        if (!sObj.properties && sObj.additionalProperties && typeof sObj.additionalProperties === 'object') {
-            const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
-            props[mapKey] = sObj.additionalProperties;
-        }
-        return props;
-    };
+    const resolveProperties = (schema: any): Record<string, any> => flattenSchemaProperties(schema, resolveReference);
     const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null) => {
         if (schema === undefined || schema === null) return null;
         const properties = resolveProperties(schema);

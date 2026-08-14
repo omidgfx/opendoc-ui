@@ -85,12 +85,12 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                 aria-pressed={active}
                                 onClick={() => onSelect(endpoint.path, endpoint.method)}
                                 className={clsx(
-                                    'relative flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors before:absolute before:-left-2 before:top-1/2 before:h-px before:w-2 before:bg-[var(--text-muted)]/20 cursor-pointer',
+                                    'relative flex w-full min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left transition-colors before:absolute before:-left-2 before:top-1/2 before:h-px before:w-2 before:bg-[var(--text-muted)]/20 cursor-pointer',
                                     active
-                                        ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                        ? 'border-[var(--primary)]/35 bg-[var(--primary)]/10 font-semibold text-[var(--primary)]'
                                         : endpoint.isHidden
-                                          ? 'bg-[var(--text-muted)]/5 text-[var(--text-muted)] opacity-65 grayscale hover:bg-[var(--surface-hover)]'
-                                          : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                          ? 'border-transparent bg-[var(--text-muted)]/5 text-[var(--text-muted)] opacity-65 grayscale hover:bg-[var(--surface-hover)]'
+                                          : 'border-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                 )}
                             >
                                 <MethodBadge
@@ -103,7 +103,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                         config.compactMethodNames ? 'h-4 w-5 !px-0' : 'h-4 w-9',
                                         'shrink-0',
                                         active &&
-                                            '!border-[var(--primary-contrast)]/30 !bg-[var(--primary-contrast)]/20 !text-[var(--primary-contrast)]',
+                                            '!border-[var(--primary)]/25 !bg-[var(--primary)]/12 !text-[var(--primary)]',
                                     )}
                                 />
                                 <span className="min-w-0 flex-1">
@@ -112,9 +112,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                         <code
                                             className={clsx(
                                                 'mt-0.5 block truncate text-[8px]',
-                                                active
-                                                    ? 'text-[var(--primary-contrast)]/70'
-                                                    : 'text-[var(--text-muted)]',
+                                                active ? 'text-[var(--primary)]/70' : 'text-[var(--text-muted)]',
                                             )}
                                         >
                                             {endpoint.path}
@@ -125,7 +123,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                     <i
                                         className={clsx(
                                             'ph ph-warning-circle shrink-0 text-[11px]',
-                                            active ? 'text-[var(--primary-contrast)]/80' : 'text-[var(--method-put)]',
+                                            active ? 'text-[var(--primary)]/80' : 'text-[var(--method-put)]',
                                         )}
                                     />
                                 )}
@@ -133,9 +131,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                     <i
                                         className={clsx(
                                             'ph-fill ph-lock-key shrink-0 text-[11px]',
-                                            active
-                                                ? 'text-[var(--primary-contrast)]/85'
-                                                : 'text-[var(--method-delete)]/75',
+                                            active ? 'text-[var(--primary)]/85' : 'text-[var(--method-delete)]/75',
                                         )}
                                     />
                                 )}
@@ -148,15 +144,19 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
     };
 
     return (
-        <div
+        <aside
             data-note-endpoint-picker
-            className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)]"
+            aria-label="Endpoints"
+            className="flex h-56 max-h-full min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--border)] bg-[var(--background)] md:h-full md:w-64 md:border-b-0 md:border-r lg:w-72"
         >
-            <div className="border-b border-[var(--border)] p-3">
-                <label className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                    Endpoint
-                </label>
-                <div className="relative mt-1.5">
+            <div className="shrink-0 border-b border-[var(--border)] p-3">
+                <div className="flex items-center justify-between gap-2 px-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                        All endpoints
+                    </span>
+                    <span className="text-[9px] font-bold text-[var(--text-muted)]">{countEndpoints(tree)}</span>
+                </div>
+                <div className="relative mt-2">
                     <i className="ph ph-magnifying-glass absolute left-3 top-2.5 text-[11px] text-[var(--text-muted)]" />
                     <input
                         value={query}
@@ -167,10 +167,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                     />
                 </div>
             </div>
-            <div
-                data-note-endpoint-list
-                className="h-[min(440px,45vh)] overflow-y-auto p-2 scrollbar-thin lg:h-auto lg:min-h-0 lg:flex-1"
-            >
+            <div data-note-endpoint-list className="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-thin">
                 {Object.keys(visibleTree.children).length > 0 || visibleTree.endpoints.length > 0 ? (
                     renderNode(visibleTree, '', 0)
                 ) : (
@@ -179,6 +176,6 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                     </div>
                 )}
             </div>
-        </div>
+        </aside>
     );
 }

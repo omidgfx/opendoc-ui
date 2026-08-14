@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type {ViewTabKind} from '@/src/types/tabs';
 import {Tip} from '@/src/components/common/Tooltip';
 import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
+import ConfirmModal from '@/src/components/common/ConfirmModal';
 
 export type SidebarContextTarget =
     | {
@@ -28,12 +29,21 @@ interface SidebarContextMenuProps {
 }
 
 export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction, onClose}: SidebarContextMenuProps) {
-    const {noteCountForEndpoint, openCreateNote, openEndpointNotes, isEndpointHidden, hideEndpoint, unhideEndpoint} =
-        useEndpointNotes();
+    const {
+        notes,
+        noteCountForEndpoint,
+        openCreateNote,
+        openEndpointNotes,
+        isEndpointHidden,
+        hideEndpoint,
+        unhideEndpoint,
+        deleteAllNotes,
+    } = useEndpointNotes();
     const endpointNoteCount = target.type === 'endpoint' ? noteCountForEndpoint(target.path, target.method) : 0;
     const endpointHidden = target.type === 'endpoint' && isEndpointHidden(target.path, target.method);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const [position, setPosition] = useState({top: Math.max(8, y + 4), left: Math.max(8, x + 4)});
+    const [confirmDeleteAllNotes, setConfirmDeleteAllNotes] = useState(false);
     useLayoutEffect(() => {
         const update = () => {
             const menu = menuRef.current;
@@ -68,69 +78,106 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
     const button =
         'group w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2';
     return (
-        <div
-            ref={menuRef}
-            role="menu"
-            aria-label={target.type === 'endpoint' ? 'Endpoint actions' : 'View actions'}
-            className="fixed z-[5000] min-w-[220px] max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in scrollbar-thin"
-            style={{top: position.top, left: position.left}}
-            onClick={event => event.stopPropagation()}
-            onContextMenu={event => event.preventDefault()}
-        >
-            <button className={button} onClick={() => act('open-new-tab')}>
-                <i className="ph ph-plus-square text-[12px] text-[var(--primary)]" />
-                Open in new tab
-            </button>
-            <button className={button} onClick={() => act('open-browser')}>
-                <i className="ph ph-arrow-square-out text-[12px] text-[var(--text-muted)]" />
-                Open in new browser tab
-            </button>
-            <button className={button} onClick={() => act('copy-link')}>
-                <i className="ph ph-link text-[12px] text-[var(--text-muted)]" />
-                Copy link
-            </button>
-            {target.type === 'endpoint' && (
-                <>
-                    <div className="my-1 border-t border-[var(--border)]" />
-                    <button className={button} onClick={() => endpointAct('create-note')}>
-                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
-                        Create local note
-                    </button>
-                    <button className={button} onClick={() => endpointAct('list-notes')}>
-                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
-                        <span className="min-w-0 flex-1">Endpoint notes</span>
-                        <span className="rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-[var(--primary)]">
-                            {endpointNoteCount}
-                        </span>
-                    </button>
-                    <button className={button} onClick={() => endpointAct('toggle-hidden')}>
-                        <i
-                            className={`ph ${endpointHidden ? 'ph-eye' : 'ph-eye-slash'} text-[13px] text-[var(--text-muted)]`}
-                        />
-                        {endpointHidden ? 'Unhide endpoint' : 'Hide endpoint'}
-                    </button>
-                    <div className="my-1 border-t border-[var(--border)]" />
-                    <Tip content={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'} fullWidth>
+        <>
+            <div
+                ref={menuRef}
+                role="menu"
+                aria-label={target.type === 'endpoint' ? 'Endpoint actions' : 'View actions'}
+                className="fixed z-[5000] min-w-[220px] max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in scrollbar-thin"
+                style={{top: position.top, left: position.left}}
+                onClick={event => event.stopPropagation()}
+                onContextMenu={event => event.preventDefault()}
+            >
+                <button className={button} onClick={() => act('open-new-tab')}>
+                    <i className="ph ph-plus-square text-[12px] text-[var(--primary)]" />
+                    Open in new tab
+                </button>
+                <button className={button} onClick={() => act('open-browser')}>
+                    <i className="ph ph-arrow-square-out text-[12px] text-[var(--text-muted)]" />
+                    Open in new browser tab
+                </button>
+                <button className={button} onClick={() => act('copy-link')}>
+                    <i className="ph ph-link text-[12px] text-[var(--text-muted)]" />
+                    Copy link
+                </button>
+                {target.type === 'endpoint' && (
+                    <>
+                        <div className="my-1 border-t border-[var(--border)]" />
+                        <button className={button} onClick={() => endpointAct('create-note')}>
+                            <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                            Create local note
+                        </button>
+                        <button className={button} onClick={() => endpointAct('list-notes')}>
+                            <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                            <span className="min-w-0 flex-1">Endpoint notes</span>
+                            <span className="rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-[var(--primary)]">
+                                {endpointNoteCount}
+                            </span>
+                        </button>
+                        <button className={button} onClick={() => endpointAct('toggle-hidden')}>
+                            <i
+                                className={`ph ${endpointHidden ? 'ph-eye' : 'ph-eye-slash'} text-[13px] text-[var(--text-muted)]`}
+                            />
+                            {endpointHidden ? 'Unhide endpoint' : 'Hide endpoint'}
+                        </button>
+                        <div className="my-1 border-t border-[var(--border)]" />
+                        <Tip
+                            content={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'}
+                            fullWidth
+                        >
+                            <button
+                                type="button"
+                                disabled={!hasAIProfile}
+                                className={clsx(
+                                    button,
+                                    hasAIProfile ? '' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50',
+                                )}
+                                onClick={() => hasAIProfile && act('ask-ai')}
+                            >
+                                <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]" />
+                                {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
+                            </button>
+                        </Tip>
+                    </>
+                )}
+                {target.type === 'view' && target.view === 'notes' && (
+                    <>
+                        <div className="my-1 border-t border-[var(--border)]" />
                         <button
                             type="button"
-                            disabled={!hasAIProfile}
+                            disabled={notes.length === 0}
                             className={clsx(
                                 button,
-                                hasAIProfile ? '' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50',
+                                'text-[var(--method-delete)]',
+                                notes.length === 0 && 'cursor-not-allowed opacity-40',
                             )}
-                            onClick={() => hasAIProfile && act('ask-ai')}
+                            onClick={() => notes.length > 0 && setConfirmDeleteAllNotes(true)}
                         >
-                            <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]" />
-                            {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
+                            <i className="ph ph-trash text-[13px]" />
+                            <span className="min-w-0 flex-1">Delete all notes</span>
+                            <span className="text-[9px] font-bold">{notes.length}</span>
                         </button>
-                    </Tip>
-                </>
-            )}
-            <div className="my-1 border-t border-[var(--border)]" />
-            <button className={button} onClick={() => act('share')}>
-                <i className="ph ph-share-network text-[12px] text-[var(--method-get)]" />
-                Share
-            </button>
-        </div>
+                    </>
+                )}
+                <div className="my-1 border-t border-[var(--border)]" />
+                <button className={button} onClick={() => act('share')}>
+                    <i className="ph ph-share-network text-[12px] text-[var(--method-get)]" />
+                    Share
+                </button>
+            </div>
+            <ConfirmModal
+                isOpen={confirmDeleteAllNotes}
+                title="Delete every local note?"
+                message={`Delete all ${notes.length} notes and todos saved for this specification?`}
+                confirmLabel="Delete all notes"
+                destructive
+                onConfirm={async () => {
+                    await deleteAllNotes();
+                    setConfirmDeleteAllNotes(false);
+                    onClose();
+                }}
+                onClose={() => setConfirmDeleteAllNotes(false)}
+            />
+        </>
     );
 }
