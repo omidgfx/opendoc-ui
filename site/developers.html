@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Developers — OpenDoc UI</title>
+<meta name="description" content="OpenDoc UI for developers: the technology stack, repository layout, build and test commands, quality gates and how to contribute."/>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
+<link rel="stylesheet" href="assets/css/site.css"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <nav class="nav-links" id="nav-links">
+      <a href="index.html">Home</a>
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="compatibility.html">Compatibility</a>
+      <a href="deploy.html">Deploy</a>
+      <a href="developers.html">Developers</a>
+      <a href="faq.html">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="theme-toggle">
+        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
+        <div class="theme-options" id="theme-menu" role="menu">
+          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
+          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
+          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
+        </div>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>For developers</h1>
+    <p>The engineering story: a deliberately small stack, a rigorously tested core, and a repository organized so a newcomer can find their way in an afternoon.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:28px">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker"><i class="ph ph-stack"></i> The stack</span>
+      <h2>Deliberately conventional, rigorously verified</h2>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="icon"><i class="ph ph-code"></i></div><h3>TypeScript + React 19</h3><p>The entire application is typed end to end. Components are organized by surface — endpoint views, schema exploration, notes, AI — with shared hooks for routing, theming and persistence.</p></div>
+      <div class="card"><div class="icon alt"><i class="ph ph-lightning"></i></div><h3>Vite 6</h3><p>One deliberately inlined production bundle (<code>dist/index.js</code>) so static deployments never worry about chunk filenames. A single-bundle verification script guards the invariant on every build.</p></div>
+      <div class="card"><div class="icon"><i class="ph ph-palette"></i></div><h3>Tailwind 4 + Phosphor</h3><p>Utility-first styling with a CSS-variable theming system, and the Phosphor icon set throughout the interface.</p></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:20px">
+      <div class="card"><div class="icon"><i class="ph ph-brackets-curly"></i></div><h3>Monaco Editor</h3><p>The industry-standard editor powers raw JSON bodies, schema inspection and code viewing.</p></div>
+      <div class="card"><div class="icon alt"><i class="ph ph-git-branch"></i></div><h3>@scalar/openapi-parser</h3><p>Optional engine validation and external reference resolution, with errors surfaced as scoped diagnostics rather than fatal failures.</p></div>
+      <div class="card"><div class="icon"><i class="ph ph-database"></i></div><h3>IndexedDB-first persistence</h3><p>Specifications, response history, notes, panel widths and workspace state persist through a resilient storage layer with a localStorage fallback.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker"><i class="ph ph-folder-open"></i> Repository layout</span>
+      <h2>Where everything lives</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>src/</code></td><td>The application — components, hooks, contexts, pages, types and utilities</td></tr>
+          <tr><td><code>src/utils/openapi/</code></td><td>The OpenAPI engine: parsing, normalization, validation, references, serialization and capabilities</td></tr>
+          <tr><td><code>src/utils/runner/</code></td><td>Request planning, execution, response handling and the recursive body form logic</td></tr>
+          <tr><td><code>server/</code></td><td>The hardened AI gateway (<code>ai-gateway.ts</code>) and its policy module</td></tr>
+          <tr><td><code>proxy/</code> · <code>ai-proxy/</code></td><td>Downloader proxy and AI gateway reference implementations for eight frameworks</td></tr>
+          <tr><td><code>scripts/</code></td><td>Build support: SPA fallback, single-bundle verification, UI contracts, the builder CLI</td></tr>
+          <tr><td><code>tests/</code></td><td>Unit suites plus the Playwright browser suite</td></tr>
+          <tr><td><code>docker/</code> · <code>site/</code></td><td>Docker packaging (Dockerfile, nginx, compose helpers) and this website</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker"><i class="ph ph-gauge"></i> Quality gates</span>
+      <h2>One command runs everything</h2>
+    </div>
+    <div class="codeblock">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>npm scripts</span></div>
+<pre><code>npm run dev          <span class="c"># development server on :3000</span>
+npm run build        <span class="c"># production bundle + SPA fallback + single-bundle verification</span>
+npm run lint         <span class="c"># prettier, tsc --noEmit, UI contract checks</span>
+npm test             <span class="c"># unit suites: run, serialization, swagger2, async, conformance</span>
+npm run test:browser <span class="c"># Playwright browser suite</span>
+npm run test:all     <span class="c"># everything above, in order</span>
+npm run make         <span class="c"># the guided builder CLI</span></code></pre>
+    </div>
+    <p>
+      The test suite covers the OpenAPI normalization matrix, parameter serialization across all
+      styles, Swagger 2.0 adapters, the AI gateway policy, runner execution against a real HTTP
+      recorder, recursive schema rendering, local notes workflows, navigation history and UI
+      contracts (custom selects and tooltips). The browser suite additionally audits accessibility
+      with axe-core.
+    </p>
+    <div class="note"><i class="ph ph-info"></i><span>Contributions are welcome. Open an issue first for anything substantial, keep the existing formatting (Prettier with 120 columns), and make sure <code>npm run test:all</code> passes locally before opening a pull request.</span></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-brand">
+        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+        <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
+        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
+        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
+        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
+        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+      </div>
+      <div class="footer-col">
+        <h4>Deploy</h4>
+        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
+        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
+        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
+        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
+        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
+      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

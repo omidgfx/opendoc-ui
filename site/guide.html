@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Guide — OpenDoc UI manual</title>
+<meta name="description" content="The complete OpenDoc UI manual: quick start, loading specifications, reading documentation, running requests, authentication, schemas, notes, AI assistant, themes and shortcuts."/>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
+<link rel="stylesheet" href="assets/css/site.css"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <nav class="nav-links" id="nav-links">
+      <a href="index.html">Home</a>
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="compatibility.html">Compatibility</a>
+      <a href="deploy.html">Deploy</a>
+      <a href="developers.html">Developers</a>
+      <a href="faq.html">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="theme-toggle">
+        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
+        <div class="theme-options" id="theme-menu" role="menu">
+          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
+          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
+          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
+        </div>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>The OpenDoc UI manual</h1>
+    <p>A methodical walkthrough of everything the application can do — from the first specification you open to the most intricate notes and AI workflows.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:28px">
+  <div class="container doc-layout">
+    <aside class="toc-box">
+      <h4>Contents</h4>
+      <a href="#quickstart"><i class="ph ph-rocket-launch"></i> Quick start</a>
+      <a href="#loading"><i class="ph ph-folder-open"></i> Loading specifications</a>
+      <a href="#reading"><i class="ph ph-book-open-text"></i> Reading the documentation</a>
+      <a href="#running"><i class="ph ph-flask"></i> Running requests</a>
+      <a href="#auth"><i class="ph ph-lock-key"></i> Authentication</a>
+      <a href="#schemas"><i class="ph ph-diamonds-four"></i> Working with schemas</a>
+      <a href="#codegen"><i class="ph ph-code"></i> Generating code &amp; types</a>
+      <a href="#notes"><i class="ph ph-note-pencil"></i> Notes, trash &amp; orphaned</a>
+      <a href="#ai"><i class="ph ph-sparkle"></i> The AI assistant</a>
+      <a href="#themes"><i class="ph ph-palette"></i> Themes &amp; appearance</a>
+      <a href="#shortcuts"><i class="ph ph-keyboard"></i> Keyboard shortcuts</a>
+    </aside>
+    <div class="doc-body">
+
+      <section id="quickstart">
+        <h2>Quick start</h2>
+        <p>
+          The fastest path to a working workspace is the live demo: it opens the bundled Petstore
+          specification immediately, and you can load your own file on the spot. Locally, everything
+          begins with two commands:
+        </p>
+        <div class="codeblock">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Terminal</span></div>
+<pre><code><span class="c"># install and start the development server</span>
+npm ci
+npm run dev      <span class="c"># http://localhost:3000</span>
+
+<span class="c"># production build and local preview</span>
+npm run build    <span class="c"># outputs a single bundle: dist/index.js</span>
+npm run preview</code></pre>
+        </div>
+        <p>
+          Both commands are shell-independent and run identically on Windows, macOS and Linux. Once the
+          application is open, click <span class="hl">Open specification</span> and choose a file from
+          your device — no account, no upload, nothing leaves your machine.
+        </p>
+        <div class="note"><i class="ph ph-info"></i><span>OpenDoc UI never uploads your specification anywhere. Files are parsed in the browser and kept in local history for your next visit.</span></div>
+      </section>
+
+      <section id="loading">
+        <h2>Loading specifications</h2>
+        <p>There are three ways a specification can appear in the workspace, and they can be combined freely:</p>
+        <h3>1 · Local files</h3>
+        <p>
+          The default mode. Open any <code>.json</code>, <code>.yaml</code> or <code>.yml</code>
+          descriptor from your device. Multi-file specifications are supported: select all related
+          documents together and their references resolve in memory. Your opened files are kept in a
+          local history, and the original document is never modified.
+        </p>
+        <h3>2 · Remote URLs</h3>
+        <p>
+          When the deployment enables “Load from URL”, paste any OpenAPI or Swagger URL into the remote
+          loader. Remote documents are cached with ETag revalidation, and cross-origin failures show
+          actionable CORS guidance. A downloader proxy template can be configured for networks where the
+          browser cannot reach the API host directly.
+        </p>
+        <h3>3 · Configured specifications</h3>
+        <p>
+          Deployments can present curated specification sets through a <code>config.json</code> file or a
+          build-time <code>window.INITIAL_CONFIG</code> — useful for teams that want a fixed catalog of
+          internal APIs on an intranet page. Configured and local files can also coexist in a hybrid
+          mode.
+        </p>
+        <div class="note warn"><i class="ph ph-warning"></i><span>If a specification references external documents (for example <code>../policies.yaml</code>), select all related files together or use a bundled document — unresolved references are reported clearly and scoped, never fatal.</span></div>
+      </section>
+
+      <section id="reading">
+        <h2>Reading the documentation</h2>
+        <p>
+          The sidebar organizes endpoints by tag into folders you can expand, collapse, sort and
+          filter. Clicking an endpoint opens the <span class="hl">View Documentation</span> tab, which
+          walks through the operation methodically:
+        </p>
+        <ul>
+          <li><span class="hl">Request parameters</span> — every path, query, header and cookie parameter with its type, format, pattern, required state and example, plus a pattern tester for constrained values.</li>
+          <li><span class="hl">Request Body Context</span> — the encoding type selector, the body schema matrix, and oneOf/anyOf branch chips when the body itself is a combinator, so each alternative is inspected on its own.</li>
+          <li><span class="hl">Response Matrix</span> — every status code with its example object, schema table, enum values and a navigator that jumps between responses; success codes are expanded by default, others collapse to keep the view focused.</li>
+        </ul>
+        <p>
+          Deep links make the documentation shareable at a granular level: the URL carries the endpoint,
+          the active tab, the selected response and even the schema modal stack. Send a colleague a link
+          and they land exactly where you were.
+        </p>
+      </section>
+
+      <section id="running">
+        <h2>Running requests</h2>
+        <p>
+          The <span class="hl">API Runner</span> tab is where documentation becomes execution. The
+          request form mirrors the specification precisely:
+        </p>
+        <div class="steps">
+          <div class="step"><div class="num">1</div><div class="body"><h4>Fill the parameters</h4><p>Path, query, header and cookie parameters appear as individual inputs with their documented examples and validation hints pre-filled where the specification defines them.</p></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h4>Compose the body</h4><p>In Form mode, the recursive body editor renders the schema as nested fields — arrays, objects, oneOf/anyOf alternatives with named branches, and file uploads. Raw JSON mode offers a full editor with prettify, wrap and find tools.</p></div></div>
+          <div class="step"><div class="num">3</div><div class="body"><h4>Execute</h4><p>Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the run button. The response panel shows status, headers and body, keeps your last ten outcomes in history, and lets you cancel in-flight calls.</p></div></div>
+          <div class="step"><div class="num">4</div><div class="body"><h4>Persist</h4><p>Save inputs per endpoint with <kbd>Ctrl</kbd>+<kbd>S</kbd>; they are restored the next time you open the endpoint, including the exact oneOf branch you were editing.</p></div></div>
+        </div>
+        <div class="note"><i class="ph ph-info"></i><span>Requests are sent directly from your browser to the selected server, so the same CORS considerations as any web application apply. The Runner reports what it can and cannot do in the compatibility report.</span></div>
+      </section>
+
+      <section id="auth">
+        <h2>Authentication</h2>
+        <p>
+          OpenDoc UI covers the authentication schemes a specification can declare. Open the
+          <span class="hl">Authorize</span> panel and configure:
+        </p>
+        <ul>
+          <li><span class="hl">Bearer tokens</span> — sent as an Authorization header on protected operations.</li>
+          <li><span class="hl">API keys</span> — in headers, query strings or cookies, exactly where the scheme declares them.</li>
+          <li><span class="hl">HTTP basic auth</span> — username and password pairs.</li>
+          <li><span class="hl">OAuth 2.0</span> — including an authorization-code flow with PKCE that completes the callback natively.</li>
+          <li><span class="hl">Cookies</span> — browser-managed session cookies are included when the endpoint uses cookie authentication.</li>
+        </ul>
+        <p>
+          Security state is per-specification and stored in memory — tokens never leave your machine
+          unless you explicitly execute a request. The documentation and Runner surfaces show whether an
+          operation is protected and whether your current credentials satisfy it.
+        </p>
+      </section>
+
+      <section id="schemas">
+        <h2>Working with schemas</h2>
+        <p>
+          The <span class="hl">Schema Explorer</span> in the sidebar indexes every model in the
+          specification. Selecting one opens its schema modal:
+        </p>
+        <ul>
+          <li><span class="hl">Scope Table</span> — the unified property matrix: dotted paths, types, formats, patterns, required markers, examples and descriptions, with recursive rows marked by a loop icon.</li>
+          <li><span class="hl">Unified Simulation Example</span> — a generated example object for the selected media type (JSON, XML, YAML, PHP array).</li>
+          <li><span class="hl">Enum Values</span> — every permitted value as copyable chips when the schema is an enumeration.</li>
+        </ul>
+        <p>
+          Referenced schemas open as drill-downs in a modal stack; press <kbd>Esc</kbd> to walk back
+          out. Composed schemas — allOf, oneOf, anyOf, discriminator — are rendered branch by branch so
+          each alternative is comprehensible on its own.
+        </p>
+      </section>
+
+      <section id="codegen">
+        <h2>Generating code &amp; types</h2>
+        <p>
+          From an endpoint, open the code generator and choose your target language. The snippet is
+          assembled from the specification — parameters, body and authentication — with secrets replaced
+          by placeholders. From the schema explorer, export TypeScript: the generator produces typed
+          interfaces for every model, plus example constants, downloadable as a ZIP or a single file.
+        </p>
+      </section>
+
+      <section id="notes">
+        <h2>Notes, trash &amp; orphaned notes</h2>
+        <p>
+          Notes are private to your browser and scoped to the open specification. Create one from an
+          endpoint's context menu, from the endpoint notes sidebar, or from the Local Notes page.
+        </p>
+        <h3>Everyday use</h3>
+        <ul>
+          <li>Notes render Markdown and carry one of fourteen theme-safe tones.</li>
+          <li>Todos persist a done state; completing the final open todo can offer to hide the endpoint.</li>
+          <li>The endpoint notes sidebar in Documentation and Runner views is resizable and remembers its width and expanded state.</li>
+        </ul>
+        <h3>Deletion is never final</h3>
+        <p>
+          Deleting a note moves it to the <span class="hl">Trash</span> — restore it, delete it
+          permanently, or empty the trash entirely. Notes whose endpoint disappears from the
+          specification land in the <span class="hl">Orphaned</span> list, where you can re-assign them
+          to another endpoint through a searchable picker or remove them deliberately. Bulk actions such
+          as “Move all to trash” only touch active notes; orphaned notes are never swept along.
+        </p>
+        <h3>Export and import</h3>
+        <p>
+          The Local Notes toolbar exports every note and todo as a JSON file (with source metadata and
+          orphaned-note ids) and imports them back with a clear warning when the file came from a
+          different specification. Matching notes merge in; unmatched ones land in the orphaned list
+          where they await your decision.
+        </p>
+      </section>
+
+      <section id="ai">
+        <h2>The AI assistant</h2>
+        <p>
+          The topbar sparkle opens the assistant workspace. Ask questions about the API — the assistant
+          retrieves redacted endpoint and schema context and answers with citations. It can also act:
+          open an endpoint, fill the Runner, or propose a request, which you review before anything
+          executes.
+        </p>
+        <p>
+          Configuration lives in global AI profiles: provider, model, keys, gateway settings,
+          temperature, skills and custom instructions. In direct mode the browser talks to a
+          CORS-enabled provider; in gateway mode it talks to the included hardened server gateway,
+          which owns the provider credentials and enforces origin allowlists, rate limits and timeouts.
+        </p>
+      </section>
+
+      <section id="themes">
+        <h2>Themes &amp; appearance</h2>
+        <p>
+          Open the theme selector to choose among more than fifteen editor themes — Default Slate,
+          Darcula and others, each with light and dark variants. The choice is remembered per
+          specification, and the instant light/dark toggle adapts the entire interface, including note
+          tones, which are designed to stay readable in every theme.
+        </p>
+      </section>
+
+      <section id="shortcuts">
+        <h2>Keyboard shortcuts</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>K</kbd></td><td>Focus global search</td></tr>
+              <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>Execute the request in the Runner</td></tr>
+              <tr><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>Save Runner inputs</td></tr>
+              <tr><td><kbd>Alt</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Switch endpoint tabs</td></tr>
+              <tr><td><kbd>Ctrl</kbd> + <kbd>`</kbd></td><td>Open the tab switcher</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>Close the top-most modal / walk back through the schema stack</td></tr>
+              <tr><td><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>↓</kbd> / <kbd>↑</kbd></td><td>Jump between response codes in the documentation</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="font-size:13px">Shortcuts are active only where they make sense — for example, search is ignored while you are typing in an input, and response navigation requires the documentation pane to be focused.</p>
+      </section>
+
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-brand">
+        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+        <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
+        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
+        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
+        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
+        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+      </div>
+      <div class="footer-col">
+        <h4>Deploy</h4>
+        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
+        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
+        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
+        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
+        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
+      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>
