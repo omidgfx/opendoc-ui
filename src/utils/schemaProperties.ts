@@ -61,6 +61,42 @@ export const schemaVariantLabel = (
     return `Variant ${index + 1}`;
 };
 
+/** Phosphor glyph used to mark recursive/reused schemas in tables, examples and modals. */
+export const RECURSIVE_SCHEMA_ICON = 'ph ph-arrow-clockwise';
+
+/**
+ * True when following $refs from the schema eventually revisits a reference —
+ * the schema reuses itself recursively, either directly, through `items`, or
+ * through one of its properties. Expansion in tables and examples is guarded
+ * at the first cycle, so these rows are marked with the recursive icon.
+ */
+export const schemaIsRecursive = (schema: any, resolveReference: SchemaReferenceResolver): boolean => {
+    const chainRefs = new Set<string>();
+    const follow = (input: any, depth: number): boolean => {
+        if (!input || typeof input !== 'object' || depth > 64) return false;
+        if (typeof input.$ref === 'string') {
+            const ref = input.$ref;
+            if (chainRefs.has(ref)) return true;
+            const resolved = resolveReference(input);
+            if (!resolved || resolved === input) return false;
+            chainRefs.add(ref);
+            const result = follow(resolved, depth + 1);
+            chainRefs.delete(ref);
+            return result;
+        }
+        const branches: any[] = [];
+        if (input.items) branches.push(input.items);
+        if (input.additionalProperties && typeof input.additionalProperties === 'object')
+            branches.push(input.additionalProperties);
+        if (input.properties && typeof input.properties === 'object') branches.push(...Object.values(input.properties));
+        if (Array.isArray(input.oneOf)) branches.push(...input.oneOf);
+        if (Array.isArray(input.anyOf)) branches.push(...input.anyOf);
+        if (Array.isArray(input.allOf)) branches.push(...input.allOf);
+        return branches.some(branch => follow(branch, depth + 1));
+    };
+    return follow(schema, 0);
+};
+
 /**
  * Build the dotted property matrix used by documentation and schema views.
  * Reference and object ancestry are path-local so legitimate sibling reuse is

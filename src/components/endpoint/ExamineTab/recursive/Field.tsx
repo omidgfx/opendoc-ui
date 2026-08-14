@@ -8,7 +8,7 @@ import CustomDropdown from '../../../common/CustomDropdown';
 import RunnerFieldFrame from '../RunnerFieldFrame';
 import {enumDropdownOptions} from '@/src/utils/enumOptions';
 import {getRefName, resolveReference} from '@/src/utils/openapi';
-import {isNullOnlySchema, schemaVariantLabel} from '@/src/utils/schemaProperties';
+import {isNullOnlySchema, RECURSIVE_SCHEMA_ICON, schemaVariantLabel} from '@/src/utils/schemaProperties';
 import type {FieldProps} from '@/src/types/recursiveBody';
 import {
     defaultBodyValue,
@@ -73,9 +73,12 @@ export default function Field({
                     typeLabel="recursive reference"
                     actions={actions}
                 />
-                <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                    This reference points back to a schema already shown in this branch. Inspect the linked schema or
-                    use Raw mode to edit the recursive value directly.
+                <p className="mt-1 flex items-start gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                    <i className={`${RECURSIVE_SCHEMA_ICON} mt-0.5 shrink-0 text-[11px]`} />
+                    <span>
+                        This reference points back to a schema already shown in this branch. Inspect the linked schema
+                        or use Raw mode to edit the recursive value directly.
+                    </span>
                 </p>
             </RunnerFieldFrame>
         );

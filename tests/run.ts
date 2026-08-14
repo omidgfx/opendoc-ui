@@ -99,7 +99,12 @@ import {
 } from '@/src/utils/runnerResponse';
 import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
 import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
-import {flattenSchemaProperties, schemaVariantLabel} from '@/src/utils/schemaProperties';
+import {
+    flattenSchemaProperties,
+    RECURSIVE_SCHEMA_ICON,
+    schemaIsRecursive,
+    schemaVariantLabel,
+} from '@/src/utils/schemaProperties';
 import {runnerVariantIndexForValue, runnerVariantMatchesValue} from '@/src/utils/runner/recursiveBody';
 const test = (name: string, callback: () => void) => {
     callback();
@@ -1614,5 +1619,58 @@ test('exports and imports all notes with orphan detection', () => {
     assert.equal(parseEndpointNotesExport('{broken json'), null);
     assert.equal(parseEndpointNotesExport(JSON.stringify({format: 'other-format', notes: []})), null);
     assert.equal(parseEndpointNotesExport(JSON.stringify({format: 'opendoc-endpoint-notes', notes: 'nope'})), null);
+});
+
+test('marks recursive and reused schemas with the recursive guard icon', () => {
+    const spec: any = {
+        openapi: '3.1.1',
+        info: {title: 'Recursion', version: '1'},
+        paths: {},
+        components: {
+            schemas: {
+                Tree: {
+                    type: 'object',
+                    properties: {value: {type: 'string'}, children: {$ref: '#/components/schemas/Tree'}},
+                },
+                Customer: {
+                    type: 'object',
+                    properties: {name: {type: 'string'}, role: {$ref: '#/components/schemas/GuestRole'}},
+                },
+                GuestRole: {
+                    type: 'object',
+                    properties: {customer: {$ref: '#/components/schemas/Customer'}},
+                },
+                Flat: {
+                    type: 'object',
+                    properties: {name: {type: 'string'}},
+                },
+                NodeList: {
+                    type: 'array',
+                    items: {$ref: '#/components/schemas/Tree'},
+                },
+                Category: {
+                    type: 'object',
+                    properties: {
+                        name: {type: 'string'},
+                        parent: {
+                            anyOf: [{$ref: '#/components/schemas/Category'}, {type: 'null'}],
+                        },
+                    },
+                },
+            },
+        },
+    };
+    const resolve = (item: any) => resolveReference(item, spec);
+    assert.equal(schemaIsRecursive({$ref: '#/components/schemas/Category'}, resolve), true);
+    assert.equal(schemaIsRecursive({$ref: '#/components/schemas/Tree'}, resolve), true);
+    assert.equal(schemaIsRecursive({$ref: '#/components/schemas/Customer'}, resolve), true);
+    assert.equal(schemaIsRecursive({$ref: '#/components/schemas/GuestRole'}, resolve), true);
+    assert.equal(schemaIsRecursive({$ref: '#/components/schemas/Flat'}, resolve), false);
+    assert.equal(schemaIsRecursive(spec.components.schemas.Tree, resolve), true);
+    assert.equal(schemaIsRecursive(spec.components.schemas.NodeList, resolve), true);
+    assert.equal(schemaIsRecursive(spec.components.schemas.Flat, resolve), false);
+    assert.equal(schemaIsRecursive({type: 'string'}, resolve), false);
+    assert.equal(schemaIsRecursive({}, resolve), false);
+    assert.ok(RECURSIVE_SCHEMA_ICON.length > 0);
 });
 console.log('All OpenDoc UI unit tests passed.');
