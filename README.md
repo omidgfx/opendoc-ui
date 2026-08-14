@@ -540,9 +540,8 @@ simple-note/todo filters.
 - Hidden endpoints move into one muted **Hidden endpoints** folder at the end of the tree. Use their
   context menu to restore one, or **Unhide all endpoints** from navigation settings.
 - Endpoint note lists and the Local Notes page use custom confirmation dialogs for individual and
-  bulk deletion; **Delete all notes** is also available from the Local Notes navigation context menu.
-  Opening a note uses the tone-colored `NoteViewerModal`, with header edit/delete controls, todo actions,
-  and a centered empty-note state when no Markdown body exists.
+  bulk deletion. Opening a note uses the tone-colored `NoteViewerModal`, with header edit/delete controls,
+  todo actions, and a centered empty-note state when no Markdown body exists.
 - **Export / Import notes.** The Local Notes page can download every note and todo for the selected
   specification as a JSON file (`opendoc-endpoint-notes` format, e.g. `opendoc-notes-<title>.json`) and
   restore notes from such a file. Export detects notes whose endpoint no longer exists in the loaded
@@ -552,12 +551,14 @@ simple-note/todo filters.
   specification, and lets you import everything or only the matching notes; imported notes respect
   per-endpoint capacity limits and id deduplication.
 - **Trash.** Deleting a note moves it to the spec-scoped trash instead of removing it forever. The
-  Local Notes page shows a **Trash** button that opens a modal with restore, permanent delete, and
-  empty-trash actions.
+  Local Notes toolbar shows a **Trash** button that opens a modal with restore, permanent delete, and
+  empty-trash actions; restore and permanent delete each ask for confirmation. **Move all to trash**
+  only moves active notes — orphaned notes are never touched by bulk deletion.
 - **Orphaned notes.** Notes whose endpoint disappears from the loaded specification (removed, renamed,
   or imported from another spec) are kept in a dedicated **Orphaned** list instead of mixing into the
-  page. From the Orphaned modal each note can be re-assigned to another endpoint or deleted
-  permanently, so nothing is lost when an endpoint is renamed.
+  page. From the Orphaned modal each note can be re-assigned to another endpoint (compact searchable
+  picker) or deleted permanently with confirmation, so nothing is lost when an endpoint is renamed.
+  Restoring a trashed note whose endpoint is missing returns it to the Orphaned list.
 
 Resetting one specification preserves its local notes by default. The reset confirmation includes an
 unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all
