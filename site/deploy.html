@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Deploy — OpenDoc UI</title>
+<meta name="description" content="Deploy OpenDoc UI anywhere: static hosting, GitHub Pages, Docker, the guided npm run make builder, configuration modes, the AI gateway and the downloader proxy."/>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
+<link rel="stylesheet" href="assets/css/site.css"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <nav class="nav-links" id="nav-links">
+      <a href="index.html">Home</a>
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="compatibility.html">Compatibility</a>
+      <a href="deploy.html">Deploy</a>
+      <a href="developers.html">Developers</a>
+      <a href="faq.html">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="theme-toggle">
+        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
+        <div class="theme-options" id="theme-menu" role="menu">
+          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
+          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
+          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
+        </div>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>Deployment</h1>
+    <p>From a single static directory to a hardened Docker stack with an AI gateway — every deployment path, documented end to end.</p>
+  </div>
+  <div class="container subnav">
+    <a href="#static"><i class="ph ph-browser"></i> Static hosting</a>
+    <a href="#github-pages"><i class="ph-fill ph-github-logo"></i> GitHub Pages</a>
+    <a href="#docker"><i class="ph ph-cube"></i> Docker</a>
+    <a href="#make"><i class="ph ph-terminal-window"></i> npm run make</a>
+    <a href="#modes"><i class="ph ph-sliders-horizontal"></i> Config modes</a>
+    <a href="#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
+    <a href="#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+  </div>
+</section>
+
+<section class="section" style="padding-top:28px">
+  <div class="container">
+    <section id="static" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Static hosting</h2>
+      <p>
+        OpenDoc UI compiles to a single self-contained directory. Build it once, copy
+        <code>dist/</code> to any static host, and the entire application — documentation, runner,
+        schemas, notes, theming — works without a server process, database or runtime dependency.
+      </p>
+      <div class="codeblock">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Build</span></div>
+<pre><code>npm ci
+npm run build      <span class="c"># dist/ with index.html, index.js, 404.html</span></code></pre>
+      </div>
+      <p>
+        Deploy <code>dist/</code> to nginx, Netlify, Vercel, Cloudflare Pages, S3 with a static
+        website, or any Apache server. The included <code>404.html</code> provides SPA fallback so
+        deep links keep working on hosts without rewrite rules.
+      </p>
+    </section>
+
+    <section id="github-pages" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">GitHub Pages</h2>
+      <p>
+        The repository ships a ready-made Pages workflow. On every push to <code>master</code> it
+        installs dependencies, copies the demo configuration, builds with the correct base path and
+        deploys — so the live demo is always current with the latest commit.
+      </p>
+      <div class="codeblock">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Workflow highlights (.github/workflows/pages.yml)</span></div>
+<pre><code>env:
+  VITE_BASE_PATH: /${{ github.event.repository.name }}/
+  VITE_LOAD_FROM_URL: 'true'
+
+steps:
+  - uses: actions/checkout@v5
+  - uses: actions/setup-node@v5
+    with: { node-version: 22, cache: npm }
+  - run: npm ci
+  - run: cp public/demo/config.pages.json public/config.json
+  - run: npm run build
+  - run: touch dist/.nojekyll
+  - uses: actions/configure-pages@v6
+  - uses: actions/upload-pages-artifact@v5
+    with: { path: ./dist }
+  - uses: actions/deploy-pages@v5</code></pre>
+      </div>
+      <p>
+        Project sites use the <code>/&lt;repository&gt;/</code> base path automatically; custom domains
+        keep the root. Deep links, the demo specification and local file loading all work unchanged
+        under the subpath because the application routes through the URL hash.
+      </p>
+    </section>
+
+    <section id="docker" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Docker</h2>
+      <p>
+        Docker Desktop or Engine with the Compose plugin is the only prerequisite. The image uses a
+        lockfile-pinned <code>npm ci</code> builder and serves the verified bundle from nginx with a
+        working health check.
+      </p>
+      <div class="codeblock">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Compose</span></div>
+<pre><code><span class="c"># build and start</span>
+docker compose up --build --detach
+
+<span class="c"># open http://localhost:3000 — stop with</span>
+docker compose down</code></pre>
+      </div>
+      <p>
+        <code>docker/config.json</code> is mounted read-only into the container and controls which
+        specifications the deployment presents — edit it and reload the browser; no image rebuild is
+        needed. Host port, image name, container name and restart policy are environment-driven
+        (<code>OPENDOC_PORT</code>, <code>OPENDOC_IMAGE_NAME</code>, <code>OPENDOC_CONTAINER_NAME</code>,
+        <code>OPENDOC_RESTART_POLICY</code>), and helper scripts (<code>docker/build.sh</code>,
+        <code>docker/run.sh</code> and their PowerShell counterparts) cover direct build/run workflows
+        on every platform.
+      </p>
+    </section>
+
+    <section id="make" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The guided builder — <code>npm run make</code></h2>
+      <p>
+        For anyone who prefers questions over configuration files, the interactive builder walks
+        through every deployment decision and produces a clean, verified build:
+      </p>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><div class="body"><h4>Deployment profile</h4><p>Static files only, a Docker image, or both. Clean the previous output before building if you want a pristine artifact.</p></div></div>
+        <div class="step"><div class="num">2</div><div class="body"><h4>Frontend options</h4><p>Apple Emoji sprite (exclude for a leaner bundle, include for consistent Apple rendering), base path, and whether to enable Load-from-URL.</p></div></div>
+        <div class="step"><div class="num">3</div><div class="body"><h4>Downloader proxy</h4><p>A validated <code>{URL}</code> template when remote specs must cross restrictive networks, plus optional framework example env files.</p></div></div>
+        <div class="step"><div class="num">4</div><div class="body"><h4>AI gateway</h4><p>Provider, model, base URL, hidden API key, auto-generated gateway token, allowed origins, port and limits — with optional framework examples.</p></div></div>
+        <div class="step"><div class="num">5</div><div class="body"><h4>Docker options</h4><p>Image and container names, host port (with in-use detection), restart policy.</p></div></div>
+        <div class="step"><div class="num">6</div><div class="body"><h4>Review, build, start</h4><p>Confirm the summary, watch the live build, verify the fresh output, then choose to start — preview, dev server, Docker Compose with health polling, or the AI gateway.</p></div></div>
+      </div>
+      <div class="note"><i class="ph ph-info"></i><span><code>npm run make</code> never modifies <code>npm run build</code>. Build-time variables are injected only into the child build process, runtime settings live in <code>.env</code> (secrets never in the gitignored <code>builder.config.json</code>), and the configuration is committed only after the build verifies.</span></div>
+    </section>
+
+    <section id="modes" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Configuration modes</h2>
+      <p>At startup the application decides its behavior entirely from what is present on the page:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Mode</th><th>Mechanism</th><th>Ideal for</th></tr></thead>
+          <tbody>
+            <tr><td>Mode 1 — configured specs</td><td><code>public/config.json</code> with a <code>parsables</code> catalog</td><td>Teams publishing a fixed set of internal APIs</td></tr>
+            <tr><td>Mode 2 — build-time config</td><td><code>window.INITIAL_CONFIG</code></td><td>Deployments that bake the catalog into the bundle</td></tr>
+            <tr><td>Hybrid</td><td>Configured catalog + local files</td><td>The live demo and most intranet deployments</td></tr>
+            <tr><td>Mode 3 — local only</td><td>No configuration at all</td><td>Personal use and air-gapped environments</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ai" style="margin-bottom:56px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The AI gateway</h2>
+      <p>
+        The assistant can talk to a CORS-enabled provider directly. When that is not acceptable —
+        provider keys must stay server-side, or the network demands a gateway — the repository
+        includes a hardened Express gateway:
+      </p>
+      <div class="codeblock">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Gateway environment (.env)</span></div>
+<pre><code>AI_GATEWAY_TOKEN=replace-with-a-long-random-token
+AI_GATEWAY_ORIGIN=https://docs.example.com,http://localhost:3000
+AI_GATEWAY_PORT=8787
+
+AI_PROVIDER=openrouter
+AI_MODEL=gpt-4o-mini
+<span class="c"># AI_API_KEY=   AI_BASE_URL=</span>
+
+AI_GATEWAY_RATE_LIMIT=30
+AI_GATEWAY_MAX_CONCURRENT=4
+AI_GATEWAY_MAX_MESSAGES=24
+AI_GATEWAY_MAX_MESSAGE_CHARS=40000
+AI_GATEWAY_MAX_CONTEXT_CHARS=250000
+AI_GATEWAY_MAX_OUTPUT_TOKENS=2048
+AI_GATEWAY_UPSTREAM_TIMEOUT_MS=60000</code></pre>
+      </div>
+      <p>
+        Run it with <code>npm run ai-gateway</code>. The frontend proxies
+        <code>/api/ai</code> to it in development, and reference implementations for eight backend
+        frameworks live under <code>ai-proxy/</code> for teams that want the gateway in their own
+        language and stack.
+      </p>
+    </section>
+
+    <section id="downloader" style="margin-bottom:20px">
+      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The downloader proxy</h2>
+      <p>
+        When browsers cannot fetch a remote specification directly — corporate proxies, CORS-restricted
+        hosts — OpenDoc UI can route through a downloader proxy. Configure its template at build time:
+      </p>
+      <div class="codeblock">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>Build-time</span></div>
+<pre><code>VITE_LOAD_FROM_URL=true
+VITE_SPEC_DOWNLOADER=https://proxy.example.com/download?spec_url={URL}</code></pre>
+      </div>
+      <p>
+        Reference downloader services for Node, Python, PHP, Go, Java and .NET ship under
+        <code>proxy/</code>, each enforcing origin allowlists, size and timeout limits, redirect caps,
+        port restrictions and rate limiting.
+      </p>
+    </section>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-brand">
+        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+        <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
+        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
+        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
+        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
+        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+      </div>
+      <div class="footer-col">
+        <h4>Deploy</h4>
+        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
+        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
+        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
+        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
+        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
+      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

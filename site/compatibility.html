@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Compatibility — OpenDoc UI</title>
+<meta name="description" content="The complete OpenDoc UI compatibility matrix: specification versions, deployment targets, browsers, AI providers, proxy frameworks and code generation targets."/>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
+<link rel="stylesheet" href="assets/css/site.css"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <nav class="nav-links" id="nav-links">
+      <a href="index.html">Home</a>
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="compatibility.html">Compatibility</a>
+      <a href="deploy.html">Deploy</a>
+      <a href="developers.html">Developers</a>
+      <a href="faq.html">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <div class="theme-toggle">
+        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
+        <div class="theme-options" id="theme-menu" role="menu">
+          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
+          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
+          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
+        </div>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>Compatibility</h1>
+    <p>What OpenDoc UI understands, where it runs, and which ecosystems it speaks — measured precisely, not approximated.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:28px">
+  <div class="container">
+    <div class="section-head" style="margin-bottom:32px">
+      <span class="kicker"><i class="ph ph-file-code"></i> Specification dialects</span>
+      <h2>Every generation of the format</h2>
+      <p>From legacy Swagger documents to the newest OpenAPI 3.2 constructs, OpenDoc UI parses, normalizes and renders the dialect correctly — including vendor extensions and webhooks.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Dialect</th><th>Parsing</th><th>Rendering</th><th>Runner</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>openapi: 3.0.x</code></td><td>Complete</td><td>Complete</td><td>Supported</td><td>nullable semantics preserved; parameters, security, callbacks and links rendered</td></tr>
+          <tr><td><code>openapi: 3.1.x</code></td><td>Complete</td><td>Complete</td><td>Supported</td><td>JSON Schema 2020-12 keywords — const, prefixItems, unevaluatedProperties, if/then/else, type unions</td></tr>
+          <tr><td><code>openapi: 3.2.x</code></td><td>Complete</td><td>Complete</td><td>Supported</td><td>webhooks, additionalOperations, query methods and the newest meta-schema surface</td></tr>
+          <tr><td><code>swagger: "2.0"</code></td><td>Complete</td><td>Normalized to 3.x internally</td><td>Supported</td><td>definitions, formData and body parameters, file uploads, collection formats, securityDefinitions</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note"><i class="ph ph-info"></i><span>Multi-file documents resolve in-memory: local reference graphs, same-origin external references and bundled documents are all handled, with clear diagnostics for anything unresolved.</span></div>
+
+    <div class="section-head" style="margin-top:64px">
+      <span class="kicker"><i class="ph ph-browser"></i> Deployment targets</span>
+      <h2>Where the application runs</h2>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="icon"><i class="ph ph-browser"></i></div><h3>Static hosts</h3><p>GitHub Pages, Netlify, Vercel, Cloudflare Pages, S3 and any nginx or Apache static server. A single <code>dist/</code> directory is all that is required — no runtime, no database.</p></div>
+      <div class="card"><div class="icon alt"><i class="ph ph-cube"></i></div><h3>Docker</h3><p>A compose-based image serves the verified bundle from nginx with a health check, reproducible lockfile builds and cross-platform helper scripts for Windows, macOS and Linux.</p></div>
+      <div class="card"><div class="icon"><i class="ph ph-monitor"></i></div><h3>Browsers</h3><p>Modern evergreen browsers on desktop and mobile: Chromium, Firefox, Safari and Edge. The interface adapts to small screens with a mobile sidebar and touch-friendly interactions.</p></div>
+    </div>
+
+    <div class="section-head" style="margin-top:64px">
+      <span class="kicker"><i class="ph ph-plugs-connected"></i> AI providers</span>
+      <h2>The assistant connects to what you already use</h2>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="icon"><i class="ph ph-cpu"></i></div><h3>Direct provider mode</h3><p>OpenAI, Anthropic, Ollama, OpenRouter or any OpenAI-compatible endpoint reachable from the browser, with global profiles for keys, models, temperature and skills.</p></div>
+      <div class="card"><div class="icon alt"><i class="ph ph-shield-check"></i></div><h3>Server-side gateway</h3><p>The included hardened gateway owns provider credentials and enforces token authentication, origin allowlists, rate limits, concurrency bounds and upstream timeouts.</p></div>
+      <div class="card"><div class="icon"><i class="ph ph-stack"></i></div><h3>Framework examples</h3><p>Gateway reference implementations for Node (Express), Python (FastAPI, Django), PHP (Laravel), Ruby (Rails), Java (Spring Boot), .NET (ASP.NET Core), Go (Gin) and Rust (Axum).</p></div>
+    </div>
+
+    <div class="section-head" style="margin-top:64px">
+      <span class="kicker"><i class="ph ph-cloud-arrow-down"></i> Downloader proxies</span>
+      <h2>Remote specifications behind restrictive networks</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Language</th><th>Framework</th><th>Reference</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js</td><td>Express</td><td><code>proxy/node/</code></td></tr>
+          <tr><td>Python</td><td>FastAPI</td><td><code>proxy/python/</code></td></tr>
+          <tr><td>PHP</td><td>Laravel</td><td><code>proxy/php/</code></td></tr>
+          <tr><td>Go</td><td>net/http</td><td><code>proxy/go/</code></td></tr>
+          <tr><td>Java</td><td>Spring Boot</td><td><code>proxy/java/</code></td></tr>
+          <tr><td>.NET</td><td>ASP.NET Core</td><td><code>proxy/dotnet/</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Every proxy template enforces the same safety contract: exact origin allowlists, size limits,
+      timeout bounds, redirect caps, port restrictions and rate limiting — with private and reserved
+      destinations blocked by default.
+    </p>
+
+    <div class="section-head" style="margin-top:64px">
+      <span class="kicker"><i class="ph ph-code"></i> Code generation targets</span>
+      <h2>Speak your team's language</h2>
+    </div>
+    <div class="chips">
+      <span class="chip"><i class="ph ph-terminal-window"></i> curl</span>
+      <span class="chip"><i class="ph ph-code"></i> JavaScript fetch</span>
+      <span class="chip"><i class="ph ph-code"></i> JavaScript axios</span>
+      <span class="chip"><i class="ph ph-code"></i> Python</span>
+      <span class="chip"><i class="ph ph-code"></i> Go</span>
+      <span class="chip"><i class="ph ph-code"></i> C#</span>
+      <span class="chip"><i class="ph ph-code"></i> PHP</span>
+      <span class="chip"><i class="ph ph-code"></i> Angular</span>
+      <span class="chip indigo"><i class="ph ph-file-ts"></i> TypeScript models</span>
+    </div>
+
+    <div class="section-head" style="margin-top:64px">
+      <span class="kicker"><i class="ph ph-gauge"></i> What the Runner can and cannot do</span>
+      <h2>Honest capability reporting</h2>
+    </div>
+    <p>
+      The Runner Compatibility page inspects the specification and reports, endpoint by endpoint, what
+      the browser Runner supports — authentication methods, body encodings, binary responses and
+      declared uncertainty — so an API that needs a native client is identified before anyone wastes
+      time. Everything is environment-dependent at runtime: CORS, DNS and credentials remain under the
+      control of the server, and the report says so.
+    </p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-brand">
+        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+        <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
+        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
+        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
+        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
+        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+      </div>
+      <div class="footer-col">
+        <h4>Deploy</h4>
+        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
+        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
+        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
+        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
+        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
+      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

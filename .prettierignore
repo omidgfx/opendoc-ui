@@ -10,3 +10,4 @@ public/config.json
 *.zip
 *.tar.gz
 *.bundle
+site/
