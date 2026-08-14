@@ -82,6 +82,7 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                             <button
                                 key={`${endpoint.method}:${endpoint.path}`}
                                 type="button"
+                                aria-pressed={active}
                                 onClick={() => onSelect(endpoint.path, endpoint.method)}
                                 className={clsx(
                                     'relative flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors before:absolute before:-left-2 before:top-1/2 before:h-px before:w-2 before:bg-[var(--text-muted)]/20 cursor-pointer',
@@ -101,6 +102,8 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                                     className={clsx(
                                         config.compactMethodNames ? 'h-4 w-5 !px-0' : 'h-4 w-9',
                                         'shrink-0',
+                                        active &&
+                                            '!border-[var(--primary-contrast)]/30 !bg-[var(--primary-contrast)]/20 !text-[var(--primary-contrast)]',
                                     )}
                                 />
                                 <span className="min-w-0 flex-1">
@@ -145,7 +148,10 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
     };
 
     return (
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)]">
+        <div
+            data-note-endpoint-picker
+            className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)]"
+        >
             <div className="border-b border-[var(--border)] p-3">
                 <label className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                     Endpoint
@@ -156,11 +162,15 @@ export default function NoteEndpointPicker({spec, specKey, selected, onSelect}: 
                         value={query}
                         onChange={event => setQuery(event.target.value)}
                         placeholder="Search endpoints…"
+                        autoFocus
                         className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-8 pr-3 text-[10px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"
                     />
                 </div>
             </div>
-            <div className="max-h-[440px] min-h-56 overflow-y-auto p-2 scrollbar-thin">
+            <div
+                data-note-endpoint-list
+                className="h-[min(440px,45vh)] overflow-y-auto p-2 scrollbar-thin lg:h-auto lg:min-h-0 lg:flex-1"
+            >
                 {Object.keys(visibleTree.children).length > 0 || visibleTree.endpoints.length > 0 ? (
                     renderNode(visibleTree, '', 0)
                 ) : (

@@ -257,7 +257,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                 onMiddleClickEndpoint?.(ep.path, ep.method);
                                             }}
                                             className={clsx(
-                                                'flex items-center w-full py-1.5 font-medium ps-2 pe-2 rounded-lg text-left transition-all cursor-pointer select-none min-w-0',
+                                                'group flex items-center w-full py-1.5 font-medium ps-2 pe-2 rounded-lg text-left transition-all cursor-pointer select-none min-w-0',
                                                 isSelected
                                                     ? 'bg-[var(--primary)]/90 text-[var(--primary-contrast)]'
                                                     : ep.isHidden
@@ -322,7 +322,14 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                         content={`${noteCount} local note${noteCount === 1 ? '' : 's'}`}
                                                     >
                                                         <i
-                                                            className="ph-fill ph-note shrink-0 text-[13px] text-[#f59e0b]"
+                                                            className={clsx(
+                                                                'ph-fill ph-note shrink-0 text-[13px] transition-colors',
+                                                                isSelected
+                                                                    ? 'text-[var(--primary-contrast)]'
+                                                                    : ep.isHidden
+                                                                      ? 'text-[var(--text-muted)]'
+                                                                      : 'text-[#f59e0b] group-hover:text-[var(--primary)]',
+                                                            )}
                                                             aria-label={`${noteCount} local notes`}
                                                         />
                                                     </Tip>

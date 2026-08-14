@@ -782,7 +782,7 @@ export default function ApiSpecificationSelectorModal({
                                             Clear local notes too
                                         </span>
                                         <span className="mt-0.5 block text-[9px] text-[var(--text-muted)]">
-                                            Default is off. Enable this only if notes and tasks should be permanently
+                                            Default is off. Enable this only if notes and todos should be permanently
                                             deleted.
                                         </span>
                                     </span>

@@ -418,21 +418,49 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await endpoint.click({button: 'right'});
     await page.getByRole('button', {name: 'Create local note'}).click();
 
-    await page.getByRole('button', {name: 'Note type'}).click();
-    await page.getByRole('option', {name: /^Todo/}).click();
+    await expect(page.getByPlaceholder('Search endpoints…')).toHaveCount(0);
+    const simpleNoteType = page.getByRole('button', {name: 'Simple note', exact: true});
+    const todoType = page.getByRole('button', {name: 'Todo', exact: true});
+    await expect(simpleNoteType).toHaveAttribute('aria-pressed', 'true');
+    await todoType.click();
+    await expect(todoType).toHaveAttribute('aria-pressed', 'true');
     await page.getByPlaceholder('What needs to be done?').fill('Fix validation flow');
     await page.getByPlaceholder('Write Markdown…').fill('**Important:** verify the `400` response.');
-    await page.getByRole('button', {name: /Butter.*12 tones/}).click();
-    const colorDialog = page.getByRole('dialog', {name: 'Choose note color'});
-    await expect(colorDialog.getByRole('button', {name: /note color$/})).toHaveCount(12);
-    await colorDialog.getByRole('button', {name: 'Blue note color'}).click();
+    await expect(page.getByRole('button', {name: /note tone$/})).toHaveCount(12);
+    await page.getByRole('button', {name: 'Blue note tone'}).click();
+    await expect(page.getByRole('button', {name: 'Blue note tone'})).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('dialog', {name: 'Choose note color'})).toHaveCount(0);
     await page.getByLabel('Offer to hide endpoint when all todos are done').check();
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
 
     await endpoint.click();
-    await expect(page.getByRole('button', {name: 'Open endpoint notes (1)'})).toBeVisible();
+    const endpointNotesButton = page.getByRole('button', {name: 'Open endpoint notes (1)'});
+    const askAIButton = page.getByRole('button', {name: 'Ask AI in a new conversation'});
+    await expect(endpointNotesButton).toBeVisible();
+    const [noteButtonStyle, aiButtonStyle] = await Promise.all(
+        [endpointNotesButton, askAIButton].map(button =>
+            button.evaluate(element => {
+                const style = getComputedStyle(element);
+                return {height: style.height, borderRadius: style.borderRadius, borderWidth: style.borderWidth};
+            }),
+        ),
+    );
+    expect(noteButtonStyle).toEqual(aiButtonStyle);
+    const countStyle = await endpointNotesButton.locator('[data-endpoint-note-count]').evaluate(element => {
+        const style = getComputedStyle(element);
+        return {backgroundColor: style.backgroundColor, fontFamily: style.fontFamily};
+    });
+    expect(countStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    expect(countStyle.fontFamily).not.toMatch(/mono/i);
+    const noteButtonIcon = endpointNotesButton.locator('i');
+    const aiButtonIconColor = await askAIButton.locator('i').evaluate(element => getComputedStyle(element).color);
+    await expect(noteButtonIcon).toHaveCSS('color', 'rgb(245, 158, 11)');
+    await endpointNotesButton.hover();
+    await expect
+        .poll(() => noteButtonIcon.evaluate(element => getComputedStyle(element).color))
+        .toBe(aiButtonIconColor);
     await expect(sidebar.getByLabel('1 local notes')).toBeVisible();
-    await page.getByRole('button', {name: 'Open endpoint notes (1)'}).click();
+    await endpointNotesButton.click();
     const listDialog = page.getByRole('dialog', {name: 'Endpoint Notes'});
     await expect(listDialog).toContainText('Important:');
     await listDialog.locator('button').filter({hasText: 'Fix validation flow'}).first().click();
@@ -477,19 +505,65 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(page).toHaveURL(/\/notes$/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await expect(page.getByText('Fix validation flow', {exact: true})).toBeVisible();
-    await expect(page.getByRole('button', {name: 'Mark todo as not done'})).toHaveAttribute('aria-pressed', 'true');
+    const localTodoCard = page.getByLabel('Open Fix validation flow');
+    const localTodoCheckbox = page.getByRole('button', {name: 'Mark todo as not done'});
+    await expect(localTodoCheckbox).toHaveAttribute('aria-pressed', 'true');
+    const checkboxShape = await localTodoCheckbox.evaluate(element => {
+        const style = getComputedStyle(element);
+        return {radius: parseFloat(style.borderRadius), width: element.getBoundingClientRect().width};
+    });
+    expect(checkboxShape.radius).toBeGreaterThanOrEqual(checkboxShape.width / 2 - 1);
+    await expect(localTodoCard).toHaveCSS('box-shadow', 'none');
+    const [cardBounds, cornerBounds] = await Promise.all([
+        localTodoCard.boundingBox(),
+        localTodoCard.locator('[data-note-corner-tone]').boundingBox(),
+    ]);
+    const horizontalOverflow =
+        (cornerBounds?.x || 0) + (cornerBounds?.width || 0) - ((cardBounds?.x || 0) + (cardBounds?.width || 0));
+    const verticalOverflow = (cardBounds?.y || 0) - (cornerBounds?.y || 0);
+    expect(Math.abs(horizontalOverflow - (cornerBounds?.width || 0) / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(verticalOverflow - (cornerBounds?.height || 0) / 2)).toBeLessThanOrEqual(1);
     await page.getByText(/verify the 400 response/i).click();
     await expect(page.getByRole('dialog', {name: 'Fix validation flow'})).toBeVisible();
     await page.getByRole('button', {name: 'Close Fix validation flow'}).click();
 
     await page.getByRole('button', {name: 'New note', exact: true}).click();
     const endpointSearch = page.getByPlaceholder('Search endpoints…');
+    await expect(endpointSearch).toBeFocused();
+    await expect(page.locator('[data-note-limit-meter]')).toHaveCount(0);
+    const picker = page.locator('[data-note-endpoint-picker]');
+    const pickerList = page.locator('[data-note-endpoint-list]');
+    const [pickerBounds, pickerListBounds] = await Promise.all([picker.boundingBox(), pickerList.boundingBox()]);
+    const pickerBottomGap =
+        (pickerBounds?.y || 0) +
+        (pickerBounds?.height || 0) -
+        ((pickerListBounds?.y || 0) + (pickerListBounds?.height || 0));
+    expect(Math.abs(pickerBottomGap)).toBeLessThanOrEqual(2);
     await endpointSearch.fill('Serve private media');
-    await page.getByRole('button', {name: /Serve private media/}).click();
+    const mediaEndpointOption = page.getByRole('button', {name: /Serve private media/});
+    await mediaEndpointOption.click();
+    await expect(mediaEndpointOption).toHaveAttribute('aria-pressed', 'true');
+    await expect
+        .poll(() =>
+            mediaEndpointOption.evaluate(
+                element => getComputedStyle(element.querySelector('span')!).color === getComputedStyle(element).color,
+            ),
+        )
+        .toBe(true);
     await page.getByPlaceholder('Short note title').fill('Reference note');
     await page.getByPlaceholder('Write Markdown…').fill('[Read the docs](https://example.com/docs).');
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
     await expect(page.getByText('Reference note', {exact: true})).toBeVisible();
+    const referenceCard = page.getByLabel('Open Reference note');
+    await expect(referenceCard).toHaveCSS('box-shadow', 'none');
+    const [markerBounds, titleBounds] = await Promise.all([
+        referenceCard.locator('[data-note-title-marker]').boundingBox(),
+        referenceCard.getByRole('button', {name: 'Reference note', exact: true}).boundingBox(),
+    ]);
+    expect((markerBounds?.y || 0) + (markerBounds?.height || 0) / 2).toBeCloseTo(
+        (titleBounds?.y || 0) + (titleBounds?.height || 0) / 2,
+        0,
+    );
     await page.getByText('Reference note', {exact: true}).click();
     await expect(
         page.getByRole('dialog', {name: 'Reference note'}).getByRole('link', {name: 'Read the docs'}),
@@ -562,8 +636,8 @@ test('validates note title and Markdown limits without blocking typing or pastin
         .getByText('Send permissive validation request', {exact: true});
     await endpoint.click({button: 'right'});
     await page.getByRole('button', {name: 'Create local note'}).click();
-    await expect(page.getByPlaceholder('Search endpoints…')).toBeVisible();
-    await expect(page.getByText('General', {exact: true}).first()).toBeVisible();
+    await expect(page.getByPlaceholder('Search endpoints…')).toHaveCount(0);
+    await expect(page.locator('[data-note-limit-meter]')).toHaveCount(0);
 
     const title = page.getByPlaceholder('Short note title');
     const content = page.getByPlaceholder('Write Markdown…');
@@ -577,7 +651,7 @@ test('validates note title and Markdown limits without blocking typing or pastin
     await expect(alert).toContainText('title is 1 character over');
     await expect(alert).toContainText('Markdown content is 1 character over');
     await expect(page.getByText('1 over', {exact: true})).toHaveCount(2);
-    await expect(page.locator('.h-1.w-16')).toHaveCount(2);
+    await expect(page.locator('[data-note-limit-meter]')).toHaveCount(2);
     await expect(page.locator('.max-h-72.overflow-y-auto')).toBeVisible();
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
     await expect(page.getByRole('dialog', {name: 'Create Note'})).toBeVisible();
