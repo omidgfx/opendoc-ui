@@ -91,6 +91,8 @@ export const defaultBodyValue = (
         return defaultBodyValue(current.oneOf[0], spec, depth + 1, new Set(refs), new Set(objects));
     if (current.anyOf?.length)
         return defaultBodyValue(current.anyOf[0], spec, depth + 1, new Set(refs), new Set(objects));
+    if (current.type === 'null' || (Array.isArray(current.type) && current.type.every(item => item === 'null')))
+        return null;
     if (current.type === 'object' || current.properties) {
         return Object.fromEntries(
             Object.entries(current.properties || {})
@@ -114,3 +116,42 @@ export const setAtPath = (root: any, path: PathPart[], nextValue: unknown): any 
     return copy;
 };
 export const removeAtPath = (root: any[], index: number): any[] => root.filter((_, itemIndex) => itemIndex !== index);
+
+const variantSchemaMatchesValue = (variant: any, value: unknown, spec: OpenApiSpec): boolean => {
+    if (value === null || value === undefined) return false;
+    const schema = resolved(variant, spec);
+    const types = Array.isArray(schema?.type) ? schema.type : [schema?.type];
+    const nullOnly = types.length > 0 && types.every((item: string) => item === 'null');
+    if (nullOnly) return false;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        if (schema?.type === 'object' || schema?.properties) {
+            const required = Array.isArray(schema.required) ? schema.required : [];
+            if (required.length > 0) return required.every(key => Object.prototype.hasOwnProperty.call(value, key));
+            const propertyKeys = Object.keys(schema.properties || {});
+            const valueKeys = Object.keys(value);
+            return valueKeys.length > 0 && valueKeys.every(key => propertyKeys.includes(key));
+        }
+        return false;
+    }
+    if (Array.isArray(value)) return schema?.type === 'array';
+    if (schema?.type === 'boolean') return typeof value === 'boolean';
+    if (schema?.type === 'integer' || schema?.type === 'number') return typeof value === 'number';
+    if (schema?.type === 'string') return typeof value === 'string';
+    return false;
+};
+
+/**
+ * True when the given oneOf/anyOf alternative's shape matches the current
+ * value. Used to keep a saved or restored body on the branch it was edited
+ * with instead of resetting to the first branch.
+ */
+export const runnerVariantMatchesValue = (variant: any, value: unknown, spec: OpenApiSpec): boolean =>
+    variantSchemaMatchesValue(variant, value, spec);
+
+/**
+ * Pick the oneOf/anyOf alternative whose shape matches the current value so a
+ * saved or restored body keeps showing the branch it was edited with. Returns
+ * -1 when no branch clearly matches (callers fall back to their own state).
+ */
+export const runnerVariantIndexForValue = (variants: any[], value: unknown, spec: OpenApiSpec): number =>
+    variants.findIndex(variant => variantSchemaMatchesValue(variant, value, spec));

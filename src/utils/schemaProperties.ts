@@ -9,6 +9,58 @@ const isObjectSchema = (schema: any): boolean =>
 const isArraySchema = (schema: any): boolean =>
     !!schema && typeof schema === 'object' && !Array.isArray(schema) && schema.type === 'array' && !!schema.items;
 
+const schemaTypes = (schema: any): string[] => {
+    if (!schema || typeof schema !== 'object') return [];
+    if (Array.isArray(schema.type)) return schema.type.filter((type: string) => typeof type === 'string');
+    return typeof schema.type === 'string' ? [schema.type] : [];
+};
+
+/** True when the schema only admits the JSON null value (directly or through $ref). */
+export const isNullOnlySchema = (schema: any, resolveReference: SchemaReferenceResolver): boolean => {
+    if (schema === true || schema === false || !schema || typeof schema !== 'object') return false;
+    if (typeof schema.$ref === 'string') {
+        const resolved = resolveReference(schema);
+        if (!resolved || resolved === schema) return false;
+        return isNullOnlySchema(resolved, resolveReference);
+    }
+    const types = schemaTypes(schema);
+    return types.length > 0 && types.every(type => type === 'null');
+};
+
+/**
+ * Human label for one alternative of a oneOf/anyOf branch. Prefers the
+ * referenced schema name, then the branch title, then a compact type
+ * description, and finally a positional fallback.
+ */
+export const schemaVariantLabel = (
+    variant: any,
+    resolveReference: SchemaReferenceResolver,
+    getRefName: (refStr: string) => string,
+    index: number,
+): string => {
+    if (!variant || typeof variant !== 'object') return `Variant ${index + 1}`;
+    if (typeof variant.$ref === 'string' && variant.$ref.startsWith('#/components/schemas/'))
+        return getRefName(variant.$ref);
+    if (variant.title) return variant.title;
+    const resolved = resolveReference(variant) || variant;
+    if (resolved && typeof resolved === 'object') {
+        if (typeof resolved.$ref === 'string') return getRefName(resolved.$ref);
+        if (resolved.title) return resolved.title;
+    }
+    if (resolved && typeof resolved === 'object') {
+        if (resolved.const !== undefined) return JSON.stringify(resolved.const);
+        if (Array.isArray(resolved.enum))
+            return resolved.enum.map((value: unknown) => JSON.stringify(value)).join(' | ');
+    }
+    const types = schemaTypes(resolved);
+    const nonNullTypes = types.filter(type => type !== 'null');
+    if (nonNullTypes.length === 1 && nonNullTypes[0] === 'object' && resolved?.properties)
+        return `object (${Object.keys(resolved.properties).length} props)`;
+    if (nonNullTypes.length > 0) return nonNullTypes.join(' | ');
+    if (types.includes('null')) return 'null';
+    return `Variant ${index + 1}`;
+};
+
 /**
  * Build the dotted property matrix used by documentation and schema views.
  * Reference and object ancestry are path-local so legitimate sibling reuse is

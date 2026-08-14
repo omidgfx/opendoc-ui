@@ -7,11 +7,15 @@ import GuideBranch from './GuideBranch';
 import CustomDropdown from '../../../common/CustomDropdown';
 import RunnerFieldFrame from '../RunnerFieldFrame';
 import {enumDropdownOptions} from '@/src/utils/enumOptions';
+import {getRefName, resolveReference} from '@/src/utils/openapi';
+import {isNullOnlySchema, schemaVariantLabel} from '@/src/utils/schemaProperties';
 import type {FieldProps} from '@/src/types/recursiveBody';
 import {
     defaultBodyValue,
     removeAtPath,
     resolved,
+    runnerVariantIndexForValue,
+    runnerVariantMatchesValue,
     RUNNER_ALLOF_CONFLICTS,
     RUNNER_BOOLEAN_SCHEMA,
 } from '@/src/utils/runner/recursiveBody';
@@ -104,7 +108,24 @@ export default function Field({
     }
     if (current.oneOf?.length || current.anyOf?.length) {
         const variants = current.oneOf || current.anyOf;
-        const selectedVariant = Math.min(variantIndex, variants.length - 1);
+        const variantOptions = variants.map((variant: any, index: number) => {
+            const variantSchema = resolved(variant, spec);
+            return {
+                value: String(index),
+                label: schemaVariantLabel(variant, item => resolveReference(item, spec), getRefName, index),
+                description: variantSchema.description,
+            };
+        });
+        const stateVariant = Math.min(variantIndex, variants.length - 1);
+        const stateVariantMatches = runnerVariantMatchesValue(variants[stateVariant], value, spec);
+        const matchedVariantIndex = runnerVariantIndexForValue(variants, value, spec);
+        const selectedVariant = stateVariantMatches
+            ? stateVariant
+            : matchedVariantIndex >= 0
+              ? matchedVariantIndex
+              : stateVariant;
+        const selectedLabel = variantOptions[selectedVariant]?.label || `Variant ${selectedVariant + 1}`;
+        const selectedVariantIsNull = isNullOnlySchema(variants[selectedVariant], item => resolveReference(item, spec));
         return (
             <RunnerFieldFrame
                 active={fieldFocused}
@@ -120,7 +141,7 @@ export default function Field({
                     resolvedSchema={current}
                     spec={spec}
                     onOpenSchema={onOpenSchema}
-                    typeLabel="variant"
+                    typeLabel={`variant · ${selectedLabel}`}
                     actions={actions}
                 />
                 <CustomDropdown
@@ -131,34 +152,61 @@ export default function Field({
                         setVariantIndex(nextIndex);
                         onChange(path, defaultBodyValue(variants[nextIndex], spec));
                     }}
-                    options={variants.map((variant: any, index: number) => {
-                        const variantSchema = resolved(variant, spec);
-                        return {
-                            value: String(index),
-                            label: variantSchema.title || variantSchema.type || `Variant ${index + 1}`,
-                            description: variantSchema.description,
-                        };
-                    })}
+                    options={variantOptions}
                     className="mt-1 w-full"
                 />
-                <GuideBranch focusedPath={focusedPath}>
-                    <Field
-                        schema={variants[selectedVariant]}
-                        spec={spec}
-                        value={value}
-                        label="Value"
-                        path={path}
-                        depth={depth + 1}
-                        ancestorRefs={nextAncestorRefs}
-                        onChange={onChange}
-                        setPatternToTest={setPatternToTest}
-                        selectedFiles={selectedFiles}
-                        setSelectedFiles={setSelectedFiles}
-                        onOpenSchema={onOpenSchema}
-                        focusedPath={focusedPath}
-                        setFocusedPath={setFocusedPath}
-                    />
-                </GuideBranch>
+                {selectedVariantIsNull ? (
+                    <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 font-mono text-[10px] text-[var(--text-muted)]">
+                        null
+                    </p>
+                ) : (
+                    <GuideBranch focusedPath={focusedPath}>
+                        <Field
+                            schema={variants[selectedVariant]}
+                            spec={spec}
+                            value={value}
+                            label="Value"
+                            path={path}
+                            depth={depth + 1}
+                            ancestorRefs={nextAncestorRefs}
+                            onChange={onChange}
+                            setPatternToTest={setPatternToTest}
+                            selectedFiles={selectedFiles}
+                            setSelectedFiles={setSelectedFiles}
+                            onOpenSchema={onOpenSchema}
+                            focusedPath={focusedPath}
+                            setFocusedPath={setFocusedPath}
+                        />
+                    </GuideBranch>
+                )}
+            </RunnerFieldFrame>
+        );
+    }
+    const nullOnlySchema =
+        type === 'null' ||
+        (Array.isArray(current.type) && current.type.length > 0 && current.type.every(item => item === 'null'));
+    if (nullOnlySchema) {
+        return (
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
+                <FieldHeader
+                    label={label}
+                    required={required}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
+                    typeLabel="null"
+                    actions={actions}
+                />
+                <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 font-mono text-[10px] text-[var(--text-muted)]">
+                    null
+                </p>
             </RunnerFieldFrame>
         );
     }
