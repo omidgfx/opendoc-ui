@@ -2,7 +2,11 @@ import {createContext, useCallback, useContext, useEffect, useMemo, useState, ty
 import type {EndpointNote, EndpointNoteDraft} from '../types';
 import {
     createEndpointNote,
+    endpointHasNoteCapacity,
     endpointNoteKey,
+    MAX_NOTE_CONTENT_CHARS,
+    MAX_NOTE_TITLE_CHARS,
+    noteCharacterCount,
     readEndpointNotes,
     readHiddenEndpoints,
     writeEndpointNotes,
@@ -12,7 +16,7 @@ import {
 export type EndpointNotesModalTarget =
     | {kind: 'list'; path: string; method: string}
     | {kind: 'detail'; noteId: string}
-    | {kind: 'create'; path: string; method: string}
+    | {kind: 'create'; path?: string; method?: string}
     | {kind: 'edit'; noteId: string};
 
 interface EndpointNotesContextValue {
@@ -20,20 +24,24 @@ interface EndpointNotesContextValue {
     notes: EndpointNote[];
     hiddenEndpointKeys: string[];
     modalStack: EndpointNotesModalTarget[];
+    pendingTodoCompletionId: string | null;
     notesForEndpoint: (path: string, method: string) => EndpointNote[];
     noteCountForEndpoint: (path: string, method: string) => number;
     isEndpointHidden: (path: string, method: string) => boolean;
-    addNote: (draft: EndpointNoteDraft) => EndpointNote;
+    canAddNote: (path: string, method: string) => boolean;
+    addNote: (draft: EndpointNoteDraft) => EndpointNote | null;
     updateNote: (noteId: string, draft: EndpointNoteDraft) => void;
     deleteNote: (noteId: string) => Promise<void>;
     deleteEndpointNotes: (path: string, method: string) => Promise<void>;
     deleteAllNotes: () => Promise<void>;
-    toggleTaskDone: (noteId: string) => void;
+    requestToggleTodo: (noteId: string) => void;
+    confirmTodoCompletion: (hideEndpoint: boolean) => void;
+    cancelTodoCompletion: () => void;
     hideEndpoint: (path: string, method: string) => void;
     unhideEndpoint: (path: string, method: string) => void;
     unhideAllEndpoints: () => void;
     openEndpointNotes: (path: string, method: string) => void;
-    openCreateNote: (path: string, method: string) => void;
+    openCreateNote: (path?: string, method?: string) => void;
     openNote: (noteId: string) => void;
     openEditNote: (noteId: string) => void;
     closeNotesModal: () => void;
@@ -47,15 +55,19 @@ const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     notes: [],
     hiddenEndpointKeys: [],
     modalStack: [],
+    pendingTodoCompletionId: null,
     notesForEndpoint: () => [],
     noteCountForEndpoint: () => 0,
     isEndpointHidden: () => false,
+    canAddNote: () => true,
     addNote: draft => createEndpointNote(draft),
     updateNote: noop,
     deleteNote: asyncNoop,
     deleteEndpointNotes: asyncNoop,
     deleteAllNotes: asyncNoop,
-    toggleTaskDone: noop,
+    requestToggleTodo: noop,
+    confirmTodoCompletion: noop,
+    cancelTodoCompletion: noop,
     hideEndpoint: noop,
     unhideEndpoint: noop,
     unhideAllEndpoints: noop,
@@ -71,10 +83,12 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
     const [notes, setNotes] = useState<EndpointNote[]>(() => readEndpointNotes(specKey));
     const [hiddenEndpointKeys, setHiddenEndpointKeys] = useState<string[]>(() => readHiddenEndpoints(specKey));
     const [modalStack, setModalStack] = useState<EndpointNotesModalTarget[]>([]);
+    const [pendingTodoCompletionId, setPendingTodoCompletionId] = useState<string | null>(null);
     useEffect(() => {
         setNotes(readEndpointNotes(specKey));
         setHiddenEndpointKeys(readHiddenEndpoints(specKey));
         setModalStack([]);
+        setPendingTodoCompletionId(null);
     }, [specKey]);
     const commitNotes = useCallback(
         (updater: (current: EndpointNote[]) => EndpointNote[]) => {
@@ -123,13 +137,24 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [commitHidden],
     );
     const unhideAllEndpoints = useCallback(() => commitHidden(() => []), [commitHidden]);
+    const canAddNote = useCallback(
+        (path: string, method: string) => endpointHasNoteCapacity(notes, path, method),
+        [notes],
+    );
     const addNote = useCallback(
         (draft: EndpointNoteDraft) => {
+            if (
+                !draft.title.trim() ||
+                noteCharacterCount(draft.title) > MAX_NOTE_TITLE_CHARS ||
+                noteCharacterCount(draft.content) > MAX_NOTE_CONTENT_CHARS ||
+                !canAddNote(draft.path, draft.method)
+            )
+                return null;
             const note = createEndpointNote(draft);
             commitNotes(current => [note, ...current]);
             return note;
         },
-        [commitNotes],
+        [canAddNote, commitNotes],
     );
     const updateNote = useCallback(
         (noteId: string, draft: EndpointNoteDraft) => {
@@ -142,8 +167,8 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
                               method: draft.method.toLowerCase(),
                               title: draft.title.trim(),
                               content: draft.content.trim(),
-                              done: draft.type === 'task' ? note.done : false,
-                              autoHideWhenTasksDone: draft.type === 'task' ? draft.autoHideWhenTasksDone : false,
+                              done: draft.type === 'todo' ? note.done : false,
+                              autoHideWhenTodosDone: draft.type === 'todo' ? draft.autoHideWhenTodosDone : false,
                               updatedAt: Date.now(),
                           }
                         : note,
@@ -164,31 +189,68 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [commitNotes],
     );
     const deleteAllNotes = useCallback(async () => commitNotes(() => []), [commitNotes]);
-    const toggleTaskDone = useCallback(
+    const completionWillAutoHide = useCallback(
         (noteId: string) => {
-            const next = notes.map(note =>
-                note.id === noteId && note.type === 'task' ? {...note, done: !note.done, updatedAt: Date.now()} : note,
-            );
-            commitNotes(() => next);
-            const changed = next.find(note => note.id === noteId);
-            if (changed?.type !== 'task' || !changed.done) return;
-            const tasks = next.filter(
+            const changed = notes.find(note => note.id === noteId);
+            if (changed?.type !== 'todo' || changed.done || isEndpointHidden(changed.path, changed.method))
+                return false;
+            const todos = notes.filter(
                 note =>
-                    note.type === 'task' &&
+                    note.type === 'todo' &&
                     endpointNoteKey(note.path, note.method) === endpointNoteKey(changed.path, changed.method),
             );
-            if (tasks.length > 0 && tasks.every(note => note.done) && tasks.some(note => note.autoHideWhenTasksDone))
-                hideEndpoint(changed.path, changed.method);
+            return (
+                todos.length > 0 &&
+                todos.every(note => note.id === noteId || note.done) &&
+                todos.some(note => note.autoHideWhenTodosDone)
+            );
+        },
+        [notes, isEndpointHidden],
+    );
+    const setTodoDone = useCallback(
+        (noteId: string, done: boolean, hideWhenComplete: boolean) => {
+            const changed = notes.find(note => note.id === noteId);
+            if (changed?.type !== 'todo') return;
+            commitNotes(current =>
+                current.map(note => (note.id === noteId ? {...note, done, updatedAt: Date.now()} : note)),
+            );
+            if (done && hideWhenComplete) hideEndpoint(changed.path, changed.method);
         },
         [notes, commitNotes, hideEndpoint],
     );
+    const requestToggleTodo = useCallback(
+        (noteId: string) => {
+            const note = notes.find(item => item.id === noteId);
+            if (note?.type !== 'todo') return;
+            if (note.done) {
+                setTodoDone(noteId, false, false);
+                return;
+            }
+            if (completionWillAutoHide(noteId)) setPendingTodoCompletionId(noteId);
+            else setTodoDone(noteId, true, false);
+        },
+        [notes, completionWillAutoHide, setTodoDone],
+    );
+    const confirmTodoCompletion = useCallback(
+        (hideEndpointOnCompletion: boolean) => {
+            if (!pendingTodoCompletionId) return;
+            setTodoDone(pendingTodoCompletionId, true, hideEndpointOnCompletion);
+            setPendingTodoCompletionId(null);
+        },
+        [pendingTodoCompletionId, setTodoDone],
+    );
+    const cancelTodoCompletion = useCallback(() => setPendingTodoCompletionId(null), []);
     const openEndpointNotes = useCallback(
         (path: string, method: string) => setModalStack([{kind: 'list', path, method: method.toLowerCase()}]),
         [],
     );
-    const openCreateNote = useCallback((path: string, method: string) => {
+    const openCreateNote = useCallback((path?: string, method?: string) => {
         setModalStack(current => {
-            const target = {kind: 'create' as const, path, method: method.toLowerCase()};
+            const target = {
+                kind: 'create' as const,
+                ...(path ? {path} : {}),
+                ...(method ? {method: method.toLowerCase()} : {}),
+            };
             const top = current[current.length - 1];
             return top?.kind === 'list' ? [...current, target] : [target];
         });
@@ -211,15 +273,19 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             notes,
             hiddenEndpointKeys,
             modalStack,
+            pendingTodoCompletionId,
             notesForEndpoint,
             noteCountForEndpoint,
             isEndpointHidden,
+            canAddNote,
             addNote,
             updateNote,
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
-            toggleTaskDone,
+            requestToggleTodo,
+            confirmTodoCompletion,
+            cancelTodoCompletion,
             hideEndpoint,
             unhideEndpoint,
             unhideAllEndpoints,
@@ -235,15 +301,19 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             notes,
             hiddenEndpointKeys,
             modalStack,
+            pendingTodoCompletionId,
             notesForEndpoint,
             noteCountForEndpoint,
             isEndpointHidden,
+            canAddNote,
             addNote,
             updateNote,
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
-            toggleTaskDone,
+            requestToggleTodo,
+            confirmTodoCompletion,
+            cancelTodoCompletion,
             hideEndpoint,
             unhideEndpoint,
             unhideAllEndpoints,

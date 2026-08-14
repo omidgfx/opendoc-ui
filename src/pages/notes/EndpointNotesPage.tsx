@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react';
 import type {OpenApiSpec} from '../../types';
-import {getDocumentOperations, getOperation} from '../../utils/openapi';
+import {getOperation} from '../../utils/openapi';
 import {endpointNoteColor, endpointNoteKey, endpointNoteTitle} from '../../utils/endpointNotes';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import CustomDropdown from '../../components/common/CustomDropdown';
@@ -15,27 +15,16 @@ interface EndpointNotesPageProps {
 }
 
 export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNotesPageProps) {
-    const {notes, openCreateNote, openNote, toggleTaskDone, deleteAllNotes, isEndpointHidden, unhideEndpoint} =
+    const {notes, openCreateNote, openNote, requestToggleTodo, deleteAllNotes, isEndpointHidden, unhideEndpoint} =
         useEndpointNotes();
-    const operations = useMemo(() => getDocumentOperations(spec), [spec]);
-    const operationOptions = useMemo(
-        () =>
-            operations.map(({path, method, operation}) => ({
-                value: endpointNoteKey(path, method),
-                label: `${method.toUpperCase()} · ${operation.summary || path}`,
-                description: path,
-            })),
-        [operations],
-    );
-    const [selectedEndpointKey, setSelectedEndpointKey] = useState(operationOptions[0]?.value || '');
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState('all');
     const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
     const filteredNotes = notes.filter(note => {
         if (filter === 'note' && note.type !== 'note') return false;
-        if (filter === 'task' && note.type !== 'task') return false;
-        if (filter === 'open' && (note.type !== 'task' || note.done)) return false;
-        if (filter === 'done' && (note.type !== 'task' || !note.done)) return false;
+        if (filter === 'todo' && note.type !== 'todo') return false;
+        if (filter === 'open' && (note.type !== 'todo' || note.done)) return false;
+        if (filter === 'done' && (note.type !== 'todo' || !note.done)) return false;
         const needle = query.trim().toLowerCase();
         if (!needle) return true;
         const operation = getOperation(spec, note.path, note.method);
@@ -55,58 +44,44 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             return rightUpdated - leftUpdated;
         });
     }, [filteredNotes, notes]);
-    const tasks = notes.filter(note => note.type === 'task');
-    const openTasks = tasks.filter(note => !note.done).length;
-    const selectedOperation = operations.find(
-        operation => endpointNoteKey(operation.path, operation.method) === selectedEndpointKey,
-    );
+    const todos = notes.filter(note => note.type === 'todo');
+    const openTodos = todos.filter(note => !note.done).length;
     return (
         <div className="flex-1 h-full overflow-y-auto p-3 sm:p-5 md:p-7 scrollbar-thin">
             <div className="mx-auto max-w-6xl space-y-4">
-                <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-5 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
+                <header className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
+                    <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                            <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                <i className="ph-fill ph-note-pencil text-[20px]" />
+                            <span className="flex size-11 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                <i className="ph-fill ph-note text-[21px]" />
                             </span>
                             <div>
                                 <h1 className="text-xl font-extrabold text-[var(--text-heading)]">Local Notes</h1>
-                                <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-                                    Private Markdown notes and tasks stored only in this browser.
+                                <p className="mt-1 max-w-2xl text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                    Private Markdown notes and todos, organized by endpoint and stored only in this
+                                    browser.
                                 </p>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-                        <CustomDropdown
-                            value={selectedEndpointKey}
-                            onChange={setSelectedEndpointKey}
-                            options={operationOptions}
-                            ariaLabel="Choose endpoint for a new note"
-                            placeholder="Choose endpoint"
-                            className="min-w-0 sm:w-80"
-                        />
                         <button
                             type="button"
-                            disabled={!selectedOperation}
                             aria-label="New note"
-                            onClick={() =>
-                                selectedOperation && openCreateNote(selectedOperation.path, selectedOperation.method)
-                            }
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            onClick={() => openCreateNote()}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] shadow-sm transition-all hover:brightness-110 active:scale-[.98] cursor-pointer"
                         >
-                            <i className="ph ph-plus text-[13px]" />
+                            <i className="ph-fill ph-note text-[14px] text-[#f59e0b]" />
                             New note
                         </button>
                     </div>
+                    <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[var(--primary)] opacity-[0.035]" />
                 </header>
 
                 <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
-                        ['All notes', notes.length, 'ph-note-pencil', 'var(--primary)'],
-                        ['Simple notes', notes.length - tasks.length, 'ph-note', 'var(--accent)'],
-                        ['Tasks', tasks.length, 'ph-check-square', 'var(--method-put)'],
-                        ['Open tasks', openTasks, 'ph-circle-dashed', 'var(--method-delete)'],
+                        ['All notes', notes.length, 'ph-fill ph-note', 'var(--primary)'],
+                        ['Simple notes', notes.length - todos.length, 'ph-fill ph-note', '#f59e0b'],
+                        ['Todos', todos.length, 'ph-fill ph-check-square', 'var(--method-put)'],
+                        ['Open todos', openTodos, 'ph ph-circle-dashed', 'var(--method-delete)'],
                     ].map(([label, value, icon, color]) => (
                         <div
                             key={String(label)}
@@ -116,7 +91,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                 <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                                     {label}
                                 </span>
-                                <i className={`ph ${icon} text-[14px]`} style={{color: String(color)}} />
+                                <i className={`${icon} text-[14px]`} style={{color: String(color)}} />
                             </div>
                             <strong className="mt-1 block text-xl text-[var(--text-heading)]">{value}</strong>
                         </div>
@@ -129,7 +104,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                         <input
                             value={query}
                             onChange={event => setQuery(event.target.value)}
-                            placeholder="Search notes, tasks, endpoints…"
+                            placeholder="Search notes, todos, endpoints…"
                             className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-8 pr-3 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"
                         />
                     </div>
@@ -140,9 +115,9 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                         options={[
                             {value: 'all', label: 'All notes'},
                             {value: 'note', label: 'Simple notes'},
-                            {value: 'task', label: 'All tasks'},
-                            {value: 'open', label: 'Open tasks'},
-                            {value: 'done', label: 'Completed tasks'},
+                            {value: 'todo', label: 'All todos'},
+                            {value: 'open', label: 'Open todos'},
+                            {value: 'done', label: 'Completed todos'},
                         ]}
                         className="w-full sm:w-48"
                     />
@@ -225,22 +200,44 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                             return (
                                                 <article
                                                     key={note.id}
-                                                    className="rounded-xl border p-3"
+                                                    tabIndex={0}
+                                                    aria-label={`Open ${endpointNoteTitle(note)}`}
+                                                    onClick={event => {
+                                                        if (
+                                                            (event.target as HTMLElement).closest(
+                                                                'button, a, input, textarea',
+                                                            )
+                                                        )
+                                                            return;
+                                                        openNote(note.id);
+                                                    }}
+                                                    onKeyDown={event => {
+                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                            event.preventDefault();
+                                                            openNote(note.id);
+                                                        }
+                                                    }}
+                                                    className="relative overflow-hidden rounded-xl border p-3 transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 cursor-pointer"
                                                     style={{
                                                         backgroundColor: color.background,
                                                         borderColor: color.border,
                                                         color: color.text,
                                                     }}
                                                 >
-                                                    <div className="flex items-start gap-2">
-                                                        {note.type === 'task' ? (
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className="pointer-events-none absolute -right-12 -top-12 size-16 rounded-full opacity-10"
+                                                        style={{backgroundColor: color.tone}}
+                                                    />
+                                                    <div className="relative z-10 flex items-start gap-2">
+                                                        {note.type === 'todo' ? (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => toggleTaskDone(note.id)}
+                                                                onClick={() => requestToggleTodo(note.id)}
                                                                 aria-label={
                                                                     note.done
-                                                                        ? 'Mark task as not done'
-                                                                        : 'Mark task as done'
+                                                                        ? 'Mark todo as not done'
+                                                                        : 'Mark todo as done'
                                                                 }
                                                                 aria-pressed={note.done}
                                                                 className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border cursor-pointer"
@@ -248,7 +245,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                                                     borderColor: color.text,
                                                                     backgroundColor: note.done
                                                                         ? color.dot
-                                                                        : 'rgba(255,255,255,.5)',
+                                                                        : 'color-mix(in srgb, var(--surface) 82%, transparent)',
                                                                 }}
                                                             >
                                                                 {note.done && (
@@ -257,7 +254,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                                             </button>
                                                         ) : (
                                                             <span
-                                                                className="mt-1 size-2 shrink-0 rounded-full"
+                                                                className="mt-[3px] size-2 shrink-0 rounded-full"
                                                                 style={{backgroundColor: color.dot}}
                                                             />
                                                         )}
@@ -289,7 +286,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                     </div>
                 ) : (
                     <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
-                        <i className="ph ph-note-blank text-4xl text-[var(--text-muted)]/40" />
+                        <i className="ph-fill ph-note text-4xl text-[#f59e0b]/45" />
                         <h2 className="mt-3 text-sm font-extrabold text-[var(--text-heading)]">
                             {notes.length === 0 ? 'No local notes yet' : 'No notes match these filters'}
                         </h2>
@@ -304,7 +301,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             <ConfirmModal
                 isOpen={confirmDeleteAll}
                 title="Delete every local note?"
-                message={`Delete all ${notes.length} notes and tasks saved for this specification?`}
+                message={`Delete all ${notes.length} notes and todos saved for this specification?`}
                 confirmLabel="Delete all notes"
                 destructive
                 onConfirm={async () => {

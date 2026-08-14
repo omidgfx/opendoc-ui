@@ -1,7 +1,15 @@
 import {useEffect, useMemo, useState, type ReactNode} from 'react';
 import type {EndpointNote, EndpointNoteColor, EndpointNoteDraft, EndpointNoteType, OpenApiSpec} from '../../types';
-import {getOperation} from '../../utils/openapi';
-import {ENDPOINT_NOTE_COLORS, endpointNoteColor, endpointNoteTitle} from '../../utils/endpointNotes';
+import {getDocumentOperations, getOperation} from '../../utils/openapi';
+import {
+    ENDPOINT_NOTE_COLORS,
+    MAX_NOTE_CONTENT_CHARS,
+    MAX_NOTE_TITLE_CHARS,
+    MAX_NOTES_PER_ENDPOINT,
+    endpointNoteColor,
+    endpointNoteTitle,
+    noteCharacterCount,
+} from '../../utils/endpointNotes';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import {useEscClose} from '../../hooks/useEscClose';
 import Markdown from '../common/Markdown';
@@ -9,6 +17,7 @@ import MethodBadge from '../common/MethodBadge';
 import CustomDropdown from '../common/CustomDropdown';
 import ConfirmModal from '../common/ConfirmModal';
 import {Tip} from '../common/Tooltip';
+import NoteEndpointPicker from './NoteEndpointPicker';
 
 function NotesDialog({
     title,
@@ -29,7 +38,8 @@ function NotesDialog({
     maxWidth?: string;
     escEnabled?: boolean;
 }) {
-    useEscClose(true, onClose, escEnabled);
+    const {pendingTodoCompletionId} = useEndpointNotes();
+    useEscClose(true, onClose, escEnabled && !pendingTodoCompletionId);
     return (
         <div
             className="modal-backdrop fixed inset-0 z-[4000] bg-black/55 backdrop-blur-[2px]"
@@ -79,33 +89,47 @@ function NotesDialog({
 }
 
 function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => void; onDelete: () => void}) {
-    const {toggleTaskDone} = useEndpointNotes();
+    const {requestToggleTodo} = useEndpointNotes();
     const color = endpointNoteColor(note.color);
     return (
         <div
-            className="group rounded-xl border p-3 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md"
+            tabIndex={0}
+            aria-label={`Open ${endpointNoteTitle(note)}`}
+            onClick={event => {
+                if ((event.target as HTMLElement).closest('button, a, input, textarea')) return;
+                onOpen();
+            }}
+            onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onOpen();
+                }
+            }}
+            className="group rounded-xl border p-3 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/30 cursor-pointer"
             style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
         >
             <div className="flex items-start gap-2">
-                {note.type === 'task' ? (
+                {note.type === 'todo' ? (
                     <button
                         type="button"
-                        aria-label={note.done ? 'Mark task as not done' : 'Mark task as done'}
+                        aria-label={note.done ? 'Mark todo as not done' : 'Mark todo as done'}
                         aria-pressed={note.done}
                         onClick={event => {
                             event.stopPropagation();
-                            toggleTaskDone(note.id);
+                            requestToggleTodo(note.id);
                         }}
                         className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors cursor-pointer"
                         style={{
                             borderColor: color.text,
-                            backgroundColor: note.done ? color.dot : 'rgba(255,255,255,.5)',
+                            backgroundColor: note.done
+                                ? color.dot
+                                : 'color-mix(in srgb, var(--surface) 82%, transparent)',
                         }}
                     >
                         {note.done && <i className="ph ph-check text-[12px] text-white" />}
                     </button>
                 ) : (
-                    <span className="mt-1 size-2 shrink-0 rounded-full" style={{backgroundColor: color.dot}} />
+                    <i className="ph-fill ph-note mt-0.5 shrink-0 text-[15px] text-[#f59e0b]" />
                 )}
                 <div className="min-w-0 flex-1 text-left">
                     <button
@@ -116,8 +140,8 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                         <strong className={`truncate text-xs ${note.done ? 'line-through opacity-60' : ''}`}>
                             {endpointNoteTitle(note)}
                         </strong>
-                        <span className="shrink-0 rounded-full bg-white/55 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider">
-                            {note.type === 'task' ? 'Task' : 'Note'}
+                        <span className="shrink-0 rounded-full bg-[var(--surface)]/55 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider">
+                            {note.type === 'todo' ? 'Todo' : 'Note'}
                         </span>
                     </button>
                     <div
@@ -134,7 +158,7 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                             event.stopPropagation();
                             onDelete();
                         }}
-                        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/35 opacity-0 transition-all hover:bg-white/70 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface)]/35 opacity-0 transition-all hover:bg-[var(--surface)]/70 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                     >
                         <i className="ph ph-trash text-[13px]" />
                     </button>
@@ -155,9 +179,10 @@ function EndpointNotesList({
     method: string;
     onClose: () => void;
 }) {
-    const {notesForEndpoint, openCreateNote, openNote, deleteNote, deleteEndpointNotes, isEndpointHidden} =
+    const {notesForEndpoint, canAddNote, openCreateNote, openNote, deleteNote, deleteEndpointNotes, isEndpointHidden} =
         useEndpointNotes();
     const notes = notesForEndpoint(path, method);
+    const atCapacity = !canAddNote(path, method);
     const operation = getOperation(spec, path, method);
     const [deleteTarget, setDeleteTarget] = useState<EndpointNote | 'all' | null>(null);
     return (
@@ -165,7 +190,7 @@ function EndpointNotesList({
             <NotesDialog
                 title="Endpoint Notes"
                 subtitle={operation?.summary || path}
-                icon="ph-fill ph-note-pencil"
+                icon="ph-fill ph-note text-[#f59e0b]"
                 onClose={onClose}
                 footer={
                     <>
@@ -186,14 +211,23 @@ function EndpointNotesList({
                         >
                             Close
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => openCreateNote(path, method)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"
+                        <Tip
+                            content={
+                                atCapacity
+                                    ? `This endpoint already has the maximum of ${MAX_NOTES_PER_ENDPOINT} notes.`
+                                    : 'Create another endpoint note'
+                            }
                         >
-                            <i className="ph ph-plus text-[13px]" />
-                            Add note
-                        </button>
+                            <button
+                                type="button"
+                                disabled={atCapacity}
+                                onClick={() => openCreateNote(path, method)}
+                                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            >
+                                <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                                Add note
+                            </button>
+                        </Tip>
                     </>
                 }
             >
@@ -222,10 +256,10 @@ function EndpointNotesList({
                     </div>
                 ) : (
                     <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--background)] px-5 py-12 text-center">
-                        <i className="ph ph-note-blank text-3xl text-[var(--text-muted)]/50" />
+                        <i className="ph-fill ph-note text-3xl text-[#f59e0b]/55" />
                         <p className="mt-2 text-xs font-bold text-[var(--text-heading)]">No notes for this endpoint</p>
                         <p className="mt-1 text-[10px] text-[var(--text-muted)]">
-                            Add a Markdown note or track endpoint work as a task.
+                            Add a Markdown note or track endpoint work as a todo.
                         </p>
                     </div>
                 )}
@@ -303,7 +337,7 @@ function NoteColorPicker({
                             className="group rounded-xl border p-2 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer"
                             style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
                         >
-                            <span className="block h-10 rounded-lg bg-white/35" />
+                            <span className="block h-10 rounded-lg opacity-20" style={{backgroundColor: color.tone}} />
                             <span className="mt-1.5 flex items-center justify-between text-[9px] font-bold">
                                 {color.label}
                                 {value === color.id && <i className="ph-fill ph-check-circle" />}
@@ -316,48 +350,235 @@ function NoteColorPicker({
     );
 }
 
+function LimitMeter({value, maximum, countdown}: {value: number; maximum: number; countdown: number}) {
+    const ratio = Math.min(1, value / maximum);
+    const hue = Math.round(215 * (1 - ratio));
+    const remaining = maximum - value;
+    const overloaded = remaining < 0;
+    return (
+        <span className="ms-auto flex items-center gap-2">
+            {(remaining <= countdown || overloaded) && (
+                <span className={overloaded ? 'text-[var(--method-delete)]' : 'text-[var(--text-muted)]'}>
+                    {overloaded ? `${Math.abs(remaining)} over` : remaining}
+                </span>
+            )}
+            <span className="h-1 w-16 overflow-hidden rounded-full bg-[var(--text-muted)]/15">
+                <span
+                    className="block h-full rounded-full transition-[width,background-color]"
+                    style={{width: value === 0 ? 4 : `${ratio * 100}%`, backgroundColor: `hsl(${hue} 82% 54%)`}}
+                />
+            </span>
+        </span>
+    );
+}
+
 function NoteEditor({
     note,
+    spec,
     path,
     method,
     onClose,
 }: {
     note?: EndpointNote;
-    path: string;
-    method: string;
+    spec: OpenApiSpec;
+    path?: string;
+    method?: string;
     onClose: () => void;
 }) {
-    const {addNote, updateNote} = useEndpointNotes();
+    const {specKey, addNote, updateNote, canAddNote} = useEndpointNotes();
+    const operations = useMemo(() => getDocumentOperations(spec), [spec]);
+    const initialEndpoint = useMemo(() => {
+        if (note) return {path: note.path, method: note.method};
+        const requested = operations.find(
+            operation => operation.path === path && operation.method.toLowerCase() === method?.toLowerCase(),
+        );
+        const fallback = requested || operations[0];
+        return fallback ? {path: fallback.path, method: fallback.method} : null;
+    }, [note, operations, path, method]);
+    const [selectedEndpoint, setSelectedEndpoint] = useState(initialEndpoint);
     const [type, setType] = useState<EndpointNoteType>(note?.type || 'note');
     const [title, setTitle] = useState(note?.title || '');
     const [content, setContent] = useState(note?.content || '');
     const [color, setColor] = useState<EndpointNoteColor>(note?.color || 'butter');
-    const [autoHideWhenTasksDone, setAutoHideWhenTasksDone] = useState(note?.autoHideWhenTasksDone || false);
+    const [autoHideWhenTodosDone, setAutoHideWhenTodosDone] = useState(note?.autoHideWhenTodosDone || false);
     const [colorPickerOpen, setColorPickerOpen] = useState(false);
+    const [saveAttempted, setSaveAttempted] = useState(false);
     const selectedColor = endpointNoteColor(color);
-    const draft: EndpointNoteDraft = {
-        path,
-        method,
-        type,
-        title,
-        content,
-        color,
-        autoHideWhenTasksDone: type === 'task' && autoHideWhenTasksDone,
-    };
+    const titleLength = noteCharacterCount(title);
+    const contentLength = noteCharacterCount(content);
+    const titleOverloaded = titleLength > MAX_NOTE_TITLE_CHARS;
+    const contentOverloaded = contentLength > MAX_NOTE_CONTENT_CHARS;
+    const titleMissing = !title.trim();
+    const endpointAtCapacity =
+        !note && !!selectedEndpoint && !canAddNote(selectedEndpoint.path, selectedEndpoint.method);
+    const invalid = !selectedEndpoint || titleMissing || titleOverloaded || contentOverloaded || endpointAtCapacity;
+    const showAlert =
+        titleOverloaded ||
+        contentOverloaded ||
+        endpointAtCapacity ||
+        (saveAttempted && (titleMissing || !selectedEndpoint));
     const save = () => {
-        if (!content.trim()) return;
+        setSaveAttempted(true);
+        if (invalid || !selectedEndpoint) return;
+        const draft: EndpointNoteDraft = {
+            path: selectedEndpoint.path,
+            method: selectedEndpoint.method,
+            type,
+            title,
+            content,
+            color,
+            autoHideWhenTodosDone: type === 'todo' && autoHideWhenTodosDone,
+        };
         if (note) updateNote(note.id, draft);
-        else addNote(draft);
+        else if (!addNote(draft)) return;
         onClose();
     };
+    const editor = (
+        <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        Note type
+                    </span>
+                    <CustomDropdown
+                        value={type}
+                        onChange={value => setType(value === 'todo' ? 'todo' : 'note')}
+                        ariaLabel="Note type"
+                        options={[
+                            {value: 'note', label: 'Simple note', description: 'Markdown reference or reminder'},
+                            {value: 'todo', label: 'Todo', description: 'Can be marked as done'},
+                        ]}
+                    />
+                </label>
+                <div className="space-y-1.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        Note tone
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setColorPickerOpen(true)}
+                        className="flex h-8 w-full items-center gap-2 rounded-lg border px-2.5 text-left transition-colors cursor-pointer"
+                        style={{
+                            backgroundColor: selectedColor.background,
+                            borderColor: selectedColor.border,
+                            color: selectedColor.text,
+                        }}
+                    >
+                        <span className="size-3 rounded-full" style={{backgroundColor: selectedColor.tone}} />
+                        <span className="flex-1 text-[10px] font-bold">{selectedColor.label}</span>
+                        <span className="text-[8px] opacity-65">12 tones</span>
+                        <i className="ph ph-caret-right text-[11px]" />
+                    </button>
+                </div>
+            </div>
+            <label className="block space-y-1.5">
+                <span className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Title <span className="ms-1 text-[var(--method-delete)]">*</span>
+                    <LimitMeter value={titleLength} maximum={MAX_NOTE_TITLE_CHARS} countdown={16} />
+                </span>
+                <input
+                    type="text"
+                    value={title}
+                    onChange={event => setTitle(event.target.value)}
+                    placeholder={type === 'todo' ? 'What needs to be done?' : 'Short note title'}
+                    aria-invalid={titleOverloaded || (saveAttempted && titleMissing)}
+                    className={`w-full rounded-xl border bg-[var(--background)] px-3 py-2.5 text-xs text-[var(--text-heading)] outline-none transition-colors ${
+                        titleOverloaded || (saveAttempted && titleMissing)
+                            ? 'border-[var(--method-delete)] focus:border-[var(--method-delete)]'
+                            : 'border-[var(--border)] focus:border-[var(--primary)]'
+                    }`}
+                />
+            </label>
+            <label className="block space-y-1.5">
+                <span className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Markdown content <span className="ms-1 font-normal normal-case">(optional)</span>
+                    <LimitMeter value={contentLength} maximum={MAX_NOTE_CONTENT_CHARS} countdown={50} />
+                </span>
+                <textarea
+                    value={content}
+                    onChange={event => setContent(event.target.value)}
+                    placeholder="Write Markdown…"
+                    rows={9}
+                    autoFocus={!note}
+                    aria-invalid={contentOverloaded}
+                    className={`w-full resize-y rounded-xl border bg-[var(--background)] px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--text-heading)] outline-none transition-colors ${
+                        contentOverloaded
+                            ? 'border-[var(--method-delete)] focus:border-[var(--method-delete)]'
+                            : 'border-[var(--border)] focus:border-[var(--primary)]'
+                    }`}
+                />
+            </label>
+            {type === 'todo' && (
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                    <input
+                        type="checkbox"
+                        checked={autoHideWhenTodosDone}
+                        onChange={event => setAutoHideWhenTodosDone(event.target.checked)}
+                        className="mt-0.5 size-4 accent-[var(--primary)]"
+                    />
+                    <span>
+                        <span className="block text-[11px] font-bold text-[var(--text-heading)]">
+                            Offer to hide endpoint when all todos are done
+                        </span>
+                        <span className="mt-0.5 block text-[9px] leading-relaxed text-[var(--text-muted)]">
+                            Completing the last todo opens a confirmation with the hide option checked. Uncheck it to
+                            complete the todo without hiding its endpoint.
+                        </span>
+                    </span>
+                </label>
+            )}
+            {showAlert && (
+                <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/7 px-3 py-2.5 text-[10px] leading-relaxed text-[var(--method-delete)]"
+                >
+                    <i className="ph ph-warning-circle mt-0.5 shrink-0 text-[15px]" />
+                    <span>
+                        {titleMissing && 'A title is required. '}
+                        {titleOverloaded &&
+                            `The title is ${titleLength - MAX_NOTE_TITLE_CHARS} ${titleLength - MAX_NOTE_TITLE_CHARS === 1 ? 'character' : 'characters'} over its ${MAX_NOTE_TITLE_CHARS}-character limit. `}
+                        {contentOverloaded &&
+                            `Markdown content is ${contentLength - MAX_NOTE_CONTENT_CHARS} ${contentLength - MAX_NOTE_CONTENT_CHARS === 1 ? 'character' : 'characters'} over its ${MAX_NOTE_CONTENT_CHARS}-character limit. `}
+                        {endpointAtCapacity &&
+                            `This endpoint already has the maximum of ${MAX_NOTES_PER_ENDPOINT} notes. `}
+                        {!selectedEndpoint && 'Choose an endpoint before saving. '}
+                        Extra text remains editable and copyable, but the note cannot be saved until these limits are
+                        satisfied.
+                    </span>
+                </div>
+            )}
+            <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Preview</span>
+                <div
+                    className="mt-1.5 max-h-72 min-h-36 overflow-y-auto rounded-2xl border p-4 scrollbar-thin"
+                    style={{
+                        backgroundColor: selectedColor.background,
+                        borderColor: selectedColor.border,
+                        color: selectedColor.text,
+                    }}
+                >
+                    <h3 className="text-sm font-extrabold">{title.trim() || 'Untitled note'}</h3>
+                    {content ? (
+                        <Markdown text={content} className="mt-2 !text-[11px] !text-inherit" />
+                    ) : (
+                        <p className="mt-2 text-[10px] opacity-60">This note has no Markdown details.</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
     return (
         <>
             <NotesDialog
                 title={note ? 'Edit Note' : 'Create Note'}
-                subtitle={`${method.toUpperCase()} ${path}`}
-                icon={type === 'task' ? 'ph-fill ph-check-square' : 'ph-fill ph-note-pencil'}
+                subtitle={
+                    selectedEndpoint
+                        ? `${selectedEndpoint.method.toUpperCase()} ${selectedEndpoint.path}`
+                        : 'Choose an endpoint'
+                }
+                icon={type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
                 onClose={onClose}
-                maxWidth="max-w-3xl"
+                maxWidth={note ? 'max-w-4xl' : 'max-w-6xl'}
                 escEnabled={!colorPickerOpen}
                 footer={
                     <>
@@ -370,10 +591,13 @@ function NoteEditor({
                         </button>
                         <button
                             type="button"
-                            disabled={!content.trim()}
                             onClick={save}
                             aria-label={note ? 'Save changes' : 'Create note'}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                            className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-[10px] font-bold transition-colors cursor-pointer ${
+                                invalid
+                                    ? 'bg-[var(--text-muted)]/20 text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)]'
+                                    : 'bg-[var(--primary)] text-[var(--primary-contrast)] hover:brightness-110'
+                            }`}
                         >
                             <i className="ph ph-floppy-disk text-[13px]" />
                             {note ? 'Save changes' : 'Create note'}
@@ -381,114 +605,21 @@ function NoteEditor({
                     </>
                 }
             >
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.8fr)]">
-                    <div className="space-y-4">
-                        <label className="block space-y-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                Note type
-                            </span>
-                            <CustomDropdown
-                                value={type}
-                                onChange={value => setType(value === 'task' ? 'task' : 'note')}
-                                ariaLabel="Note type"
-                                options={[
-                                    {
-                                        value: 'note',
-                                        label: 'Simple note',
-                                        description: 'Markdown reference or reminder',
-                                    },
-                                    {value: 'task', label: 'Task / todo', description: 'Can be marked as done'},
-                                ]}
-                            />
-                        </label>
-                        <label className="block space-y-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                Title <span className="font-normal normal-case">(optional)</span>
-                            </span>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={event => setTitle(event.target.value)}
-                                placeholder={type === 'task' ? 'What needs to be done?' : 'Short note title'}
-                                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"
-                            />
-                        </label>
-                        <label className="block space-y-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                Markdown content
-                            </span>
-                            <textarea
-                                value={content}
-                                onChange={event => setContent(event.target.value)}
-                                placeholder="Write Markdown…"
-                                rows={9}
-                                autoFocus
-                                className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"
-                            />
-                        </label>
-                        <div className="space-y-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                Background color
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setColorPickerOpen(true)}
-                                className="flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-transform hover:-translate-y-px cursor-pointer"
-                                style={{
-                                    backgroundColor: selectedColor.background,
-                                    borderColor: selectedColor.border,
-                                    color: selectedColor.text,
-                                }}
-                            >
-                                <span className="size-7 rounded-lg bg-white/45" />
-                                <span className="flex-1 text-xs font-bold">{selectedColor.label}</span>
-                                <span className="text-[9px] opacity-70">Choose from 12 colors</span>
-                                <i className="ph ph-caret-right text-[12px]" />
-                            </button>
-                        </div>
-                        {type === 'task' && (
-                            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
-                                <input
-                                    type="checkbox"
-                                    checked={autoHideWhenTasksDone}
-                                    onChange={event => setAutoHideWhenTasksDone(event.target.checked)}
-                                    className="mt-0.5 size-4 accent-[var(--primary)]"
-                                />
-                                <span>
-                                    <span className="block text-[11px] font-bold text-[var(--text-heading)]">
-                                        Auto-hide endpoint when all tasks are done
-                                    </span>
-                                    <span className="mt-0.5 block text-[9px] leading-relaxed text-[var(--text-muted)]">
-                                        When the last task for this endpoint is completed, move the endpoint into the
-                                        Hidden endpoints folder.
-                                    </span>
-                                </span>
-                            </label>
-                        )}
+                {note ? (
+                    editor
+                ) : (
+                    <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(280px,.85fr)_minmax(0,1.5fr)]">
+                        <NoteEndpointPicker
+                            spec={spec}
+                            specKey={specKey}
+                            selected={selectedEndpoint}
+                            onSelect={(nextPath, nextMethod) =>
+                                setSelectedEndpoint({path: nextPath, method: nextMethod})
+                            }
+                        />
+                        {editor}
                     </div>
-                    <div className="min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            Preview
-                        </span>
-                        <div
-                            className="mt-1.5 min-h-56 rounded-2xl border p-4"
-                            style={{
-                                backgroundColor: selectedColor.background,
-                                borderColor: selectedColor.border,
-                                color: selectedColor.text,
-                            }}
-                        >
-                            <h3 className="text-sm font-extrabold">
-                                {title.trim() || (type === 'task' ? 'Task preview' : 'Note preview')}
-                            </h3>
-                            {content.trim() ? (
-                                <Markdown text={content} className="mt-2 !text-[11px] !text-inherit" />
-                            ) : (
-                                <p className="mt-2 text-[10px] opacity-60">Markdown preview appears here.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                )}
             </NotesDialog>
             {colorPickerOpen && (
                 <NoteColorPicker value={color} onChange={setColor} onClose={() => setColorPickerOpen(false)} />
@@ -498,7 +629,7 @@ function NoteEditor({
 }
 
 function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpec; onClose: () => void}) {
-    const {toggleTaskDone, openEditNote, deleteNote, isEndpointHidden} = useEndpointNotes();
+    const {requestToggleTodo, openEditNote, deleteNote, isEndpointHidden} = useEndpointNotes();
     const [confirmDelete, setConfirmDelete] = useState(false);
     const color = endpointNoteColor(note.color);
     const operation = getOperation(spec, note.path, note.method);
@@ -507,7 +638,7 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
             <NotesDialog
                 title={endpointNoteTitle(note)}
                 subtitle={operation?.summary || `${note.method.toUpperCase()} ${note.path}`}
-                icon={note.type === 'task' ? 'ph-fill ph-check-square' : 'ph-fill ph-note'}
+                icon={note.type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
                 onClose={onClose}
                 footer={
                     <>
@@ -519,10 +650,10 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                             <i className="ph ph-trash text-[13px]" />
                             Delete
                         </button>
-                        {note.type === 'task' && (
+                        {note.type === 'todo' && (
                             <button
                                 type="button"
-                                onClick={() => toggleTaskDone(note.id)}
+                                onClick={() => requestToggleTodo(note.id)}
                                 aria-label={note.done ? 'Mark as not done' : 'Mark as done'}
                                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
                             >
@@ -547,7 +678,7 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                     <MethodBadge method={note.method} size="xs" />
                     <code className="min-w-0 flex-1 truncate text-[10px] text-[var(--text-heading)]">{note.path}</code>
                     <span className="rounded-full bg-[var(--surface-hover)] px-2 py-1 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                        {note.type === 'task' ? (note.done ? 'Task · Done' : 'Task · Open') : 'Simple note'}
+                        {note.type === 'todo' ? (note.done ? 'Todo · Done' : 'Todo · Open') : 'Simple note'}
                     </span>
                     {isEndpointHidden(note.path, note.method) && (
                         <span className="rounded-full bg-[var(--text-muted)]/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
@@ -559,11 +690,11 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                     className={`${note.done ? 'opacity-65' : ''} rounded-2xl border p-5`}
                     style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
                 >
-                    {note.type === 'task' && (
+                    {note.type === 'todo' && (
                         <button
                             type="button"
-                            onClick={() => toggleTaskDone(note.id)}
-                            className="mb-4 inline-flex items-center gap-2 rounded-xl bg-white/45 px-3 py-2 text-[10px] font-bold hover:bg-white/70 cursor-pointer"
+                            onClick={() => requestToggleTodo(note.id)}
+                            className="mb-4 inline-flex items-center gap-2 rounded-xl bg-[var(--surface)]/45 px-3 py-2 text-[10px] font-bold hover:bg-[var(--surface)]/70 cursor-pointer"
                         >
                             <span
                                 className="flex size-5 items-center justify-center rounded-md border"
@@ -574,7 +705,7 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                             >
                                 {note.done && <i className="ph ph-check text-[12px] text-white" />}
                             </span>
-                            {note.done ? 'Completed' : 'Mark task as done'}
+                            {note.done ? 'Completed' : 'Mark todo as done'}
                         </button>
                     )}
                     <Markdown
@@ -585,7 +716,7 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                 <div className="mt-3 flex flex-wrap gap-3 text-[9px] text-[var(--text-muted)]">
                     <span>Created {new Date(note.createdAt).toLocaleString()}</span>
                     <span>Updated {new Date(note.updatedAt).toLocaleString()}</span>
-                    {note.type === 'task' && note.autoHideWhenTasksDone && (
+                    {note.type === 'todo' && note.autoHideWhenTodosDone && (
                         <span className="text-[var(--primary)]">Auto-hide enabled</span>
                     )}
                 </div>
@@ -607,6 +738,89 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
     );
 }
 
+function TodoCompletionConfirm() {
+    const {notes, pendingTodoCompletionId, confirmTodoCompletion, cancelTodoCompletion} = useEndpointNotes();
+    const [hideEndpoint, setHideEndpoint] = useState(true);
+    const note = notes.find(item => item.id === pendingTodoCompletionId);
+    useEffect(() => {
+        if (pendingTodoCompletionId) setHideEndpoint(true);
+    }, [pendingTodoCompletionId]);
+    useEscClose(!!pendingTodoCompletionId, cancelTodoCompletion);
+    if (!note || !pendingTodoCompletionId) return null;
+    return (
+        <div
+            className="modal-backdrop fixed inset-0 z-[5000] bg-black/55 backdrop-blur-[2px]"
+            onMouseDown={event => {
+                if (event.target === event.currentTarget) cancelTodoCompletion();
+            }}
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="complete-todo-confirm-title"
+                className="modal-surface modal-confirm-surface w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+                onMouseDown={event => event.stopPropagation()}
+            >
+                <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--method-get)]/10 text-[var(--method-get)]">
+                        <i className="ph-fill ph-check-square text-[18px]" />
+                    </span>
+                    <div>
+                        <h3
+                            id="complete-todo-confirm-title"
+                            className="text-sm font-extrabold text-[var(--text-heading)]"
+                        >
+                            Complete todo and hide endpoint?
+                        </h3>
+                        <p className="mt-0.5 text-[9px] text-[var(--text-muted)]">
+                            {note.method.toUpperCase()} {note.path}
+                        </p>
+                    </div>
+                </header>
+                <div className="space-y-3 px-4 py-4">
+                    <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                        This is the last open todo for the endpoint, and automatic hiding is enabled. Confirm whether
+                        completing it should also move the endpoint into Hidden endpoints.
+                    </p>
+                    <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                        <input
+                            type="checkbox"
+                            checked={hideEndpoint}
+                            onChange={event => setHideEndpoint(event.target.checked)}
+                            className="mt-0.5 size-4 accent-[var(--primary)]"
+                        />
+                        <span>
+                            <span className="block text-[11px] font-bold text-[var(--text-heading)]">
+                                Hide endpoint after completion
+                            </span>
+                            <span className="mt-0.5 block text-[9px] text-[var(--text-muted)]">
+                                Uncheck this to mark the todo done without hiding its endpoint.
+                            </span>
+                        </span>
+                    </label>
+                </div>
+                <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <button
+                        type="button"
+                        onClick={cancelTodoCompletion}
+                        className="h-9 rounded-xl border border-[var(--border)] px-4 text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => confirmTodoCompletion(hideEndpoint)}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--method-get)] px-4 text-[10px] font-bold text-[var(--method-get-contrast)] hover:brightness-110 cursor-pointer"
+                    >
+                        <i className="ph ph-check text-[13px]" />
+                        Mark as done
+                    </button>
+                </footer>
+            </section>
+        </div>
+    );
+}
+
 export default function EndpointNotesModalLayer({spec}: {spec: OpenApiSpec | null}) {
     const {notes, modalStack, closeNotesModal, closeAllNotesModals} = useEndpointNotes();
     const top = modalStack[modalStack.length - 1];
@@ -614,12 +828,23 @@ export default function EndpointNotesModalLayer({spec}: {spec: OpenApiSpec | nul
     useEffect(() => {
         if (top && 'noteId' in top && !note) closeNotesModal();
     }, [top, note, closeNotesModal]);
-    if (!top || !spec) return null;
-    if (top.kind === 'list')
-        return <EndpointNotesList spec={spec} path={top.path} method={top.method} onClose={closeAllNotesModals} />;
-    if (top.kind === 'create') return <NoteEditor path={top.path} method={top.method} onClose={closeNotesModal} />;
-    if (top.kind === 'edit' && note)
-        return <NoteEditor note={note} path={note.path} method={note.method} onClose={closeNotesModal} />;
-    if (top.kind === 'detail' && note) return <NoteDetail note={note} spec={spec} onClose={closeNotesModal} />;
-    return null;
+    let modal: ReactNode = null;
+    if (top && spec) {
+        if (top.kind === 'list')
+            modal = <EndpointNotesList spec={spec} path={top.path} method={top.method} onClose={closeAllNotesModals} />;
+        else if (top.kind === 'create')
+            modal = <NoteEditor spec={spec} path={top.path} method={top.method} onClose={closeNotesModal} />;
+        else if (top.kind === 'edit' && note)
+            modal = (
+                <NoteEditor spec={spec} note={note} path={note.path} method={note.method} onClose={closeNotesModal} />
+            );
+        else if (top.kind === 'detail' && note)
+            modal = <NoteDetail note={note} spec={spec} onClose={closeNotesModal} />;
+    }
+    return (
+        <>
+            {modal}
+            <TodoCompletionConfirm />
+        </>
+    );
 }

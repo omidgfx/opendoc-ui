@@ -1,3 +1,4 @@
+import {useLayoutEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ViewTabKind} from '@/src/types/tabs';
 import {Tip} from '@/src/components/common/Tooltip';
@@ -31,6 +32,27 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
         useEndpointNotes();
     const endpointNoteCount = target.type === 'endpoint' ? noteCountForEndpoint(target.path, target.method) : 0;
     const endpointHidden = target.type === 'endpoint' && isEndpointHidden(target.path, target.method);
+    const menuRef = useRef<HTMLDivElement | null>(null);
+    const [position, setPosition] = useState({top: Math.max(8, y + 4), left: Math.max(8, x + 4)});
+    useLayoutEffect(() => {
+        const update = () => {
+            const menu = menuRef.current;
+            if (!menu) return;
+            const width = menu.offsetWidth;
+            const height = menu.offsetHeight;
+            const edge = 8;
+            const roomBelow = window.innerHeight - y - edge;
+            const preferredTop = roomBelow >= height ? y + 4 : y - height - 4;
+            const preferredLeft = x + width + edge <= window.innerWidth ? x + 4 : x - width - 4;
+            setPosition({
+                top: Math.max(edge, Math.min(preferredTop, window.innerHeight - height - edge)),
+                left: Math.max(edge, Math.min(preferredLeft, window.innerWidth - width - edge)),
+            });
+        };
+        update();
+        window.addEventListener('resize', update);
+        return () => window.removeEventListener('resize', update);
+    }, [x, y, target.type]);
     const act = (action: 'open-new-tab' | 'open-browser' | 'share' | 'copy-link' | 'ask-ai') => {
         onAction(action, target);
         onClose();
@@ -47,8 +69,11 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
         'w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2';
     return (
         <div
-            className="fixed z-[5000] min-w-[200px] rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in"
-            style={{top: y, left: x}}
+            ref={menuRef}
+            role="menu"
+            aria-label={target.type === 'endpoint' ? 'Endpoint actions' : 'View actions'}
+            className="fixed z-[5000] min-w-[220px] max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in scrollbar-thin"
+            style={{top: position.top, left: position.left}}
             onClick={event => event.stopPropagation()}
             onContextMenu={event => event.preventDefault()}
         >
@@ -68,11 +93,11 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
                 <>
                     <div className="my-1 border-t border-[var(--border)]" />
                     <button className={button} onClick={() => endpointAct('create-note')}>
-                        <i className="ph ph-note-pencil text-[13px] text-[var(--primary)]" />
+                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
                         Create local note
                     </button>
                     <button className={button} onClick={() => endpointAct('list-notes')}>
-                        <i className="ph ph-notebook text-[13px] text-[var(--accent)]" />
+                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
                         <span className="min-w-0 flex-1">Endpoint notes</span>
                         <span className="rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-[var(--primary)]">
                             {endpointNoteCount}

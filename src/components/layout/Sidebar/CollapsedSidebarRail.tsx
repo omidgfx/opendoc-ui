@@ -70,7 +70,7 @@ export default function CollapsedSidebarRail({
                                 : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
                         )}
                     >
-                        <i className="ph-fill ph-note-pencil text-[16px]" />
+                        <i className="ph-fill ph-note text-[16px]" />
                         {notes.length > 0 && (
                             <span
                                 className={clsx(

@@ -321,17 +321,10 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                     <Tip
                                                         content={`${noteCount} local note${noteCount === 1 ? '' : 's'}`}
                                                     >
-                                                        <span
-                                                            className={clsx(
-                                                                'relative flex size-4 shrink-0 items-center justify-center rounded-md',
-                                                                isSelected
-                                                                    ? 'bg-[var(--primary-contrast)]/20 text-[var(--primary-contrast)]'
-                                                                    : 'bg-[var(--primary)]/10 text-[var(--primary)]',
-                                                            )}
+                                                        <i
+                                                            className="ph-fill ph-note shrink-0 text-[13px] text-[#f59e0b]"
                                                             aria-label={`${noteCount} local notes`}
-                                                        >
-                                                            <i className="ph-fill ph-note-pencil text-[10px]" />
-                                                        </span>
+                                                        />
                                                     </Tip>
                                                 )}
                                                 {ep.operation?.deprecated && (

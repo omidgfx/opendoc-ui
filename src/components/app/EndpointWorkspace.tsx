@@ -133,7 +133,7 @@ export default function EndpointWorkspace({
                             aria-label={`Open endpoint notes (${endpointNoteCount})`}
                             className="mr-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-2.5 font-bold text-[var(--text-heading)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)] cursor-pointer"
                         >
-                            <i className="ph-fill ph-note-pencil text-[14px]" />
+                            <i className="ph-fill ph-note text-[14px] text-[#f59e0b]" />
                             <span className="min-w-4 rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 text-center font-mono text-[9px] text-[var(--primary)]">
                                 {endpointNoteCount}
                             </span>

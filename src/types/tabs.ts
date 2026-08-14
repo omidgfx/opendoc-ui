@@ -25,7 +25,7 @@ export const VIEW_TAB_META: Record<
     home: {icon: 'ph-fill ph-house', label: 'Specification Overview'},
     search: {icon: 'ph-fill ph-magnifying-glass', label: 'Search'},
     schemas: {icon: 'ph-fill ph-diamonds-four', label: 'Schema Explorer'},
-    notes: {icon: 'ph-fill ph-note-pencil', label: 'Local Notes'},
+    notes: {icon: 'ph-fill ph-note', label: 'Local Notes'},
     compatibility: {icon: 'ph-fill ph-shield-check', label: 'Runner Compatibility'},
     about: {icon: 'ph-fill ph-info', label: 'About'},
     assistant: {icon: 'ph-fill ph-sparkle', label: 'AI Assistant'},

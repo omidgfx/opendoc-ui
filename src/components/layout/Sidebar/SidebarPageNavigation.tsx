@@ -137,7 +137,7 @@ export default function SidebarPageNavigation({
                 id="view:notes"
                 label="Local Notes"
                 tip="Browse local endpoint notes and tasks"
-                icon="ph-fill ph-note-pencil"
+                icon="ph-fill ph-note"
                 active={notesActive}
                 inactiveClass="text-[var(--sidebar-text)] hover:bg-[var(--surface-hover)]"
                 count={notes.length}
