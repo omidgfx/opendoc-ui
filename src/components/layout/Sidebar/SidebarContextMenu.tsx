@@ -66,7 +66,7 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
         onClose();
     };
     const button =
-        'w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2';
+        'group w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2';
     return (
         <div
             ref={menuRef}
@@ -93,11 +93,11 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
                 <>
                     <div className="my-1 border-t border-[var(--border)]" />
                     <button className={button} onClick={() => endpointAct('create-note')}>
-                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
                         Create local note
                     </button>
                     <button className={button} onClick={() => endpointAct('list-notes')}>
-                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                        <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
                         <span className="min-w-0 flex-1">Endpoint notes</span>
                         <span className="rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-[var(--primary)]">
                             {endpointNoteCount}

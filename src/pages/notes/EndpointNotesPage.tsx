@@ -52,7 +52,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                 <header className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
                     <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                            <span className="flex size-11 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                            <span className="flex size-11 items-center justify-center rounded-2xl bg-[#f59e0b]/10 text-[#f59e0b]">
                                 <i className="ph-fill ph-note text-[21px]" />
                             </span>
                             <div>
@@ -67,18 +67,18 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                             type="button"
                             aria-label="New note"
                             onClick={() => openCreateNote()}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] shadow-sm transition-all hover:brightness-110 active:scale-[.98] cursor-pointer"
+                            className="group inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
                         >
-                            <i className="ph-fill ph-note text-[14px] text-[#f59e0b]" />
+                            <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary-contrast)] group-active:text-[var(--primary-contrast)]" />
                             New note
                         </button>
                     </div>
-                    <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[var(--primary)] opacity-[0.035]" />
+                    <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[#f59e0b] opacity-[0.045]" />
                 </header>
 
                 <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
-                        ['All notes', notes.length, 'ph-fill ph-note', 'var(--primary)'],
+                        ['All notes', notes.length, 'ph-fill ph-note', '#f59e0b'],
                         ['Simple notes', notes.length - todos.length, 'ph-fill ph-note', '#f59e0b'],
                         ['Todos', todos.length, 'ph-fill ph-check-square', 'var(--method-put)'],
                         ['Open todos', openTodos, 'ph ph-circle-dashed', 'var(--method-delete)'],
@@ -217,7 +217,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                                             openNote(note.id);
                                                         }
                                                     }}
-                                                    className="relative overflow-hidden rounded-xl border p-3 transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 cursor-pointer"
+                                                    className="relative overflow-hidden rounded-xl border p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 cursor-pointer"
                                                     style={{
                                                         backgroundColor: color.background,
                                                         borderColor: color.border,
@@ -226,54 +226,58 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                                 >
                                                     <span
                                                         aria-hidden="true"
-                                                        className="pointer-events-none absolute -right-12 -top-12 size-16 rounded-full opacity-10"
+                                                        data-note-corner-tone
+                                                        className="pointer-events-none absolute -right-8 -top-8 size-16 rounded-full opacity-10"
                                                         style={{backgroundColor: color.tone}}
                                                     />
-                                                    <div className="relative z-10 flex items-start gap-2">
-                                                        {note.type === 'todo' ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => requestToggleTodo(note.id)}
-                                                                aria-label={
-                                                                    note.done
-                                                                        ? 'Mark todo as not done'
-                                                                        : 'Mark todo as done'
-                                                                }
-                                                                aria-pressed={note.done}
-                                                                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border cursor-pointer"
-                                                                style={{
-                                                                    borderColor: color.text,
-                                                                    backgroundColor: note.done
-                                                                        ? color.dot
-                                                                        : 'color-mix(in srgb, var(--surface) 82%, transparent)',
-                                                                }}
-                                                            >
-                                                                {note.done && (
-                                                                    <i className="ph ph-check text-[12px] text-white" />
-                                                                )}
-                                                            </button>
-                                                        ) : (
-                                                            <span
-                                                                className="mt-[3px] size-2 shrink-0 rounded-full"
-                                                                style={{backgroundColor: color.dot}}
-                                                            />
-                                                        )}
-                                                        <div className="min-w-0 flex-1 text-left">
+                                                    <div className="relative z-10 text-left">
+                                                        <div className="flex min-h-5 items-center gap-2">
+                                                            {note.type === 'todo' ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => requestToggleTodo(note.id)}
+                                                                    aria-label={
+                                                                        note.done
+                                                                            ? 'Mark todo as not done'
+                                                                            : 'Mark todo as done'
+                                                                    }
+                                                                    aria-pressed={note.done}
+                                                                    className="flex size-5 shrink-0 items-center justify-center rounded-full border cursor-pointer"
+                                                                    style={{
+                                                                        borderColor: color.text,
+                                                                        backgroundColor: note.done
+                                                                            ? color.dot
+                                                                            : 'color-mix(in srgb, var(--surface) 82%, transparent)',
+                                                                    }}
+                                                                >
+                                                                    {note.done && (
+                                                                        <i className="ph ph-check text-[12px] text-white" />
+                                                                    )}
+                                                                </button>
+                                                            ) : (
+                                                                <span
+                                                                    data-note-title-marker
+                                                                    className="size-2 shrink-0 rounded-full"
+                                                                    style={{backgroundColor: color.dot}}
+                                                                />
+                                                            )}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => openNote(note.id)}
-                                                                className={`max-w-full truncate text-left text-xs font-extrabold ${note.done ? 'line-through opacity-60' : ''} cursor-pointer`}
+                                                                className={`min-w-0 flex-1 truncate text-left text-xs font-extrabold leading-5 ${note.done ? 'line-through opacity-60' : ''} cursor-pointer`}
                                                             >
                                                                 {endpointNoteTitle(note)}
                                                             </button>
-                                                            <div
-                                                                className={`mt-1 line-clamp-4 text-[10px] leading-relaxed ${note.done ? 'opacity-55' : 'opacity-80'}`}
-                                                            >
-                                                                <Markdown
-                                                                    text={note.content}
-                                                                    className="markdown-body-simple !text-[10px] !text-inherit"
-                                                                />
-                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            className={`mt-1 line-clamp-4 text-[10px] leading-relaxed ${
+                                                                note.type === 'todo' ? 'ps-7' : 'ps-4'
+                                                            } ${note.done ? 'opacity-55' : 'opacity-80'}`}
+                                                        >
+                                                            <Markdown
+                                                                text={note.content}
+                                                                className="markdown-body-simple !text-[10px] !text-inherit"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </article>
@@ -292,7 +296,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                         </h2>
                         <p className="mt-1 text-[10px] text-[var(--text-muted)]">
                             {notes.length === 0
-                                ? 'Choose an endpoint above or use an endpoint context menu to create one.'
+                                ? 'Use New note or an endpoint context menu to create one.'
                                 : 'Try another search or filter.'}
                         </p>
                     </div>

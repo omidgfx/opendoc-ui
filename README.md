@@ -516,16 +516,18 @@ Notes are scoped to the selected specification, stored in IndexedDB-backed local
 never uploaded. The **Local Notes** sidebar page groups notes by endpoint and supports search plus
 simple-note/todo filters.
 
-- Notes render Markdown and use one of **12 predefined translucent tones** from the custom color
-  picker. Tone opacity blends with the active light or dark theme instead of forcing pale cards.
+- Notes render Markdown and use one of **12 predefined translucent tones** from a compact inline tone
+  selector. Tone opacity blends with the active light or dark theme instead of forcing pale cards.
 - A note has a required title (128 characters), optional Markdown details (4,096 characters), and an
-  endpoint maximum of 100 notes. Soft progress meters and countdowns appear near each limit.
-- A note can be a simple reference or a todo with a persistent done state.
+  endpoint maximum of 100 notes. Soft progress meters appear only after typing, with countdowns near
+  each limit.
+- A segmented control switches between a simple reference and a todo with a persistent done state.
 - Todos can offer to hide their endpoint when all endpoint todos are done. Completing the final todo
   opens a confirmation with a default-checked hide option that can be unchecked.
 - Endpoint context menus can create notes, open the endpoint note list, hide, or unhide the endpoint.
-  The create modal contains a searchable, always-expanded endpoint tree that follows sidebar sorting,
-  tag, route, compact-method, count, protection, deprecation, and hidden-endpoint preferences.
+  Only the specification-wide **New note** action shows the searchable, always-expanded endpoint tree;
+  endpoint-specific actions keep their endpoint fixed. The tree follows sidebar sorting, tag, route,
+  compact-method, count, protection, deprecation, and hidden-endpoint preferences.
 - Endpoint headers always show the current note count, and noted endpoints receive a note marker in
   the sidebar before deprecation/security indicators.
 - Hidden endpoints move into one muted **Hidden endpoints** folder at the end of the tree. Use their

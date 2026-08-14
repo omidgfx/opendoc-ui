@@ -14,7 +14,6 @@ import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import {useEscClose} from '../../hooks/useEscClose';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
-import CustomDropdown from '../common/CustomDropdown';
 import ConfirmModal from '../common/ConfirmModal';
 import {Tip} from '../common/Tooltip';
 import NoteEndpointPicker from './NoteEndpointPicker';
@@ -118,7 +117,7 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                             event.stopPropagation();
                             requestToggleTodo(note.id);
                         }}
-                        className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors cursor-pointer"
+                        className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors cursor-pointer"
                         style={{
                             borderColor: color.text,
                             backgroundColor: note.done
@@ -129,7 +128,7 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                         {note.done && <i className="ph ph-check text-[12px] text-white" />}
                     </button>
                 ) : (
-                    <i className="ph-fill ph-note mt-0.5 shrink-0 text-[15px] text-[#f59e0b]" />
+                    <i className="ph-fill ph-note mt-0.5 shrink-0 text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)]" />
                 )}
                 <div className="min-w-0 flex-1 text-left">
                     <button
@@ -222,9 +221,9 @@ function EndpointNotesList({
                                 type="button"
                                 disabled={atCapacity}
                                 onClick={() => openCreateNote(path, method)}
-                                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                className="group inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                             >
-                                <i className="ph-fill ph-note text-[13px] text-[#f59e0b]" />
+                                <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary-contrast)] group-active:text-[var(--primary-contrast)] group-disabled:text-[var(--text-muted)]" />
                                 Add note
                             </button>
                         </Tip>
@@ -285,87 +284,23 @@ function EndpointNotesList({
     );
 }
 
-function NoteColorPicker({
-    value,
-    onChange,
-    onClose,
-}: {
-    value: EndpointNoteColor;
-    onChange: (value: EndpointNoteColor) => void;
-    onClose: () => void;
-}) {
-    useEscClose(true, onClose);
-    return (
-        <div
-            className="modal-backdrop fixed inset-0 z-[4500] bg-black/55 backdrop-blur-[2px]"
-            onMouseDown={event => {
-                if (event.target === event.currentTarget) onClose();
-            }}
-        >
-            <section
-                role="dialog"
-                aria-modal="true"
-                aria-label="Choose note color"
-                className="modal-surface w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
-                onMouseDown={event => event.stopPropagation()}
-            >
-                <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                    <div>
-                        <h3 className="text-sm font-extrabold text-[var(--text-heading)]">Choose note color</h3>
-                        <p className="mt-0.5 text-[9px] text-[var(--text-muted)]">Twelve calm, predefined colors</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close note color picker"
-                        className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                    >
-                        <i className="ph ph-x" />
-                    </button>
-                </header>
-                <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4">
-                    {ENDPOINT_NOTE_COLORS.map(color => (
-                        <button
-                            key={color.id}
-                            type="button"
-                            aria-label={`${color.label} note color`}
-                            aria-pressed={value === color.id}
-                            onClick={() => {
-                                onChange(color.id);
-                                onClose();
-                            }}
-                            className="group rounded-xl border p-2 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer"
-                            style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
-                        >
-                            <span className="block h-10 rounded-lg opacity-20" style={{backgroundColor: color.tone}} />
-                            <span className="mt-1.5 flex items-center justify-between text-[9px] font-bold">
-                                {color.label}
-                                {value === color.id && <i className="ph-fill ph-check-circle" />}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </section>
-        </div>
-    );
-}
-
 function LimitMeter({value, maximum, countdown}: {value: number; maximum: number; countdown: number}) {
+    if (value === 0) return null;
     const ratio = Math.min(1, value / maximum);
     const hue = Math.round(215 * (1 - ratio));
     const remaining = maximum - value;
     const overloaded = remaining < 0;
     return (
         <span className="ms-auto flex items-center gap-2">
-            {(remaining <= countdown || overloaded) && (
+            {remaining <= countdown && (
                 <span className={overloaded ? 'text-[var(--method-delete)]' : 'text-[var(--text-muted)]'}>
                     {overloaded ? `${Math.abs(remaining)} over` : remaining}
                 </span>
             )}
-            <span className="h-1 w-16 overflow-hidden rounded-full bg-[var(--text-muted)]/15">
+            <span data-note-limit-meter className="h-1 w-16 overflow-hidden rounded-full bg-[var(--text-muted)]/15">
                 <span
                     className="block h-full rounded-full transition-[width,background-color]"
-                    style={{width: value === 0 ? 4 : `${ratio * 100}%`, backgroundColor: `hsl(${hue} 82% 54%)`}}
+                    style={{width: `${ratio * 100}%`, backgroundColor: `hsl(${hue} 82% 54%)`}}
                 />
             </span>
         </span>
@@ -387,21 +322,25 @@ function NoteEditor({
 }) {
     const {specKey, addNote, updateNote, canAddNote} = useEndpointNotes();
     const operations = useMemo(() => getDocumentOperations(spec), [spec]);
+    const requestedEndpoint = useMemo(
+        () =>
+            operations.find(
+                operation => operation.path === path && operation.method.toLowerCase() === method?.toLowerCase(),
+            ),
+        [operations, path, method],
+    );
+    const endpointSelectionLocked = !note && !!requestedEndpoint;
     const initialEndpoint = useMemo(() => {
         if (note) return {path: note.path, method: note.method};
-        const requested = operations.find(
-            operation => operation.path === path && operation.method.toLowerCase() === method?.toLowerCase(),
-        );
-        const fallback = requested || operations[0];
+        const fallback = requestedEndpoint || operations[0];
         return fallback ? {path: fallback.path, method: fallback.method} : null;
-    }, [note, operations, path, method]);
+    }, [note, operations, requestedEndpoint]);
     const [selectedEndpoint, setSelectedEndpoint] = useState(initialEndpoint);
     const [type, setType] = useState<EndpointNoteType>(note?.type || 'note');
     const [title, setTitle] = useState(note?.title || '');
     const [content, setContent] = useState(note?.content || '');
     const [color, setColor] = useState<EndpointNoteColor>(note?.color || 'butter');
     const [autoHideWhenTodosDone, setAutoHideWhenTodosDone] = useState(note?.autoHideWhenTodosDone || false);
-    const [colorPickerOpen, setColorPickerOpen] = useState(false);
     const [saveAttempted, setSaveAttempted] = useState(false);
     const selectedColor = endpointNoteColor(color);
     const titleLength = noteCharacterCount(title);
@@ -436,39 +375,83 @@ function NoteEditor({
     const editor = (
         <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                <div className="space-y-1.5">
+                    <span
+                        id="note-type-label"
+                        className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]"
+                    >
                         Note type
                     </span>
-                    <CustomDropdown
-                        value={type}
-                        onChange={value => setType(value === 'todo' ? 'todo' : 'note')}
-                        ariaLabel="Note type"
-                        options={[
-                            {value: 'note', label: 'Simple note', description: 'Markdown reference or reminder'},
-                            {value: 'todo', label: 'Todo', description: 'Can be marked as done'},
-                        ]}
-                    />
-                </label>
-                <div className="space-y-1.5">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                        Note tone
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => setColorPickerOpen(true)}
-                        className="flex h-8 w-full items-center gap-2 rounded-lg border px-2.5 text-left transition-colors cursor-pointer"
-                        style={{
-                            backgroundColor: selectedColor.background,
-                            borderColor: selectedColor.border,
-                            color: selectedColor.text,
-                        }}
+                    <div
+                        role="group"
+                        aria-labelledby="note-type-label"
+                        className="flex gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5 text-xs"
                     >
-                        <span className="size-3 rounded-full" style={{backgroundColor: selectedColor.tone}} />
-                        <span className="flex-1 text-[10px] font-bold">{selectedColor.label}</span>
-                        <span className="text-[8px] opacity-65">12 tones</span>
-                        <i className="ph ph-caret-right text-[11px]" />
-                    </button>
+                        <button
+                            type="button"
+                            aria-label="Simple note"
+                            aria-pressed={type === 'note'}
+                            onClick={() => setType('note')}
+                            className={`group flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-semibold transition-all cursor-pointer ${
+                                type === 'note'
+                                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)]'
+                            }`}
+                        >
+                            <i
+                                className={`ph-fill ph-note text-[15px] transition-colors ${
+                                    type === 'note'
+                                        ? 'text-[var(--primary-contrast)]'
+                                        : 'text-[#f59e0b] group-hover:text-[var(--primary)]'
+                                }`}
+                            />
+                            Simple note
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Todo"
+                            aria-pressed={type === 'todo'}
+                            onClick={() => setType('todo')}
+                            className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-semibold transition-all cursor-pointer ${
+                                type === 'todo'
+                                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)]'
+                            }`}
+                        >
+                            <i className="ph-fill ph-check-circle text-[15px]" />
+                            Todo
+                        </button>
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <span className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        Note tone
+                        <span className="ms-auto font-semibold normal-case tracking-normal text-[var(--text-heading)]">
+                            {selectedColor.label}
+                        </span>
+                    </span>
+                    <div
+                        role="group"
+                        aria-label="Note tone"
+                        className="flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1"
+                    >
+                        {ENDPOINT_NOTE_COLORS.map(option => (
+                            <Tip key={option.id} content={option.label}>
+                                <button
+                                    type="button"
+                                    aria-label={`${option.label} note tone`}
+                                    aria-pressed={color === option.id}
+                                    onClick={() => setColor(option.id)}
+                                    className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer ${
+                                        color === option.id ? 'scale-110' : ''
+                                    }`}
+                                    style={{backgroundColor: option.tone}}
+                                >
+                                    {color === option.id && <i className="ph-bold ph-check text-[10px] text-white" />}
+                                </button>
+                            </Tip>
+                        ))}
+                    </div>
                 </div>
             </div>
             <label className="block space-y-1.5">
@@ -481,6 +464,7 @@ function NoteEditor({
                     value={title}
                     onChange={event => setTitle(event.target.value)}
                     placeholder={type === 'todo' ? 'What needs to be done?' : 'Short note title'}
+                    autoFocus={!!note || endpointSelectionLocked}
                     aria-invalid={titleOverloaded || (saveAttempted && titleMissing)}
                     className={`w-full rounded-xl border bg-[var(--background)] px-3 py-2.5 text-xs text-[var(--text-heading)] outline-none transition-colors ${
                         titleOverloaded || (saveAttempted && titleMissing)
@@ -499,7 +483,6 @@ function NoteEditor({
                     onChange={event => setContent(event.target.value)}
                     placeholder="Write Markdown…"
                     rows={9}
-                    autoFocus={!note}
                     aria-invalid={contentOverloaded}
                     className={`w-full resize-y rounded-xl border bg-[var(--background)] px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--text-heading)] outline-none transition-colors ${
                         contentOverloaded
@@ -578,8 +561,7 @@ function NoteEditor({
                 }
                 icon={type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
                 onClose={onClose}
-                maxWidth={note ? 'max-w-4xl' : 'max-w-6xl'}
-                escEnabled={!colorPickerOpen}
+                maxWidth={note || endpointSelectionLocked ? 'max-w-4xl' : 'max-w-6xl'}
                 footer={
                     <>
                         <button
@@ -605,10 +587,10 @@ function NoteEditor({
                     </>
                 }
             >
-                {note ? (
+                {note || endpointSelectionLocked ? (
                     editor
                 ) : (
-                    <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(280px,.85fr)_minmax(0,1.5fr)]">
+                    <div className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(280px,.85fr)_minmax(0,1.5fr)]">
                         <NoteEndpointPicker
                             spec={spec}
                             specKey={specKey}
@@ -621,9 +603,6 @@ function NoteEditor({
                     </div>
                 )}
             </NotesDialog>
-            {colorPickerOpen && (
-                <NoteColorPicker value={color} onChange={setColor} onClose={() => setColorPickerOpen(false)} />
-            )}
         </>
     );
 }
@@ -697,7 +676,7 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
                             className="mb-4 inline-flex items-center gap-2 rounded-xl bg-[var(--surface)]/45 px-3 py-2 text-[10px] font-bold hover:bg-[var(--surface)]/70 cursor-pointer"
                         >
                             <span
-                                className="flex size-5 items-center justify-center rounded-md border"
+                                className="flex size-5 items-center justify-center rounded-full border"
                                 style={{
                                     borderColor: color.text,
                                     backgroundColor: note.done ? color.dot : 'transparent',

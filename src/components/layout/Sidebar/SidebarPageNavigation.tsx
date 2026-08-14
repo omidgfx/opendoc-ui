@@ -136,7 +136,7 @@ export default function SidebarPageNavigation({
             <PageButton
                 id="view:notes"
                 label="Local Notes"
-                tip="Browse local endpoint notes and tasks"
+                tip="Browse local endpoint notes and todos"
                 icon="ph-fill ph-note"
                 active={notesActive}
                 inactiveClass="text-[var(--sidebar-text)] hover:bg-[var(--surface-hover)]"
