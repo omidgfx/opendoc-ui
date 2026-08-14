@@ -69,8 +69,8 @@ CORS-enabled providers directly or an optional gateway.
   requests in the existing API Runner.
 - **Local mode** — no configuration at all: open `.json` / `.yaml` / `.yml` files from your
   device, with a persistent history of everything you opened.
-- **Local endpoint notes** — keep private Markdown notes and task lists per endpoint, choose from
-  twelve light note colors, mark tasks complete, and optionally hide an endpoint when its work is done.
+- **Local endpoint notes** — keep private Markdown notes and todos per endpoint, choose from twelve
+  translucent theme-safe tones, and optionally hide an endpoint after confirming its last todo.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
 - **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
@@ -514,18 +514,24 @@ allowlist where practical.
 OpenDoc can keep private notes beside individual operations without changing the OpenAPI document.
 Notes are scoped to the selected specification, stored in IndexedDB-backed local persistence, and
 never uploaded. The **Local Notes** sidebar page groups notes by endpoint and supports search plus
-simple-note/task filters.
+simple-note/todo filters.
 
-- Notes render Markdown and can use one of **12 predefined light colors** from the custom color picker.
-- A note can be a simple reference or a task/todo with a persistent done state.
-- Tasks can opt into **auto-hide endpoint when all endpoint tasks are done**.
+- Notes render Markdown and use one of **12 predefined translucent tones** from the custom color
+  picker. Tone opacity blends with the active light or dark theme instead of forcing pale cards.
+- A note has a required title (128 characters), optional Markdown details (4,096 characters), and an
+  endpoint maximum of 100 notes. Soft progress meters and countdowns appear near each limit.
+- A note can be a simple reference or a todo with a persistent done state.
+- Todos can offer to hide their endpoint when all endpoint todos are done. Completing the final todo
+  opens a confirmation with a default-checked hide option that can be unchecked.
 - Endpoint context menus can create notes, open the endpoint note list, hide, or unhide the endpoint.
+  The create modal contains a searchable, always-expanded endpoint tree that follows sidebar sorting,
+  tag, route, compact-method, count, protection, deprecation, and hidden-endpoint preferences.
 - Endpoint headers always show the current note count, and noted endpoints receive a note marker in
   the sidebar before deprecation/security indicators.
 - Hidden endpoints move into one muted **Hidden endpoints** folder at the end of the tree. Use their
   context menu to restore one, or **Unhide all endpoints** from navigation settings.
 - Endpoint note lists and the Local Notes page use custom confirmation dialogs for individual and
-  bulk deletion. Opening a note uses a dedicated detail modal with edit and task actions.
+  bulk deletion. Opening a note uses a dedicated detail modal with edit and todo actions.
 
 Resetting one specification preserves its local notes by default. The reset confirmation includes an
 unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all
@@ -919,7 +925,7 @@ OpenDoc uses clean History API routes and still accepts legacy `#/...` links. Ma
 | `/parsable/<key>`                              | Home of the configured/local specification |
 | `/parsable/<key>/api/<endpointId>`             | A specific endpoint in a permanent tab     |
 | `/parsable/<key>/schema-explorer?schemas=name` | Schema Explorer with a schema open         |
-| `/parsable/<key>/notes`                        | Local endpoint notes and tasks             |
+| `/parsable/<key>/notes`                        | Local endpoint notes and todos             |
 | `/parsable/<key>/compatibility`                | Endpoint Runner compatibility matrix       |
 | `/parsable/<key>/about`                        | About page for that specification          |
 | `/parsable/<key>/assistant`                    | OpenDoc UI assistant                       |
@@ -986,7 +992,7 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 | `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab                                               |
 | `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                                                                |
 | `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint                                                            |
-| `opendoc:spec:<key>:endpoint_notes`                         | Local Markdown notes and tasks grouped by endpoint                                              |
+| `opendoc:spec:<key>:endpoint_notes`                         | Local Markdown notes and todos grouped by endpoint                                              |
 | `opendoc:spec:<key>:hidden_endpoints`                       | Endpoint keys moved into the muted Hidden endpoints folder                                      |
 | `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                                                               |
 | `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification                                                   |

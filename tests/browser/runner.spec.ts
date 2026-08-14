@@ -156,6 +156,11 @@ const richRunnerSpecText = () =>
                             type: 'string',
                             enum: ['male', 'female'],
                         },
+                        many_choices: {
+                            description: 'A long enum used to exercise scrollable custom menus.',
+                            type: 'string',
+                            enum: Array.from({length: 24}, (_, index) => `choice-${index + 1}`),
+                        },
                         players: {
                             type: 'array',
                             description: 'Players included in this request.',
@@ -370,6 +375,17 @@ test('uses shared rich field descriptions, enum cases, focus frames, and array a
     await expect(page.getByRole('option', {name: /male MALE/i})).toBeVisible();
     await page.keyboard.press('Escape');
 
+    const longEnum = page.getByRole('button', {name: 'many_choices documented values'});
+    await longEnum.click();
+    const scrollableMenu = page.getByRole('listbox');
+    await scrollableMenu.evaluate(menu => {
+        menu.scrollTop = menu.scrollHeight;
+        menu.dispatchEvent(new Event('scroll'));
+    });
+    await expect(scrollableMenu).toBeVisible();
+    await expect(longEnum).toHaveAttribute('aria-expanded', 'true');
+    await page.getByRole('option', {name: 'choice-24', exact: true}).click();
+
     await page.getByRole('button', {name: 'Add item'}).click();
     const itemFrame = page.getByRole('group', {name: 'Item 1 field'});
     await expect(itemFrame).toBeVisible();
@@ -389,14 +405,13 @@ test('uses shared rich field descriptions, enum cases, focus frames, and array a
     await expect(page.getByText('json request body', {exact: false})).toBeVisible();
     await expect(page.getByRole('button', {name: 'Prettify'})).toBeVisible();
     await expect(page.getByRole('button', {name: 'Wrap'})).toHaveAttribute('aria-pressed', 'true');
-    expect(
-        await page
-            .getByRole('button', {name: 'Find'})
-            .evaluate(button => getComputedStyle(button.parentElement!).columnGap),
-    ).not.toBe('0px');
+    const toolbarGap = await page
+        .getByRole('button', {name: 'Find'})
+        .evaluate(button => parseFloat(getComputedStyle(button.parentElement!.parentElement!).columnGap));
+    expect(toolbarGap).toBeGreaterThanOrEqual(6);
 });
 
-test('creates local Markdown notes and tasks, auto-hides endpoints, and manages hidden endpoints', async ({page}) => {
+test('creates local Markdown notes and todos, auto-hides endpoints, and manages hidden endpoints', async ({page}) => {
     await loadSpecification(page);
     const sidebar = page.locator('[data-opendoc-sidebar]');
     const endpoint = sidebar.getByText('Send permissive validation request', {exact: true});
@@ -404,14 +419,14 @@ test('creates local Markdown notes and tasks, auto-hides endpoints, and manages 
     await page.getByRole('button', {name: 'Create local note'}).click();
 
     await page.getByRole('button', {name: 'Note type'}).click();
-    await page.getByRole('option', {name: /Task \/ todo/}).click();
+    await page.getByRole('option', {name: /^Todo/}).click();
     await page.getByPlaceholder('What needs to be done?').fill('Fix validation flow');
     await page.getByPlaceholder('Write Markdown…').fill('**Important:** verify the `400` response.');
-    await page.getByRole('button', {name: /Butter.*Choose from 12 colors/}).click();
+    await page.getByRole('button', {name: /Butter.*12 tones/}).click();
     const colorDialog = page.getByRole('dialog', {name: 'Choose note color'});
     await expect(colorDialog.getByRole('button', {name: /note color$/})).toHaveCount(12);
     await colorDialog.getByRole('button', {name: 'Blue note color'}).click();
-    await page.getByLabel('Auto-hide endpoint when all tasks are done').check();
+    await page.getByLabel('Offer to hide endpoint when all todos are done').check();
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
 
     await endpoint.click();
@@ -424,6 +439,23 @@ test('creates local Markdown notes and tasks, auto-hides endpoints, and manages 
     const detailDialog = page.getByRole('dialog', {name: 'Fix validation flow'});
     await expect(detailDialog.locator('strong')).toContainText('Important:');
     await detailDialog.getByRole('button', {name: 'Mark as done', exact: true}).click();
+    const completionDialog = page.getByRole('dialog', {name: 'Complete todo and hide endpoint?'});
+    const hideAfterCompletion = completionDialog.getByLabel('Hide endpoint after completion');
+    await expect(hideAfterCompletion).toBeChecked();
+    await hideAfterCompletion.uncheck();
+    await completionDialog.getByRole('button', {name: 'Mark as done'}).click();
+    await expect(sidebar.getByText('Hidden endpoints', {exact: true})).toHaveCount(0);
+    await detailDialog.getByRole('button', {name: 'Mark as not done'}).click();
+    await detailDialog.getByRole('button', {name: 'Mark as done', exact: true}).click();
+    await expect(
+        page
+            .getByRole('dialog', {name: 'Complete todo and hide endpoint?'})
+            .getByLabel('Hide endpoint after completion'),
+    ).toBeChecked();
+    await page
+        .getByRole('dialog', {name: 'Complete todo and hide endpoint?'})
+        .getByRole('button', {name: 'Mark as done'})
+        .click();
     await detailDialog.getByRole('button', {name: 'Close Fix validation flow'}).click();
     await page.getByRole('dialog', {name: 'Endpoint Notes'}).getByRole('button', {name: 'Close', exact: true}).click();
 
@@ -445,9 +477,15 @@ test('creates local Markdown notes and tasks, auto-hides endpoints, and manages 
     await expect(page).toHaveURL(/\/notes$/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await expect(page.getByText('Fix validation flow', {exact: true})).toBeVisible();
-    await expect(page.getByRole('button', {name: 'Mark task as not done'})).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', {name: 'Mark todo as not done'})).toHaveAttribute('aria-pressed', 'true');
+    await page.getByText(/verify the 400 response/i).click();
+    await expect(page.getByRole('dialog', {name: 'Fix validation flow'})).toBeVisible();
+    await page.getByRole('button', {name: 'Close Fix validation flow'}).click();
 
     await page.getByRole('button', {name: 'New note', exact: true}).click();
+    const endpointSearch = page.getByPlaceholder('Search endpoints…');
+    await endpointSearch.fill('Serve private media');
+    await page.getByRole('button', {name: /Serve private media/}).click();
     await page.getByPlaceholder('Short note title').fill('Reference note');
     await page.getByPlaceholder('Write Markdown…').fill('[Read the docs](https://example.com/docs).');
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
@@ -466,6 +504,20 @@ test('creates local Markdown notes and tasks, auto-hides endpoints, and manages 
         .getByRole('button', {name: 'Delete all notes'})
         .click();
     await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
+});
+
+test('keeps endpoint context menus inside the available viewport', async ({page}) => {
+    await page.setViewportSize({width: 1280, height: 430});
+    await loadSpecification(page);
+    const endpoint = page.locator('[data-opendoc-sidebar]').getByText('Export monthly report', {exact: true});
+    await endpoint.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await endpoint.dispatchEvent('contextmenu', {button: 2, clientX: 190, clientY: 420});
+    const menu = page.getByRole('menu', {name: 'Endpoint actions'});
+    await expect(menu).toBeVisible();
+    const bounds = await menu.boundingBox();
+    expect(bounds?.y || 0).toBeGreaterThanOrEqual(8);
+    expect((bounds?.y || 0) + (bounds?.height || 0)).toBeLessThanOrEqual(422);
 });
 
 test('preserves local notes during specification reset unless the notes checkbox is selected', async ({page}) => {
@@ -501,6 +553,40 @@ test('preserves local notes during specification reset unless the notes checkbox
         .getByRole('button', {name: /Local Notes/})
         .click();
     await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
+});
+
+test('validates note title and Markdown limits without blocking typing or pasting', async ({page}) => {
+    await loadSpecification(page);
+    const endpoint = page
+        .locator('[data-opendoc-sidebar]')
+        .getByText('Send permissive validation request', {exact: true});
+    await endpoint.click({button: 'right'});
+    await page.getByRole('button', {name: 'Create local note'}).click();
+    await expect(page.getByPlaceholder('Search endpoints…')).toBeVisible();
+    await expect(page.getByText('General', {exact: true}).first()).toBeVisible();
+
+    const title = page.getByPlaceholder('Short note title');
+    const content = page.getByPlaceholder('Write Markdown…');
+    await title.fill('T'.repeat(129));
+    await content.fill('C'.repeat(4097));
+    await expect(title).toHaveValue('T'.repeat(129));
+    await expect(content).toHaveValue('C'.repeat(4097));
+    await expect(title).toHaveAttribute('aria-invalid', 'true');
+    await expect(content).toHaveAttribute('aria-invalid', 'true');
+    const alert = page.getByRole('alert');
+    await expect(alert).toContainText('title is 1 character over');
+    await expect(alert).toContainText('Markdown content is 1 character over');
+    await expect(page.getByText('1 over', {exact: true})).toHaveCount(2);
+    await expect(page.locator('.h-1.w-16')).toHaveCount(2);
+    await expect(page.locator('.max-h-72.overflow-y-auto')).toBeVisible();
+    await page.getByRole('button', {name: 'Create note', exact: true}).click();
+    await expect(page.getByRole('dialog', {name: 'Create Note'})).toBeVisible();
+
+    await title.fill('Valid title without details');
+    await content.fill('');
+    await page.getByRole('button', {name: 'Create note', exact: true}).click();
+    await endpoint.click();
+    await expect(page.getByRole('button', {name: 'Open endpoint notes (1)'})).toBeVisible();
 });
 
 test('offers typed parameter suggestions without blocking custom negative-test values', async ({page}) => {
@@ -843,10 +929,11 @@ test('renders the embedded Apple sprite set without changing emoji inside code',
     await expect(page.locator('span.emoji[aria-label=":fire:"]')).toHaveCount(1);
     await expect(page.locator('span.emoji[aria-label="👩🏽‍💻"]')).toHaveCount(1);
     await expect(page.locator('span.emoji[aria-label="🫩"]')).toHaveCount(1);
-    const backgroundImage = await page
-        .locator('span.emoji[aria-label="🚀"]')
-        .evaluate(element => getComputedStyle(element).backgroundImage);
-    expect(backgroundImage).toContain('data:image/png;base64,');
+    await expect
+        .poll(() =>
+            page.locator('span.emoji[aria-label="🚀"]').evaluate(element => getComputedStyle(element).backgroundImage),
+        )
+        .toContain('data:image/png;base64,');
     await expect(page.locator('code').filter({hasText: '🚀'})).toBeVisible();
 });
 

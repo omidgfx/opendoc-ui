@@ -107,7 +107,9 @@ export default function CustomDropdown({
                 selectIndex(activeIndex);
             }
         };
-        const handleViewportChange = () => {
+        const handleViewportChange = (event: Event) => {
+            const target = event.target;
+            if (target instanceof Node && menuRef.current?.contains(target)) return;
             if (Date.now() - openedAtRef.current < 150) return;
             close(false);
         };

@@ -1,4 +1,4 @@
-export type EndpointNoteType = 'note' | 'task';
+export type EndpointNoteType = 'note' | 'todo';
 
 export type EndpointNoteColor =
     'butter' | 'apricot' | 'rose' | 'blush' | 'lilac' | 'violet' | 'blue' | 'sky' | 'mint' | 'lime' | 'sand' | 'slate';
@@ -12,7 +12,7 @@ export interface EndpointNote {
     content: string;
     color: EndpointNoteColor;
     done: boolean;
-    autoHideWhenTasksDone: boolean;
+    autoHideWhenTodosDone: boolean;
     createdAt: number;
     updatedAt: number;
 }
@@ -24,5 +24,5 @@ export interface EndpointNoteDraft {
     title: string;
     content: string;
     color: EndpointNoteColor;
-    autoHideWhenTasksDone: boolean;
+    autoHideWhenTodosDone: boolean;
 }

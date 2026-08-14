@@ -3,58 +3,97 @@ import {specStorage} from './storage';
 
 export const ENDPOINT_NOTES_STORAGE_NAME = 'endpoint_notes';
 export const HIDDEN_ENDPOINTS_STORAGE_NAME = 'hidden_endpoints';
+export const MAX_NOTES_PER_ENDPOINT = 100;
+export const MAX_NOTE_TITLE_CHARS = 128;
+export const MAX_NOTE_CONTENT_CHARS = 4096;
 
 export interface EndpointNoteColorOption {
     id: EndpointNoteColor;
     label: string;
+    tone: string;
     background: string;
     border: string;
     text: string;
     dot: string;
 }
 
+const noteColor = (id: EndpointNoteColor, label: string, tone: string): EndpointNoteColorOption => ({
+    id,
+    label,
+    tone,
+    background: `color-mix(in srgb, ${tone} 18%, transparent)`,
+    border: `color-mix(in srgb, ${tone} 48%, var(--border))`,
+    text: 'var(--text-heading)',
+    dot: tone,
+});
+
 export const ENDPOINT_NOTE_COLORS: EndpointNoteColorOption[] = [
-    {id: 'butter', label: 'Butter', background: '#fef3c7', border: '#fcd34d', text: '#78350f', dot: '#f59e0b'},
-    {id: 'apricot', label: 'Apricot', background: '#ffedd5', border: '#fdba74', text: '#7c2d12', dot: '#f97316'},
-    {id: 'rose', label: 'Rose', background: '#fee2e2', border: '#fca5a5', text: '#7f1d1d', dot: '#ef4444'},
-    {id: 'blush', label: 'Blush', background: '#fce7f3', border: '#f9a8d4', text: '#831843', dot: '#ec4899'},
-    {id: 'lilac', label: 'Lilac', background: '#f3e8ff', border: '#d8b4fe', text: '#581c87', dot: '#a855f7'},
-    {id: 'violet', label: 'Violet', background: '#ede9fe', border: '#c4b5fd', text: '#4c1d95', dot: '#8b5cf6'},
-    {id: 'blue', label: 'Blue', background: '#dbeafe', border: '#93c5fd', text: '#1e3a8a', dot: '#3b82f6'},
-    {id: 'sky', label: 'Sky', background: '#e0f2fe', border: '#7dd3fc', text: '#0c4a6e', dot: '#0ea5e9'},
-    {id: 'mint', label: 'Mint', background: '#d1fae5', border: '#6ee7b7', text: '#064e3b', dot: '#10b981'},
-    {id: 'lime', label: 'Lime', background: '#ecfccb', border: '#bef264', text: '#365314', dot: '#84cc16'},
-    {id: 'sand', label: 'Sand', background: '#fef9c3', border: '#fde047', text: '#713f12', dot: '#eab308'},
-    {id: 'slate', label: 'Slate', background: '#f1f5f9', border: '#cbd5e1', text: '#1e293b', dot: '#64748b'},
+    noteColor('butter', 'Butter', '#f59e0b'),
+    noteColor('apricot', 'Apricot', '#f97316'),
+    noteColor('rose', 'Rose', '#ef4444'),
+    noteColor('blush', 'Blush', '#ec4899'),
+    noteColor('lilac', 'Lilac', '#d946ef'),
+    noteColor('violet', 'Violet', '#8b5cf6'),
+    noteColor('blue', 'Blue', '#3b82f6'),
+    noteColor('sky', 'Sky', '#0ea5e9'),
+    noteColor('mint', 'Mint', '#10b981'),
+    noteColor('lime', 'Lime', '#84cc16'),
+    noteColor('sand', 'Sand', '#eab308'),
+    noteColor('slate', 'Slate', '#64748b'),
 ];
 
 const COLOR_IDS = new Set(ENDPOINT_NOTE_COLORS.map(color => color.id));
-const noteType = (value: unknown): value is EndpointNote['type'] => value === 'note' || value === 'task';
-const validNote = (value: any): value is EndpointNote =>
+const storedNoteType = (value: unknown): value is EndpointNote['type'] | 'task' =>
+    value === 'note' || value === 'todo' || value === 'task';
+const validStoredNote = (value: any): boolean =>
     !!value &&
     typeof value === 'object' &&
     typeof value.id === 'string' &&
     typeof value.path === 'string' &&
     typeof value.method === 'string' &&
-    noteType(value.type) &&
+    storedNoteType(value.type) &&
     typeof value.title === 'string' &&
     typeof value.content === 'string' &&
     COLOR_IDS.has(value.color) &&
     typeof value.done === 'boolean' &&
-    typeof value.autoHideWhenTasksDone === 'boolean' &&
+    (typeof value.autoHideWhenTodosDone === 'boolean' || typeof value.autoHideWhenTasksDone === 'boolean') &&
     Number.isFinite(value.createdAt) &&
     Number.isFinite(value.updatedAt);
 
+export const noteCharacterCount = (value: string): number => Array.from(value).length;
+
 export const endpointNoteKey = (path: string, method: string): string => `${method.toLowerCase()}:${path}`;
+
+export const endpointHasNoteCapacity = (
+    notes: Array<Pick<EndpointNote, 'path' | 'method'>>,
+    path: string,
+    method: string,
+): boolean => {
+    const key = endpointNoteKey(path, method);
+    return notes.filter(note => endpointNoteKey(note.path, note.method) === key).length < MAX_NOTES_PER_ENDPOINT;
+};
+
+export const normalizeStoredEndpointNote = (value: any): EndpointNote => {
+    const {autoHideWhenTasksDone, ...current} = value;
+    return {
+        ...current,
+        type: value.type === 'task' ? 'todo' : value.type,
+        autoHideWhenTodosDone: Boolean(value.autoHideWhenTodosDone ?? autoHideWhenTasksDone),
+    } as EndpointNote;
+};
 
 export const readEndpointNotes = (specKey: string): EndpointNote[] => {
     if (!specKey) return [];
-    return specStorage.getJSON<EndpointNote[]>(
+    const stored = specStorage.getJSON<any[]>(
         specKey,
         ENDPOINT_NOTES_STORAGE_NAME,
         [],
-        value => Array.isArray(value) && value.every(validNote),
+        value => Array.isArray(value) && value.every(validStoredNote),
     );
+    const migrated = stored.some(value => value.type === 'task' || value.autoHideWhenTodosDone === undefined);
+    const notes = stored.map(normalizeStoredEndpointNote);
+    if (migrated) writeEndpointNotes(specKey, notes);
+    return notes;
 };
 
 export const writeEndpointNotes = (specKey: string, notes: EndpointNote[]): boolean =>
@@ -83,7 +122,7 @@ export const endpointNoteTitle = (note: Pick<EndpointNote, 'title' | 'content' |
         .split(/\r?\n/)
         .map(line => line.trim())
         .find(Boolean);
-    return firstLine?.slice(0, 72) || (note.type === 'task' ? 'Untitled task' : 'Untitled note');
+    return firstLine?.slice(0, 72) || (note.type === 'todo' ? 'Untitled todo' : 'Untitled note');
 };
 
 export const createEndpointNote = (draft: EndpointNoteDraft): EndpointNote => {

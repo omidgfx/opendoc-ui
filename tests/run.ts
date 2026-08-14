@@ -63,7 +63,18 @@ import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
 import {parseEmojis} from '@/src/data/emoji';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
-import {createEndpointNote, ENDPOINT_NOTE_COLORS, endpointNoteKey, endpointNoteTitle} from '@/src/utils/endpointNotes';
+import {
+    createEndpointNote,
+    ENDPOINT_NOTE_COLORS,
+    MAX_NOTE_CONTENT_CHARS,
+    MAX_NOTE_TITLE_CHARS,
+    MAX_NOTES_PER_ENDPOINT,
+    endpointHasNoteCapacity,
+    endpointNoteKey,
+    normalizeStoredEndpointNote,
+    noteCharacterCount,
+    endpointNoteTitle,
+} from '@/src/utils/endpointNotes';
 import {
     buildDownloaderUrl,
     normalizeDownloaderTemplate,
@@ -1405,19 +1416,41 @@ test('extracts native enum case descriptions from Markdown tables for custom dro
 test('creates local endpoint notes with twelve predefined colors and stable endpoint keys', () => {
     assert.equal(ENDPOINT_NOTE_COLORS.length, 12);
     assert.equal(new Set(ENDPOINT_NOTE_COLORS.map(color => color.id)).size, 12);
+    assert.ok(
+        ENDPOINT_NOTE_COLORS.every(
+            color => color.background.includes('color-mix') && color.background.includes('transparent'),
+        ),
+    );
+    assert.equal(MAX_NOTE_TITLE_CHARS, 128);
+    assert.equal(MAX_NOTE_CONTENT_CHARS, 4096);
+    assert.equal(MAX_NOTES_PER_ENDPOINT, 100);
+    assert.equal(noteCharacterCount('A🚀B'), 3);
     const note = createEndpointNote({
         path: '/items',
         method: 'POST',
-        type: 'task',
-        title: '',
-        content: '**Ship** the endpoint',
+        type: 'todo',
+        title: 'Ship the endpoint',
+        content: '',
         color: 'mint',
-        autoHideWhenTasksDone: true,
+        autoHideWhenTodosDone: true,
     });
     assert.equal(note.method, 'post');
     assert.equal(note.done, false);
+    assert.equal(note.content, '');
     assert.equal(endpointNoteTitle(note), 'Ship the endpoint');
     assert.equal(endpointNoteKey(note.path, note.method), 'post:/items');
+    const atLimit = Array.from({length: MAX_NOTES_PER_ENDPOINT}, () => note);
+    assert.equal(endpointHasNoteCapacity(atLimit.slice(0, -1), '/items', 'post'), true);
+    assert.equal(endpointHasNoteCapacity(atLimit, '/items', 'post'), false);
+    const migrated = normalizeStoredEndpointNote({
+        ...note,
+        type: 'task',
+        autoHideWhenTasksDone: true,
+        autoHideWhenTodosDone: undefined,
+    });
+    assert.equal(migrated.type, 'todo');
+    assert.equal(migrated.autoHideWhenTodosDone, true);
+    assert.equal('autoHideWhenTasksDone' in migrated, false);
 });
 test('moves hidden endpoints into one final gray-folder tree group', () => {
     const spec: any = {
