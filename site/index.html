@@ -8,7 +8,7 @@
 <meta property="og:title" content="OpenDoc UI"/>
 <meta property="og:description" content="A comprehensive OpenAPI documentation browser and API runner that lives entirely in the browser — no backend required."/>
 <meta property="og:type" content="website"/>
-<meta property="og:image" content="assets/opendoc-demo.png"/>
+<meta property="og:image" content="assets/opendoc-docs.png"/>
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
@@ -45,74 +45,95 @@
 </header>
 
 <section class="hero">
+  <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
+  <div class="grid-dots" aria-hidden="true"></div>
   <div class="container hero-inner">
-    <span class="hero-badge"><i class="ph ph-lightning"></i> Open source · MIT licensed · Runs entirely in the browser</span>
-    <h1>Every API, fully understood — <span class="accent">documented, explored and tested</span> from one workspace</h1>
-    <p class="lead">
+    <span class="hero-badge reveal"><i class="ph ph-lightning"></i> Open source · MIT licensed · Runs entirely in the browser</span>
+    <h1 class="reveal d1">Every API, fully understood — <span class="grad">documented, explored and tested</span> from one workspace</h1>
+    <p class="lead reveal d2">
       OpenDoc UI takes any OpenAPI 3.0, 3.1, 3.2 or Swagger 2.0 specification and renders it into a
       living reference: navigable endpoint documentation, a genuine request runner, a deep schema
       explorer, instant code generation, persistent local notes and an optional AI assistant — all
       client-side, with no server, no account and no setup.
     </p>
-    <div class="hero-cta">
+    <div class="hero-cta reveal d3">
       <a class="btn btn-primary btn-lg" href="demo/"><i class="ph ph-play"></i> Open the live demo</a>
       <a class="btn btn-lg" href="guide.html"><i class="ph ph-book-open-text"></i> Read the manual</a>
       <a class="btn btn-ghost btn-lg" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> Star on GitHub</a>
     </div>
-    <div class="hero-meta">
+    <div class="hero-meta reveal d4">
       <span><i class="ph ph-file-code"></i> OpenAPI 3.0 · 3.1 · 3.2 + Swagger 2.0</span>
       <span><i class="ph ph-browser"></i> 100% client-side</span>
       <span><i class="ph ph-globe-hemisphere-west"></i> Deploys to any static host</span>
       <span><i class="ph ph-plugs-connected"></i> Optional AI gateway</span>
     </div>
   </div>
-  <div class="container hero-shot">
-    <div class="frame">
-      <img src="assets/opendoc-demo.png" alt="OpenDoc UI showing endpoint documentation with the schema matrix and method badges"/>
+
+  <div class="container mockup-wrap reveal d3">
+    <div class="mockup">
+      <div class="bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span>
+      </div>
+      <img class="show-light" src="assets/opendoc-docs.png" alt="OpenDoc UI showing endpoint documentation with the schema matrix and method badges"/>
+      <img class="show-dark" src="assets/opendoc-docs-dark.png" alt="OpenDoc UI in dark mode showing endpoint documentation"/>
+      <span class="glow"></span>
     </div>
-    <p class="caption">Endpoint documentation in OpenDoc UI — method badges, parameter tables, the request-body matrix and response explorer, all rendered from a single OpenAPI file.</p>
+    <div class="float-chip fc-1">
+      <span class="fc-icon"><i class="ph ph-lightning"></i></span>
+      <span><b>200 · OK</b><span>Response in 142 ms</span></span>
+    </div>
+    <div class="float-chip fc-2">
+      <span class="fc-icon alt"><i class="ph ph-note-pencil"></i></span>
+      <span><b>Note saved</b><span>Beside GET /pets/{petId}</span></span>
+    </div>
+    <div class="float-chip fc-3">
+      <span class="fc-icon"><i class="ph ph-code"></i></span>
+      <span><b>curl snippet</b><span>Generated &amp; secret-redacted</span></span>
+    </div>
+    <p class="mockup-caption">Endpoint documentation in OpenDoc UI — method badges, parameter tables, the request-body matrix and response explorer, all rendered from a single OpenAPI file.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <span class="kicker"><i class="ph ph-squares-four"></i> Capabilities</span>
-      <h2>A complete API workstation, in one interface</h2>
-      <p>Open a specification once and every surface you need appears: read it, understand it, call it, generate against it, and keep notes beside it — without ever leaving the document.</p>
+      <span class="kicker reveal"><i class="ph ph-squares-four"></i> Capabilities</span>
+      <h2 class="reveal d1">A complete API workstation, in one interface</h2>
+      <p class="reveal d2">Open a specification once and every surface you need appears: read it, understand it, call it, generate against it, and keep notes beside it — without ever leaving the document.</p>
     </div>
     <div class="grid grid-3">
-      <div class="card">
+      <div class="card reveal">
         <div class="icon"><i class="ph ph-book-open-text"></i></div>
         <h3>Documentation browser</h3>
         <p>Tag-based endpoint navigation with method badges, route display and protection indicators. Every operation renders its parameters, request bodies and response matrices with rich schema tables, examples, enum values and a built-in pattern tester — recursive and composed schemas handled safely.</p>
         <a class="more" href="features.html#docs">Explore the documentation surface <i class="ph ph-arrow-right"></i></a>
       </div>
-      <div class="card">
+      <div class="card reveal d1">
         <div class="icon alt"><i class="ph ph-flask"></i></div>
         <h3>Built-in API Runner</h3>
         <p>Compose real requests with path, query, header and cookie parameters, JSON or raw bodies, multipart file uploads and full authentication — bearer, API keys, basic auth and OAuth. Execute from the browser and inspect status, headers, body and history, with response cancellation.</p>
         <a class="more" href="features.html#runner">See the runner in action <i class="ph ph-arrow-right"></i></a>
       </div>
-      <div class="card">
+      <div class="card reveal d2">
         <div class="icon"><i class="ph ph-diamonds-four"></i></div>
         <h3>Schema explorer</h3>
         <p>Browse every model in components/schemas with search and letter filters, drill into referenced schemas, and inspect allOf/oneOf/anyOf/discriminator composition safely. Generate simulated example objects per media type and export any schema as TypeScript.</p>
         <a class="more" href="features.html#schemas">Dive into the schema matrix <i class="ph ph-arrow-right"></i></a>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <div class="icon alt"><i class="ph ph-code"></i></div>
         <h3>Code &amp; type generation</h3>
         <p>Ready-to-run request snippets in curl, JavaScript fetch and axios, Python, Go, C#, PHP and Angular — with secrets automatically redacted into placeholders. Export the entire schema set as TypeScript models plus example constants, as a ZIP or a single file.</p>
         <a class="more" href="features.html#codegen">See generated code <i class="ph ph-arrow-right"></i></a>
       </div>
-      <div class="card">
+      <div class="card reveal d1">
         <div class="icon"><i class="ph ph-note-pencil"></i></div>
         <h3>Local notes &amp; todos</h3>
         <p>Spec-scoped Markdown notes and todos with fourteen theme-safe tones. Todos can auto-hide endpoints when complete. A full trash with restore, an orphaned-notes list for renamed or removed endpoints, and JSON export/import — nothing is ever lost by accident.</p>
         <a class="more" href="features.html#notes">Understand the notes workspace <i class="ph ph-arrow-right"></i></a>
       </div>
-      <div class="card">
+      <div class="card reveal d2">
         <div class="icon alt"><i class="ph ph-sparkle"></i></div>
         <h3>Optional AI assistant</h3>
         <p>Ask grounded questions about your API with citations, and let the assistant open endpoints, fill the Runner and prepare requests through a safe action bridge. Connect directly to OpenAI, Anthropic, Ollama or OpenRouter — or run a hardened server-side gateway.</p>
@@ -125,21 +146,24 @@
 <section class="section section-alt">
   <div class="container">
     <div class="section-head">
-      <span class="kicker"><i class="ph ph-git-branch"></i> Workflow</span>
-      <h2>From specification to shipped integration in three deliberate steps</h2>
+      <span class="kicker reveal"><i class="ph ph-git-branch"></i> Workflow</span>
+      <h2 class="reveal d1">From specification to shipped integration in three deliberate steps</h2>
     </div>
     <div class="grid grid-3">
-      <div class="card">
+      <div class="card step-card reveal">
+        <div class="step-num">01 · OPEN</div>
         <div class="icon"><i class="ph ph-folder-open"></i></div>
         <h3>Open a specification</h3>
         <p>Choose a local JSON or YAML file from your device, load a remote URL, or ship pre-configured specifications inside your own deployment. Multi-file references resolve in-memory, and your source document is never modified.</p>
       </div>
-      <div class="card">
+      <div class="card step-card reveal d1">
+        <div class="step-num">02 · EXPLORE</div>
         <div class="icon alt"><i class="ph ph-magnifying-glass"></i></div>
         <h3>Explore with confidence</h3>
         <p>Navigate every endpoint, inspect every schema, generate examples and TypeScript, and verify patterns against real constraints. Deep links preserve exactly what you are looking at — shareable with anyone.</p>
       </div>
-      <div class="card">
+      <div class="card step-card reveal d2">
+        <div class="step-num">03 · INTEGRATE</div>
         <div class="icon"><i class="ph ph-paper-plane-tilt"></i></div>
         <h3>Test, integrate, share</h3>
         <p>Execute authenticated requests against real servers, copy production-ready snippets into your stack, keep notes beside the endpoints you own, and export everything you need for your team.</p>
@@ -148,15 +172,31 @@
   </div>
 </section>
 
+<section class="section section-glow g-left">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker reveal"><i class="ph ph-gauge"></i> By the numbers</span>
+      <h2 class="reveal d1">One bundle, four dialects, your whole stack</h2>
+    </div>
+    <div class="stat-row reveal d2">
+      <div class="stat"><b>4</b><span>OpenAPI / Swagger dialects</span></div>
+      <div class="stat"><b>1</b><span>self-contained bundle</span></div>
+      <div class="stat"><b>8</b><span>code generation targets</span></div>
+      <div class="stat"><b>15+</b><span>curated themes</span></div>
+      <div class="stat"><b>0</b><span>servers required</span></div>
+    </div>
+  </div>
+</section>
+
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <span class="kicker"><i class="ph ph-shield-check"></i> Compatibility</span>
-      <h2>Built for the ecosystem you already use</h2>
-      <p>OpenDoc UI speaks the dialects, protocols and stacks of real-world API development — from legacy Swagger documents to the latest OpenAPI 3.2 features.</p>
+      <span class="kicker reveal"><i class="ph ph-shield-check"></i> Compatibility</span>
+      <h2 class="reveal d1">Built for the ecosystem you already use</h2>
+      <p class="reveal d2">OpenDoc UI speaks the dialects, protocols and stacks of real-world API development — from legacy Swagger documents to the latest OpenAPI 3.2 features.</p>
     </div>
-    <div class="center" style="margin-bottom:36px">
-      <div class="chips" style="justify-content:center">
+    <div class="center" style="margin-bottom:40px">
+      <div class="chips reveal d2" style="justify-content:center">
         <span class="chip indigo"><i class="ph ph-file-code"></i> OpenAPI 3.0</span>
         <span class="chip indigo"><i class="ph ph-file-code"></i> OpenAPI 3.1</span>
         <span class="chip indigo"><i class="ph ph-file-code"></i> OpenAPI 3.2</span>
@@ -171,34 +211,18 @@
       </div>
     </div>
     <div class="grid grid-4">
-      <div class="card">
-        <div class="icon"><i class="ph ph-browser"></i></div>
-        <h3>Any static host</h3>
-        <p>GitHub Pages, Netlify, Vercel, S3, nginx — anywhere that serves static files, including air-gapped intranets.</p>
-      </div>
-      <div class="card">
-        <div class="icon alt"><i class="ph ph-cube"></i></div>
-        <h3>Docker-ready</h3>
-        <p>Compose-based deployment with an nginx image, health checks and a reproducible, lockfile-pinned build.</p>
-      </div>
-      <div class="card">
-        <div class="icon"><i class="ph ph-cpu"></i></div>
-        <h3>AI providers</h3>
-        <p>OpenAI, Anthropic, Ollama, OpenRouter, or any OpenAI-compatible endpoint — direct or through a gateway.</p>
-      </div>
-      <div class="card">
-        <div class="icon alt"><i class="ph ph-stack"></i></div>
-        <h3>Your stack</h3>
-        <p>Proxy and gateway examples for Node, Python, PHP, Go, Java, .NET, Ruby and Rust, ready to deploy.</p>
-      </div>
+      <div class="card reveal"><div class="icon"><i class="ph ph-browser"></i></div><h3>Any static host</h3><p>GitHub Pages, Netlify, Vercel, S3, nginx — anywhere that serves static files, including air-gapped intranets.</p></div>
+      <div class="card reveal d1"><div class="icon alt"><i class="ph ph-cube"></i></div><h3>Docker-ready</h3><p>Compose-based deployment with an nginx image, health checks and a reproducible, lockfile-pinned build.</p></div>
+      <div class="card reveal d2"><div class="icon"><i class="ph ph-cpu"></i></div><h3>AI providers</h3><p>OpenAI, Anthropic, Ollama, OpenRouter, or any OpenAI-compatible endpoint — direct or through a gateway.</p></div>
+      <div class="card reveal d3"><div class="icon alt"><i class="ph ph-stack"></i></div><h3>Your stack</h3><p>Proxy and gateway examples for Node, Python, PHP, Go, Java, .NET, Ruby and Rust, ready to deploy.</p></div>
     </div>
-    <p class="center muted" style="margin-top:26px"><a href="compatibility.html">View the full compatibility matrix <i class="ph ph-arrow-right"></i></a></p>
+    <p class="center muted reveal" style="margin-top:30px"><a href="compatibility.html">View the full compatibility matrix <i class="ph ph-arrow-right"></i></a></p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
-    <div class="cta-band">
+    <div class="cta-band reveal">
       <div class="cta-icon"><i class="ph ph-rocket-launch"></i></div>
       <h2>Try it now — nothing to install</h2>
       <p>The live demo opens the bundled Petstore specification instantly, and you can load your own JSON or YAML files on the spot. Everything stays in your browser; nothing is uploaded anywhere.</p>
