@@ -13,6 +13,8 @@ interface NotesImportModalProps {
     orphaned: EndpointNote[];
     /** Notes whose id already exists in this specification. */
     duplicates: number;
+    /** The specification key these notes are being imported into. */
+    currentSpecKey: string;
     onImport: (notes: EndpointNote[]) => {imported: number; skipped: number};
     onClose: () => void;
 }
@@ -22,6 +24,7 @@ export default function NotesImportModal({
     matching,
     orphaned,
     duplicates,
+    currentSpecKey,
     onImport,
     onClose,
 }: NotesImportModalProps) {
@@ -29,6 +32,7 @@ export default function NotesImportModal({
     const [result, setResult] = useState<{imported: number; skipped: number} | null>(null);
     useEscClose(true, onClose, !pendingTodoCompletionId);
     const title = file.source.specTitle || 'Notes export file';
+    const foreignSpec = !!file.source.specKey && file.source.specKey !== currentSpecKey;
     const footer = (
         <div className="flex flex-wrap items-center justify-end gap-2">
             {result ? (
@@ -86,6 +90,21 @@ export default function NotesImportModal({
         </div>
     ) : (
         <div className="space-y-4">
+            {foreignSpec && (
+                <div className="flex items-start gap-2 rounded-xl border border-[var(--method-put)]/30 bg-[var(--method-put)]/5 px-3 py-2.5">
+                    <i className="ph ph-warning-circle mt-0.5 shrink-0 text-[13px] text-[var(--method-put)]" />
+                    <div className="text-[10px] leading-relaxed text-[var(--text-muted)]">
+                        <p className="font-bold text-[var(--text-heading)]">
+                            These notes were exported from a different specification
+                            {file.source.specTitle ? ` (${file.source.specTitle})` : ''}.
+                        </p>
+                        <p className="mt-1">
+                            They may not belong to the endpoints of the current specification. Notes whose endpoints do
+                            not exist here are kept as orphaned and can be re-assigned or deleted afterwards.
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
                 <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
                     <span className="font-bold text-[var(--text-heading)]">{file.notes.length}</span>{' '}

@@ -16,6 +16,8 @@ import MethodBadge from '../../components/common/MethodBadge';
 import Markdown from '../../components/common/Markdown';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import NotesImportModal from '../../components/notes/NotesImportModal';
+import OrphanedNotesModal from '../../components/notes/OrphanedNotesModal';
+import TrashNotesModal from '../../components/notes/TrashNotesModal';
 import {Tip} from '../../components/common/Tooltip';
 
 interface EndpointNotesPageProps {
@@ -27,10 +29,16 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     const {
         specKey,
         notes,
+        trashedNotes,
         openCreateNote,
         openNote,
         requestToggleTodo,
         deleteAllNotes,
+        deleteOrphaned,
+        reassignNote,
+        restoreNote,
+        deleteNotePermanently,
+        emptyTrash,
         importNotes,
         isEndpointHidden,
         unhideEndpoint,
@@ -39,6 +47,8 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     const [filter, setFilter] = useState('all');
     const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
     const [confirmExportOrphans, setConfirmExportOrphans] = useState<EndpointNote[] | null>(null);
+    const [showTrashModal, setShowTrashModal] = useState(false);
+    const [showOrphanedModal, setShowOrphanedModal] = useState(false);
     const [pendingImport, setPendingImport] = useState<{
         file: EndpointNotesExportFile;
         matching: EndpointNote[];
@@ -47,7 +57,10 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     } | null>(null);
     const [importError, setImportError] = useState('');
     const importInputRef = useRef<HTMLInputElement | null>(null);
+    const classifiedNotes = useMemo(() => classifyEndpointNotesBySpec(spec, notes), [spec, notes]);
+    const orphanedNotes = classifiedNotes.orphaned;
     const filteredNotes = notes.filter(note => {
+        if (!getOperation(spec, note.path, note.method)) return false;
         if (filter === 'note' && note.type !== 'note') return false;
         if (filter === 'todo' && note.type !== 'todo') return false;
         if (filter === 'open' && (note.type !== 'todo' || note.done)) return false;
@@ -219,6 +232,24 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                         ]}
                         className="w-full sm:w-48"
                     />
+                    <button
+                        type="button"
+                        aria-label="Open orphaned notes"
+                        onClick={() => setShowOrphanedModal(true)}
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-[var(--method-put)] hover:bg-[var(--method-put)]/10 cursor-pointer"
+                    >
+                        <i className="ph ph-broken-heart text-[12px]" />
+                        Orphaned{orphanedNotes.length > 0 ? ` (${orphanedNotes.length})` : ''}
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Open trash"
+                        onClick={() => setShowTrashModal(true)}
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                    >
+                        <i className="ph ph-trash text-[12px]" />
+                        Trash{trashedNotes.length > 0 ? ` (${trashedNotes.length})` : ''}
+                    </button>
                     {notes.length > 0 && (
                         <button
                             type="button"
@@ -415,9 +446,9 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             )}
             <ConfirmModal
                 isOpen={confirmDeleteAll}
-                title="Delete every local note?"
-                message={`Delete all ${notes.length} notes and todos saved for this specification?`}
-                confirmLabel="Delete all notes"
+                title="Move every local note to trash?"
+                message={`All ${notes.length} notes and todos saved for this specification will be moved to the trash. You can restore them from the Trash modal.`}
+                confirmLabel="Move to trash"
                 destructive
                 onConfirm={async () => {
                     await deleteAllNotes();
@@ -453,12 +484,32 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                     matching={pendingImport.matching}
                     orphaned={pendingImport.orphaned}
                     duplicates={pendingImport.duplicates}
+                    currentSpecKey={specKey}
                     onImport={incoming => {
                         const outcome = importNotes(incoming);
                         if (outcome.imported === 0 && outcome.skipped === 0) setPendingImport(null);
                         return outcome;
                     }}
                     onClose={() => setPendingImport(null)}
+                />
+            )}
+            {showOrphanedModal && (
+                <OrphanedNotesModal
+                    spec={spec}
+                    specKey={specKey}
+                    notes={orphanedNotes}
+                    onReassign={reassignNote}
+                    onDeleteForever={deleteOrphaned}
+                    onClose={() => setShowOrphanedModal(false)}
+                />
+            )}
+            {showTrashModal && (
+                <TrashNotesModal
+                    notes={trashedNotes}
+                    onRestore={restoreNote}
+                    onDeleteForever={deleteNotePermanently}
+                    onEmptyTrash={emptyTrash}
+                    onClose={() => setShowTrashModal(false)}
                 />
             )}
         </div>

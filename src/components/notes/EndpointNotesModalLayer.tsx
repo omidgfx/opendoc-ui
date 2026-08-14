@@ -156,10 +156,10 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                         <Markdown text={note.content} className="markdown-body-simple !text-[10px] !text-inherit" />
                     </div>
                 </div>
-                <Tip content="Delete note">
+                <Tip content="Move note to trash">
                     <button
                         type="button"
-                        aria-label={`Delete ${endpointNoteTitle(note)}`}
+                        aria-label={`Move ${endpointNoteTitle(note)} to trash`}
                         onClick={event => {
                             event.stopPropagation();
                             onDelete();
@@ -272,13 +272,13 @@ function EndpointNotesList({
             </NotesDialog>
             <ConfirmModal
                 isOpen={!!deleteTarget}
-                title={deleteTarget === 'all' ? 'Delete all endpoint notes?' : 'Delete this note?'}
+                title={deleteTarget === 'all' ? 'Move all endpoint notes to trash?' : 'Move this note to trash?'}
                 message={
                     deleteTarget === 'all'
-                        ? `Delete all ${notes.length} notes saved for ${method.toUpperCase()} ${path}?`
-                        : 'This local note will be permanently removed from this browser.'
+                        ? `All ${notes.length} notes saved for ${method.toUpperCase()} ${path} will be moved to the trash.`
+                        : 'This local note will be moved to the trash. You can restore it from the Local Notes Trash modal.'
                 }
-                confirmLabel={deleteTarget === 'all' ? 'Delete all notes' : 'Delete note'}
+                confirmLabel={deleteTarget === 'all' ? 'Move to trash' : 'Move to trash'}
                 destructive
                 onConfirm={async () => {
                     if (deleteTarget === 'all') await deleteEndpointNotes(path, method);
@@ -643,9 +643,9 @@ function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpe
             />
             <ConfirmModal
                 isOpen={confirmDelete}
-                title="Delete this note?"
-                message="This local note will be permanently removed from this browser."
-                confirmLabel="Delete note"
+                title="Move this note to trash?"
+                message="This local note will be moved to the trash. You can restore it from the Local Notes Trash modal."
+                confirmLabel="Move to trash"
                 destructive
                 onConfirm={async () => {
                     await deleteNote(note.id);

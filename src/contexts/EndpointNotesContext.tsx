@@ -10,9 +10,12 @@ import {
     readEndpointNotes,
     readExpandedEndpointNoteIds,
     readHiddenEndpoints,
+    readTrashedNotes,
+    reassignEndpointNote,
     writeEndpointNotes,
     writeExpandedEndpointNoteIds,
     writeHiddenEndpoints,
+    writeTrashedNotes,
 } from '../utils/endpointNotes';
 
 export type EndpointNotesModalTarget =
@@ -24,6 +27,7 @@ export type EndpointNotesModalTarget =
 interface EndpointNotesContextValue {
     specKey: string;
     notes: EndpointNote[];
+    trashedNotes: EndpointNote[];
     hiddenEndpointKeys: string[];
     modalStack: EndpointNotesModalTarget[];
     pendingTodoCompletionId: string | null;
@@ -36,6 +40,11 @@ interface EndpointNotesContextValue {
     deleteNote: (noteId: string) => Promise<void>;
     deleteEndpointNotes: (path: string, method: string) => Promise<void>;
     deleteAllNotes: () => Promise<void>;
+    deleteOrphaned: (noteId: string) => void;
+    reassignNote: (noteId: string, path: string, method: string) => void;
+    restoreNote: (noteId: string) => void;
+    deleteNotePermanently: (noteId: string) => void;
+    emptyTrash: () => void;
     importNotes: (notes: EndpointNote[]) => {imported: number; skipped: number};
     requestToggleTodo: (noteId: string) => void;
     confirmTodoCompletion: (hideEndpoint: boolean) => void;
@@ -56,6 +65,7 @@ const asyncNoop = async () => undefined;
 const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     specKey: '',
     notes: [],
+    trashedNotes: [],
     hiddenEndpointKeys: [],
     modalStack: [],
     pendingTodoCompletionId: null,
@@ -68,6 +78,11 @@ const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     deleteNote: asyncNoop,
     deleteEndpointNotes: asyncNoop,
     deleteAllNotes: asyncNoop,
+    deleteOrphaned: noop,
+    reassignNote: noop,
+    restoreNote: noop,
+    deleteNotePermanently: noop,
+    emptyTrash: noop,
     importNotes: () => ({imported: 0, skipped: 0}),
     requestToggleTodo: noop,
     confirmTodoCompletion: noop,
@@ -85,11 +100,13 @@ const EndpointNotesContext = createContext<EndpointNotesContextValue>({
 
 export function EndpointNotesProvider({specKey, children}: {specKey: string; children: ReactNode}) {
     const [notes, setNotes] = useState<EndpointNote[]>(() => readEndpointNotes(specKey));
+    const [trashedNotes, setTrashedNotes] = useState<EndpointNote[]>(() => readTrashedNotes(specKey));
     const [hiddenEndpointKeys, setHiddenEndpointKeys] = useState<string[]>(() => readHiddenEndpoints(specKey));
     const [modalStack, setModalStack] = useState<EndpointNotesModalTarget[]>([]);
     const [pendingTodoCompletionId, setPendingTodoCompletionId] = useState<string | null>(null);
     useEffect(() => {
         setNotes(readEndpointNotes(specKey));
+        setTrashedNotes(readTrashedNotes(specKey));
         setHiddenEndpointKeys(readHiddenEndpoints(specKey));
         setModalStack([]);
         setPendingTodoCompletionId(null);
@@ -104,6 +121,16 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
                 const cleanedExpandedNoteIds = expandedNoteIds.filter(noteId => validNoteIds.has(noteId));
                 if (cleanedExpandedNoteIds.length !== expandedNoteIds.length)
                     writeExpandedEndpointNoteIds(specKey, cleanedExpandedNoteIds);
+                return next;
+            });
+        },
+        [specKey],
+    );
+    const commitTrashed = useCallback(
+        (updater: (current: EndpointNote[]) => EndpointNote[]) => {
+            setTrashedNotes(current => {
+                const next = updater(current);
+                writeTrashedNotes(specKey, next);
                 return next;
             });
         },
@@ -186,21 +213,67 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         },
         [commitNotes],
     );
+    const trashNoteInto = useCallback(
+        (note: EndpointNote) => {
+            commitNotes(current => current.filter(item => item.id !== note.id));
+            commitTrashed(current => (current.some(item => item.id === note.id) ? current : [note, ...current]));
+        },
+        [commitNotes, commitTrashed],
+    );
     const deleteNote = useCallback(
-        async (noteId: string) => commitNotes(current => current.filter(note => note.id !== noteId)),
-        [commitNotes],
+        async (noteId: string) => {
+            const note = notes.find(item => item.id === noteId);
+            if (note) trashNoteInto(note);
+        },
+        [notes, trashNoteInto],
     );
     const deleteEndpointNotes = useCallback(
         async (path: string, method: string) => {
             const key = endpointNoteKey(path, method);
+            const removed = notes.filter(note => endpointNoteKey(note.path, note.method) === key);
             commitNotes(current => current.filter(note => endpointNoteKey(note.path, note.method) !== key));
+            removed.forEach(note =>
+                commitTrashed(current => (current.some(item => item.id === note.id) ? current : [note, ...current])),
+            );
+        },
+        [notes, commitNotes, commitTrashed],
+    );
+    const deleteAllNotes = useCallback(async () => {
+        const removed = notes;
+        commitNotes(() => []);
+        removed.forEach(note =>
+            commitTrashed(current => (current.some(item => item.id === note.id) ? current : [note, ...current])),
+        );
+    }, [notes, commitNotes, commitTrashed]);
+    const deleteOrphaned = useCallback(
+        (noteId: string) => commitNotes(current => current.filter(note => note.id !== noteId)),
+        [commitNotes],
+    );
+    const reassignNote = useCallback(
+        (noteId: string, path: string, method: string) => {
+            commitNotes(current =>
+                current.map(note => (note.id === noteId ? reassignEndpointNote(note, path, method) : note)),
+            );
         },
         [commitNotes],
     );
-    const deleteAllNotes = useCallback(async () => commitNotes(() => []), [commitNotes]);
+    const restoreNote = useCallback(
+        (noteId: string) => {
+            const note = trashedNotes.find(item => item.id === noteId);
+            if (!note) return;
+            commitTrashed(current => current.filter(item => item.id !== noteId));
+            commitNotes(current => (current.some(item => item.id === noteId) ? current : [note, ...current]));
+        },
+        [trashedNotes, commitTrashed, commitNotes],
+    );
+    const deleteNotePermanently = useCallback(
+        (noteId: string) => commitTrashed(current => current.filter(note => note.id !== noteId)),
+        [commitTrashed],
+    );
+    const emptyTrash = useCallback(() => commitTrashed(() => []), [commitTrashed]);
     const importNotes = useCallback(
         (incoming: EndpointNote[]) => {
-            const existingIds = new Set(notes.map(note => note.id));
+            const existingIds = new Set([...notes.map(note => note.id), ...trashedNotes.map(note => note.id)]);
             const importedNotes: EndpointNote[] = [];
             let skipped = 0;
             incoming.forEach(note => {
@@ -217,7 +290,7 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             if (importedNotes.length > 0) commitNotes(current => [...importedNotes, ...current]);
             return {imported: importedNotes.length, skipped};
         },
-        [notes, commitNotes],
+        [notes, trashedNotes, commitNotes],
     );
     const completionWillAutoHide = useCallback(
         (noteId: string) => {
@@ -301,6 +374,7 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         () => ({
             specKey,
             notes,
+            trashedNotes,
             hiddenEndpointKeys,
             modalStack,
             pendingTodoCompletionId,
@@ -313,6 +387,11 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
+            deleteOrphaned,
+            reassignNote,
+            restoreNote,
+            deleteNotePermanently,
+            emptyTrash,
             importNotes,
             requestToggleTodo,
             confirmTodoCompletion,
@@ -330,6 +409,7 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [
             specKey,
             notes,
+            trashedNotes,
             hiddenEndpointKeys,
             modalStack,
             pendingTodoCompletionId,
@@ -342,6 +422,11 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
+            deleteOrphaned,
+            reassignNote,
+            restoreNote,
+            deleteNotePermanently,
+            emptyTrash,
             importNotes,
             requestToggleTodo,
             confirmTodoCompletion,

@@ -154,7 +154,7 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
                             onClick={() => notes.length > 0 && setConfirmDeleteAllNotes(true)}
                         >
                             <i className="ph ph-trash text-[13px]" />
-                            <span className="min-w-0 flex-1">Delete all notes</span>
+                            <span className="min-w-0 flex-1">Move all notes to trash</span>
                             <span className="text-[9px] font-bold">{notes.length}</span>
                         </button>
                     </>
@@ -167,9 +167,9 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
             </div>
             <ConfirmModal
                 isOpen={confirmDeleteAllNotes}
-                title="Delete every local note?"
-                message={`Delete all ${notes.length} notes and todos saved for this specification?`}
-                confirmLabel="Delete all notes"
+                title="Move every local note to trash?"
+                message={`All ${notes.length} notes and todos saved for this specification will be moved to the trash. You can restore them from the Local Notes Trash modal.`}
+                confirmLabel="Move to trash"
                 destructive
                 onConfirm={async () => {
                     await deleteAllNotes();
