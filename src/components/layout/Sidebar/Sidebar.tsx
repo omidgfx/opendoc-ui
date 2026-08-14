@@ -7,6 +7,7 @@ import CustomDropdown from '../../common/CustomDropdown';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
 import {specStorage, uiStorage} from '../../../utils/storage';
+import {OPEN_DOC_WEBSITE_URL} from '@/src/data/about';
 import pkg from '../../../../package.json';
 import FolderTreeActionIcon from './FolderTreeActionIcon';
 import CollapsedSidebarRail from './CollapsedSidebarRail';
@@ -1002,7 +1003,16 @@ export default function Sidebar(props: SidebarProps) {
                     </Tip>
                 </div>
                 <div className="flex items-center justify-between text-[9px] select-none text-[var(--text-muted)]">
-                    <span>OpenDoc UI</span>
+                    <Tip content="Open the OpenDoc UI website">
+                        <a
+                            href={OPEN_DOC_WEBSITE_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors"
+                        >
+                            OpenDoc UI
+                        </a>
+                    </Tip>
                     <span className="font-mono">{pkg.version}</span>
                 </div>
             </div>

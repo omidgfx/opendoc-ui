@@ -272,6 +272,13 @@ export const fadeUp = {
     hidden: {opacity: 0, y: 12},
     visible: {opacity: 1, y: 0, transition: {duration: 0.4, ease: 'easeOut' as const}},
 };
+/** Public website for the OpenDoc UI project (marketing site + manual). */
+export const OPEN_DOC_WEBSITE_URL = 'https://omidgfx.github.io/opendoc-ui/';
+/** Live application demo (same site, /demo/ path). */
+export const OPEN_DOC_DEMO_URL = 'https://omidgfx.github.io/opendoc-ui/demo/';
+/** Source repository on GitHub. */
+export const OPEN_DOC_GITHUB_URL = 'https://github.com/omidgfx/opendoc-ui';
+
 export const MIT_LICENSE = `MIT License
 
 Copyright (c) ${new Date().getFullYear()} Pejman Chatrrouz (OpenDoc UI)

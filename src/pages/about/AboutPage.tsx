@@ -5,6 +5,8 @@ import pkg from '@/package.json';
 import {
     fadeUp,
     FEATURES,
+    OPEN_DOC_GITHUB_URL,
+    OPEN_DOC_WEBSITE_URL,
     MIT_LICENSE,
     MOUSE_ACTIONS,
     PREVIEW_RULES,
@@ -527,7 +529,7 @@ export default function AboutView() {
                             className="pt-4 border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] flex flex-wrap items-center justify-between gap-2"
                         >
                             <span>Built with React, Vite, Tailwind, Monaco Editor, and Phosphor Icons.</span>
-                            <span className="flex items-center gap-2">
+                            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                 <span>
                                     By{' '}
                                     <a
@@ -539,7 +541,25 @@ export default function AboutView() {
                                         Pejman Chatrrouz
                                     </a>
                                 </span>
-                                <span className="font-mono">OpenDoc UI · {pkg.version}</span>
+                                <a
+                                    href={OPEN_DOC_WEBSITE_URL}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors"
+                                >
+                                    <i className="ph ph-globe-hemisphere-west text-[11px]" />
+                                    Website
+                                </a>
+                                <a
+                                    href={OPEN_DOC_GITHUB_URL}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors"
+                                >
+                                    <i className="ph-fill ph-github-logo text-[11px]" />
+                                    GitHub
+                                </a>
+                                <span className="font-mono">v{pkg.version}</span>
                             </span>
                         </motion.footer>
                     </motion.div>
