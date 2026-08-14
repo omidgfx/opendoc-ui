@@ -9,9 +9,6 @@ interface RunnerFieldFrameProps {
     ariaLabel?: string;
 }
 
-const interactiveSelector =
-    'input:not([disabled]), textarea:not([disabled]), button:not([disabled]), [role="button"]:not([aria-disabled="true"]), a[href]';
-
 export default function RunnerFieldFrame({children, className, active, onActivate, ariaLabel}: RunnerFieldFrameProps) {
     const frameRef = useRef<HTMLDivElement | null>(null);
     const [internalActive, setInternalActive] = useState(false);
@@ -24,10 +21,9 @@ export default function RunnerFieldFrame({children, className, active, onActivat
     const handleClick = (event: MouseEvent<HTMLDivElement>) => {
         const target = event.target as HTMLElement;
         if (target.closest('[data-runner-field]') !== event.currentTarget) return;
+        // Activate the guide branch without stealing focus: clicking the frame
+        // must never jump focus into its first input.
         activate();
-        if (target.closest(interactiveSelector)) return;
-        const preferred = frameRef.current?.querySelector<HTMLElement>(interactiveSelector);
-        (preferred || frameRef.current)?.focus({preventScroll: true});
     };
     return (
         <div
@@ -48,7 +44,7 @@ export default function RunnerFieldFrame({children, className, active, onActivat
                 'relative min-w-0 rounded-xl outline-none transition-[background-color,box-shadow] duration-150',
                 isActive
                     ? 'bg-[var(--primary)]/[0.045] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent)]'
-                    : 'hover:bg-[var(--surface-hover)]/45',
+                    : 'bg-transparent',
                 className,
             )}
         >
