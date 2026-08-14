@@ -70,7 +70,8 @@ CORS-enabled providers directly or an optional gateway.
 - **Local mode** — no configuration at all: open `.json` / `.yaml` / `.yml` files from your
   device, with a persistent history of everything you opened.
 - **Local endpoint notes** — keep private Markdown notes and todos per endpoint, choose from fourteen
-  translucent theme-safe tones, and optionally hide an endpoint after confirming its last todo.
+  translucent theme-safe tones, optionally hide an endpoint after confirming its last todo, and
+  export/import every note as JSON with orphaned-note detection.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
 - **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
@@ -542,6 +543,14 @@ simple-note/todo filters.
   bulk deletion; **Delete all notes** is also available from the Local Notes navigation context menu.
   Opening a note uses the tone-colored `NoteViewerModal`, with header edit/delete controls, todo actions,
   and a centered empty-note state when no Markdown body exists.
+- **Export / Import notes.** The Local Notes page can download every note and todo for the selected
+  specification as a JSON file (`opendoc-endpoint-notes` format, e.g. `opendoc-notes-<title>.json`) and
+  restore notes from such a file. Export detects notes whose endpoint no longer exists in the loaded
+  specification, asks before writing them, and records their ids as `orphanedNoteIds` so nothing is
+  silently lost. Import validates the file, classifies notes against the current specification
+  (matching, orphaned, or already present), and lets you import everything or only the matching notes;
+  orphaned notes stay available under the **Unavailable endpoint** group and respect per-endpoint
+  capacity limits and id deduplication.
 
 Resetting one specification preserves its local notes by default. The reset confirmation includes an
 unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all
