@@ -623,7 +623,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     const viewerHeaderActions = await detailDialog
         .locator('header button')
         .evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')));
-    expect(viewerHeaderActions).toEqual(['Delete note', 'Edit note', 'Close Fix validation flow']);
+    expect(viewerHeaderActions).toEqual(['Move note to trash', 'Edit note', 'Close Fix validation flow']);
     await detailDialog.getByRole('button', {name: 'Mark as done', exact: true}).click();
     const completionDialog = page.getByRole('dialog', {name: 'Complete todo and hide endpoint?'});
     const hideAfterCompletion = completionDialog.getByLabel('Hide endpoint after completion');
@@ -768,17 +768,20 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     );
     await expect(referenceDialog.locator('header')).toHaveCSS('border-bottom-width', '0px');
     await expect(referenceDialog.locator('footer')).toHaveCSS('border-top-width', '0px');
-    await referenceDialog.getByRole('button', {name: 'Delete note'}).click();
-    await page.getByRole('dialog', {name: 'Delete this note?'}).getByRole('button', {name: 'Delete note'}).click();
+    await referenceDialog.getByRole('button', {name: 'Move note to trash'}).click();
+    await page
+        .getByRole('dialog', {name: 'Move this note to trash?'})
+        .getByRole('button', {name: 'Move to trash'})
+        .click();
     await expect(page.getByText('Reference note', {exact: true})).toHaveCount(0);
 
     await sidebar.getByRole('button', {name: /Local Notes/}).click({button: 'right'});
-    const deleteAllNotesAction = page.getByRole('button', {name: /Delete all notes/});
+    const deleteAllNotesAction = page.getByRole('button', {name: /Move all notes to trash/});
     await expect(deleteAllNotesAction).toContainText('1');
     await deleteAllNotesAction.click();
     await page
-        .getByRole('dialog', {name: 'Delete every local note?'})
-        .getByRole('button', {name: 'Delete all notes'})
+        .getByRole('dialog', {name: 'Move every local note to trash?'})
+        .getByRole('button', {name: 'Move to trash'})
         .click();
     await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
     await expect
@@ -791,6 +794,111 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
             }
         })
         .toBe(0);
+});
+
+test('moves notes to the trash, restores them, and re-assigns imported orphaned notes', async ({page}) => {
+    test.setTimeout(90_000);
+    await loadSpecification(page);
+    const sidebar = page.locator('[data-opendoc-sidebar]');
+    const endpoint = sidebar.getByText('Send permissive validation request', {exact: true});
+
+    // create a note, then move it to the trash from the note viewer
+    await endpoint.click({button: 'right'});
+    await page.getByRole('button', {name: 'Create local note'}).click();
+    await page.getByPlaceholder('Short note title').fill('Trash me');
+    await page.getByRole('button', {name: 'Create note', exact: true}).click();
+    await endpoint.click();
+    await page.getByRole('button', {name: 'Open endpoint notes (1)'}).click();
+    const notesPanel = page.locator('[data-endpoint-notes-sidebar]');
+    await notesPanel.getByRole('button', {name: 'Trash me'}).first().click();
+    await notesPanel.getByRole('button', {name: 'Open full note'}).click();
+    await page.getByRole('dialog', {name: 'Trash me'}).getByRole('button', {name: 'Move note to trash'}).click();
+    await page
+        .getByRole('dialog', {name: 'Move this note to trash?'})
+        .getByRole('button', {name: 'Move to trash'})
+        .click();
+
+    // Local Notes page: trash modal shows the note, restore brings it back
+    await sidebar.getByRole('button', {name: /Local Notes/}).click();
+    await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
+    const trashButton = page.getByRole('button', {name: 'Open trash'});
+    await expect(trashButton).toContainText('1');
+    await trashButton.click();
+    const trashDialog = page.getByRole('dialog', {name: 'Trash'});
+    await expect(trashDialog.getByText('Trash me', {exact: true})).toBeVisible();
+    await trashDialog.getByRole('button', {name: /Restore Trash me/}).click();
+    await expect(trashDialog.getByText('Trash is empty', {exact: true})).toBeVisible();
+    await trashDialog.getByRole('button', {name: 'Done'}).click();
+    await expect(page.getByText('Trash me', {exact: true})).toBeVisible();
+    await expect(trashButton).toContainText('Trash');
+
+    // trash it again and delete permanently
+    await endpoint.click();
+    await page.getByRole('button', {name: 'Open endpoint notes (1)'}).click();
+    await page.locator('[data-endpoint-notes-sidebar]').getByRole('button', {name: 'Trash me'}).first().click();
+    await page.locator('[data-endpoint-notes-sidebar]').getByRole('button', {name: 'Open full note'}).click();
+    await page.getByRole('dialog', {name: 'Trash me'}).getByRole('button', {name: 'Move note to trash'}).click();
+    await page
+        .getByRole('dialog', {name: 'Move this note to trash?'})
+        .getByRole('button', {name: 'Move to trash'})
+        .click();
+    await sidebar.getByRole('button', {name: /Local Notes/}).click();
+    await page.getByRole('button', {name: 'Open trash'}).click();
+    await page
+        .getByRole('dialog', {name: 'Trash'})
+        .getByRole('button', {name: /Delete Trash me permanently/})
+        .click();
+    await expect(page.getByRole('dialog', {name: 'Trash'}).getByText('Trash is empty', {exact: true})).toBeVisible();
+    await page.getByRole('dialog', {name: 'Trash'}).getByRole('button', {name: 'Done'}).click();
+
+    // import a note exported from another specification -> foreign warning + orphaned list
+    const now = Date.now();
+    const orphanNote = {
+        id: 'imported-orphan-1',
+        path: '/gone',
+        method: 'get',
+        type: 'note',
+        title: 'Imported orphan',
+        content: 'From another spec.',
+        color: 'mint',
+        done: false,
+        autoHideWhenTodosDone: false,
+        createdAt: now,
+        updatedAt: now,
+    };
+    const importFile = {
+        format: 'opendoc-endpoint-notes',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        source: {specKey: 'local:elsewhere.json:xyz', specTitle: 'Elsewhere API'},
+        orphanedNoteIds: [orphanNote.id],
+        notes: [orphanNote],
+    };
+    await page.getByRole('button', {name: 'Import local notes'}).click();
+    await page.locator('input[accept="application/json,.json"]').setInputFiles({
+        name: 'notes-export.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(importFile)),
+    });
+    const importDialog = page.getByRole('dialog', {name: 'Import local notes'});
+    await expect(importDialog.getByText(/exported from a different specification/)).toBeVisible();
+    await importDialog.getByRole('button', {name: /Import 1 note/}).click();
+    await importDialog.getByRole('button', {name: 'Done'}).click();
+
+    const orphanedButton = page.getByRole('button', {name: 'Open orphaned notes'});
+    await expect(orphanedButton).toContainText('1');
+    await expect(page.getByText('Imported orphan', {exact: true})).toHaveCount(0);
+    await orphanedButton.click();
+    const orphanedDialog = page.getByRole('dialog', {name: 'Orphaned notes'});
+    await expect(orphanedDialog.getByText('Imported orphan', {exact: true})).toBeVisible();
+    await expect(orphanedDialog.getByText('/gone', {exact: true})).toBeVisible();
+    await orphanedDialog.getByRole('button', {name: /Re-assign Imported orphan/}).click();
+    await page.getByPlaceholder('Search endpoints…').fill('Send permissive validation');
+    await page.getByRole('button', {name: /Send permissive validation request/}).click();
+    await expect(orphanedDialog.getByText('No orphaned notes', {exact: true})).toBeVisible();
+    await orphanedDialog.getByRole('button', {name: 'Done'}).click();
+    await expect(orphanedButton).toContainText('Orphaned');
+    await expect(page.getByText('Imported orphan', {exact: true})).toBeVisible();
 });
 
 test('keeps endpoint context menus inside the available viewport', async ({page}) => {

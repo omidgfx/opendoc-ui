@@ -90,11 +90,11 @@ export default function NoteViewerModal({
                             </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
-                            <Tip content="Delete note">
+                            <Tip content="Move note to trash">
                                 <button
                                     type="button"
                                     onClick={onDelete}
-                                    aria-label="Delete note"
+                                    aria-label="Move note to trash"
                                     className="flex size-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--method-delete)] transition-colors hover:bg-[var(--method-delete)]/10 cursor-pointer"
                                 >
                                     <i className="ph ph-trash text-[14px]" />

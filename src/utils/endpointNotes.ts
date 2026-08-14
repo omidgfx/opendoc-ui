@@ -3,6 +3,7 @@ import {getOperation} from './openapi';
 import {specStorage} from './storage';
 
 export const ENDPOINT_NOTES_STORAGE_NAME = 'endpoint_notes';
+export const ENDPOINT_NOTES_TRASH_STORAGE_NAME = 'endpoint_notes_trash';
 export const HIDDEN_ENDPOINTS_STORAGE_NAME = 'hidden_endpoints';
 export const ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME = 'endpoint_note_panel_expanded';
 export const ENDPOINT_NOTES_EXPORT_FORMAT = 'opendoc-endpoint-notes';
@@ -104,6 +105,31 @@ export const readEndpointNotes = (specKey: string): EndpointNote[] => {
 
 export const writeEndpointNotes = (specKey: string, notes: EndpointNote[]): boolean =>
     !!specKey && specStorage.setJSON(specKey, ENDPOINT_NOTES_STORAGE_NAME, notes);
+
+export const readTrashedNotes = (specKey: string): EndpointNote[] => {
+    if (!specKey) return [];
+    const stored = specStorage.getJSON<any[]>(
+        specKey,
+        ENDPOINT_NOTES_TRASH_STORAGE_NAME,
+        [],
+        value => Array.isArray(value) && value.every(validStoredNote),
+    );
+    const migrated = stored.some(value => value.type === 'task' || value.autoHideWhenTodosDone === undefined);
+    const notes = stored.map(normalizeStoredEndpointNote);
+    if (migrated) writeTrashedNotes(specKey, notes);
+    return notes;
+};
+
+export const writeTrashedNotes = (specKey: string, notes: EndpointNote[]): boolean =>
+    !!specKey && specStorage.setJSON(specKey, ENDPOINT_NOTES_TRASH_STORAGE_NAME, notes);
+
+/** Move a note to a different endpoint (used to re-assign orphaned notes). */
+export const reassignEndpointNote = (note: EndpointNote, path: string, method: string): EndpointNote => ({
+    ...note,
+    path,
+    method: method.toLowerCase(),
+    updatedAt: Date.now(),
+});
 
 export const readHiddenEndpoints = (specKey: string): string[] => {
     if (!specKey) return [];

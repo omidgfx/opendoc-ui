@@ -77,6 +77,7 @@ import {
     noteCharacterCount,
     endpointNoteTitle,
     parseEndpointNotesExport,
+    reassignEndpointNote,
 } from '@/src/utils/endpointNotes';
 import {
     buildDownloaderUrl,
@@ -1672,5 +1673,24 @@ test('marks recursive and reused schemas with the recursive guard icon', () => {
     assert.equal(schemaIsRecursive({type: 'string'}, resolve), false);
     assert.equal(schemaIsRecursive({}, resolve), false);
     assert.ok(RECURSIVE_SCHEMA_ICON.length > 0);
+});
+
+test('re-assigns a note to another endpoint and keeps its identity', () => {
+    const note = createEndpointNote({
+        path: '/gone',
+        method: 'GET',
+        type: 'note',
+        title: 'Move me',
+        content: '',
+        color: 'blue',
+        autoHideWhenTodosDone: false,
+    });
+    const reassigned = reassignEndpointNote(note, '/customers', 'post');
+    assert.equal(reassigned.id, note.id);
+    assert.equal(reassigned.path, '/customers');
+    assert.equal(reassigned.method, 'post');
+    assert.equal(reassigned.title, 'Move me');
+    assert.ok(reassigned.updatedAt >= note.updatedAt);
+    assert.equal(reassignEndpointNote(note, '/x', 'GET').method, 'get');
 });
 console.log('All OpenDoc UI unit tests passed.');
