@@ -53,13 +53,14 @@
     <a href="#modes"><i class="ph ph-sliders-horizontal"></i> Config modes</a>
     <a href="#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
     <a href="#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+    </nav>
   </div>
 </section>
 
 <section class="section" style="padding-top:28px">
   <div class="container">
     <section id="static" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Static hosting</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">Static hosting</h2>
       <p>
         OpenDoc UI compiles to a single self-contained directory. Build it once, copy
         <code>dist/</code> to any static host, and the entire application — documentation, runner,
@@ -78,7 +79,7 @@ npm run build      <span class="c"># dist/ with index.html, index.js, 404.html</
     </section>
 
     <section id="github-pages" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">GitHub Pages</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">GitHub Pages</h2>
       <p>
         The repository ships a ready-made Pages workflow. On every push to <code>master</code> it
         installs dependencies, copies the demo configuration, builds with the correct base path and
@@ -111,7 +112,7 @@ steps:
     </section>
 
     <section id="docker" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Docker</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">Docker</h2>
       <p>
         Docker Desktop or Engine with the Compose plugin is the only prerequisite. The image uses a
         lockfile-pinned <code>npm ci</code> builder and serves the verified bundle from nginx with a
@@ -137,7 +138,7 @@ docker compose down</code></pre>
     </section>
 
     <section id="make" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The guided builder — <code>npm run make</code></h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">The guided builder — <code>npm run make</code></h2>
       <p>
         For anyone who prefers questions over configuration files, the interactive builder walks
         through every deployment decision and produces a clean, verified build:
@@ -154,7 +155,7 @@ docker compose down</code></pre>
     </section>
 
     <section id="modes" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">Configuration modes</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">Configuration modes</h2>
       <p>At startup the application decides its behavior entirely from what is present on the page:</p>
       <div class="tbl-wrap">
         <table>
@@ -170,7 +171,7 @@ docker compose down</code></pre>
     </section>
 
     <section id="ai" style="margin-bottom:56px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The AI gateway</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em"><span class="reveal">The AI gateway</h2>
       <p>
         The assistant can talk to a CORS-enabled provider directly. When that is not acceptable —
         provider keys must stay server-side, or the network demands a gateway — the repository
@@ -203,7 +204,7 @@ AI_GATEWAY_UPSTREAM_TIMEOUT_MS=60000</code></pre>
     </section>
 
     <section id="downloader" style="margin-bottom:20px">
-      <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The downloader proxy</h2>
+      <h2 class="reveal" style="font-size:26px;font-weight:800;letter-spacing:-0.02em">The downloader proxy</h2>
       <p>
         When browsers cannot fetch a remote specification directly — corporate proxies, CORS-restricted
         hosts — OpenDoc UI can route through a downloader proxy. Configure its template at build time:

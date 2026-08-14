@@ -1,4 +1,4 @@
-/* OpenDoc UI site — theme, navigation, active links, footer year */
+/* OpenDoc UI site — theme, navigation, active links, scroll reveal, footer year */
 (function () {
     'use strict';
 
@@ -79,6 +79,24 @@
         });
     }
 
+    function initReveal() {
+        var els = document.querySelectorAll('.reveal');
+        if (!els.length) return;
+        if (!('IntersectionObserver' in window)) {
+            Array.prototype.forEach.call(els, function (el) { el.classList.add('in'); });
+            return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {threshold: 0.12, rootMargin: '0px 0px -40px 0px'});
+        Array.prototype.forEach.call(els, function (el) { observer.observe(el); });
+    }
+
     function initYear() {
         var el = document.getElementById('year');
         if (el) el.textContent = String(new Date().getFullYear());
@@ -88,6 +106,7 @@
         initTheme();
         initNav();
         initActiveNav();
+        initReveal();
         initYear();
     });
 })();

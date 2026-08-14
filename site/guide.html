@@ -41,9 +41,10 @@
 </header>
 
 <section class="page-hero">
+  <div class="aurora" aria-hidden="true"></div>
   <div class="container">
-    <h1>The OpenDoc UI manual</h1>
-    <p>A methodical walkthrough of everything the application can do — from the first specification you open to the most intricate notes and AI workflows.</p>
+    <h1 class="reveal">The OpenDoc UI manual</h1>
+    <p class="reveal d1">A methodical walkthrough of everything the application can do — from the first specification you open to the most intricate notes and AI workflows.</p>
   </div>
 </section>
 
@@ -66,7 +67,7 @@
     <div class="doc-body">
 
       <section id="quickstart">
-        <h2>Quick start</h2>
+        <h2> class="reveal"Quick start</h2>
         <p>
           The fastest path to a working workspace is the live demo: it opens the bundled Petstore
           specification immediately, and you can load your own file on the spot. Locally, everything
@@ -88,6 +89,11 @@ npm run preview</code></pre>
           your device — no account, no upload, nothing leaves your machine.
         </p>
         <div class="note"><i class="ph ph-info"></i><span>OpenDoc UI never uploads your specification anywhere. Files are parsed in the browser and kept in local history for your next visit.</span></div>
+        <div class="mockup reveal">
+          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span></div>
+          <img src="assets/opendoc-runner.png" alt="OpenDoc UI API runner"/>
+          <span class="glow"></span>
+        </div>
       </section>
 
       <section id="loading">
