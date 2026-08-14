@@ -7,9 +7,10 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.10-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+[![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.10-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
-**[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
+**[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
 ---
 
@@ -17,8 +18,7 @@ CORS-enabled providers directly or an optional gateway.
 
 - [Features](#features)
 - [Version 0.1.10](#version-010)
-- [Version 0.1.9](#version-019)
-- [Version 0.1.8](#version-018)
+- [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
 - [Configuration](#configuration)
@@ -109,56 +109,9 @@ This release adds the interactive builder CLI and hardens it for real-world cros
 
 ---
 
-## Version 0.1.9
-
-This release refines the notes workspace into a safe trash/orphaned workflow, detaches Runner
-Compatibility into its own sidebar page, and polishes the Runner form and local notes toolbar:
-
-- adds a spec-scoped **Trash** with restore, permanent delete, and empty-trash actions — deleting a note
-  no longer destroys it, and every destructive action asks for confirmation;
-- adds a dedicated **Orphaned** list parallel to the trash: notes whose endpoint disappears from the
-  loaded specification (removed, renamed, or imported from another spec) land there, can be re-assigned
-  to another endpoint through a compact searchable picker, or deleted permanently with confirmation;
-- **Move all to trash** only moves active notes; orphaned notes are never touched by bulk deletion, and
-  restoring a trashed note whose endpoint is missing returns it to the Orphaned list;
-- importing notes exported from another specification warns clearly that they may not belong to the
-  current spec before anything is merged;
-- detaches **Runner Compatibility** from the Overview view into its own sidebar page, with a matching
-  collapsed-rail and mobile entry, and removes its back-to-overview button;
-- exposes named oneOf/anyOf branch alternatives (referenced schema names) in the Runner request body and
-  the View Documentation request-body matrix, keeps a restored body on its edited branch, and produces
-  JSON `null` for pure-null alternatives;
-- marks recursive and reused schemas with a loop icon across schema tables, example representations,
-  schema modals, and the Runner's circular-reference guard;
-- adds JSON export/import of all notes (`opendoc-endpoint-notes`) with orphaned-note detection;
-- removes the hover focus-steal from Runner field frames so clicking the request body never jumps focus
-  into its first input, and aligns the notes-sidebar resize handle with the main sidebar style;
-- reorganizes the Local Notes page around a toolbar holding New note, Import, Export, Orphaned, Trash,
-  and Move all to trash.
-
----
-
-## Version 0.1.8
-
-This release focuses on local endpoint workflows, recursive-schema reliability, and durable browser workspaces:
-
-- adds specification-scoped Markdown notes and todos with required titles, optional details, fourteen theme-safe tones, completion state, and confirmation-controlled endpoint auto-hiding;
-- adds hidden endpoints, a muted final sidebar folder, individual restoration, and **Unhide all endpoints** navigation settings;
-- introduces the tone-colored `NoteViewerModal`, including empty-note presentation and adjacent edit, delete, and close controls;
-- adds a resizable endpoint-notes sidebar to single Documentation and API Runner views while retaining the notes modal in Split View;
-- persists note expansion state and notes-sidebar width through IndexedDB, and fixes pointer dragging on the sidebar’s wider resize handle;
-- adds searchable endpoint selection to the specification-wide note creator while endpoint-specific note actions keep their endpoint fixed;
-- adds Local Notes context-menu deletion with custom confirmation, viewport-aware endpoint menus, and scroll-safe custom dropdown dismissal;
-- makes recursive property matrices, schema modals, generated defaults, and Runner forms cycle-safe without modifying the source OpenAPI document;
-- strengthens clean-route browser history, configured/local/remote specification restoration, and IndexedDB-first persistence;
-- keeps note button sizing stable across zero-to-three-digit counts and aligns note icon colors with each control’s active text state;
-- expands automated coverage for cyclic OpenAPI schemas, local-note persistence, note viewers, resize behavior, navigation history, and UI contracts.
-
----
-
 ## Quick start
 
-Try it immediately in the **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/)**, or run it locally:
+Try it immediately in the **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/demo/)**, or run it locally:
 
 ```bash
 npm ci
@@ -350,7 +303,7 @@ spec selector while also allowing visitors to open local JSON/YAML files. Hybrid
 recent local-file history, preserves deep links to those files, and always keeps the configured
 specifications available for switching back. Files remain entirely in the visitor's browser.
 
-The **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/)** uses this mode: it opens the bundled Petstore specification immediately, but visitors can still try OpenDoc UI with their own specifications.
+The **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/demo/)** uses this mode: it opens the bundled Petstore specification immediately, but visitors can still try OpenDoc UI with their own specifications.
 
 ### Mode 3 — No configuration (local mode)
 
@@ -1131,7 +1084,7 @@ src/
 
 ### GitHub Pages demo
 
-**Live site:** [https://omidgfx.github.io/opendoc-ui/](https://omidgfx.github.io/opendoc-ui/)
+**Live demo:** [https://omidgfx.github.io/opendoc-ui/demo/](https://omidgfx.github.io/opendoc-ui/demo/)
 
 The repository includes `.github/workflows/pages.yml`. On every push to `master` it builds OpenDoc
 with the repository base path, enables `public/demo/openapi.yaml`, and deploys `dist/` through the
@@ -1142,7 +1095,7 @@ Enable it once:
 1. Open **Repository Settings → Pages**.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
 3. Push to `master`, or run **Deploy demo to GitHub Pages** manually from the Actions tab.
-4. Open the **[live demo](https://omidgfx.github.io/opendoc-ui/)** after the deployment succeeds.
+4. Open the **[live demo](https://omidgfx.github.io/opendoc-ui/demo/)** after the deployment succeeds.
 
 The committed app remains in local mode during normal development. The workflow copies
 `public/demo/config.pages.json` to `public/config.json` only inside the disposable Actions runner,
