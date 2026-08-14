@@ -14,7 +14,6 @@ interface RunnerCompatibilityPageProps {
     specKey: string;
     onSelectEndpoint: (path: string, method: string) => void;
     onAddReferencedFiles?: () => void;
-    onBackToOverview: () => void;
 }
 
 const downloadText = (text: string, fileName: string, type: string) => {
@@ -81,7 +80,6 @@ export default function RunnerCompatibilityPage({
     specKey,
     onSelectEndpoint,
     onAddReferencedFiles,
-    onBackToOverview,
 }: RunnerCompatibilityPageProps) {
     const report = useMemo(() => analyzeRunnerCompatibility(spec), [spec]);
     const issues = useMemo(() => collectReferenceIssues(spec), [spec]);
@@ -130,16 +128,6 @@ export default function RunnerCompatibilityPage({
                 <header className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <Tip content="Back to Overview" placement="bottom">
-                                <button
-                                    type="button"
-                                    onClick={onBackToOverview}
-                                    aria-label="Back to Overview"
-                                    className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
-                                >
-                                    <i className="ph ph-arrow-left text-[17px]" />
-                                </button>
-                            </Tip>
                             <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
                                 <i className="ph-fill ph-shield-check text-[19px]" />
                             </span>

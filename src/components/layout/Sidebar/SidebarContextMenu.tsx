@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import type {ViewTabKind} from '@/src/types/tabs';
 import {Tip} from '@/src/components/common/Tooltip';
 import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
-import ConfirmModal from '@/src/components/common/ConfirmModal';
 
 export type SidebarContextTarget =
     | {
@@ -29,21 +28,12 @@ interface SidebarContextMenuProps {
 }
 
 export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction, onClose}: SidebarContextMenuProps) {
-    const {
-        notes,
-        noteCountForEndpoint,
-        openCreateNote,
-        openEndpointNotes,
-        isEndpointHidden,
-        hideEndpoint,
-        unhideEndpoint,
-        deleteAllNotes,
-    } = useEndpointNotes();
+    const {noteCountForEndpoint, openCreateNote, openEndpointNotes, isEndpointHidden, hideEndpoint, unhideEndpoint} =
+        useEndpointNotes();
     const endpointNoteCount = target.type === 'endpoint' ? noteCountForEndpoint(target.path, target.method) : 0;
     const endpointHidden = target.type === 'endpoint' && isEndpointHidden(target.path, target.method);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const [position, setPosition] = useState({top: Math.max(8, y + 4), left: Math.max(8, x + 4)});
-    const [confirmDeleteAllNotes, setConfirmDeleteAllNotes] = useState(false);
     useLayoutEffect(() => {
         const update = () => {
             const menu = menuRef.current;
@@ -140,44 +130,12 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
                         </Tip>
                     </>
                 )}
-                {target.type === 'view' && target.view === 'notes' && (
-                    <>
-                        <div className="my-1 border-t border-[var(--border)]" />
-                        <button
-                            type="button"
-                            disabled={notes.length === 0}
-                            className={clsx(
-                                button,
-                                'text-[var(--method-delete)]',
-                                notes.length === 0 && 'cursor-not-allowed opacity-40',
-                            )}
-                            onClick={() => notes.length > 0 && setConfirmDeleteAllNotes(true)}
-                        >
-                            <i className="ph ph-trash text-[13px]" />
-                            <span className="min-w-0 flex-1">Move all notes to trash</span>
-                            <span className="text-[9px] font-bold">{notes.length}</span>
-                        </button>
-                    </>
-                )}
                 <div className="my-1 border-t border-[var(--border)]" />
                 <button className={button} onClick={() => act('share')}>
                     <i className="ph ph-share-network text-[12px] text-[var(--method-get)]" />
                     Share
                 </button>
             </div>
-            <ConfirmModal
-                isOpen={confirmDeleteAllNotes}
-                title="Move every local note to trash?"
-                message={`All ${notes.length} notes and todos saved for this specification will be moved to the trash. You can restore them from the Local Notes Trash modal.`}
-                confirmLabel="Move to trash"
-                destructive
-                onConfirm={async () => {
-                    await deleteAllNotes();
-                    setConfirmDeleteAllNotes(false);
-                    onClose();
-                }}
-                onClose={() => setConfirmDeleteAllNotes(false)}
-            />
         </>
     );
 }

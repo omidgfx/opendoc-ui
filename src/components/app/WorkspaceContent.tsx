@@ -265,7 +265,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     specKey={specKey}
                     onSelectEndpoint={onOpenEndpointPermanent}
                     onAddReferencedFiles={onAddReferencedFiles}
-                    onBackToOverview={onOpenHome}
                 />
             </ViewErrorBoundary>
         );

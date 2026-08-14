@@ -130,15 +130,11 @@ export default function EndpointNotesSidebar({
                         tabIndex={0}
                         onMouseDown={onResizeMouseDown}
                         onKeyDown={onResizeKeyDown}
-                        className="group absolute inset-y-0 -left-1 z-40 w-2 cursor-col-resize outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
-                    >
-                        <span
-                            className={clsx(
-                                'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors group-hover:bg-[var(--primary)] group-focus:bg-[var(--primary)]',
-                                dragging ? 'bg-[var(--primary)]' : 'bg-transparent',
-                            )}
-                        />
-                    </div>
+                        className={clsx(
+                            'absolute inset-y-0 -left-[2px] z-40 w-[4px] cursor-col-resize transition-colors select-none outline-none focus:bg-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/30',
+                            dragging ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]',
+                        )}
+                    />
                 )}
                 <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
                     <div className="min-w-0">
