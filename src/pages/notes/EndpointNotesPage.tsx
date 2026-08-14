@@ -1,12 +1,21 @@
-import {useMemo, useState} from 'react';
-import type {OpenApiSpec} from '../../types';
+import {useMemo, useRef, useState} from 'react';
+import type {EndpointNote, OpenApiSpec} from '../../types';
 import {getOperation} from '../../utils/openapi';
-import {endpointNoteColor, endpointNoteKey, endpointNoteTitle} from '../../utils/endpointNotes';
+import {
+    buildEndpointNotesExport,
+    classifyEndpointNotesBySpec,
+    endpointNoteColor,
+    endpointNoteKey,
+    endpointNoteTitle,
+    type EndpointNotesExportFile,
+    parseEndpointNotesExport,
+} from '../../utils/endpointNotes';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import CustomDropdown from '../../components/common/CustomDropdown';
 import MethodBadge from '../../components/common/MethodBadge';
 import Markdown from '../../components/common/Markdown';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import NotesImportModal from '../../components/notes/NotesImportModal';
 import {Tip} from '../../components/common/Tooltip';
 
 interface EndpointNotesPageProps {
@@ -15,11 +24,29 @@ interface EndpointNotesPageProps {
 }
 
 export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNotesPageProps) {
-    const {notes, openCreateNote, openNote, requestToggleTodo, deleteAllNotes, isEndpointHidden, unhideEndpoint} =
-        useEndpointNotes();
+    const {
+        specKey,
+        notes,
+        openCreateNote,
+        openNote,
+        requestToggleTodo,
+        deleteAllNotes,
+        importNotes,
+        isEndpointHidden,
+        unhideEndpoint,
+    } = useEndpointNotes();
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState('all');
     const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+    const [confirmExportOrphans, setConfirmExportOrphans] = useState<EndpointNote[] | null>(null);
+    const [pendingImport, setPendingImport] = useState<{
+        file: EndpointNotesExportFile;
+        matching: EndpointNote[];
+        orphaned: EndpointNote[];
+        duplicates: number;
+    } | null>(null);
+    const [importError, setImportError] = useState('');
+    const importInputRef = useRef<HTMLInputElement | null>(null);
     const filteredNotes = notes.filter(note => {
         if (filter === 'note' && note.type !== 'note') return false;
         if (filter === 'todo' && note.type !== 'todo') return false;
@@ -46,6 +73,52 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     }, [filteredNotes, notes]);
     const todos = notes.filter(note => note.type === 'todo');
     const openTodos = todos.filter(note => !note.done).length;
+    const downloadNotesExport = () => {
+        const {orphaned} = classifyEndpointNotesBySpec(spec, notes);
+        const orphanedNoteIds = orphaned.map(note => note.id);
+        const exported = buildEndpointNotesExport({
+            specKey,
+            specTitle: spec.info?.title || 'OpenDoc UI',
+            notes,
+            orphanedNoteIds,
+        });
+        const blob = new Blob([exported], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        const slug =
+            String(spec.info?.title || 'specification')
+                .replace(/[^a-z0-9_-]+/gi, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 48) || 'specification';
+        anchor.href = url;
+        anchor.download = `opendoc-notes-${slug}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+    };
+    const handleExportNotes = () => {
+        const {orphaned} = classifyEndpointNotesBySpec(spec, notes);
+        if (orphaned.length > 0) setConfirmExportOrphans(orphaned);
+        else downloadNotesExport();
+    };
+    const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        event.target.value = '';
+        setImportError('');
+        if (!file) return;
+        const parsed = parseEndpointNotesExport(await file.text());
+        if (!parsed) {
+            setImportError('This file is not a valid OpenDoc notes export.');
+            return;
+        }
+        if (parsed.notes.length === 0) {
+            setImportError('No valid notes found in the export file.');
+            return;
+        }
+        const existingIds = new Set(notes.map(note => note.id));
+        const duplicates = parsed.notes.filter(note => existingIds.has(note.id)).length;
+        const {matching, orphaned} = classifyEndpointNotesBySpec(spec, parsed.notes);
+        setPendingImport({file: parsed, matching, orphaned, duplicates});
+    };
     return (
         <div className="flex-1 h-full overflow-y-auto p-3 sm:p-5 md:p-7 scrollbar-thin">
             <div className="mx-auto max-w-6xl space-y-4">
@@ -63,15 +136,40 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                 </p>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            aria-label="New note"
-                            onClick={() => openCreateNote()}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
-                        >
-                            <i className="ph-fill ph-note text-[15px]" />
-                            New note
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Tip content="Export all local notes as JSON">
+                                <button
+                                    type="button"
+                                    aria-label="Export local notes"
+                                    disabled={notes.length === 0}
+                                    onClick={handleExportNotes}
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-4 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                >
+                                    <i className="ph ph-download-simple text-[15px]" />
+                                    Export
+                                </button>
+                            </Tip>
+                            <Tip content="Import local notes from a JSON export">
+                                <button
+                                    type="button"
+                                    aria-label="Import local notes"
+                                    onClick={() => importInputRef.current?.click()}
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-4 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                                >
+                                    <i className="ph ph-upload-simple text-[15px]" />
+                                    Import
+                                </button>
+                            </Tip>
+                            <button
+                                type="button"
+                                aria-label="New note"
+                                onClick={() => openCreateNote()}
+                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
+                            >
+                                <i className="ph-fill ph-note text-[15px]" />
+                                New note
+                            </button>
+                        </div>
                     </div>
                     <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[#f59e0b] opacity-[0.045]" />
                 </header>
@@ -302,6 +400,19 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                     </div>
                 )}
             </div>
+            {importError && (
+                <div className="mx-auto flex max-w-6xl items-start justify-between gap-3 rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 px-4 py-3">
+                    <p className="text-[11px] leading-relaxed text-[var(--method-delete)]">{importError}</p>
+                    <button
+                        type="button"
+                        aria-label="Dismiss import error"
+                        onClick={() => setImportError('')}
+                        className="shrink-0 rounded p-1 text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                    >
+                        <i className="ph ph-x text-[13px]" />
+                    </button>
+                </div>
+            )}
             <ConfirmModal
                 isOpen={confirmDeleteAll}
                 title="Delete every local note?"
@@ -314,6 +425,42 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                 }}
                 onClose={() => setConfirmDeleteAll(false)}
             />
+            <ConfirmModal
+                isOpen={confirmExportOrphans !== null}
+                title="Export orphaned notes?"
+                message={
+                    confirmExportOrphans
+                        ? `${confirmExportOrphans.length} ${confirmExportOrphans.length === 1 ? 'note belongs' : 'notes belong'} to endpoints that no longer exist in this specification. They stay in the export file and are marked as orphaned.`
+                        : ''
+                }
+                confirmLabel="Export anyway"
+                onConfirm={async () => {
+                    downloadNotesExport();
+                    setConfirmExportOrphans(null);
+                }}
+                onClose={() => setConfirmExportOrphans(null)}
+            />
+            <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={event => void handleImportFile(event)}
+            />
+            {pendingImport && (
+                <NotesImportModal
+                    file={pendingImport.file}
+                    matching={pendingImport.matching}
+                    orphaned={pendingImport.orphaned}
+                    duplicates={pendingImport.duplicates}
+                    onImport={incoming => {
+                        const outcome = importNotes(incoming);
+                        if (outcome.imported === 0 && outcome.skipped === 0) setPendingImport(null);
+                        return outcome;
+                    }}
+                    onClose={() => setPendingImport(null)}
+                />
+            )}
         </div>
     );
 }

@@ -36,6 +36,7 @@ interface EndpointNotesContextValue {
     deleteNote: (noteId: string) => Promise<void>;
     deleteEndpointNotes: (path: string, method: string) => Promise<void>;
     deleteAllNotes: () => Promise<void>;
+    importNotes: (notes: EndpointNote[]) => {imported: number; skipped: number};
     requestToggleTodo: (noteId: string) => void;
     confirmTodoCompletion: (hideEndpoint: boolean) => void;
     cancelTodoCompletion: () => void;
@@ -67,6 +68,7 @@ const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     deleteNote: asyncNoop,
     deleteEndpointNotes: asyncNoop,
     deleteAllNotes: asyncNoop,
+    importNotes: () => ({imported: 0, skipped: 0}),
     requestToggleTodo: noop,
     confirmTodoCompletion: noop,
     cancelTodoCompletion: noop,
@@ -196,6 +198,27 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [commitNotes],
     );
     const deleteAllNotes = useCallback(async () => commitNotes(() => []), [commitNotes]);
+    const importNotes = useCallback(
+        (incoming: EndpointNote[]) => {
+            const existingIds = new Set(notes.map(note => note.id));
+            const importedNotes: EndpointNote[] = [];
+            let skipped = 0;
+            incoming.forEach(note => {
+                if (
+                    existingIds.has(note.id) ||
+                    !endpointHasNoteCapacity([...notes, ...importedNotes], note.path, note.method)
+                ) {
+                    skipped += 1;
+                    return;
+                }
+                existingIds.add(note.id);
+                importedNotes.push(note);
+            });
+            if (importedNotes.length > 0) commitNotes(current => [...importedNotes, ...current]);
+            return {imported: importedNotes.length, skipped};
+        },
+        [notes, commitNotes],
+    );
     const completionWillAutoHide = useCallback(
         (noteId: string) => {
             const changed = notes.find(note => note.id === noteId);
@@ -290,6 +313,7 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
+            importNotes,
             requestToggleTodo,
             confirmTodoCompletion,
             cancelTodoCompletion,
@@ -318,6 +342,7 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
             deleteNote,
             deleteEndpointNotes,
             deleteAllNotes,
+            importNotes,
             requestToggleTodo,
             confirmTodoCompletion,
             cancelTodoCompletion,

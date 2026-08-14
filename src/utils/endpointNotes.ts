@@ -1,9 +1,12 @@
-import type {EndpointNote, EndpointNoteColor, EndpointNoteDraft} from '../types';
+import type {EndpointNote, EndpointNoteColor, EndpointNoteDraft, OpenApiSpec} from '../types';
+import {getOperation} from './openapi';
 import {specStorage} from './storage';
 
 export const ENDPOINT_NOTES_STORAGE_NAME = 'endpoint_notes';
 export const HIDDEN_ENDPOINTS_STORAGE_NAME = 'hidden_endpoints';
 export const ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME = 'endpoint_note_panel_expanded';
+export const ENDPOINT_NOTES_EXPORT_FORMAT = 'opendoc-endpoint-notes';
+export const ENDPOINT_NOTES_EXPORT_VERSION = 1;
 export const MAX_NOTES_PER_ENDPOINT = 100;
 export const MAX_NOTE_TITLE_CHARS = 128;
 export const MAX_NOTE_CONTENT_CHARS = 4096;
@@ -131,6 +134,96 @@ export const writeExpandedEndpointNoteIds = (specKey: string, noteIds: string[])
 
 export const endpointNoteColor = (id: EndpointNoteColor): EndpointNoteColorOption =>
     ENDPOINT_NOTE_COLORS.find(color => color.id === id) || ENDPOINT_NOTE_COLORS[0];
+
+export interface EndpointNotesExportSource {
+    specKey: string;
+    specTitle: string;
+}
+
+export interface EndpointNotesExportFile {
+    format: typeof ENDPOINT_NOTES_EXPORT_FORMAT;
+    version: number;
+    exportedAt: string;
+    source: EndpointNotesExportSource;
+    /** Note ids whose endpoint was not present in the exporting specification. */
+    orphanedNoteIds: string[];
+    notes: EndpointNote[];
+}
+
+/**
+ * Serialize every local note for a specification into a JSON file. Notes whose
+ * endpoint no longer exists in the specification are kept (so nothing is lost)
+ * and reported through `orphanedNoteIds`.
+ */
+export const buildEndpointNotesExport = (options: {
+    specKey: string;
+    specTitle: string;
+    notes: EndpointNote[];
+    orphanedNoteIds: string[];
+}): string =>
+    JSON.stringify(
+        {
+            format: ENDPOINT_NOTES_EXPORT_FORMAT,
+            version: ENDPOINT_NOTES_EXPORT_VERSION,
+            exportedAt: new Date().toISOString(),
+            source: {specKey: options.specKey, specTitle: options.specTitle},
+            orphanedNoteIds: Array.from(new Set(options.orphanedNoteIds)),
+            notes: options.notes,
+        },
+        null,
+        2,
+    );
+
+export const parseEndpointNotesExport = (text: string): EndpointNotesExportFile | null => {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return null;
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    const candidate = parsed as Record<string, any>;
+    if (candidate.format !== ENDPOINT_NOTES_EXPORT_FORMAT || !Array.isArray(candidate.notes)) return null;
+    const notes = candidate.notes.filter(validStoredNote).map(normalizeStoredEndpointNote);
+    const source =
+        candidate.source && typeof candidate.source === 'object' && !Array.isArray(candidate.source)
+            ? {
+                  specKey: typeof candidate.source.specKey === 'string' ? candidate.source.specKey : '',
+                  specTitle: typeof candidate.source.specTitle === 'string' ? candidate.source.specTitle : '',
+              }
+            : {specKey: '', specTitle: ''};
+    return {
+        format: ENDPOINT_NOTES_EXPORT_FORMAT,
+        version:
+            typeof candidate.version === 'number' && Number.isFinite(candidate.version)
+                ? candidate.version
+                : ENDPOINT_NOTES_EXPORT_VERSION,
+        exportedAt: typeof candidate.exportedAt === 'string' ? candidate.exportedAt : '',
+        source,
+        orphanedNoteIds: Array.isArray(candidate.orphanedNoteIds)
+            ? candidate.orphanedNoteIds.filter((id): id is string => typeof id === 'string')
+            : [],
+        notes,
+    };
+};
+
+export interface EndpointNotesBySpec {
+    /** Notes whose endpoint exists in the specification. */
+    matching: EndpointNote[];
+    /** Notes whose endpoint is missing from the specification. */
+    orphaned: EndpointNote[];
+}
+
+/** Detect notes that point at endpoints the specification no longer defines. */
+export const classifyEndpointNotesBySpec = (spec: OpenApiSpec | null, notes: EndpointNote[]): EndpointNotesBySpec => {
+    const matching: EndpointNote[] = [];
+    const orphaned: EndpointNote[] = [];
+    notes.forEach(note => {
+        if (!spec || !getOperation(spec, note.path, note.method)) orphaned.push(note);
+        else matching.push(note);
+    });
+    return {matching, orphaned};
+};
 
 export const endpointNoteTitle = (note: Pick<EndpointNote, 'title' | 'content' | 'type'>): string => {
     if (note.title.trim()) return note.title.trim();
