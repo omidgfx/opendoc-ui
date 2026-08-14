@@ -48,39 +48,37 @@ export default function EndpointNotesSidebar({
         return Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, saved));
     });
     const panelRef = useRef<HTMLElement | null>(null);
-    const resizingRef = useRef(false);
     const [dragging, setDragging] = useState(false);
 
     useEffect(() => setExpandedIds(readExpandedEndpointNoteIds(specKey)), [specKey]);
     useEffect(() => {
         if (!overlay) uiStorage.setJSON(PANEL_WIDTH_STORAGE_NAME, Math.round(width));
     }, [width, overlay]);
-
-    const resizeFromPointer = (clientX: number) => {
-        const right = panelRef.current?.getBoundingClientRect().right ?? window.innerWidth;
-        setWidth(Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, right - clientX)));
-    };
-    const onResizeMove = (event: globalThis.MouseEvent) => {
-        if (resizingRef.current) resizeFromPointer(event.clientX);
-    };
-    const onResizeUp = () => {
-        resizingRef.current = false;
-        setDragging(false);
-        document.removeEventListener('mousemove', onResizeMove);
-        document.removeEventListener('mouseup', onResizeUp);
-    };
+    useEffect(() => {
+        if (!dragging || overlay) return;
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
+        const onResizeMove = (event: globalThis.MouseEvent) => {
+            const right = panelRef.current?.getBoundingClientRect().right ?? window.innerWidth;
+            setWidth(Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, right - event.clientX)));
+        };
+        const onResizeUp = () => setDragging(false);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onResizeMove);
+        document.addEventListener('mouseup', onResizeUp);
+        return () => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            document.removeEventListener('mousemove', onResizeMove);
+            document.removeEventListener('mouseup', onResizeUp);
+        };
+    }, [dragging, overlay]);
     const onResizeMouseDown = (event: MouseEvent) => {
         if (overlay) return;
         event.preventDefault();
-        resizingRef.current = true;
         setDragging(true);
-        document.addEventListener('mousemove', onResizeMove);
-        document.addEventListener('mouseup', onResizeUp);
     };
-    useEffect(() => () => {
-        document.removeEventListener('mousemove', onResizeMove);
-        document.removeEventListener('mouseup', onResizeUp);
-    });
     const onResizeKeyDown = (event: KeyboardEvent) => {
         if (overlay) return;
         const step = event.shiftKey ? 48 : 16;
@@ -132,11 +130,15 @@ export default function EndpointNotesSidebar({
                         tabIndex={0}
                         onMouseDown={onResizeMouseDown}
                         onKeyDown={onResizeKeyDown}
-                        className={clsx(
-                            'absolute inset-y-0 left-0 z-10 w-1 cursor-col-resize outline-none transition-colors focus:bg-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/30',
-                            dragging ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]',
-                        )}
-                    />
+                        className="group absolute inset-y-0 -left-1 z-40 w-2 cursor-col-resize outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
+                    >
+                        <span
+                            className={clsx(
+                                'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors group-hover:bg-[var(--primary)] group-focus:bg-[var(--primary)]',
+                                dragging ? 'bg-[var(--primary)]' : 'bg-transparent',
+                            )}
+                        />
+                    </div>
                 )}
                 <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
                     <div className="min-w-0">

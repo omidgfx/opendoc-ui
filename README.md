@@ -7,7 +7,7 @@ authentication schemes, a built-in request runner, code/type generators, deep-li
 full theming, and grounded AI answers. The documentation UI never requires a backend; AI can use
 CORS-enabled providers directly or an optional gateway.
 
-![Version](https://img.shields.io/badge/version-0.1.7-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
+![Version](https://img.shields.io/badge/version-0.1.8-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -16,7 +16,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.7](#version-017)
+- [Version 0.1.8](#version-018)
 - [Quick start](#quick-start)
 - [Docker](#docker)
 - [Configuration](#configuration)
@@ -83,19 +83,21 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.7
+## Version 0.1.8
 
-This release focuses on Runner compatibility, permissive typed inputs, and binary response safety:
+This release focuses on local endpoint workflows, recursive-schema reliability, and durable browser workspaces:
 
-- adds a specification-wide **Runner Compatibility** report to the Overview page, grouping standard, partial, browser-limited, declared-binary, and unresolved operation behavior;
-- adds `CustomDropdown` controls for enum and boolean parameters with an explicit custom-value mode for undocumented and malformed negative tests;
-- improves integer, number, UUID, date, string, array, object, header, cookie, and additional-header input handling without turning advisory schema constraints into blockers;
-- serializes admin-style filters such as `filter[province]` and `filter[is_active]` while preserving invalid values for real server validation;
-- detects binary and attachment responses from actual headers or matching OpenAPI response definitions, cancels their body streams after headers, and stores metadata without creating a browser download;
-- broadens `Accept` with `*/*` when successful response media is missing, allowing incomplete file-serving specifications to return their actual payload type;
-- supports top-level binary request bodies for their declared media type instead of limiting file uploads to `application/octet-stream`;
-- flags operations without a declared 2xx/default response so undocumented success and binary behavior is visible before testing;
-- extends the public capability contract and automated coverage for compatibility reporting, binary cancellation, browser download prevention, typed custom values, admin-style serialization, and binary uploads.
+- adds specification-scoped Markdown notes and todos with required titles, optional details, fourteen theme-safe tones, completion state, and confirmation-controlled endpoint auto-hiding;
+- adds hidden endpoints, a muted final sidebar folder, individual restoration, and **Unhide all endpoints** navigation settings;
+- introduces the tone-colored `NoteViewerModal`, including empty-note presentation and adjacent edit, delete, and close controls;
+- adds a resizable endpoint-notes sidebar to single Documentation and API Runner views while retaining the notes modal in Split View;
+- persists note expansion state and notes-sidebar width through IndexedDB, and fixes pointer dragging on the sidebar’s wider resize handle;
+- adds searchable endpoint selection to the specification-wide note creator while endpoint-specific note actions keep their endpoint fixed;
+- adds Local Notes context-menu deletion with custom confirmation, viewport-aware endpoint menus, and scroll-safe custom dropdown dismissal;
+- makes recursive property matrices, schema modals, generated defaults, and Runner forms cycle-safe without modifying the source OpenAPI document;
+- strengthens clean-route browser history, configured/local/remote specification restoration, and IndexedDB-first persistence;
+- keeps note button sizing stable across zero-to-three-digit counts and aligns note icon colors with each control’s active text state;
+- expands automated coverage for cyclic OpenAPI schemas, local-note persistence, note viewers, resize behavior, navigation history, and UI contracts.
 
 ---
 

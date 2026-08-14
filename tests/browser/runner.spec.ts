@@ -586,10 +586,18 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
         })
         .toBe(1);
 
+    const resizeHandle = notesPanel.getByRole('separator', {name: 'Resize endpoint notes sidebar'});
     const panelWidthBefore = (await notesPanel.boundingBox())?.width || 0;
-    await notesPanel.getByRole('separator', {name: 'Resize endpoint notes sidebar'}).press('ArrowLeft');
+    const handleBounds = await resizeHandle.boundingBox();
+    await page.mouse.move((handleBounds?.x || 0) + (handleBounds?.width || 0) / 2, (handleBounds?.y || 0) + 80);
+    await page.mouse.down();
+    await page.mouse.move((handleBounds?.x || 0) - 48, (handleBounds?.y || 0) + 80, {steps: 4});
+    await page.mouse.up();
+    const panelWidthAfterDrag = (await notesPanel.boundingBox())?.width || 0;
+    expect(panelWidthAfterDrag).toBeGreaterThan(panelWidthBefore + 32);
+    await resizeHandle.press('ArrowLeft');
     const panelWidthAfter = (await notesPanel.boundingBox())?.width || 0;
-    expect(panelWidthAfter).toBeGreaterThan(panelWidthBefore);
+    expect(panelWidthAfter).toBeGreaterThan(panelWidthAfterDrag);
     await expect
         .poll(async () => {
             const stored = await readIndexedDbRecord(page, 'storage:opendoc:ui:endpoint_notes_sidebar_width');
@@ -641,6 +649,20 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await endpointNotesButton.click();
     const listDialog = page.getByRole('dialog', {name: 'Endpoint Notes'});
     await expect(listDialog).toContainText('Important:');
+    const modalAddNoteButton = listDialog.getByRole('button', {name: /Add note/});
+    const addNoteColors = await modalAddNoteButton.evaluate(element => ({
+        button: getComputedStyle(element).color,
+        icon: getComputedStyle(element.querySelector('i')!).color,
+    }));
+    expect(addNoteColors.icon).toBe(addNoteColors.button);
+    await modalAddNoteButton.hover();
+    await expect
+        .poll(() =>
+            modalAddNoteButton.evaluate(
+                element => getComputedStyle(element.querySelector('i')!).color === getComputedStyle(element).color,
+            ),
+        )
+        .toBe(true);
     await listDialog.getByRole('button', {name: 'Close', exact: true}).click();
 
     await page.getByRole('button', {name: /API Runner/i}).click();

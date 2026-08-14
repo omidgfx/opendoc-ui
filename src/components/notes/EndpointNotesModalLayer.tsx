@@ -228,9 +228,9 @@ function EndpointNotesList({
                                 type="button"
                                 disabled={atCapacity}
                                 onClick={() => openCreateNote(path, method)}
-                                className="group inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                             >
-                                <i className="ph-fill ph-note text-[13px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary-contrast)] group-active:text-[var(--primary-contrast)] group-disabled:text-[var(--text-muted)]" />
+                                <i className="ph-fill ph-note text-[13px]" />
                                 Add note
                             </button>
                         </Tip>
