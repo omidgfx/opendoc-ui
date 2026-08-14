@@ -7,10 +7,12 @@ interface CollapsedSidebarRailProps {
     isOverview: boolean;
     showSchemaExplorer: boolean;
     showNotes: boolean;
+    showCompatibility: boolean;
     showAbout: boolean;
     onOpenHome: () => void;
     onOpenSchemaExplorer: () => void;
     onOpenNotes: () => void;
+    onOpenCompatibility: () => void;
     onOpenAbout: () => void;
 }
 
@@ -18,10 +20,12 @@ export default function CollapsedSidebarRail({
     isOverview,
     showSchemaExplorer,
     showNotes,
+    showCompatibility,
     showAbout,
     onOpenHome,
     onOpenSchemaExplorer,
     onOpenNotes,
+    onOpenCompatibility,
     onOpenAbout,
 }: CollapsedSidebarRailProps) {
     const {notes} = useEndpointNotes();
@@ -83,6 +87,20 @@ export default function CollapsedSidebarRail({
                                 {notes.length > 99 ? '99+' : notes.length}
                             </span>
                         )}
+                    </button>
+                </Tip>
+                <Tip content="Runner Compatibility">
+                    <button
+                        onClick={onOpenCompatibility}
+                        aria-current={showCompatibility ? 'page' : undefined}
+                        className={clsx(
+                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                            showCompatibility
+                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                        )}
+                    >
+                        <i className="ph-fill ph-shield-check text-[16px]" />
                     </button>
                 </Tip>
                 <Tip content="About">

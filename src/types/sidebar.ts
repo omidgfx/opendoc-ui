@@ -18,6 +18,7 @@ export interface SidebarProps {
     onOpenNotes: () => void;
     showNotes: boolean;
     showCompatibility: boolean;
+    onOpenCompatibility: () => void;
     selectedMethods: string[];
     setSelectedMethods: Dispatch<SetStateAction<string[]>>;
     selectedTags: string[];

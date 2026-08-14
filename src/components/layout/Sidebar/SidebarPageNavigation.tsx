@@ -11,10 +11,12 @@ interface SidebarPageNavigationProps {
     aboutActive: boolean;
     schemasActive: boolean;
     notesActive: boolean;
+    compatibilityActive: boolean;
     onOpenHome: () => void;
     onOpenAbout: () => void;
     onOpenSchemas: () => void;
     onOpenNotes: () => void;
+    onOpenCompatibility: () => void;
     onOpenPermanent: (view: ViewTabKind) => void;
     onContextMenu: (event: MouseEvent, view: ViewTabKind) => void;
 }
@@ -91,10 +93,12 @@ export default function SidebarPageNavigation({
     aboutActive,
     schemasActive,
     notesActive,
+    compatibilityActive,
     onOpenHome,
     onOpenAbout,
     onOpenSchemas,
     onOpenNotes,
+    onOpenCompatibility,
     onOpenPermanent,
     onContextMenu,
 }: SidebarPageNavigationProps) {
@@ -144,6 +148,17 @@ export default function SidebarPageNavigation({
                 onOpen={onOpenNotes}
                 onPermanent={() => onOpenPermanent('notes')}
                 onContextMenu={event => onContextMenu(event, 'notes')}
+            />
+            <PageButton
+                id="view:compatibility"
+                label="Runner Compatibility"
+                tip="Runner compatibility report"
+                icon="ph-fill ph-shield-check"
+                active={compatibilityActive}
+                inactiveClass="text-[var(--sidebar-text)] hover:bg-[var(--surface-hover)]"
+                onOpen={onOpenCompatibility}
+                onPermanent={() => onOpenPermanent('compatibility')}
+                onContextMenu={event => onContextMenu(event, 'compatibility')}
             />
         </>
     );
