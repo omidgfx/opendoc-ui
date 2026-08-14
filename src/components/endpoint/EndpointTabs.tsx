@@ -221,11 +221,12 @@ export default function EndpointTabs({
                                     {showRightIndicator && <span className="endpoint-tab-drop-indicator right" />}
                                     {isActive && <span className="endpoint-tab-active-indicator" />}
                                     {tab.kind === 'assistant' && assistantUnread && (
-                                        <span
-                                            className="absolute end-1 top-0.5 z-[4] size-1.5 animate-pulse rounded-full bg-[var(--method-delete)] shadow-[0_0_0_2px_var(--background)]"
-                                            title="New AI response"
-                                            aria-label="New AI response"
-                                        />
+                                        <Tip content="New AI response" wrapperClassName="!absolute end-1 top-0.5 z-[4]">
+                                            <span
+                                                className="size-1.5 animate-pulse rounded-full bg-[var(--method-delete)] shadow-[0_0_0_2px_var(--background)]"
+                                                aria-label="New AI response"
+                                            />
+                                        </Tip>
                                     )}
                                     {viewTab ? (
                                         <span

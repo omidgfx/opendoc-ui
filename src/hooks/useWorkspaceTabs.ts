@@ -60,6 +60,7 @@ interface UseWorkspaceTabsOptions {
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
     setModalStack: Dispatch<SetStateAction<string[]>>;
     modalCount: number;
+    onUserNavigate: () => void;
 }
 
 export function useWorkspaceTabs({
@@ -91,6 +92,7 @@ export function useWorkspaceTabs({
     setActiveResponseCode,
     setModalStack,
     modalCount,
+    onUserNavigate,
 }: UseWorkspaceTabsOptions) {
     const [selectedEndpoint, setSelectedEndpoint] = useState<WorkspaceEndpoint | null>(null);
     const [assistantUnread, setAssistantUnread] = useState(false);
@@ -242,6 +244,7 @@ export function useWorkspaceTabs({
     } | null>(null);
     const handleSelectTab = useCallback(
         (id: string) => {
+            onUserNavigate();
             if (id === 'view:assistant') setAssistantUnread(false);
             if (activeTabId === 'view:search' && id !== 'view:search') stashSearchTab();
             setShowWelcome(false);
@@ -268,7 +271,7 @@ export function useWorkspaceTabs({
             setViewVisibility(null);
             setSearchQuery('');
         },
-        [endpointTabs, activeTabId, stashSearchTab, setViewVisibility],
+        [endpointTabs, activeTabId, stashSearchTab, setViewVisibility, onUserNavigate],
     );
     const {switcherOpen, switcherIndex, setSwitcherOpen, cancelSwitcher, openSwitcher} = useTabSwitcher({
         tabs: endpointTabs,
@@ -278,6 +281,7 @@ export function useWorkspaceTabs({
     });
     const openViewTab = useCallback(
         (view: ViewTabKind, query = '') => {
+            onUserNavigate();
             setShowWelcome(false);
             const id = `view:${view}`;
             const label = view === 'search' ? (query ? `Search: ${query}` : 'Search') : VIEW_TAB_META[view].label;
@@ -317,7 +321,7 @@ export function useWorkspaceTabs({
             setActiveResponseCode(null);
             setModalStack([]);
         },
-        [setViewVisibility],
+        [setViewVisibility, onUserNavigate],
     );
     const openViewTabPermanent = useCallback(
         (view: ViewTabKind, query = '') => {
@@ -477,6 +481,7 @@ export function useWorkspaceTabs({
     );
     const handleCloseTab = useCallback(
         (id: string) => {
+            onUserNavigate();
             if (id === 'view:search') {
                 setSearchQuery('');
                 setResultsQuery('');
@@ -501,7 +506,7 @@ export function useWorkspaceTabs({
                 return next;
             });
         },
-        [activeTabId, applyTabViewState],
+        [activeTabId, applyTabViewState, onUserNavigate],
     );
     const handleDoubleClickTab = useCallback(
         (id: string) => {
@@ -511,6 +516,7 @@ export function useWorkspaceTabs({
     );
     const handleCloseAllLeft = useCallback(
         (id: string) => {
+            onUserNavigate();
             setEndpointTabs(prev => {
                 const idx = prev.findIndex(t => t.id === id);
                 if (idx <= 0) return prev;
@@ -529,10 +535,11 @@ export function useWorkspaceTabs({
                 return next;
             });
         },
-        [activeTabId, applyTabViewState],
+        [activeTabId, applyTabViewState, onUserNavigate],
     );
     const handleCloseAllRight = useCallback(
         (id: string) => {
+            onUserNavigate();
             setEndpointTabs(prev => {
                 const idx = prev.findIndex(t => t.id === id);
                 if (idx < 0 || idx >= prev.length - 1) return prev;
@@ -551,10 +558,11 @@ export function useWorkspaceTabs({
                 return next;
             });
         },
-        [activeTabId, applyTabViewState],
+        [activeTabId, applyTabViewState, onUserNavigate],
     );
     const handleCloseOthers = useCallback(
         (id: string) => {
+            onUserNavigate();
             setEndpointTabs(prev => {
                 const keep = prev.find(t => t.id === id);
                 if (!keep) return prev;
@@ -569,7 +577,7 @@ export function useWorkspaceTabs({
                 return [keep];
             });
         },
-        [applyTabViewState],
+        [applyTabViewState, onUserNavigate],
     );
     const handleReorderTabs = useCallback(
         (fromIndex: number, toIndex: number) => {
@@ -622,6 +630,7 @@ export function useWorkspaceTabs({
             }
             const nextTab = endpointTabs[nextIdx];
             if (nextTab) {
+                onUserNavigate();
                 setActiveTabId(nextTab.id);
                 setSelectedEndpoint({path: nextTab.path, method: nextTab.method});
                 setViewVisibility(null);
@@ -629,7 +638,7 @@ export function useWorkspaceTabs({
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [endpointTabs, activeTabId, modalCount, setViewVisibility]);
+    }, [endpointTabs, activeTabId, modalCount, setViewVisibility, onUserNavigate]);
     return {
         selectedEndpoint,
         setSelectedEndpoint,

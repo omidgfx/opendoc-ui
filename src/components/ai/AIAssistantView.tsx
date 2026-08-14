@@ -702,54 +702,60 @@ export default function AIAssistantView({
                             >
                                 <i className="ph ph-shield-check text-[13px]" />
                                 <span className="hidden sm:inline">Permissions</span>
-                                <span
-                                    className={clsx(
-                                        'flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5',
-                                        activeConversation.includeAuthValues
-                                            ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]'
-                                            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
-                                    )}
-                                    title={
+                                <Tip
+                                    content={
                                         activeConversation.includeAuthValues
                                             ? 'Authentication values visible'
                                             : 'Authentication values protected'
                                     }
                                 >
-                                    <i
-                                        className={
+                                    <span
+                                        className={clsx(
+                                            'flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5',
                                             activeConversation.includeAuthValues
-                                                ? 'ph ph-lock-key-open sm:hidden'
-                                                : 'ph ph-lock-key sm:hidden'
-                                        }
-                                    />
-                                    <span className="hidden sm:inline">
-                                        {activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}
+                                                ? 'border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 text-[var(--method-delete)]'
+                                                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
+                                        )}
+                                    >
+                                        <i
+                                            className={
+                                                activeConversation.includeAuthValues
+                                                    ? 'ph ph-lock-key-open sm:hidden'
+                                                    : 'ph ph-lock-key sm:hidden'
+                                            }
+                                        />
+                                        <span className="hidden sm:inline">
+                                            {activeConversation.includeAuthValues ? 'Auth visible' : 'Protected'}
+                                        </span>
                                     </span>
-                                </span>
-                                <span
-                                    className={clsx(
-                                        'flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5',
-                                        activeConversation.trustedRunner
-                                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
-                                            : 'border-sky-500/30 bg-sky-500/10 text-sky-500',
-                                    )}
-                                    title={
+                                </Tip>
+                                <Tip
+                                    content={
                                         activeConversation.trustedRunner
                                             ? 'Runner preparation trusted'
                                             : 'Runner preparation requires review'
                                     }
                                 >
-                                    <i
-                                        className={
+                                    <span
+                                        className={clsx(
+                                            'flex size-6 items-center justify-center rounded-md border sm:h-auto sm:w-auto sm:px-1.5 sm:py-0.5',
                                             activeConversation.trustedRunner
-                                                ? 'ph ph-check-circle sm:hidden'
-                                                : 'ph ph-eye sm:hidden'
-                                        }
-                                    />
-                                    <span className="hidden sm:inline">
-                                        {activeConversation.trustedRunner ? 'Trusted' : 'Review'}
+                                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+                                                : 'border-sky-500/30 bg-sky-500/10 text-sky-500',
+                                        )}
+                                    >
+                                        <i
+                                            className={
+                                                activeConversation.trustedRunner
+                                                    ? 'ph ph-check-circle sm:hidden'
+                                                    : 'ph ph-eye sm:hidden'
+                                            }
+                                        />
+                                        <span className="hidden sm:inline">
+                                            {activeConversation.trustedRunner ? 'Trusted' : 'Review'}
+                                        </span>
                                     </span>
-                                </span>
+                                </Tip>
                             </button>
                         )}
                         <Tip content={chatChromeCompact ? 'Expand chat headers' : 'Compact chat headers'}>

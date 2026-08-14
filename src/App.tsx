@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from './types';
 import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute} from './utils/routing';
-import {hasExplicitSpecRoute} from './utils/tabPersistence';
+
 import {getDocumentOperations, getOperation} from './utils/openapi';
 import {uiStorage} from './utils/storage';
 import {useBreakpoint} from './hooks/useBreakpoint';
@@ -35,7 +35,7 @@ import {useSpecLoader} from './hooks/useSpecLoader';
 import {useLocalSpecifications} from './hooks/useLocalSpecifications';
 import {useRemoteSpecifications} from './hooks/useRemoteSpecifications';
 import {REMOTE_SPEC_BUILD_CONFIG} from './utils/remoteBuildConfig';
-import {useWorkspaceRouting} from './hooks/useWorkspaceRouting';
+import {type HistoryNavigationIntent, useWorkspaceRouting} from './hooks/useWorkspaceRouting';
 import {useConfigBootstrap} from './hooks/useConfigBootstrap';
 import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
 import {useSpecificationActions} from './hooks/useSpecificationActions';
@@ -49,6 +49,10 @@ declare global {
 export default function App() {
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
+    const historyIntentRef = useRef<HistoryNavigationIntent>('replace');
+    const requestHistoryPush = useCallback(() => {
+        historyIntentRef.current = 'push';
+    }, []);
     const [parsables, setParsables] = useState<ParsableConfig>({});
     const [configSource, setConfigSource] = useState<ConfigSource>('none');
     const [selectedParsableKey, setSelectedParsableKey] = useState<string>('');
@@ -237,6 +241,7 @@ export default function App() {
         setActiveResponseCode,
         setModalStack: setModalsStack,
         modalCount: modalsStack.length,
+        onUserNavigate: requestHistoryPush,
     });
     useEffect(() => {
         if (!selectedEndpoint || !selectedParsableKey) return;
@@ -316,9 +321,8 @@ export default function App() {
             setTabViewModes({});
             setExamineResponses({});
             setIsUpdatingHash(true);
-            const currentRoute = getCurrentSmartRoute();
-            const parsedRoute = parseSmartRoute(currentRoute);
-            if (!(parsedRoute.parsableKey === key && hasExplicitSpecRoute(parsedRoute, currentRoute))) {
+            const parsedRoute = parseSmartRoute(getCurrentSmartRoute());
+            if (parsedRoute.parsableKey !== key) {
                 const route = generateSmartRoute({
                     parsableKey: key,
                     showHome: true,
@@ -330,7 +334,7 @@ export default function App() {
                     schemaModals: [],
                     activeSpec: document,
                 });
-                window.history.replaceState(window.history.state, '', route);
+                window.history.pushState(window.history.state, '', route);
             }
             setIsUpdatingHash(false);
         },
@@ -403,6 +407,23 @@ export default function App() {
         remoteLoadingEnabled: REMOTE_SPEC_BUILD_CONFIG.enabled,
         restoreRemoteSpec,
     });
+    const restoreSpecificationFromRoute = useCallback(
+        async (key: string): Promise<boolean> => {
+            const localEntry = localHistory.find(entry => entry.key === key);
+            if (localEntry) {
+                try {
+                    if (localEntry.bundle && Object.keys(localEntry.bundle).length > 1)
+                        await applyLocalBundle(localEntry.bundle, null);
+                    else applyLocalSpec(localEntry.raw, localEntry.fileName, null);
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+            return REMOTE_SPEC_BUILD_CONFIG.enabled ? restoreRemoteSpec(key) : false;
+        },
+        [localHistory, applyLocalBundle, applyLocalSpec, restoreRemoteSpec],
+    );
     useWorkspaceRouting({
         parsables,
         selectedSpecKey: selectedParsableKey,
@@ -457,7 +478,51 @@ export default function App() {
         openEndpointPermanent,
         openViewTabPermanent,
         ensureViewTabFromState,
+        historyIntentRef,
+        restoreSpecificationFromRoute,
     });
+    const openEndpointPreviewWithHistory = useCallback(
+        (path: string, method: string) => {
+            requestHistoryPush();
+            openEndpointPreview(path, method);
+        },
+        [openEndpointPreview, requestHistoryPush],
+    );
+    const openEndpointPermanentWithHistory = useCallback(
+        (path: string, method: string) => {
+            requestHistoryPush();
+            openEndpointPermanent(path, method);
+        },
+        [openEndpointPermanent, requestHistoryPush],
+    );
+    const openViewTabPermanentWithHistory = useCallback(
+        (view: ViewTabKind, query = '') => {
+            requestHistoryPush();
+            openViewTabPermanent(view, query);
+        },
+        [openViewTabPermanent, requestHistoryPush],
+    );
+    const setActiveResponseCodeWithHistory = useCallback(
+        (code: string | null) => {
+            requestHistoryPush();
+            setActiveResponseCode(code);
+        },
+        [requestHistoryPush],
+    );
+    const setModalsStackWithHistory = useCallback<React.Dispatch<React.SetStateAction<string[]>>>(
+        next => {
+            requestHistoryPush();
+            setModalsStack(next);
+        },
+        [requestHistoryPush],
+    );
+    const setSelectedTabWithHistory = useCallback<React.Dispatch<React.SetStateAction<'docs' | 'examine' | 'both'>>>(
+        next => {
+            requestHistoryPush();
+            setSelectedTab(next);
+        },
+        [requestHistoryPush, setSelectedTab],
+    );
     const closeMobileIfNeeded = () => {
         if (isMobile) setMobileOpen(false);
     };
@@ -570,7 +635,7 @@ export default function App() {
                     return;
                 }
                 if (action === 'open-new-tab') {
-                    openEndpointPermanent(path, method);
+                    openEndpointPermanentWithHistory(path, method);
                     return;
                 }
                 if (action === 'open-browser') {
@@ -589,7 +654,7 @@ export default function App() {
             }
             const {view} = target;
             if (action === 'open-new-tab') {
-                openViewTabPermanent(view);
+                openViewTabPermanentWithHistory(view);
                 return;
             }
             if (action === 'open-browser') {
@@ -607,8 +672,8 @@ export default function App() {
         [
             spec,
             hasAIProfile,
-            openEndpointPermanent,
-            openViewTabPermanent,
+            openEndpointPermanentWithHistory,
+            openViewTabPermanentWithHistory,
             openEndpointInBrowserTab,
             openViewInBrowserTab,
             endpointDeepLink,
@@ -624,7 +689,7 @@ export default function App() {
             searchRenderTimer.current = null;
         }
         setResultsQuery('');
-        openEndpointPreview(path, method);
+        openEndpointPreviewWithHistory(path, method);
         setShowHome(false);
         setShowSchemaExplorer(false);
         setShowCompatibility(false);
@@ -724,7 +789,7 @@ export default function App() {
                     activeSpec: spec,
                 });
                 setIsUpdatingHash(true);
-                window.history.replaceState(window.history.state, '', clean);
+                window.history.pushState(window.history.state, '', clean);
                 setIsUpdatingHash(false);
             }
         }
@@ -733,7 +798,7 @@ export default function App() {
         setScrollIntent({type: 'view', id: 'view:home'});
         openViewTab('home');
         if (!spec)
-            window.history.replaceState(
+            window.history.pushState(
                 window.history.state,
                 '',
                 generateSmartRoute({
@@ -753,7 +818,7 @@ export default function App() {
         setScrollIntent({type: 'view', id: 'view:about'});
         openViewTab('about');
         if (!spec)
-            window.history.replaceState(
+            window.history.pushState(
                 window.history.state,
                 '',
                 generateSmartRoute({
@@ -785,7 +850,7 @@ export default function App() {
         closeMobileIfNeeded();
     };
     const handleOpenRunner = (path: string, method: string) => {
-        openEndpointPreview(path, method);
+        openEndpointPreviewWithHistory(path, method);
         setSelectedTab('examine');
         setShowHome(false);
         setShowSchemaExplorer(false);
@@ -809,7 +874,10 @@ export default function App() {
         a.download = `${selectedParsableKey}-spec.${isYaml ? 'yaml' : 'json'}`;
         a.click();
     };
-    const handlePushSchema = (n: string) => setModalsStack(p => [...p, n]);
+    const handlePushSchema = (name: string) => {
+        requestHistoryPush();
+        setModalsStack(stack => [...stack, name]);
+    };
     const handleAssistantBridgeAction = useCallback(
         (action: OpenDocUIAction) => {
             if (action.action === 'open_endpoint') {
@@ -905,7 +973,10 @@ export default function App() {
             spec,
         ],
     );
-    const handlePopSchema = () => setModalsStack(p => p.slice(0, -1));
+    const handlePopSchema = () => {
+        requestHistoryPush();
+        setModalsStack(stack => stack.slice(0, -1));
+    };
     const handleSelectParsable = (k: string) => {
         if (k === selectedParsableKey) return;
         setSpec(null);
@@ -944,7 +1015,7 @@ export default function App() {
             schemaModals: [],
             activeSpec: null,
         });
-        window.history.replaceState(window.history.state, '', route);
+        window.history.pushState(window.history.state, '', route);
         setIsUpdatingHash(false);
         closeMobileIfNeeded();
     };
@@ -974,7 +1045,7 @@ export default function App() {
             displayRoutes={sidebarDisplayRoutes}
             selectedEndpoint={selectedEndpoint}
             selectedViewMode={selectedTab}
-            setSelectedViewMode={setSelectedTab}
+            setSelectedViewMode={setSelectedTabWithHistory}
             activeSplitPane={activeSplitPane}
             setActiveSplitPane={setActiveSplitPane}
             splitContainerRef={splitContainerRef}
@@ -989,7 +1060,7 @@ export default function App() {
             activeAuth={activeAuth}
             resolvedThemeMode={resolvedThemeMode}
             activeResponseCode={activeResponseCode}
-            setActiveResponseCode={setActiveResponseCode}
+            setActiveResponseCode={setActiveResponseCodeWithHistory}
             examineResponses={examineResponses}
             setExamineResponses={setExamineResponses}
             showSchemaExplorer={showSchemaExplorer}
@@ -1002,8 +1073,8 @@ export default function App() {
             onSearchChange={handleSearchChange}
             onSelectEndpoint={handleSelectEndpoint}
             onSearchResult={handleSearchResult}
-            onOpenEndpointPermanent={openEndpointPermanent}
-            onOpenEndpointPreview={openEndpointPreview}
+            onOpenEndpointPermanent={openEndpointPermanentWithHistory}
+            onOpenEndpointPreview={openEndpointPreviewWithHistory}
             onGenerateCode={setCodeGenEndpoint}
             onAskAINewConversation={askAIAboutEndpointInNewConversation}
             onHidePageViews={() => {
@@ -1114,7 +1185,7 @@ export default function App() {
                                     searchQuery={searchQuery}
                                     selectedEndpoint={selectedEndpoint}
                                     onSelectEndpoint={handleSelectEndpoint}
-                                    onMiddleClickEndpoint={openEndpointPermanent}
+                                    onMiddleClickEndpoint={openEndpointPermanentWithHistory}
                                     getEndpointHref={(path, method) =>
                                         generateSmartRoute({
                                             parsableKey: selectedParsableKey,
@@ -1135,7 +1206,7 @@ export default function App() {
                                     }
                                     onOpenHome={handleOpenHome}
                                     onOpenAbout={handleOpenAbout}
-                                    onOpenViewPermanent={openViewTabPermanent}
+                                    onOpenViewPermanent={openViewTabPermanentWithHistory}
                                     onContextAction={handleContextAction}
                                     scrollIntent={scrollIntent}
                                     setScrollIntent={setScrollIntent}
@@ -1256,7 +1327,7 @@ export default function App() {
                         specKey={selectedParsableKey}
                         selectedServer={selectedServer}
                         schemaStack={modalsStack}
-                        setSchemaStack={setModalsStack}
+                        setSchemaStack={setModalsStackWithHistory}
                         onPopSchema={handlePopSchema}
                         onPushSchema={handlePushSchema}
                         codeEndpoint={codeGenEndpoint}

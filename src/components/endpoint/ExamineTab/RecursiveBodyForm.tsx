@@ -5,6 +5,7 @@ import {setAtPath} from '@/src/utils/runner/recursiveBody';
 
 export type {BodyValue} from '@/src/types/recursiveBody';
 export {
+    containsMarkdown,
     DESCRIPTION_TOOLTIP_THRESHOLD,
     defaultBodyValue,
     usesDescriptionTooltip,
@@ -17,6 +18,7 @@ export default function RecursiveBodyForm({
     setPatternToTest,
     selectedFiles,
     setSelectedFiles,
+    onOpenSchema,
 }: RecursiveBodyFormProps) {
     const [focusedPath, setFocusedPath] = useState<PathPart[] | null>(null);
     const update = (path: PathPart[], nextValue: unknown) => onChange(setAtPath(value, path, nextValue));
@@ -46,6 +48,7 @@ export default function RecursiveBodyForm({
                     setPatternToTest={setPatternToTest}
                     selectedFiles={selectedFiles}
                     setSelectedFiles={setSelectedFiles}
+                    onOpenSchema={onOpenSchema}
                     focusedPath={focusedPath}
                     setFocusedPath={setFocusedPath}
                 />

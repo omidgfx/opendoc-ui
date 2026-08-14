@@ -342,28 +342,24 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
                                     >
                                         <div className="min-w-0">
                                             <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
-                                                <div className="min-w-0 flex-1">
-                                                    <h3
-                                                        className="font-medium text-xs tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words"
-                                                        title={name}
-                                                    >
-                                                        <SearchHighlightedText
-                                                            text={humanizeName(name)}
-                                                            query={textHighlight}
-                                                            startOnly={highlightStartOnly}
-                                                        />
-                                                    </h3>
-                                                    <p
-                                                        className="mt-0.5 truncate text-[10px] font-mono text-[var(--text-muted)]"
-                                                        title={name}
-                                                    >
-                                                        <SearchHighlightedText
-                                                            text={name}
-                                                            query={textHighlight}
-                                                            startOnly={highlightStartOnly}
-                                                        />
-                                                    </p>
-                                                </div>
+                                                <Tip content={name} wrapperClassName="min-w-0 flex-1">
+                                                    <div className="min-w-0">
+                                                        <h3 className="font-medium text-xs tracking-tight transition-colors line-clamp-2 text-[var(--text-heading)] whitespace-normal break-words">
+                                                            <SearchHighlightedText
+                                                                text={humanizeName(name)}
+                                                                query={textHighlight}
+                                                                startOnly={highlightStartOnly}
+                                                            />
+                                                        </h3>
+                                                        <p className="mt-0.5 truncate text-[10px] font-mono text-[var(--text-muted)]">
+                                                            <SearchHighlightedText
+                                                                text={name}
+                                                                query={textHighlight}
+                                                                startOnly={highlightStartOnly}
+                                                            />
+                                                        </p>
+                                                    </div>
+                                                </Tip>
                                                 <span className="px-1 py-0.5 rounded text-[9px] uppercase select-none shrink-0 bg-[var(--background)] text-[var(--text-muted)]">
                                                     {schema === true
                                                         ? 'any'

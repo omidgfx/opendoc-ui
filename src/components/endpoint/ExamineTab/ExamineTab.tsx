@@ -13,6 +13,8 @@ import PatternTesterModal from '../../modals/PatternTesterModal';
 import ParameterInput from './ParameterInput';
 import BodyEditor from './BodyEditor';
 import ResponsePanel from './ResponsePanel';
+import RunnerFieldFrame from './RunnerFieldFrame';
+import FieldHeader from './recursive/FieldHeader';
 import {specStorage} from '../../../utils/storage';
 import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
 import {operationUsesCookieAuthentication} from '../../../utils/auth';
@@ -29,7 +31,8 @@ interface ExamineTabProps {
     responseHistory?: ExamineResponse[];
     onResponseChange?: (resp: ExamineResponse) => void;
     onDeleteResponse?: (index: number) => void;
-    onClearResponse?: () => void;
+    onClearResponse?: () => void | Promise<void>;
+    onOpenSchema: (schemaName: string) => void;
     isActive?: boolean;
 }
 
@@ -46,6 +49,7 @@ export default function ExamineTab({
     onResponseChange,
     onDeleteResponse,
     onClearResponse,
+    onOpenSchema,
     isActive = true,
 }: ExamineTabProps) {
     const storageKey = specStorage.key(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`);
@@ -330,53 +334,62 @@ export default function ExamineTab({
                     {title}
                 </label>
                 <div className="space-y-3 p-4 border rounded-xl bg-[var(--surface)] border-[var(--border)]">
-                    {list.map((param: any) => (
-                        <div
-                            key={`${param.in}:${param.name}`}
-                            className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 sm:items-center"
-                        >
-                            <span className="text-xs font-semibold text-[var(--text-heading)] sm:col-span-1">
-                                {param.name} {param.required && <span className="text-[var(--method-delete)]">*</span>}
-                                {param.description && (
-                                    <span className="text-[10px] font-normal leading-normal mt-0.5 opacity-60 block text-[var(--text-muted)]">
-                                        {param.description}
-                                    </span>
-                                )}
-                            </span>
-                            <div className="sm:col-span-3 space-y-1">
-                                <ParameterInput
-                                    param={param}
-                                    value={params[parameterStateKey(param.in, param.name)] ?? ''}
-                                    onChange={v =>
-                                        setParams(prev => ({
-                                            ...prev,
-                                            [parameterStateKey(param.in, param.name)]: v,
-                                        }))
-                                    }
-                                />
-                                <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] font-mono opacity-65 select-none px-1">
-                                    <span className="px-1 py-0.2 rounded bg-black/5 bg-[var(--text)]/5 font-semibold text-[var(--primary)]">
-                                        {parameterTypeLabel(param)}
-                                    </span>
-                                    {(param.schema?.format || param.format) && (
-                                        <span className="opacity-75">
-                                            format:{' '}
-                                            <span className="text-[var(--accent)] font-semibold">
-                                                {param.schema?.format || param.format}
-                                            </span>
+                    {list.map((param: any) => {
+                        const parameterSchema = param.schema ?? param;
+                        const resolvedParameterSchema = resolveReference(parameterSchema, spec) || parameterSchema;
+                        return (
+                            <RunnerFieldFrame
+                                key={`${param.in}:${param.name}`}
+                                ariaLabel={`${param.name} parameter field`}
+                                className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-4 sm:items-center sm:gap-4"
+                            >
+                                <div className="min-w-0 sm:col-span-1">
+                                    <FieldHeader
+                                        label={param.name}
+                                        required={param.required}
+                                        description={param.description}
+                                        schema={parameterSchema}
+                                        resolvedSchema={resolvedParameterSchema}
+                                        spec={spec}
+                                        onOpenSchema={onOpenSchema}
+                                    />
+                                </div>
+                                <div className="space-y-1 sm:col-span-3">
+                                    <ParameterInput
+                                        param={param}
+                                        spec={spec}
+                                        value={params[parameterStateKey(param.in, param.name)] ?? ''}
+                                        onChange={v =>
+                                            setParams(prev => ({
+                                                ...prev,
+                                                [parameterStateKey(param.in, param.name)]: v,
+                                            }))
+                                        }
+                                    />
+                                    <div className="flex flex-wrap items-center gap-1.5 px-1 text-[9.5px] font-mono opacity-65 select-none">
+                                        <span className="rounded bg-[var(--text)]/5 px-1 py-0.2 font-semibold text-[var(--primary)]">
+                                            {parameterTypeLabel(param)}
                                         </span>
+                                        {(param.schema?.format || param.format) && (
+                                            <span className="opacity-75">
+                                                format:{' '}
+                                                <span className="font-semibold text-[var(--accent)]">
+                                                    {param.schema?.format || param.format}
+                                                </span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    {(param.pattern || param.schema?.pattern) && (
+                                        <PatternPreview
+                                            pattern={param.pattern || param.schema.pattern}
+                                            onTest={() => setPatternToTest(param.pattern || param.schema.pattern)}
+                                            className="px-1"
+                                        />
                                     )}
                                 </div>
-                                {(param.pattern || param.schema?.pattern) && (
-                                    <PatternPreview
-                                        pattern={param.pattern || param.schema.pattern}
-                                        onTest={() => setPatternToTest(param.pattern || param.schema.pattern)}
-                                        className="px-1"
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                            </RunnerFieldFrame>
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -455,9 +468,10 @@ export default function ExamineTab({
                         </label>
                         <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
                             {Object.entries(headers).map(([name, value]) => (
-                                <div
+                                <RunnerFieldFrame
                                     key={name}
-                                    className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4"
+                                    ariaLabel={`${name} additional header field`}
+                                    className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-4 sm:items-center sm:gap-4"
                                 >
                                     <span className="font-mono text-xs font-semibold text-[var(--text-heading)]">
                                         {name}
@@ -471,7 +485,7 @@ export default function ExamineTab({
                                         }
                                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)] sm:col-span-3"
                                     />
-                                </div>
+                                </RunnerFieldFrame>
                             ))}
                         </div>
                     </div>
@@ -558,6 +572,7 @@ export default function ExamineTab({
                                 setPatternToTest={setPatternToTest}
                                 themeMode={themeMode}
                                 onExecute={executeRequest}
+                                onOpenSchema={onOpenSchema}
                             />
                         </div>
                     </div>

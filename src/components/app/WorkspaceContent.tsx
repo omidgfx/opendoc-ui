@@ -223,8 +223,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                             ),
                         }))
                     }
-                    onClearResponse={() => {
-                        void clearResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method);
+                    onClearResponse={async () => {
+                        await clearResponseHistory(specKey, selectedEndpoint.path, selectedEndpoint.method);
                         setExamineResponses(current => ({...current, [key]: []}));
                     }}
                     onOpenSchema={onOpenSchema}
@@ -255,6 +255,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     specKey={specKey}
                     onSelectEndpoint={onOpenEndpointPermanent}
                     onAddReferencedFiles={onAddReferencedFiles}
+                    onBackToOverview={onOpenHome}
                 />
             </ViewErrorBoundary>
         );

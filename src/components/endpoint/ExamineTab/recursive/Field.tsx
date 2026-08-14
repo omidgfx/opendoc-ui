@@ -1,9 +1,12 @@
 import {useState} from 'react';
 import clsx from 'clsx';
 import PatternPreview from '../../../common/PatternPreview';
+import {Tip} from '../../../common/Tooltip';
 import FieldHeader from './FieldHeader';
 import GuideBranch from './GuideBranch';
 import CustomDropdown from '../../../common/CustomDropdown';
+import RunnerFieldFrame from '../RunnerFieldFrame';
+import {enumDropdownOptions} from '@/src/utils/enumOptions';
 import type {FieldProps} from '@/src/types/recursiveBody';
 import {defaultBodyValue, removeAtPath, resolved} from '@/src/utils/runner/recursiveBody';
 
@@ -22,6 +25,7 @@ export default function Field({
     setPatternToTest,
     selectedFiles,
     setSelectedFiles,
+    onOpenSchema,
     focusedPath,
     setFocusedPath,
     actions,
@@ -33,14 +37,24 @@ export default function Field({
     const nullable = current.nullable === true || (Array.isArray(current.type) && current.type.includes('null'));
     const enumValues = Array.isArray(current.enum) ? current.enum : null;
     const fileKey = path.map(part => String(part)).join('.');
-    const fieldFrame = 'relative min-w-0 py-2';
+    const fieldFocused =
+        !!focusedPath && focusedPath.length === path.length && focusedPath.every((part, index) => part === path[index]);
     if (current['x-opendoc-boolean-schema'] === false) {
         return (
-            <div className={fieldFrame}>
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
                 <FieldHeader
                     label={label}
                     required={required}
-                    description={current.description}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
                     typeLabel="never"
                     actions={actions}
                 />
@@ -48,18 +62,27 @@ export default function Field({
                     No value satisfies this schema. Switch to Raw if you still want to send a body and inspect the
                     server response.
                 </p>
-            </div>
+            </RunnerFieldFrame>
         );
     }
     if (current.oneOf?.length || current.anyOf?.length) {
         const variants = current.oneOf || current.anyOf;
         const selectedVariant = Math.min(variantIndex, variants.length - 1);
         return (
-            <div className={fieldFrame}>
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
                 <FieldHeader
                     label={label}
                     required={required}
-                    description={current.description}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
                     typeLabel="variant"
                     actions={actions}
                 />
@@ -71,10 +94,14 @@ export default function Field({
                         setVariantIndex(nextIndex);
                         onChange(path, defaultBodyValue(variants[nextIndex], spec));
                     }}
-                    options={variants.map((variant: any, index: number) => ({
-                        value: String(index),
-                        label: resolved(variant, spec).title || resolved(variant, spec).type || `Variant ${index + 1}`,
-                    }))}
+                    options={variants.map((variant: any, index: number) => {
+                        const variantSchema = resolved(variant, spec);
+                        return {
+                            value: String(index),
+                            label: variantSchema.title || variantSchema.type || `Variant ${index + 1}`,
+                            description: variantSchema.description,
+                        };
+                    })}
                     className="mt-1 w-full"
                 />
                 <GuideBranch focusedPath={focusedPath}>
@@ -89,22 +116,32 @@ export default function Field({
                         setPatternToTest={setPatternToTest}
                         selectedFiles={selectedFiles}
                         setSelectedFiles={setSelectedFiles}
+                        onOpenSchema={onOpenSchema}
                         focusedPath={focusedPath}
                         setFocusedPath={setFocusedPath}
                     />
                 </GuideBranch>
-            </div>
+            </RunnerFieldFrame>
         );
     }
     const isBinary = current.format === 'binary' || current.contentEncoding === 'binary';
     if (isBinary) {
         const selectedFile = selectedFiles[fileKey] || null;
         return (
-            <div className={fieldFrame}>
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
                 <FieldHeader
                     label={label}
                     required={required}
-                    description={current.description}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
                     typeLabel="file"
                     actions={actions}
                 />
@@ -141,7 +178,7 @@ export default function Field({
                         {Math.max(1, Math.round(selectedFile.size / 1024))} KB
                     </span>
                 )}
-            </div>
+            </RunnerFieldFrame>
         );
     }
     if (type === 'object' || current.properties) {
@@ -164,11 +201,20 @@ export default function Field({
             setPendingKey('');
         };
         return (
-            <div className={fieldFrame}>
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
                 <FieldHeader
                     label={label}
                     required={required}
-                    description={current.description}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
                     typeLabel={additionalSchema ? 'object / map' : 'object'}
                     actions={actions}
                 />
@@ -197,6 +243,7 @@ export default function Field({
                                 setPatternToTest={setPatternToTest}
                                 selectedFiles={selectedFiles}
                                 setSelectedFiles={setSelectedFiles}
+                                onOpenSchema={onOpenSchema}
                                 focusedPath={focusedPath}
                                 setFocusedPath={setFocusedPath}
                             />
@@ -214,6 +261,7 @@ export default function Field({
                             setPatternToTest={setPatternToTest}
                             selectedFiles={selectedFiles}
                             setSelectedFiles={setSelectedFiles}
+                            onOpenSchema={onOpenSchema}
                             focusedPath={focusedPath}
                             setFocusedPath={setFocusedPath}
                             actions={
@@ -262,7 +310,7 @@ export default function Field({
                         <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No defined properties.</p>
                     )}
                 </GuideBranch>
-            </div>
+            </RunnerFieldFrame>
         );
     }
     if (type === 'array') {
@@ -271,48 +319,63 @@ export default function Field({
         const maxItems = typeof current.maxItems === 'number' ? current.maxItems : Infinity;
         const itemActions = (index: number) => (
             <>
-                <button
-                    type="button"
-                    disabled={index === 0}
-                    onClick={() => {
-                        const next = [...items];
-                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                        onChange(path, next);
-                    }}
-                    className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
-                    aria-label="Move item up"
-                >
-                    <i className="ph ph-arrow-up text-[12px]" />
-                </button>
-                <button
-                    type="button"
-                    disabled={index === items.length - 1}
-                    onClick={() => {
-                        const next = [...items];
-                        [next[index + 1], next[index]] = [next[index], next[index + 1]];
-                        onChange(path, next);
-                    }}
-                    className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
-                    aria-label="Move item down"
-                >
-                    <i className="ph ph-arrow-down text-[12px]" />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => onChange(path, removeAtPath(items, index))}
-                    className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
-                    aria-label="Remove item"
-                >
-                    <i className="ph ph-trash text-[12px]" />
-                </button>
+                <Tip content="Move item up">
+                    <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => {
+                            const next = [...items];
+                            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                            onChange(path, next);
+                        }}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
+                        aria-label="Move item up"
+                    >
+                        <i className="ph ph-arrow-up text-[12px]" />
+                    </button>
+                </Tip>
+                <Tip content="Move item down">
+                    <button
+                        type="button"
+                        disabled={index === items.length - 1}
+                        onClick={() => {
+                            const next = [...items];
+                            [next[index + 1], next[index]] = [next[index], next[index + 1]];
+                            onChange(path, next);
+                        }}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-30 cursor-pointer"
+                        aria-label="Move item down"
+                    >
+                        <i className="ph ph-arrow-down text-[12px]" />
+                    </button>
+                </Tip>
+                <Tip content="Remove item">
+                    <button
+                        type="button"
+                        onClick={() => onChange(path, removeAtPath(items, index))}
+                        className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                        aria-label="Remove item"
+                    >
+                        <i className="ph ph-trash text-[12px]" />
+                    </button>
+                </Tip>
             </>
         );
         return (
-            <div className={fieldFrame}>
+            <RunnerFieldFrame
+                active={fieldFocused}
+                onActivate={() => setFocusedPath(path)}
+                ariaLabel={`${label} field`}
+                className="px-2 py-2"
+            >
                 <FieldHeader
                     label={label}
                     required={required}
-                    description={current.description}
+                    description={schema?.description}
+                    schema={schema}
+                    resolvedSchema={current}
+                    spec={spec}
+                    onOpenSchema={onOpenSchema}
                     typeLabel={`array${itemSchema.type ? `<${itemSchema.type}>` : ''}`}
                     actions={actions}
                 />
@@ -333,6 +396,7 @@ export default function Field({
                             setPatternToTest={setPatternToTest}
                             selectedFiles={selectedFiles}
                             setSelectedFiles={setSelectedFiles}
+                            onOpenSchema={onOpenSchema}
                             focusedPath={focusedPath}
                             setFocusedPath={setFocusedPath}
                             actions={itemActions(index)}
@@ -350,7 +414,7 @@ export default function Field({
                         </button>
                     </div>
                 </GuideBranch>
-            </div>
+            </RunnerFieldFrame>
         );
     }
     const stringValue = value === null || value === undefined ? '' : String(value);
@@ -372,16 +436,26 @@ export default function Field({
               ? 'datetime-local'
               : 'text';
     return (
-        <div className={fieldFrame}>
+        <RunnerFieldFrame
+            active={fieldFocused}
+            onActivate={() => setFocusedPath(path)}
+            ariaLabel={`${label} field`}
+            className="px-2 py-2"
+        >
             <FieldHeader
                 label={label}
                 required={required}
-                description={current.description}
+                description={schema?.description}
+                schema={schema}
+                resolvedSchema={current}
+                spec={spec}
+                onOpenSchema={onOpenSchema}
                 typeLabel={current.format || type || 'any'}
                 actions={actions}
             />
             {enumValues ? (
                 <CustomDropdown
+                    ariaLabel={`${label} documented values`}
                     value={String(
                         Math.max(
                             -1,
@@ -395,7 +469,11 @@ export default function Field({
                     }}
                     options={[
                         {value: '-1', label: '— Select —'},
-                        ...enumValues.map((item: any, index: number) => ({value: String(index), label: String(item)})),
+                        ...enumDropdownOptions(
+                            enumValues,
+                            {...current, description: schema?.description || current.description},
+                            (_item, index) => String(index),
+                        ),
                     ]}
                     className="mt-1 w-full"
                 />
@@ -452,6 +530,6 @@ export default function Field({
                     Set null
                 </button>
             )}
-        </div>
+        </RunnerFieldFrame>
     );
 }

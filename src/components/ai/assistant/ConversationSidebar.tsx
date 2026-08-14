@@ -105,12 +105,11 @@ export default function ConversationSidebar({
                 <div className="h-[14px] min-h-[14px] truncate text-[10px] font-bold leading-[14px] text-[var(--text-heading)]">
                     {settings.provider}
                 </div>
-                <div
-                    className="h-[13px] min-h-[13px] truncate font-mono text-[9px] leading-[13px] text-[var(--text-muted)]"
-                    title={settings.model || 'No model selected'}
-                >
-                    {settings.model || 'No model selected'}
-                </div>
+                <Tip content={settings.model || 'No model selected'} fullWidth>
+                    <div className="h-[13px] min-h-[13px] truncate font-mono text-[9px] leading-[13px] text-[var(--text-muted)]">
+                        {settings.model || 'No model selected'}
+                    </div>
+                </Tip>
             </div>
         </aside>
     );

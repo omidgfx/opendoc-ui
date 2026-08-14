@@ -1,5 +1,6 @@
 import {useMemo} from 'react';
 import type {OpenApiSpec} from '@/src/types';
+import {Tip} from '@/src/components/common/Tooltip';
 import {
     analyzeRunnerCompatibility,
     type RunnerCompatibilityCategory,
@@ -71,16 +72,16 @@ const Finding = ({
                     <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">{finding.detail}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                         {visibleEndpoints.map(endpoint => (
-                            <button
-                                key={`${endpoint.method}:${endpoint.path}`}
-                                type="button"
-                                onClick={() => onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())}
-                                title={endpoint.summary}
-                                className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-left font-mono text-[9px] text-[var(--text-heading)] transition-colors hover:border-[var(--primary)]/40 hover:bg-[var(--surface-hover)] cursor-pointer"
-                            >
-                                <span className={`shrink-0 font-black ${tone.text}`}>{endpoint.method}</span>
-                                <span className="max-w-[260px] truncate">{endpoint.path}</span>
-                            </button>
+                            <Tip key={`${endpoint.method}:${endpoint.path}`} content={endpoint.summary}>
+                                <button
+                                    type="button"
+                                    onClick={() => onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())}
+                                    className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-left font-mono text-[9px] text-[var(--text-heading)] transition-colors hover:border-[var(--primary)]/40 hover:bg-[var(--surface-hover)] cursor-pointer"
+                                >
+                                    <span className={`shrink-0 font-black ${tone.text}`}>{endpoint.method}</span>
+                                    <span className="max-w-[260px] truncate">{endpoint.path}</span>
+                                </button>
+                            </Tip>
                         ))}
                         {finding.endpoints.length > visibleEndpoints.length && (
                             <span className="inline-flex items-center rounded-lg px-2 py-1 text-[9px] font-semibold text-[var(--text-muted)]">
@@ -101,12 +102,6 @@ export default function RunnerCompatibilityReport({
 }: RunnerCompatibilityReportProps) {
     const report = useMemo(() => analyzeRunnerCompatibility(spec), [spec]);
     const summary = [
-        {
-            label: 'Operations',
-            value: report.totalOperations,
-            detail: 'statically inspected',
-            color: 'text-[var(--text-heading)]',
-        },
         {
             label: 'No static limits',
             value: report.standardOperations,
@@ -157,7 +152,7 @@ export default function RunnerCompatibilityReport({
                     <i className="ph ph-arrow-right text-[13px]" />
                 </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {summary.map(item => (
                     <div
                         key={item.label}

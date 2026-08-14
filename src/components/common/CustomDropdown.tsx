@@ -1,15 +1,16 @@
 import React, {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 
-interface Option {
+export interface CustomDropdownOption {
     value: string;
     label: string;
+    description?: string;
 }
 
 interface CustomDropdownProps {
     value: string;
     onChange: (value: string) => void;
-    options: Option[];
+    options: CustomDropdownOption[];
     icon?: string;
     className?: string;
     placeholder?: string;
@@ -29,7 +30,13 @@ export default function CustomDropdown({
 }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [position, setPosition] = useState({top: 0, left: 0, width: 0});
+    const [position, setPosition] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+        openAbove: false,
+        maxHeight: 288,
+    });
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const listboxId = useId();
@@ -41,7 +48,19 @@ export default function CustomDropdown({
 
     const updatePosition = () => {
         const rect = triggerRef.current?.getBoundingClientRect();
-        if (rect) setPosition({top: rect.bottom + 4, left: rect.left, width: rect.width});
+        if (!rect) return;
+        const described = options.some(option => !!option.description?.trim());
+        const estimatedHeight = Math.min(288, options.length * (described ? 44 : 34) + 8);
+        const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - 8);
+        const spaceAbove = Math.max(0, rect.top - 8);
+        const openAbove = spaceBelow < Math.min(estimatedHeight, 160) && spaceAbove > spaceBelow;
+        setPosition({
+            top: openAbove ? rect.top - 4 : rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            openAbove,
+            maxHeight: Math.max(80, Math.min(288, openAbove ? spaceAbove : spaceBelow)),
+        });
     };
     const open = (index = selectedIndex) => {
         updatePosition();
@@ -130,6 +149,15 @@ export default function CustomDropdown({
         return variables;
     };
 
+    const hasDescriptions = options.some(option => !!option.description?.trim());
+    const menuWidth =
+        typeof window === 'undefined'
+            ? Math.max(position.width, hasDescriptions ? 260 : 180)
+            : Math.min(Math.max(position.width, hasDescriptions ? 260 : 180), window.innerWidth - 16);
+    const menuLeft =
+        typeof window === 'undefined'
+            ? position.left
+            : Math.max(8, Math.min(position.left, window.innerWidth - menuWidth - 8));
     const menuContent = isOpen && (
         <div
             ref={menuRef}
@@ -137,7 +165,14 @@ export default function CustomDropdown({
             role="listbox"
             aria-activedescendant={`${listboxId}-option-${activeIndex}`}
             className="fixed z-[999999] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm min-w-[180px] max-h-72 overflow-y-auto text-[var(--text)]"
-            style={{top: position.top, left: position.left, width: Math.max(position.width, 180), ...getThemeVars()}}
+            style={{
+                top: position.top,
+                left: menuLeft,
+                width: menuWidth,
+                maxHeight: position.maxHeight,
+                transform: position.openAbove ? 'translateY(-100%)' : undefined,
+                ...getThemeVars(),
+            }}
         >
             {options.map((option, index) => (
                 <div
@@ -157,7 +192,14 @@ export default function CustomDropdown({
                     <span
                         className={`size-2 shrink-0 rounded-full ${index === activeIndex ? 'bg-[var(--primary)]' : option.value === value ? 'bg-[var(--method-get)]' : 'bg-transparent'}`}
                     />
-                    <span className="min-w-0 truncate">{option.label}</span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate">{option.label}</span>
+                        {option.description && (
+                            <span className="mt-0.5 block truncate font-sans text-[9px] font-normal leading-snug text-[var(--text-muted)]">
+                                {option.description}
+                            </span>
+                        )}
+                    </span>
                 </div>
             ))}
         </div>

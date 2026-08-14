@@ -111,64 +111,66 @@ export default function SchemaJsonEditor({
     };
     return (
         <div className="flex flex-col w-full min-w-0 rounded-xl border border-[var(--border)] overflow-hidden shadow-sm bg-[var(--background)]">
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-2.5 py-1.5">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] select-none">
-                        <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{backgroundColor: errorFeedback ? '#ef4444' : '#10b981'}}
-                        ></span>
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-heading)]">
-                            {errorFeedback ? 'Error' : 'Valid'}
-                        </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2 select-none">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <i className="ph-fill ph-brackets-curly text-[16px]" />
                     </span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">
-                        {editorLanguage.toUpperCase()} Body
-                    </span>
+                    <div className="min-w-0">
+                        <div className="truncate font-mono text-[10px] font-black uppercase tracking-wider text-[var(--text-heading)]">
+                            {editorLanguage} request body
+                        </div>
+                        <div
+                            className={`mt-0.5 flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest ${errorFeedback ? 'text-[var(--method-delete)]' : 'text-[var(--method-get)]'}`}
+                        >
+                            <span
+                                className={`size-1.5 rounded-full ${errorFeedback ? 'bg-[var(--method-delete)]' : 'bg-[var(--method-get)]'}`}
+                            />
+                            {errorFeedback ? 'Needs attention' : 'Syntax valid'}
+                        </div>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1">
-                    <Tip content="Search (Ctrl+F)">
-                        <SchemaEditorToolButton
-                            active
-                            onClick={triggerFind}
-                            icon="ph-magnifying-glass"
-                            label="Find"
-                            iconColor="text-sky-500"
-                        />
-                    </Tip>
-                    <Tip content="Toggle line wrapping">
-                        <SchemaEditorToolButton
-                            active={wordWrapEnabled}
-                            onClick={toggleWordWrap}
-                            icon="ph-text-t"
-                            label="Wrap"
-                        />
-                    </Tip>
-                    <Tip content="Toggle line numbers">
-                        <SchemaEditorToolButton
-                            active={lineNumbersEnabled}
-                            onClick={toggleLineNumbers}
-                            icon="ph-list-numbers"
-                            label="Numbers"
-                        />
-                    </Tip>
-                    <Tip content="Toggle code minimap">
-                        <SchemaEditorToolButton
-                            active={minimapEnabled}
-                            onClick={toggleMinimap}
-                            icon="ph-map-trifold"
-                            label="Minimap"
-                        />
-                    </Tip>
-                    <div className="w-[1px] h-5 bg-[var(--border)] mx-1 hidden sm:block"></div>
-                    <Tip content={`Format ${editorLanguage.toUpperCase()}`}>
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+                    <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-0.5">
+                        <Tip content="Search in editor (Ctrl+F)">
+                            <SchemaEditorToolButton onClick={triggerFind} icon="ph-magnifying-glass" label="Find" />
+                        </Tip>
+                        <Tip content="Toggle line wrapping">
+                            <SchemaEditorToolButton
+                                toggle
+                                active={wordWrapEnabled}
+                                onClick={toggleWordWrap}
+                                icon="ph-text-t"
+                                label="Wrap"
+                            />
+                        </Tip>
+                        <Tip content="Toggle line numbers">
+                            <SchemaEditorToolButton
+                                toggle
+                                active={lineNumbersEnabled}
+                                onClick={toggleLineNumbers}
+                                icon="ph-list-numbers"
+                                label="Lines"
+                            />
+                        </Tip>
+                        <Tip content="Toggle code minimap">
+                            <SchemaEditorToolButton
+                                toggle
+                                active={minimapEnabled}
+                                onClick={toggleMinimap}
+                                icon="ph-map-trifold"
+                                label="Map"
+                            />
+                        </Tip>
+                    </div>
+                    <Tip content={`Format ${editorLanguage.toUpperCase()} body`}>
                         <button
                             type="button"
                             onClick={handleFormat}
-                            className="px-2 py-1 rounded-md bg-[var(--background)] border border-[var(--border)] hover:bg-[var(--surface-hover)] text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 text-[var(--text-heading)] active:scale-95"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-[var(--primary)]/10 px-3 text-[10px] font-extrabold text-[var(--primary)] transition-colors hover:bg-[var(--primary)]/15 active:scale-[0.98] cursor-pointer"
                         >
-                            <i className="ph ph-magic-wand text-[var(--primary)] text-[13px]"></i>
-                            <span className="hidden sm:inline">Prettify</span>
+                            <i className="ph-fill ph-magic-wand text-[14px]" />
+                            <span>Prettify</span>
                         </button>
                     </Tip>
                 </div>

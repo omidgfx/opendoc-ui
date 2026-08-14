@@ -5,23 +5,31 @@ interface SchemaEditorToolButtonProps {
     onClick: () => void;
     icon: string;
     label: string;
-    iconColor?: string;
+    toggle?: boolean;
 }
 
-export default function SchemaEditorToolButton({active, onClick, icon, label, iconColor}: SchemaEditorToolButtonProps) {
+export default function SchemaEditorToolButton({
+    active = false,
+    onClick,
+    icon,
+    label,
+    toggle = false,
+}: SchemaEditorToolButtonProps) {
     return (
         <button
             type="button"
             onClick={onClick}
+            aria-label={label}
+            aria-pressed={toggle ? active : undefined}
             className={clsx(
-                'p-1.5 rounded-md bg-[var(--background)] border text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 hover:bg-[var(--surface-hover)]',
-                active
-                    ? 'text-[var(--primary)] border-[var(--primary)]/30'
-                    : 'text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-heading)]',
+                'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[10px] font-bold transition-colors cursor-pointer',
+                toggle && active
+                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
             )}
         >
-            <i className={clsx(`ph ${icon} text-[12px]`, iconColor)} />
-            <span className="hidden sm:inline">{label}</span>
+            <i className={clsx(`ph ${icon} text-[13px]`, !toggle && 'text-[var(--primary)]')} />
+            <span className="hidden md:inline">{label}</span>
         </button>
     );
 }

@@ -278,27 +278,29 @@ export default function HomeView({
                                     const color = `var(--method-${method.toLowerCase()}, var(--primary))`;
                                     const height = Math.max(10, (count / largestMethodCount) * 100);
                                     return (
-                                        <div
+                                        <Tip
                                             key={method}
-                                            className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
-                                            title={`${method}: ${count} operation${count === 1 ? '' : 's'}`}
+                                            content={`${method}: ${count} operation${count === 1 ? '' : 's'}`}
+                                            wrapperClassName="h-full min-w-0 flex-1"
                                         >
-                                            <span className="font-mono text-[10px] font-black text-[var(--text-heading)]">
-                                                {count}
-                                            </span>
-                                            <div className="flex h-[118px] w-full max-w-12 items-end rounded-t-lg bg-[var(--background)]">
-                                                <div
-                                                    className="w-full rounded-t-lg transition-[height,opacity] duration-300 group-hover:opacity-80"
-                                                    style={{height: `${height}%`, backgroundColor: color}}
-                                                />
+                                            <div className="group flex h-full w-full min-w-0 flex-col items-center justify-end gap-1.5">
+                                                <span className="font-mono text-[10px] font-black text-[var(--text-heading)]">
+                                                    {count}
+                                                </span>
+                                                <div className="flex h-[118px] w-full max-w-12 items-end rounded-t-lg bg-[var(--background)]">
+                                                    <div
+                                                        className="w-full rounded-t-lg transition-[height,opacity] duration-300 group-hover:opacity-80"
+                                                        style={{height: `${height}%`, backgroundColor: color}}
+                                                    />
+                                                </div>
+                                                <span
+                                                    className="max-w-full truncate font-mono text-[8px] font-black"
+                                                    style={{color}}
+                                                >
+                                                    {method}
+                                                </span>
                                             </div>
-                                            <span
-                                                className="max-w-full truncate font-mono text-[8px] font-black"
-                                                style={{color}}
-                                            >
-                                                {method}
-                                            </span>
-                                        </div>
+                                        </Tip>
                                     );
                                 })}
                             </div>

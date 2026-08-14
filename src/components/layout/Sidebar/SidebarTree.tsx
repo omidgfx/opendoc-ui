@@ -300,7 +300,6 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                                     ? 'text-[var(--primary-contrast)]/70'
                                                                     : 'text-[var(--text-muted)]',
                                                             )}
-                                                            title={ep.path}
                                                         >
                                                             <SearchHighlightedText
                                                                 text={ep.path}

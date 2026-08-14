@@ -1,4 +1,13 @@
-import React, {useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
+import React, {
+    useCallback,
+    useContext,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+} from 'react';
 import {createPortal} from 'react-dom';
 import {TooltipContext} from './TooltipContext';
 import {positionFor, samePosition, type TooltipPosition} from './tooltipPosition';
@@ -13,6 +22,7 @@ interface TipProps {
     variant?: 'default' | 'surface';
     fullWidth?: boolean;
     wrapperClassName?: string;
+    wrapperStyle?: CSSProperties;
     closable?: boolean;
 }
 
@@ -28,6 +38,7 @@ export default function Tip({
     variant = 'default',
     fullWidth = false,
     wrapperClassName = '',
+    wrapperStyle,
     closable = false,
 }: TipProps) {
     const {delay: contextDelay, claim, release} = useContext(TooltipContext);
@@ -38,8 +49,10 @@ export default function Tip({
     const [position, setPosition] = useState<TooltipPosition | null>(null);
     const timerRef = useRef<number | null>(null);
     const wrapperRef = useRef<HTMLElement | null>(null);
-    const tooltipRef = useRef<HTMLSpanElement | null>(null);
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
     const pointerDownAtRef = useRef(0);
+    const pinnedRef = useRef(false);
+    const effectiveInteractive = interactive || closable;
     const setWrapperRef = useCallback((node: HTMLElement | null) => {
         wrapperRef.current = node;
     }, []);
@@ -52,17 +65,19 @@ export default function Tip({
     }, []);
     const close = useCallback(() => {
         clearTimer();
+        pinnedRef.current = false;
         release(tooltipId);
         setOpen(false);
         setPosition(null);
     }, [clearTimer, release, tooltipId]);
     const openNow = useCallback(() => {
-        setPending(false);
+        clearTimer();
         claim(tooltipId, close);
         setOpen(true);
-    }, [claim, close, tooltipId]);
+    }, [claim, clearTimer, close, tooltipId]);
     const show = useCallback(() => {
         clearTimer();
+        if (open) return;
         if (delay <= 0) {
             openNow();
             return;
@@ -72,28 +87,29 @@ export default function Tip({
             timerRef.current = null;
             openNow();
         }, delay);
-    }, [clearTimer, delay, openNow]);
+    }, [clearTimer, delay, open, openNow]);
     const showFromFocus = useCallback(
         (event: React.FocusEvent) => {
-            if (Date.now() - pointerDownAtRef.current < 500) return;
+            if (!closable && Date.now() - pointerDownAtRef.current < 500) return;
             const surface = (event.target as HTMLElement | null)?.closest<HTMLElement>('.modal-surface');
             const suppressUntil = Number(surface?.dataset.suppressTooltipsUntil || 0);
             if (suppressUntil > Date.now()) return;
             show();
         },
-        [show],
+        [closable, show],
     );
     const hide = useCallback(() => {
         clearTimer();
-        if (!interactive) {
+        if (pinnedRef.current) return;
+        if (!effectiveInteractive) {
             close();
             return;
         }
         timerRef.current = window.setTimeout(() => {
             timerRef.current = null;
-            close();
-        }, 180);
-    }, [clearTimer, close, interactive]);
+            if (!pinnedRef.current) close();
+        }, 220);
+    }, [clearTimer, close, effectiveInteractive]);
     const updatePosition = useCallback(() => {
         const trigger = wrapperRef.current;
         const tooltip = tooltipRef.current;
@@ -119,7 +135,11 @@ export default function Tip({
     );
     useEffect(() => {
         if (!open && !pending) return;
-        const closeOnScroll = () => close();
+        const closeOnScroll = (event: Event) => {
+            const target = event.target as Node | null;
+            if (target && tooltipRef.current?.contains(target)) return;
+            close();
+        };
         const closeOnResize = () => close();
         const closeOnWindowBlur = () => close();
         const closeOnVisibility = () => {
@@ -182,6 +202,7 @@ export default function Tip({
     return (
         <Wrapper
             ref={setWrapperRef}
+            style={wrapperStyle}
             className={wrapperClassNameResolved}
             onMouseEnter={show}
             onMouseLeave={hide}
@@ -189,44 +210,54 @@ export default function Tip({
             onBlurCapture={hide}
             onPointerDownCapture={() => {
                 pointerDownAtRef.current = Date.now();
-                close();
+                if (!closable) close();
             }}
         >
             {React.cloneElement(children as React.ReactElement<any>, {
                 title: undefined,
                 'aria-describedby': describedBy,
+                onClick: (event: React.MouseEvent) => {
+                    childProps.onClick?.(event);
+                    if (!closable || event.defaultPrevented) return;
+                    if (open && pinnedRef.current) {
+                        close();
+                        return;
+                    }
+                    pinnedRef.current = true;
+                    openNow();
+                },
             })}
             {open &&
                 typeof document !== 'undefined' &&
                 createPortal(
-                    <span
+                    <div
                         ref={tooltipRef}
                         id={tooltipId}
                         role="tooltip"
-                        onMouseEnter={interactive ? show : undefined}
-                        onMouseLeave={interactive ? hide : undefined}
-                        onFocusCapture={interactive ? show : undefined}
-                        onBlurCapture={interactive ? hide : undefined}
+                        onMouseEnter={effectiveInteractive ? openNow : undefined}
+                        onMouseLeave={effectiveInteractive ? hide : undefined}
+                        onFocusCapture={effectiveInteractive ? openNow : undefined}
+                        onBlurCapture={effectiveInteractive ? hide : undefined}
                         style={
                             position
                                 ? {
                                       top: position.top,
                                       left: position.left,
                                       transform: position.transform,
-                                      maxWidth: 'min(380px, calc(100vw - 16px))',
+                                      maxWidth: 'min(420px, calc(100vw - 16px))',
                                   }
                                 : {
                                       top: 0,
                                       left: 0,
                                       visibility: 'hidden',
-                                      maxWidth: 'min(380px, calc(100vw - 16px))',
+                                      maxWidth: 'min(420px, calc(100vw - 16px))',
                                   }
                         }
-                        className={`fixed z-[10000] w-max whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl ${position ? 'tooltip-fade-in' : ''} ${interactive || closable ? 'pointer-events-auto' : 'pointer-events-none'} ${tooltipThemeClass}`}
+                        className={`fixed z-[10000] w-max whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl ${position ? 'tooltip-fade-in' : ''} ${effectiveInteractive ? 'pointer-events-auto max-h-[min(440px,calc(100vh-16px))] overflow-y-auto select-text' : 'pointer-events-none select-none'} ${tooltipThemeClass}`}
                     >
                         {closable ? (
-                            <span className="flex items-start gap-1.5">
-                                <span className="min-w-0 flex-1">{content}</span>
+                            <div className="flex items-start gap-1.5">
+                                <div className="min-w-0 flex-1">{content}</div>
                                 <button
                                     type="button"
                                     aria-label="Close tooltip"
@@ -234,15 +265,15 @@ export default function Tip({
                                         event.stopPropagation();
                                         close();
                                     }}
-                                    className="flex size-4 shrink-0 items-center justify-center rounded-full text-inherit opacity-60 transition-opacity hover:bg-[var(--primary)]/15 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 cursor-pointer"
+                                    className="sticky top-0 flex size-4 shrink-0 items-center justify-center rounded-full text-inherit opacity-60 transition-opacity hover:bg-[var(--primary)]/15 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 cursor-pointer"
                                 >
                                     <i className="ph ph-x text-[11px]" aria-hidden="true" />
                                 </button>
-                            </span>
+                            </div>
                         ) : (
                             content
                         )}
-                    </span>,
+                    </div>,
                     document.body,
                 )}
         </Wrapper>

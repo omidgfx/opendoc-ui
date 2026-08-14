@@ -25,10 +25,12 @@ import {
     validateBodyText,
 } from '../src/utils/bodyFormats';
 import {
+    containsMarkdown,
     DESCRIPTION_TOOLTIP_THRESHOLD,
     defaultBodyValue,
     usesDescriptionTooltip,
 } from '../src/components/endpoint/ExamineTab/RecursiveBodyForm';
+import {enumDropdownOptions} from '../src/utils/enumOptions';
 import {
     collectReferenceIssues,
     createBundledOpenApiDocument,
@@ -1363,10 +1365,25 @@ test('defaults endpoint routes off and limits the local sidebar filter to visibl
         true,
     );
 });
-test('uses inline descriptions until the tooltip threshold', () => {
+test('uses inline descriptions until the threshold and always moves Markdown into tooltips', () => {
     assert.equal(usesDescriptionTooltip('Short field description'), false);
     assert.equal(usesDescriptionTooltip('x'.repeat(DESCRIPTION_TOOLTIP_THRESHOLD)), false);
     assert.equal(usesDescriptionTooltip('x'.repeat(DESCRIPTION_TOOLTIP_THRESHOLD + 1)), true);
+    assert.equal(containsMarkdown('A short **Markdown** description'), true);
+    assert.equal(usesDescriptionTooltip('A short **Markdown** description'), true);
+});
+test('extracts native enum case descriptions from Markdown tables for custom dropdown items', () => {
+    const options = enumDropdownOptions(
+        [1, 2],
+        {
+            description: '#### Available values\n\n| Value | Case |\n|---|---|\n| 1 | NOVICE |\n| 2 | EXPERT |',
+        },
+        (_value, index) => `choice:${index}`,
+    );
+    assert.deepEqual(options, [
+        {value: 'choice:0', label: '1', description: 'NOVICE'},
+        {value: 'choice:1', label: '2', description: 'EXPERT'},
+    ]);
 });
 test('creates typed defaults for recursive object and array schemas', () => {
     const schema = {

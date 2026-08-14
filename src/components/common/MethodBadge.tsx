@@ -1,5 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
+import {Tip} from './Tooltip';
 
 const METHOD_CLASSES: Record<
     string,
@@ -89,7 +90,7 @@ export default function MethodBadge({
     const normalized = (method || '').toLowerCase().trim();
     const colors = METHOD_CLASSES[normalized] || FALLBACK_CLASSES;
     const label = displayLabel || (method || '').toUpperCase() || 'UNKNOWN';
-    return (
+    const badge = (
         <span
             className={clsx(
                 'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded font-mono font-extrabold uppercase select-none',
@@ -99,9 +100,9 @@ export default function MethodBadge({
                 variant === 'plain' && colors.text,
                 className,
             )}
-            title={title}
         >
             {label}
         </span>
     );
+    return title ? <Tip content={title}>{badge}</Tip> : badge;
 }
