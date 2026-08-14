@@ -373,3 +373,6 @@ kbd { background: var(--code-bg); border: 1px solid var(--border); border-bottom
     * { animation: none !important; transition: none !important; }
     html { scroll-behavior: auto; }
 }
+
+/* kbd arrow icons */
+kbd i { font-size: 10px; line-height: 1; }

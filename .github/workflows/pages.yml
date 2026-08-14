@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Deploy site and demo to GitHub Pages
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     env:
-      VITE_BASE_PATH: /${{ github.event.repository.name }}/
+      VITE_BASE_PATH: /${{ github.event.repository.name }}/demo/
       VITE_LOAD_FROM_URL: 'true'
     steps:
       - name: Checkout
@@ -39,11 +39,16 @@ jobs:
       - name: Enable the Pages demo specification
         run: cp public/demo/config.pages.json public/config.json
 
-      - name: Build the Pages site
+      - name: Build the application
         run: npm run build
 
-      - name: Disable Jekyll processing
-        run: touch dist/.nojekyll
+      - name: Assemble the Pages artifact
+        run: |
+          rm -rf pages-artifact
+          mkdir -p pages-artifact/demo
+          cp -R site/. pages-artifact/
+          cp -R dist/. pages-artifact/demo/
+          touch pages-artifact/.nojekyll pages-artifact/demo/.nojekyll
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -51,7 +56,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./dist
+          path: ./pages-artifact
 
       - name: Deploy to GitHub Pages
         id: deployment
