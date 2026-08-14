@@ -25,7 +25,7 @@ import {
     resolveRequestBody,
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/auth';
-import {flattenSchemaProperties} from '../../../utils/schemaProperties';
+import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 
 interface ViewTabProps {
     key: any;
@@ -99,6 +99,7 @@ export default function ViewTab({
         [code: string]: string;
     }>({});
     const [requestBodyContentType, setRequestBodyContentType] = useState('');
+    const [requestBodyVariant, setRequestBodyVariant] = useState(0);
     const responseCodes = Object.keys(operation.responses || {});
     const [navigatorActiveCode, setNavigatorActiveCode] = useState<string | null>(() =>
         activeResponseCode && responseCodes.includes(activeResponseCode)
@@ -399,6 +400,19 @@ export default function ViewTab({
     const selectedRequestBodyContent = selectedRequestBodyContentType
         ? resolvedRequestBody?.content?.[selectedRequestBodyContentType]
         : null;
+    const requestBodyVariantSchemas = (() => {
+        const schema = selectedRequestBodyContent?.schema;
+        const resolvedSchema = schema ? resolveReference(schema) || schema : null;
+        if (resolvedSchema?.oneOf?.length) return {kind: 'oneOf' as const, variants: resolvedSchema.oneOf};
+        if (resolvedSchema?.anyOf?.length) return {kind: 'anyOf' as const, variants: resolvedSchema.anyOf};
+        return null;
+    })();
+    const activeRequestBodyVariant = requestBodyVariantSchemas
+        ? requestBodyVariantSchemas.variants[
+              Math.min(requestBodyVariant, requestBodyVariantSchemas.variants.length - 1)
+          ]
+        : null;
+    const requestBodyMatrixSchema = activeRequestBodyVariant ?? selectedRequestBodyContent?.schema;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     const fullEndpointUrl = selectedServer ? `${selectedServer.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : path;
@@ -655,7 +669,10 @@ export default function ViewTab({
                                 </span>
                                 <CustomDropdown
                                     value={selectedRequestBodyContentType}
-                                    onChange={setRequestBodyContentType}
+                                    onChange={contentType => {
+                                        setRequestBodyVariant(0);
+                                        setRequestBodyContentType(contentType);
+                                    }}
                                     options={requestBodyContentEntries.map(([contentType]) => ({
                                         value: contentType,
                                         label: contentType,
@@ -680,12 +697,42 @@ export default function ViewTab({
                                         {selectedRequestBodyContentType}
                                     </span>
                                 </p>
+                                {requestBodyVariantSchemas && (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            {requestBodyVariantSchemas.kind === 'oneOf' ? 'One of' : 'Any of'}
+                                        </span>
+                                        {requestBodyVariantSchemas.variants.map((sub, index) => {
+                                            const isSelected =
+                                                index ===
+                                                Math.min(
+                                                    requestBodyVariant,
+                                                    requestBodyVariantSchemas.variants.length - 1,
+                                                );
+                                            return (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => setRequestBodyVariant(index)}
+                                                    aria-pressed={isSelected}
+                                                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer select-none transition-all duration-150 ${
+                                                        isSelected
+                                                            ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                                            : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15'
+                                                    }`}
+                                                >
+                                                    {schemaVariantLabel(sub, resolveReference, getRefName, index)}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                                 <div className="pt-1 min-w-0">
                                     {renderSchemaPropertiesTable(
-                                        selectedRequestBodyContent.schema,
-                                        selectedRequestBodyContent.schema?.$ref
-                                            ? getRefName(selectedRequestBodyContent.schema.$ref)
-                                            : selectedRequestBodyContent.schema?.title || null,
+                                        requestBodyMatrixSchema,
+                                        requestBodyMatrixSchema?.$ref
+                                            ? getRefName(requestBodyMatrixSchema.$ref)
+                                            : requestBodyMatrixSchema?.title || null,
                                     )}
                                 </div>
                                 <div className="border-t border-[var(--border)] pt-2">

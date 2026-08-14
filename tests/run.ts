@@ -96,7 +96,8 @@ import {
 } from '@/src/utils/runnerResponse';
 import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
 import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
-import {flattenSchemaProperties} from '@/src/utils/schemaProperties';
+import {flattenSchemaProperties, schemaVariantLabel} from '@/src/utils/schemaProperties';
+import {runnerVariantIndexForValue, runnerVariantMatchesValue} from '@/src/utils/runner/recursiveBody';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -1515,5 +1516,46 @@ test('creates typed defaults for recursive object and array schemas', () => {
     const value: any = defaultBodyValue(schema, baseSpec);
     assert.equal(value.name, 'OpenDoc');
     assert.deepEqual(value.items, []);
+});
+test('renders oneOf request-matrix branches with referenced names and keeps the edited branch', () => {
+    const spec: any = {
+        openapi: '3.1.0',
+        info: {title: 'OneOf matrix', version: '1'},
+        paths: {},
+        components: {
+            schemas: {
+                NewCustomer: {
+                    type: 'object',
+                    required: ['name', 'surname'],
+                    properties: {name: {type: 'string'}, surname: {type: 'string'}},
+                },
+                ExistingCustomer: {
+                    type: 'object',
+                    required: ['id'],
+                    properties: {id: {type: 'string'}},
+                },
+            },
+        },
+    };
+    const customer = {
+        oneOf: [{$ref: '#/components/schemas/NewCustomer'}, {$ref: '#/components/schemas/ExistingCustomer'}],
+    };
+    const resolve = (item: any) => resolveReference(item, spec);
+    assert.equal(schemaVariantLabel(customer.oneOf[0], resolve, getRefName, 0), 'NewCustomer');
+    assert.equal(schemaVariantLabel(customer.oneOf[1], resolve, getRefName, 1), 'ExistingCustomer');
+    assert.equal(schemaVariantLabel({type: 'object', properties: {a: {}}}, resolve, getRefName, 2), 'object (1 props)');
+    assert.equal(schemaVariantLabel({type: 'string'}, resolve, getRefName, 3), 'string');
+    assert.equal(schemaVariantLabel({type: 'null'}, resolve, getRefName, 4), 'null');
+    assert.equal(schemaVariantLabel({const: 'active'}, resolve, getRefName, 5), '"active"');
+    // Creating a customer keeps the first branch, linking an existing one moves to the second.
+    assert.equal(runnerVariantIndexForValue(customer.oneOf, {name: '', surname: ''}, spec), 0);
+    assert.equal(runnerVariantIndexForValue(customer.oneOf, {id: '123'}, spec), 1);
+    assert.equal(runnerVariantMatchesValue(customer.oneOf[1], {id: '123'}, spec), true);
+    assert.equal(runnerVariantMatchesValue(customer.oneOf[0], {id: '123'}, spec), false);
+    // anyOf string/null unions: empty string stays on string, null selects the null branch.
+    const nullable = {anyOf: [{type: 'string'}, {type: 'null'}]};
+    assert.equal(runnerVariantIndexForValue(nullable.anyOf, '', spec), 0);
+    assert.equal(runnerVariantIndexForValue(nullable.anyOf, null, spec), -1);
+    assert.equal(defaultBodyValue({type: 'null'}, spec), null);
 });
 console.log('All OpenDoc UI unit tests passed.');
