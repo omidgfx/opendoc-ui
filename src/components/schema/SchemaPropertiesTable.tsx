@@ -1,6 +1,7 @@
 import React from 'react';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
+import {RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
 
 interface SchemaPropertiesTableProps {
     properties: {
@@ -251,6 +252,7 @@ export default function SchemaPropertiesTable({
                                 pVal.anyOf ||
                                 pVal.oneOf;
                             const pattern = resolvePattern(pVal);
+                            const recursive = schemaIsRecursive(pVal, resolveReference);
                             return (
                                 <tr
                                     key={name}
@@ -271,6 +273,16 @@ export default function SchemaPropertiesTable({
                                     <td className="px-3 py-2.5 whitespace-nowrap">
                                         <div className="flex flex-col gap-1">
                                             <div>{renderSchemaType(pVal)}</div>
+                                            {recursive && (
+                                                <div className="mt-0.5">
+                                                    <Tip content="Recursive schema — reuses a schema from this branch; expansion stops at the first cycle.">
+                                                        <span className="inline-flex items-center gap-1 w-fit rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)] select-none">
+                                                            <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px]`} />
+                                                            recursive
+                                                        </span>
+                                                    </Tip>
+                                                </div>
+                                            )}
                                             {pVal.format && (
                                                 <div className="text-[10px] font-mono flex items-center gap-1">
                                                     <span>format:</span>
@@ -305,7 +317,12 @@ export default function SchemaPropertiesTable({
                                                         onClick={() => onViewExample(name, pVal)}
                                                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0"
                                                     >
-                                                        <i className="ph ph-dna text-[9px]"></i> View Example
+                                                        {recursive ? (
+                                                            <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px]`} />
+                                                        ) : (
+                                                            <i className="ph ph-dna text-[9px]"></i>
+                                                        )}{' '}
+                                                        View Example
                                                     </button>
                                                 </Tip>
                                             )}

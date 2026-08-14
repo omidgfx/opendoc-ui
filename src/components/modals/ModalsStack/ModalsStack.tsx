@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import CodeViewer from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
+import {RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../../utils/schemaProperties';
 import Markdown from '../../common/Markdown';
 import PatternTesterModal from '../PatternTesterModal';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -351,6 +352,7 @@ export default function ModalsStack({
         }));
     };
     const properties = traverseSchemaProperties(activeSchemaObj.schema);
+    const schemaIsRecursiveView = schemaIsRecursive(activeSchemaObj.schema, resolveReference);
     return (
         <>
             <div
@@ -493,6 +495,15 @@ export default function ModalsStack({
                             </div>
                         ) : activeTab === 'example' ? (
                             <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
+                                {schemaIsRecursiveView && (
+                                    <div className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                        <i className={`${RECURSIVE_SCHEMA_ICON} mt-0.5 shrink-0 text-[12px]`} />
+                                        <span>
+                                            This schema references itself recursively. The example is generated from the
+                                            guarded view — nested self-references stop at the first cycle.
+                                        </span>
+                                    </div>
+                                )}
                                 <CodeViewer
                                     code={formatSimulationExample(
                                         activeSchemaObj.schema,
