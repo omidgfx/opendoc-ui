@@ -69,11 +69,14 @@ import {
     MAX_NOTE_CONTENT_CHARS,
     MAX_NOTE_TITLE_CHARS,
     MAX_NOTES_PER_ENDPOINT,
+    buildEndpointNotesExport,
+    classifyEndpointNotesBySpec,
     endpointHasNoteCapacity,
     endpointNoteKey,
     normalizeStoredEndpointNote,
     noteCharacterCount,
     endpointNoteTitle,
+    parseEndpointNotesExport,
 } from '@/src/utils/endpointNotes';
 import {
     buildDownloaderUrl,
@@ -1557,5 +1560,59 @@ test('renders oneOf request-matrix branches with referenced names and keeps the 
     assert.equal(runnerVariantIndexForValue(nullable.anyOf, '', spec), 0);
     assert.equal(runnerVariantIndexForValue(nullable.anyOf, null, spec), -1);
     assert.equal(defaultBodyValue({type: 'null'}, spec), null);
+});
+
+test('exports and imports all notes with orphan detection', () => {
+    const spec: any = {
+        openapi: '3.0.3',
+        info: {title: 'Notes spec', version: '1'},
+        paths: {
+            '/items': {get: {responses: {'200': {description: 'ok'}}}},
+        },
+    };
+    const kept = createEndpointNote({
+        path: '/items',
+        method: 'GET',
+        type: 'note',
+        title: 'List items',
+        content: '',
+        color: 'blue',
+        autoHideWhenTodosDone: false,
+    });
+    const orphan = createEndpointNote({
+        path: '/removed',
+        method: 'DELETE',
+        type: 'todo',
+        title: 'Cleanup',
+        content: '',
+        color: 'rose',
+        autoHideWhenTodosDone: false,
+    });
+    const classified = classifyEndpointNotesBySpec(spec, [kept, orphan]);
+    assert.deepEqual(
+        classified.matching.map(note => note.id),
+        [kept.id],
+    );
+    assert.deepEqual(
+        classified.orphaned.map(note => note.id),
+        [orphan.id],
+    );
+
+    const serialized = buildEndpointNotesExport({
+        specKey: 'local:notes.json:abc',
+        specTitle: 'Notes spec',
+        notes: [kept, orphan],
+        orphanedNoteIds: [orphan.id],
+    });
+    const parsed = parseEndpointNotesExport(serialized);
+    assert.ok(parsed);
+    assert.equal(parsed!.source.specKey, 'local:notes.json:abc');
+    assert.equal(parsed!.notes.length, 2);
+    assert.deepEqual(parsed!.orphanedNoteIds, [orphan.id]);
+    assert.equal(parsed!.notes[0].id, kept.id);
+    assert.equal(parsed!.notes[1].id, orphan.id);
+    assert.equal(parseEndpointNotesExport('{broken json'), null);
+    assert.equal(parseEndpointNotesExport(JSON.stringify({format: 'other-format', notes: []})), null);
+    assert.equal(parseEndpointNotesExport(JSON.stringify({format: 'opendoc-endpoint-notes', notes: 'nope'})), null);
 });
 console.log('All OpenDoc UI unit tests passed.');
