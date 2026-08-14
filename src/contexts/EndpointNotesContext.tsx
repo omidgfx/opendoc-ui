@@ -1,6 +1,7 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
-import type {EndpointNote, EndpointNoteDraft} from '../types';
+import type {EndpointNote, EndpointNoteDraft, OpenApiSpec} from '../types';
 import {
+    classifyEndpointNotesBySpec,
     createEndpointNote,
     endpointHasNoteCapacity,
     endpointNoteKey,
@@ -27,6 +28,8 @@ export type EndpointNotesModalTarget =
 interface EndpointNotesContextValue {
     specKey: string;
     notes: EndpointNote[];
+    activeNotes: EndpointNote[];
+    orphanedNotes: EndpointNote[];
     trashedNotes: EndpointNote[];
     hiddenEndpointKeys: string[];
     modalStack: EndpointNotesModalTarget[];
@@ -65,6 +68,8 @@ const asyncNoop = async () => undefined;
 const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     specKey: '',
     notes: [],
+    activeNotes: [],
+    orphanedNotes: [],
     trashedNotes: [],
     hiddenEndpointKeys: [],
     modalStack: [],
@@ -98,7 +103,15 @@ const EndpointNotesContext = createContext<EndpointNotesContextValue>({
     closeAllNotesModals: noop,
 });
 
-export function EndpointNotesProvider({specKey, children}: {specKey: string; children: ReactNode}) {
+export function EndpointNotesProvider({
+    specKey,
+    spec,
+    children,
+}: {
+    specKey: string;
+    spec: OpenApiSpec | null;
+    children: ReactNode;
+}) {
     const [notes, setNotes] = useState<EndpointNote[]>(() => readEndpointNotes(specKey));
     const [trashedNotes, setTrashedNotes] = useState<EndpointNote[]>(() => readTrashedNotes(specKey));
     const [hiddenEndpointKeys, setHiddenEndpointKeys] = useState<string[]>(() => readHiddenEndpoints(specKey));
@@ -111,6 +124,9 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         setModalStack([]);
         setPendingTodoCompletionId(null);
     }, [specKey]);
+    const classified = useMemo(() => classifyEndpointNotesBySpec(spec, notes), [spec, notes]);
+    const activeNotes = classified.matching;
+    const orphanedNotes = classified.orphaned;
     const commitNotes = useCallback(
         (updater: (current: EndpointNote[]) => EndpointNote[]) => {
             setNotes(current => {
@@ -223,9 +239,14 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
     const deleteNote = useCallback(
         async (noteId: string) => {
             const note = notes.find(item => item.id === noteId);
-            if (note) trashNoteInto(note);
+            if (!note) return;
+            if (orphanedNotes.some(item => item.id === noteId)) {
+                commitNotes(current => current.filter(item => item.id !== noteId));
+                return;
+            }
+            trashNoteInto(note);
         },
-        [notes, trashNoteInto],
+        [notes, orphanedNotes, trashNoteInto, commitNotes],
     );
     const deleteEndpointNotes = useCallback(
         async (path: string, method: string) => {
@@ -239,12 +260,12 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [notes, commitNotes, commitTrashed],
     );
     const deleteAllNotes = useCallback(async () => {
-        const removed = notes;
-        commitNotes(() => []);
+        const removed = activeNotes;
+        commitNotes(current => current.filter(note => !removed.some(item => item.id === note.id)));
         removed.forEach(note =>
             commitTrashed(current => (current.some(item => item.id === note.id) ? current : [note, ...current])),
         );
-    }, [notes, commitNotes, commitTrashed]);
+    }, [activeNotes, commitNotes, commitTrashed]);
     const deleteOrphaned = useCallback(
         (noteId: string) => commitNotes(current => current.filter(note => note.id !== noteId)),
         [commitNotes],
@@ -374,6 +395,8 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         () => ({
             specKey,
             notes,
+            activeNotes,
+            orphanedNotes,
             trashedNotes,
             hiddenEndpointKeys,
             modalStack,
@@ -409,6 +432,8 @@ export function EndpointNotesProvider({specKey, children}: {specKey: string; chi
         [
             specKey,
             notes,
+            activeNotes,
+            orphanedNotes,
             trashedNotes,
             hiddenEndpointKeys,
             modalStack,

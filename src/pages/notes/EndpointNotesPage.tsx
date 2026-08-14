@@ -29,6 +29,8 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     const {
         specKey,
         notes,
+        activeNotes,
+        orphanedNotes,
         trashedNotes,
         openCreateNote,
         openNote,
@@ -57,10 +59,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
     } | null>(null);
     const [importError, setImportError] = useState('');
     const importInputRef = useRef<HTMLInputElement | null>(null);
-    const classifiedNotes = useMemo(() => classifyEndpointNotesBySpec(spec, notes), [spec, notes]);
-    const orphanedNotes = classifiedNotes.orphaned;
-    const filteredNotes = notes.filter(note => {
-        if (!getOperation(spec, note.path, note.method)) return false;
+    const filteredNotes = activeNotes.filter(note => {
         if (filter === 'note' && note.type !== 'note') return false;
         if (filter === 'todo' && note.type !== 'todo') return false;
         if (filter === 'open' && (note.type !== 'todo' || note.done)) return false;
@@ -84,7 +83,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             return rightUpdated - leftUpdated;
         });
     }, [filteredNotes, notes]);
-    const todos = notes.filter(note => note.type === 'todo');
+    const todos = activeNotes.filter(note => note.type === 'todo');
     const openTodos = todos.filter(note => !note.done).length;
     const downloadNotesExport = () => {
         const {orphaned} = classifyEndpointNotesBySpec(spec, notes);
@@ -149,48 +148,92 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                                 </p>
                             </div>
                         </div>
+                    </div>
+                    <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[#f59e0b] opacity-[0.045]" />
+                    <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
                         <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                aria-label="New note"
+                                onClick={() => openCreateNote()}
+                                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
+                            >
+                                <i className="ph-fill ph-note text-[15px]" />
+                                New note
+                            </button>
+                            <Tip content="Import local notes from a JSON export">
+                                <button
+                                    type="button"
+                                    aria-label="Import local notes"
+                                    onClick={() => importInputRef.current?.click()}
+                                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[11px] font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                                >
+                                    <i className="ph ph-upload-simple text-[14px]" />
+                                    Import
+                                </button>
+                            </Tip>
                             <Tip content="Export all local notes as JSON">
                                 <button
                                     type="button"
                                     aria-label="Export local notes"
                                     disabled={notes.length === 0}
                                     onClick={handleExportNotes}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-4 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[11px] font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                                 >
-                                    <i className="ph ph-download-simple text-[15px]" />
+                                    <i className="ph ph-download-simple text-[14px]" />
                                     Export
                                 </button>
                             </Tip>
-                            <Tip content="Import local notes from a JSON export">
-                                <button
-                                    type="button"
-                                    aria-label="Import local notes"
-                                    onClick={() => importInputRef.current?.click()}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-4 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
-                                >
-                                    <i className="ph ph-upload-simple text-[15px]" />
-                                    Import
-                                </button>
-                            </Tip>
+                        </div>
+                        <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-[var(--border)] sm:block" />
+                        <div className="flex flex-wrap items-center gap-2">
                             <button
                                 type="button"
-                                aria-label="New note"
-                                onClick={() => openCreateNote()}
-                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-contrast)] transition-colors hover:brightness-110 cursor-pointer"
+                                aria-label="Open orphaned notes"
+                                onClick={() => setShowOrphanedModal(true)}
+                                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--method-put)]/25 bg-[var(--method-put)]/5 px-3.5 text-[11px] font-bold text-[var(--method-put)] transition-colors hover:bg-[var(--method-put)]/10 cursor-pointer"
                             >
-                                <i className="ph-fill ph-note text-[15px]" />
-                                New note
+                                <i className="ph ph-broken-heart text-[13px]" />
+                                Orphaned
+                                {orphanedNotes.length > 0 && (
+                                    <span className="rounded-full bg-[var(--method-put)]/15 px-1.5 py-0.5 font-mono text-[9px]">
+                                        {orphanedNotes.length}
+                                    </span>
+                                )}
                             </button>
+                            <button
+                                type="button"
+                                aria-label="Open trash"
+                                onClick={() => setShowTrashModal(true)}
+                                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[11px] font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                            >
+                                <i className="ph ph-trash text-[13px]" />
+                                Trash
+                                {trashedNotes.length > 0 && (
+                                    <span className="rounded-full bg-[var(--text-muted)]/10 px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-muted)]">
+                                        {trashedNotes.length}
+                                    </span>
+                                )}
+                            </button>
+                            {activeNotes.length > 0 && (
+                                <button
+                                    type="button"
+                                    aria-label="Move all notes to trash"
+                                    onClick={() => setConfirmDeleteAll(true)}
+                                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/5 px-3.5 text-[11px] font-bold text-[var(--method-delete)] transition-colors hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                                >
+                                    <i className="ph ph-trash-simple text-[13px]" />
+                                    Move all to trash
+                                </button>
+                            )}
                         </div>
                     </div>
-                    <i className="ph-fill ph-note pointer-events-none absolute -bottom-10 right-4 text-[150px] text-[#f59e0b] opacity-[0.045]" />
                 </header>
 
                 <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
-                        ['All notes', notes.length, 'ph-fill ph-note', '#f59e0b'],
-                        ['Simple notes', notes.length - todos.length, 'ph-fill ph-note', '#f59e0b'],
+                        ['All notes', activeNotes.length, 'ph-fill ph-note', '#f59e0b'],
+                        ['Simple notes', activeNotes.length - todos.length, 'ph-fill ph-note', '#f59e0b'],
                         ['Todos', todos.length, 'ph-fill ph-check-square', 'var(--method-put)'],
                         ['Open todos', openTodos, 'ph ph-circle-dashed', 'var(--method-delete)'],
                     ].map(([label, value, icon, color]) => (
@@ -232,34 +275,6 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                         ]}
                         className="w-full sm:w-48"
                     />
-                    <button
-                        type="button"
-                        aria-label="Open orphaned notes"
-                        onClick={() => setShowOrphanedModal(true)}
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-[var(--method-put)] hover:bg-[var(--method-put)]/10 cursor-pointer"
-                    >
-                        <i className="ph ph-broken-heart text-[12px]" />
-                        Orphaned{orphanedNotes.length > 0 ? ` (${orphanedNotes.length})` : ''}
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Open trash"
-                        onClick={() => setShowTrashModal(true)}
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-[var(--text-muted)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                    >
-                        <i className="ph ph-trash text-[12px]" />
-                        Trash{trashedNotes.length > 0 ? ` (${trashedNotes.length})` : ''}
-                    </button>
-                    {notes.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => setConfirmDeleteAll(true)}
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
-                        >
-                            <i className="ph ph-trash text-[12px]" />
-                            Delete all
-                        </button>
-                    )}
                 </div>
 
                 {groups.length > 0 ? (
@@ -421,7 +436,7 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
                     <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
                         <i className="ph-fill ph-note text-4xl text-[#f59e0b]/45" />
                         <h2 className="mt-3 text-sm font-extrabold text-[var(--text-heading)]">
-                            {notes.length === 0 ? 'No local notes yet' : 'No notes match these filters'}
+                            {activeNotes.length === 0 ? 'No local notes yet' : 'No notes match these filters'}
                         </h2>
                         <p className="mt-1 text-[10px] text-[var(--text-muted)]">
                             {notes.length === 0
@@ -446,8 +461,8 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             )}
             <ConfirmModal
                 isOpen={confirmDeleteAll}
-                title="Move every local note to trash?"
-                message={`All ${notes.length} notes and todos saved for this specification will be moved to the trash. You can restore them from the Trash modal.`}
+                title="Move every note to trash?"
+                message={`All ${activeNotes.length} notes and todos saved for this specification will be moved to the trash. Orphaned notes are kept untouched. You can restore notes from the Trash modal.`}
                 confirmLabel="Move to trash"
                 destructive
                 onConfirm={async () => {
@@ -496,7 +511,6 @@ export default function EndpointNotesPage({spec, onSelectEndpoint}: EndpointNote
             {showOrphanedModal && (
                 <OrphanedNotesModal
                     spec={spec}
-                    specKey={specKey}
                     notes={orphanedNotes}
                     onReassign={reassignNote}
                     onDeleteForever={deleteOrphaned}

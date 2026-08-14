@@ -775,12 +775,10 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
         .click();
     await expect(page.getByText('Reference note', {exact: true})).toHaveCount(0);
 
-    await sidebar.getByRole('button', {name: /Local Notes/}).click({button: 'right'});
-    const deleteAllNotesAction = page.getByRole('button', {name: /Move all notes to trash/});
-    await expect(deleteAllNotesAction).toContainText('1');
-    await deleteAllNotesAction.click();
+    await sidebar.getByRole('button', {name: /Local Notes/}).click();
+    await page.getByRole('button', {name: 'Move all notes to trash'}).click();
     await page
-        .getByRole('dialog', {name: 'Move every local note to trash?'})
+        .getByRole('dialog', {name: 'Move every note to trash?'})
         .getByRole('button', {name: 'Move to trash'})
         .click();
     await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
@@ -827,6 +825,7 @@ test('moves notes to the trash, restores them, and re-assigns imported orphaned 
     const trashDialog = page.getByRole('dialog', {name: 'Trash'});
     await expect(trashDialog.getByText('Trash me', {exact: true})).toBeVisible();
     await trashDialog.getByRole('button', {name: /Restore Trash me/}).click();
+    await page.getByRole('dialog', {name: 'Restore this note?'}).getByRole('button', {name: 'Restore note'}).click();
     await expect(trashDialog.getByText('Trash is empty', {exact: true})).toBeVisible();
     await trashDialog.getByRole('button', {name: 'Done'}).click();
     await expect(page.getByText('Trash me', {exact: true})).toBeVisible();
@@ -847,6 +846,10 @@ test('moves notes to the trash, restores them, and re-assigns imported orphaned 
     await page
         .getByRole('dialog', {name: 'Trash'})
         .getByRole('button', {name: /Delete Trash me permanently/})
+        .click();
+    await page
+        .getByRole('dialog', {name: 'Delete this note permanently?'})
+        .getByRole('button', {name: 'Delete permanently'})
         .click();
     await expect(page.getByRole('dialog', {name: 'Trash'}).getByText('Trash is empty', {exact: true})).toBeVisible();
     await page.getByRole('dialog', {name: 'Trash'}).getByRole('button', {name: 'Done'}).click();
@@ -899,6 +902,84 @@ test('moves notes to the trash, restores them, and re-assigns imported orphaned 
     await orphanedDialog.getByRole('button', {name: 'Done'}).click();
     await expect(orphanedButton).toContainText('Orphaned');
     await expect(page.getByText('Imported orphan', {exact: true})).toBeVisible();
+});
+
+test('keeps orphaned notes out of the bulk trash action and confirms their permanent delete', async ({page}) => {
+    test.setTimeout(90_000);
+    await loadSpecification(page);
+    const sidebar = page.locator('[data-opendoc-sidebar]');
+    const endpoint = sidebar.getByText('Send permissive validation request', {exact: true});
+
+    // create one real note and import one orphaned note
+    await endpoint.click({button: 'right'});
+    await page.getByRole('button', {name: 'Create local note'}).click();
+    await page.getByPlaceholder('Short note title').fill('Keep me');
+    await page.getByRole('button', {name: 'Create note', exact: true}).click();
+
+    const now = Date.now();
+    const orphanNote = {
+        id: 'orphan-bulk-1',
+        path: '/gone',
+        method: 'get',
+        type: 'note',
+        title: 'Orphan survivor',
+        content: '',
+        color: 'rose',
+        done: false,
+        autoHideWhenTodosDone: false,
+        createdAt: now,
+        updatedAt: now,
+    };
+    const importFile = {
+        format: 'opendoc-endpoint-notes',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        source: {specKey: 'local:elsewhere.json:xyz', specTitle: 'Elsewhere API'},
+        orphanedNoteIds: [orphanNote.id],
+        notes: [orphanNote],
+    };
+    await sidebar.getByRole('button', {name: /Local Notes/}).click();
+    await page.getByRole('button', {name: 'Import local notes'}).click();
+    await page.locator('input[accept="application/json,.json"]').setInputFiles({
+        name: 'notes-export.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(importFile)),
+    });
+    const importDialog = page.getByRole('dialog', {name: 'Import local notes'});
+    await importDialog.getByRole('button', {name: /Import 1 note/}).click();
+    await importDialog.getByRole('button', {name: 'Done'}).click();
+
+    const orphanedButton = page.getByRole('button', {name: 'Open orphaned notes'});
+    await expect(orphanedButton).toContainText('1');
+
+    // move all ACTIVE notes to trash; orphaned must survive untouched
+    await page.getByRole('button', {name: 'Move all notes to trash'}).click();
+    await page
+        .getByRole('dialog', {name: 'Move every note to trash?'})
+        .getByRole('button', {name: 'Move to trash'})
+        .click();
+    await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
+    await expect(orphanedButton).toContainText('1');
+
+    // trash has only the active note, orphaned list still has the survivor
+    await page.getByRole('button', {name: 'Open trash'}).click();
+    const trashDialog = page.getByRole('dialog', {name: 'Trash'});
+    await expect(trashDialog.getByText('Keep me', {exact: true})).toBeVisible();
+    await expect(trashDialog.getByText('Orphan survivor', {exact: true})).toHaveCount(0);
+    await trashDialog.getByRole('button', {name: 'Done'}).click();
+
+    await orphanedButton.click();
+    const orphanedDialog = page.getByRole('dialog', {name: 'Orphaned notes'});
+    await expect(orphanedDialog.getByText('Orphan survivor', {exact: true})).toBeVisible();
+    await orphanedDialog.getByRole('button', {name: /Delete Orphan survivor permanently/}).click();
+    await page
+        .getByRole('dialog', {name: 'Delete this note permanently?'})
+        .getByRole('button', {name: 'Delete permanently'})
+        .click();
+    await expect(orphanedDialog.getByText('No orphaned notes', {exact: true})).toBeVisible();
+    await orphanedDialog.getByRole('button', {name: 'Done'}).click();
+    await expect(orphanedButton).toContainText('Orphaned');
+    await expect(page.getByText('Orphan survivor', {exact: true})).toHaveCount(0);
 });
 
 test('keeps endpoint context menus inside the available viewport', async ({page}) => {
@@ -1215,7 +1296,7 @@ test('pushes workspace navigation and restores every view with browser Back and 
     await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
     await expect(page).toHaveURL(/\/compatibility$/);
 
-    await page.getByRole('button', {name: 'Back to Overview'}).click();
+    await page.locator('[data-nav-view="view:home"]').click();
     await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/compatibility$/);

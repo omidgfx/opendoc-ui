@@ -1113,7 +1113,7 @@ export default function App() {
     };
     return (
         <TooltipProvider>
-            <EndpointNotesProvider specKey={selectedParsableKey}>
+            <EndpointNotesProvider specKey={selectedParsableKey} spec={spec}>
                 <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
                     <div
                         style={styleVars}
