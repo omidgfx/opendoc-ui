@@ -24,7 +24,8 @@ export default function TrashNotesModal({
 }: TrashNotesModalProps) {
     const {pendingTodoCompletionId} = useEndpointNotes();
     const [confirmEmpty, setConfirmEmpty] = useState(false);
-    useEscClose(true, onClose, !pendingTodoCompletionId && !confirmEmpty);
+    const [confirmTarget, setConfirmTarget] = useState<{kind: 'restore' | 'delete'; note: EndpointNote} | null>(null);
+    useEscClose(true, onClose, !pendingTodoCompletionId && !confirmEmpty && !confirmTarget);
     const body: ReactNode =
         notes.length > 0 ? (
             <div className="space-y-2">
@@ -60,7 +61,7 @@ export default function TrashNotesModal({
                                     <button
                                         type="button"
                                         aria-label={`Restore ${endpointNoteTitle(note)}`}
-                                        onClick={() => onRestore(note.id)}
+                                        onClick={() => setConfirmTarget({kind: 'restore', note})}
                                         className="inline-flex h-7 items-center gap-1 rounded-lg bg-[var(--method-get)]/10 px-2 text-[9px] font-bold text-[var(--method-get)] hover:bg-[var(--method-get)]/20 cursor-pointer"
                                     >
                                         <i className="ph ph-arrow-counter-clockwise text-[10px]" />
@@ -71,7 +72,7 @@ export default function TrashNotesModal({
                                     <button
                                         type="button"
                                         aria-label={`Delete ${endpointNoteTitle(note)} permanently`}
-                                        onClick={() => onDeleteForever(note.id)}
+                                        onClick={() => setConfirmTarget({kind: 'delete', note})}
                                         className="inline-flex h-7 items-center gap-1 rounded-lg bg-[var(--method-delete)]/10 px-2 text-[9px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/20 cursor-pointer"
                                     >
                                         <i className="ph ph-trash text-[10px]" />
@@ -164,6 +165,26 @@ export default function TrashNotesModal({
                     onClose();
                 }}
                 onClose={() => setConfirmEmpty(false)}
+            />
+            <ConfirmModal
+                isOpen={confirmTarget !== null}
+                title={confirmTarget?.kind === 'restore' ? 'Restore this note?' : 'Delete this note permanently?'}
+                message={
+                    confirmTarget
+                        ? confirmTarget.kind === 'restore'
+                            ? `“${endpointNoteTitle(confirmTarget.note)}” will be moved back to ${confirmTarget.note.method.toUpperCase()} ${confirmTarget.note.path}.`
+                            : `“${endpointNoteTitle(confirmTarget.note)}” will be permanently removed and cannot be restored.`
+                        : ''
+                }
+                confirmLabel={confirmTarget?.kind === 'restore' ? 'Restore note' : 'Delete permanently'}
+                destructive={confirmTarget?.kind === 'delete'}
+                onConfirm={async () => {
+                    if (!confirmTarget) return;
+                    if (confirmTarget.kind === 'restore') onRestore(confirmTarget.note.id);
+                    else onDeleteForever(confirmTarget.note.id);
+                    setConfirmTarget(null);
+                }}
+                onClose={() => setConfirmTarget(null)}
             />
         </>
     );

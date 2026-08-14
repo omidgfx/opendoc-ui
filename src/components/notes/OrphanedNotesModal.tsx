@@ -3,13 +3,13 @@ import type {EndpointNote, OpenApiSpec} from '../../types';
 import {endpointNoteColor, endpointNoteTitle} from '../../utils/endpointNotes';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import {useEscClose} from '../../hooks/useEscClose';
+import ConfirmModal from '../common/ConfirmModal';
 import MethodBadge from '../common/MethodBadge';
-import NoteEndpointPicker from './NoteEndpointPicker';
+import ReassignEndpointPicker from './ReassignEndpointPicker';
 import {Tip} from '../common/Tooltip';
 
 interface OrphanedNotesModalProps {
     spec: OpenApiSpec;
-    specKey: string;
     notes: EndpointNote[];
     onReassign: (noteId: string, path: string, method: string) => void;
     onDeleteForever: (noteId: string) => void;
@@ -18,7 +18,6 @@ interface OrphanedNotesModalProps {
 
 export default function OrphanedNotesModal({
     spec,
-    specKey,
     notes,
     onReassign,
     onDeleteForever,
@@ -26,7 +25,8 @@ export default function OrphanedNotesModal({
 }: OrphanedNotesModalProps) {
     const {pendingTodoCompletionId} = useEndpointNotes();
     const [reassigningId, setReassigningId] = useState<string | null>(null);
-    useEscClose(true, onClose, !pendingTodoCompletionId);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    useEscClose(true, onClose, !pendingTodoCompletionId && !confirmDeleteId);
     const body: ReactNode =
         notes.length > 0 ? (
             <div className="space-y-2">
@@ -81,7 +81,7 @@ export default function OrphanedNotesModal({
                                         <button
                                             type="button"
                                             aria-label={`Delete ${endpointNoteTitle(note)} permanently`}
-                                            onClick={() => onDeleteForever(note.id)}
+                                            onClick={() => setConfirmDeleteId(note.id)}
                                             className="inline-flex h-7 items-center gap-1 rounded-lg bg-[var(--method-delete)]/10 px-2 text-[9px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/20 cursor-pointer"
                                         >
                                             <i className="ph ph-trash text-[10px]" />
@@ -95,14 +95,13 @@ export default function OrphanedNotesModal({
                                     <p className="mb-2 text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                         Pick the endpoint this note belongs to
                                     </p>
-                                    <NoteEndpointPicker
+                                    <ReassignEndpointPicker
                                         spec={spec}
-                                        specKey={specKey}
-                                        selected={{path: note.path, method: note.method}}
                                         onSelect={(path, method) => {
                                             onReassign(note.id, path, method);
                                             setReassigningId(null);
                                         }}
+                                        onCancel={() => setReassigningId(null)}
                                     />
                                 </div>
                             )}
@@ -170,6 +169,22 @@ export default function OrphanedNotesModal({
                     </button>
                 </footer>
             </section>
+            <ConfirmModal
+                isOpen={confirmDeleteId !== null}
+                title="Delete this note permanently?"
+                message={
+                    confirmDeleteId
+                        ? `“${endpointNoteTitle(notes.find(note => note.id === confirmDeleteId) || ({} as EndpointNote))}” has no endpoint in this specification. It will be permanently removed and cannot be restored.`
+                        : ''
+                }
+                confirmLabel="Delete permanently"
+                destructive
+                onConfirm={async () => {
+                    if (confirmDeleteId) onDeleteForever(confirmDeleteId);
+                    setConfirmDeleteId(null);
+                }}
+                onClose={() => setConfirmDeleteId(null)}
+            />
         </div>
     );
 }
