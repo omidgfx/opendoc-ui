@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "prettier --check . && tsc --noEmit && node scripts/verify-ui-contracts.mjs",
+    "make": "node scripts/builder-cli.mjs",
     "test": "tsx tests/run.ts && tsx tests/serialization-matrix.ts && tsx tests/swagger2-matrix.ts && tsx tests/async.ts && tsx tests/conformance.ts",
     "test:browser": "playwright test",
     "test:all": "npm run lint && npm test && npm run test:browser && npm run build"
