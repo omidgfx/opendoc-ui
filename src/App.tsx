@@ -1199,6 +1199,7 @@ export default function App() {
                                         onOpenNotes={handleOpenNotes}
                                         showNotes={showNotes}
                                         showCompatibility={showCompatibility}
+                                        onOpenCompatibility={handleOpenCompatibility}
                                         selectedMethods={selectedMethods}
                                         setSelectedMethods={setSelectedMethods}
                                         selectedTags={selectedTags}

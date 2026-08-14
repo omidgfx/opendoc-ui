@@ -1248,7 +1248,8 @@ test('reports specification-wide Runner compatibility and undeclared binary unce
     await expect(page).toHaveURL(/\/compatibility$/);
     await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
     await expect(page.locator('[data-compatibility-statistics]')).toBeVisible();
-    await expect(page.locator('[data-nav-view="view:home"]')).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-nav-view="view:compatibility"]')).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-nav-view="view:home"]')).not.toHaveAttribute('aria-current', 'page');
     const matrix = page.getByRole('table');
     await expect(matrix.getByRole('row')).toHaveCount(7);
     await expect(matrix.getByRole('columnheader').first()).toHaveText('#');

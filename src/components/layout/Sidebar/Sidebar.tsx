@@ -42,6 +42,7 @@ export default function Sidebar(props: SidebarProps) {
         onOpenNotes,
         showNotes,
         showCompatibility,
+        onOpenCompatibility,
         selectedMethods,
         selectedTags,
         onlyProtected,
@@ -562,7 +563,7 @@ export default function Sidebar(props: SidebarProps) {
         return () => clearTimeout(t);
     }, [scrollIntent, setScrollIntent]);
     useSwipeEdgeOpen(isMobile && !mobileOpen, onOpenMobile);
-    const isOverview = (showHome || showCompatibility) && !showSchemaExplorer && !showAbout && !selectedEndpoint;
+    const isOverview = showHome && !showSchemaExplorer && !showAbout && !showCompatibility && !selectedEndpoint;
     const findEndpointAncestorPath = useMemo((): string[] | null => {
         if (!selectedEndpoint) return null;
         if (showHome || showSchemaExplorer || showAbout) return null;
@@ -628,10 +629,12 @@ export default function Sidebar(props: SidebarProps) {
                 isOverview={isOverview}
                 showSchemaExplorer={showSchemaExplorer}
                 showNotes={showNotes}
+                showCompatibility={showCompatibility}
                 showAbout={showAbout}
                 onOpenHome={onOpenHome}
                 onOpenSchemaExplorer={onOpenSchemaExplorer}
                 onOpenNotes={onOpenNotes}
+                onOpenCompatibility={onOpenCompatibility}
                 onOpenAbout={onOpenAbout}
             />
         );
@@ -643,10 +646,12 @@ export default function Sidebar(props: SidebarProps) {
             aboutActive={showAbout}
             schemasActive={showSchemaExplorer}
             notesActive={showNotes}
+            compatibilityActive={showCompatibility}
             onOpenHome={navTo(onOpenHome)}
             onOpenAbout={navTo(onOpenAbout)}
             onOpenSchemas={navTo(onOpenSchemaExplorer)}
             onOpenNotes={navTo(onOpenNotes)}
+            onOpenCompatibility={navTo(onOpenCompatibility)}
             onOpenPermanent={onOpenViewPermanent}
             onContextMenu={(event, view) =>
                 openContextMenu(event, {
