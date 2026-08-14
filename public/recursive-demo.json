@@ -1,0 +1,270 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Recursive Schema Demo",
+    "version": "1.0.0",
+    "description": "A tiny API built to show how OpenDoc UI guards recursive schemas. Category trees, cyclic customer/guest-role pairs, organization trees, and linked-list nodes all reference themselves. Every self-referencing schema is detected and marked with the loop icon in schema tables, example representations, and the Runner."
+  },
+  "servers": [
+    {
+      "url": "https://api.example.test/v1"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Customers"
+    },
+    {
+      "name": "Tree"
+    },
+    {
+      "name": "Nodes"
+    }
+  ],
+  "paths": {
+    "/categories": {
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Create category",
+        "operationId": "create-category",
+        "description": "Creates a category. The payload nests its own children, so a category can be created with a full subtree in one call.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Category"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers": {
+      "post": {
+        "tags": ["Customers"],
+        "summary": "Create customer",
+        "operationId": "create-customer",
+        "description": "Creates a customer together with its guest role. The customer and the role reference each other, so the schema graph is cyclic.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Customer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Customer created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org-tree": {
+      "get": {
+        "tags": ["Tree"],
+        "summary": "Read organization tree",
+        "operationId": "read-org-tree",
+        "description": "Returns the whole organization tree. Every node nests its own children.",
+        "responses": {
+          "200": {
+            "description": "Organization tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nodes/{nodeId}": {
+      "get": {
+        "tags": ["Nodes"],
+        "summary": "Read node",
+        "operationId": "read-node",
+        "description": "Reads a single node of a linked list. The next pointer chains back to the same schema.",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Node",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique category id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the category."
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Category"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional parent category. Null for root categories."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "description": "Direct child categories. Each child can nest its own children."
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "description": "Sorting weight, smaller first."
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "required": ["name", "role"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique customer id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name of the customer."
+          },
+          "role": {
+            "$ref": "#/components/schemas/GuestRole",
+            "description": "The guest role assigned to this customer."
+          }
+        }
+      },
+      "GuestRole": {
+        "type": "object",
+        "required": ["customer"],
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": ["basic", "premium"],
+            "description": "Membership level."
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer",
+            "description": "The customer that owns this role. Cycles back to Customer."
+          }
+        }
+      },
+      "TreeNode": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Name of the node."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            },
+            "description": "Child nodes. Each child nests its own children."
+          }
+        }
+      },
+      "Node": {
+        "type": "object",
+        "required": ["value"],
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "Payload of this node."
+          },
+          "next": {
+            "$ref": "#/components/schemas/Node",
+            "description": "Next node in the chain. Omit it to end the list."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Short problem title."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable details."
+          }
+        }
+      }
+    }
+  }
+}
