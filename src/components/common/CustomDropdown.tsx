@@ -39,6 +39,7 @@ export default function CustomDropdown({
     });
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    const openedAtRef = useRef(0);
     const listboxId = useId();
     const selectedIndex = Math.max(
         0,
@@ -65,6 +66,7 @@ export default function CustomDropdown({
     const open = (index = selectedIndex) => {
         updatePosition();
         setActiveIndex(Math.max(0, Math.min(options.length - 1, index)));
+        openedAtRef.current = Date.now();
         setIsOpen(true);
     };
     const close = (restoreFocus = false) => {
@@ -105,7 +107,10 @@ export default function CustomDropdown({
                 selectIndex(activeIndex);
             }
         };
-        const handleViewportChange = () => close(false);
+        const handleViewportChange = () => {
+            if (Date.now() - openedAtRef.current < 150) return;
+            close(false);
+        };
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('keydown', handleKeyDown, true);
         window.addEventListener('scroll', handleViewportChange, true);

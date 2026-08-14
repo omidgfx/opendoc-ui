@@ -6,6 +6,7 @@ import MethodBadge from '@/src/components/common/MethodBadge';
 import {Tip} from '@/src/components/common/Tooltip';
 import TreeExpander from './TreeExpander';
 import SearchHighlightedText from './SearchHighlightedText';
+import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 
 const GUIDE_X = 13;
 const ELBOW_W = 11;
@@ -67,6 +68,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
         onOpenPermanent: onMiddleClickEndpoint,
         onContextMenu: openContextMenu,
     } = props;
+    const {noteCountForEndpoint} = useEndpointNotes();
     const endpointHighlightQuery = [searchQuery.trim(), endpointFilterQuery.trim()].filter(Boolean).join(' ');
     const render = (node: TreeNode, nodePath: string) => {
         const collapsed = !!collapsedNodes[nodePath];
@@ -150,12 +152,16 @@ export default function SidebarTree(props: SidebarTreeProps) {
             <div key={nodePath} className="relative animate-in fade-in duration-150">
                 <button
                     onClick={() => toggleNode(nodePath)}
-                    className="w-full py-1 text-[11px] font-medium px-1 flex items-center gap-1.5 hover:bg-[var(--surface-hover)] rounded-md transition-colors cursor-pointer text-left focus:outline-none"
+                    className={clsx(
+                        'w-full py-1 text-[11px] font-medium px-1 flex items-center gap-1.5 hover:bg-[var(--surface-hover)] rounded-md transition-colors cursor-pointer text-left focus:outline-none',
+                        node.isHiddenGroup && 'text-[var(--text-muted)] opacity-75 grayscale',
+                    )}
                 >
                     <TreeExpander collapsed={collapsed} active={isAncestor} />
                     <i
                         className={clsx(
-                            'text-[16px] shrink-0 text-[var(--method-put)]',
+                            'text-[16px] shrink-0',
+                            node.isHiddenGroup ? 'text-[var(--text-muted)]' : 'text-[var(--method-put)]',
                             collapsed ? 'ph-fill ph-folder-simple' : 'ph-fill ph-folder-open',
                         )}
                     />
@@ -190,6 +196,7 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                         endpoint.method.toLowerCase() === ep.method.toLowerCase(),
                                 );
                             const summary = ep.operation?.summary || ep.path;
+                            const noteCount = noteCountForEndpoint(ep.path, ep.method);
                             return (
                                 <div key={row.key} className="relative">
                                     {renderGuides(idx, row.onPath, row.kind)}
@@ -253,7 +260,9 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                 'flex items-center w-full py-1.5 font-medium ps-2 pe-2 rounded-lg text-left transition-all cursor-pointer select-none min-w-0',
                                                 isSelected
                                                     ? 'bg-[var(--primary)]/90 text-[var(--primary-contrast)]'
-                                                    : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                                    : ep.isHidden
+                                                      ? 'bg-[var(--text-muted)]/5 text-[var(--text-muted)] opacity-70 grayscale hover:bg-[var(--surface-hover)]'
+                                                      : 'bg-transparent text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                             )}
                                         >
                                             <div className="flex items-center gap-1.5 min-w-0 w-full">
@@ -308,6 +317,23 @@ export default function SidebarTree(props: SidebarTreeProps) {
                                                         </span>
                                                     )}
                                                 </div>
+                                                {noteCount > 0 && (
+                                                    <Tip
+                                                        content={`${noteCount} local note${noteCount === 1 ? '' : 's'}`}
+                                                    >
+                                                        <span
+                                                            className={clsx(
+                                                                'relative flex size-4 shrink-0 items-center justify-center rounded-md',
+                                                                isSelected
+                                                                    ? 'bg-[var(--primary-contrast)]/20 text-[var(--primary-contrast)]'
+                                                                    : 'bg-[var(--primary)]/10 text-[var(--primary)]',
+                                                            )}
+                                                            aria-label={`${noteCount} local notes`}
+                                                        >
+                                                            <i className="ph-fill ph-note-pencil text-[10px]" />
+                                                        </span>
+                                                    </Tip>
+                                                )}
                                                 {ep.operation?.deprecated && (
                                                     <Tip content="Deprecated endpoint">
                                                         <i

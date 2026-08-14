@@ -50,6 +50,8 @@ interface UseWorkspaceRoutingOptions {
     setShowAssistant: Dispatch<SetStateAction<boolean>>;
     showSchemaExplorer: boolean;
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
+    showNotes: boolean;
+    setShowNotes: Dispatch<SetStateAction<boolean>>;
     showCompatibility: boolean;
     setShowCompatibility: Dispatch<SetStateAction<boolean>>;
     selectedEndpoint: Endpoint | null;
@@ -123,6 +125,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowAssistant,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showNotes,
+        setShowNotes,
         showCompatibility,
         setShowCompatibility,
         selectedEndpoint,
@@ -166,6 +170,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowWelcome(false);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowNotes(false);
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
@@ -202,6 +207,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
+        setShowNotes(parsed.showNotes);
         setShowCompatibility(parsed.showCompatibility);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
@@ -211,6 +217,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 openEndpointPermanent(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowNotes(false);
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
@@ -232,6 +239,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
+                showNotes: parsed.showNotes,
                 showCompatibility: parsed.showCompatibility,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
@@ -254,6 +262,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowWelcome,
         setShowHome,
         setShowSchemaExplorer,
+        setShowNotes,
         setShowCompatibility,
         setShowAbout,
         setShowAssistant,
@@ -295,6 +304,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             showAbout,
             showAssistant,
             showSchemaExplorer,
+            showNotes,
             showCompatibility,
             endpoint: selectedEndpoint,
             tab: selectedViewMode,
@@ -338,6 +348,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showAbout,
         showAssistant,
         showSchemaExplorer,
+        showNotes,
         showCompatibility,
         selectedEndpoint,
         selectedViewMode,
@@ -369,6 +380,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected(parsed.searchSecured ?? null);
         setShowHome(parsed.showHome);
         setShowSchemaExplorer(parsed.showSchemaExplorer);
+        setShowNotes(parsed.showNotes);
         setShowCompatibility(parsed.showCompatibility);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
@@ -380,6 +392,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 openEndpointPermanent(resolved.path, resolved.method);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowNotes(false);
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
@@ -397,6 +410,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
                 showSchemaExplorer: parsed.showSchemaExplorer,
+                showNotes: parsed.showNotes,
                 showCompatibility: parsed.showCompatibility,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
@@ -420,6 +434,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected,
         setShowHome,
         setShowSchemaExplorer,
+        setShowNotes,
         setShowCompatibility,
         setShowAbout,
         setShowAssistant,
@@ -456,6 +471,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showHome,
         showAbout,
         showSchemaExplorer,
+        showNotes,
         showCompatibility,
         selectedEndpoint,
         selectedViewMode,

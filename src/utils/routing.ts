@@ -41,6 +41,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     const empty: ParsedRoute = {
         parsableKey: '',
         showSchemaExplorer: false,
+        showNotes: false,
         showCompatibility: false,
         showHome: true,
         showAbout: false,
@@ -126,6 +127,9 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     if (parts[0] === 'schema-explorer') {
         return {...empty, showSchemaExplorer: true, showHome: false, schemas, responseCode, searchQuery};
     }
+    if (parts[0] === 'notes') {
+        return {...empty, showNotes: true, showHome: false, responseCode, searchQuery};
+    }
     if (parts[0] === 'compatibility') {
         return {...empty, showCompatibility: true, showHome: false, responseCode, searchQuery};
     }
@@ -134,6 +138,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     }
     let parsableKey = '';
     let showSchemaExplorer = false;
+    let showNotes = false;
     let showCompatibility = false;
     let showAssistant = false;
     let showHome = false;
@@ -142,6 +147,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         parsableKey = decodeURIComponent(parts[1]);
         if (parts[2] === 'schema-explorer') {
             showSchemaExplorer = true;
+        } else if (parts[2] === 'notes') {
+            showNotes = true;
         } else if (parts[2] === 'compatibility') {
             showCompatibility = true;
         } else if (parts[2] === 'assistant') {
@@ -150,6 +157,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
+                showNotes: false,
                 showCompatibility: false,
                 showHome: false,
                 showAbout: false,
@@ -168,6 +176,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             return {
                 parsableKey,
                 showSchemaExplorer: false,
+                showNotes: false,
                 showCompatibility: false,
                 showHome: false,
                 showAbout: true,
@@ -191,6 +200,7 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     return {
         parsableKey,
         showSchemaExplorer,
+        showNotes,
         showCompatibility,
         showHome,
         showAbout: false,
@@ -213,6 +223,7 @@ interface BuildRouteOpts {
     showAbout: boolean;
     showAssistant: boolean;
     showSchemaExplorer: boolean;
+    showNotes?: boolean;
     showCompatibility?: boolean;
     endpoint: EndpointRef | null;
     tab: string;
@@ -235,6 +246,7 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         showAbout,
         showAssistant,
         showSchemaExplorer,
+        showNotes = false,
         showCompatibility = false,
         endpoint,
         tab,
@@ -252,6 +264,8 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     let route = `#/parsable/${encodeURIComponent(parsableKey)}`;
     if (showSchemaExplorer) {
         route += `/schema-explorer`;
+    } else if (showNotes) {
+        route += `/notes`;
     } else if (showCompatibility) {
         route += `/compatibility`;
     } else if (endpoint) {

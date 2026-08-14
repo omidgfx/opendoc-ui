@@ -41,8 +41,8 @@ type ApiSpecificationSelectorModalProps = {
     onClearRemoteHistory: () => Promise<void> | void;
     onSelect: (key: string) => void;
     onReloadSpecification?: (key: string) => void | Promise<void>;
-    onResetSpecification?: (key: string) => void;
-    onResetAllConfigurations?: () => void;
+    onResetSpecification?: (key: string, options?: {clearNotes?: boolean}) => void | Promise<void>;
+    onResetAllConfigurations?: () => void | Promise<void>;
     onClose: () => void;
 };
 export default function ApiSpecificationSelectorModal({
@@ -82,11 +82,15 @@ export default function ApiSpecificationSelectorModal({
         key?: string;
     } | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [clearNotesOnReset, setClearNotesOnReset] = useState(false);
     const [showRemoteLoader, setShowRemoteLoader] = useState(false);
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     const confirmTransition = useModalTransition(!!confirmAction, () => setConfirmAction(null));
     const entries = useMemo(() => Object.entries(specifications), [specifications]);
     const isHybridMode = canOpenLocal && !isLocalMode;
+    useEffect(() => {
+        if (confirmAction) setClearNotesOnReset(false);
+    }, [confirmAction]);
     const prevActiveSpecRef = useRef<OpenApiSpec | null>(null);
     useEffect(() => {
         if (!isOpen) return;
@@ -181,8 +185,9 @@ export default function ApiSpecificationSelectorModal({
         if (!confirmAction || isConfirming) return;
         setIsConfirming(true);
         try {
-            if (confirmAction.kind === 'all') onResetAllConfigurations?.();
-            else if (confirmAction.key) onResetSpecification?.(confirmAction.key);
+            if (confirmAction.kind === 'all') await onResetAllConfigurations?.();
+            else if (confirmAction.key)
+                await onResetSpecification?.(confirmAction.key, {clearNotes: clearNotesOnReset});
             setConfirmAction(null);
             requestClose();
         } finally {
@@ -761,9 +766,28 @@ export default function ApiSpecificationSelectorModal({
                         <div className="px-4 py-4">
                             <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
                                 {confirmAction.kind === 'all'
-                                    ? 'This clears saved general UI settings and all per-spec configurations, then reloads the application.'
-                                    : 'This clears the saved settings, tabs, inputs, theme, and navigation preferences for this specification, then reloads it.'}
+                                    ? 'This clears saved general UI settings, local notes, and all per-spec configurations, then reloads the application.'
+                                    : 'This clears the saved settings, tabs, inputs, theme, hidden endpoints, and navigation preferences for this specification, then reloads it. Local notes are preserved by default.'}
                             </p>
+                            {confirmAction.kind === 'spec' && (
+                                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={clearNotesOnReset}
+                                        onChange={event => setClearNotesOnReset(event.target.checked)}
+                                        className="mt-0.5 size-4 accent-[var(--method-delete)]"
+                                    />
+                                    <span>
+                                        <span className="block text-[11px] font-bold text-[var(--text-heading)]">
+                                            Clear local notes too
+                                        </span>
+                                        <span className="mt-0.5 block text-[9px] text-[var(--text-muted)]">
+                                            Default is off. Enable this only if notes and tasks should be permanently
+                                            deleted.
+                                        </span>
+                                    </span>
+                                </label>
+                            )}
                         </div>
                         <footer className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
                             <button

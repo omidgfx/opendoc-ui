@@ -7,6 +7,7 @@ import NoSpecView from '@/src/pages/status/NoSpecPage';
 import WelcomeView from '@/src/pages/status/WelcomePage';
 import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
 import RunnerCompatibilityPage from '@/src/pages/compatibility/RunnerCompatibilityPage';
+import EndpointNotesPage from '@/src/pages/notes/EndpointNotesPage';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
@@ -57,6 +58,7 @@ interface WorkspaceContentProps {
     examineResponses: Record<string, ExamineResponse[]>;
     setExamineResponses: Dispatch<SetStateAction<Record<string, ExamineResponse[]>>>;
     showSchemaExplorer: boolean;
+    showNotes: boolean;
     showCompatibility: boolean;
     showHome: boolean;
     onOpenAbout: () => void;
@@ -115,6 +117,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         examineResponses,
         setExamineResponses,
         showSchemaExplorer,
+        showNotes,
         showCompatibility,
         showHome,
         onOpenAbout,
@@ -244,6 +247,13 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     onSelectSchema={onOpenSchema}
                     parsableKey={specKey}
                 />
+            </ViewErrorBoundary>
+        );
+    }
+    if (showNotes) {
+        return (
+            <ViewErrorBoundary resetKey={`notes:${specKey}`} title="Local notes could not be rendered">
+                <EndpointNotesPage spec={spec} onSelectEndpoint={onOpenEndpointPermanent} />
             </ViewErrorBoundary>
         );
     }

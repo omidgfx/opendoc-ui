@@ -15,6 +15,7 @@ import SidebarContextMenu from './SidebarContextMenu';
 import SidebarSettingsMenu from './SidebarSettingsMenu';
 import SidebarTree from './SidebarTree';
 import type {SidebarProps} from '@/src/types/sidebar';
+import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 import {
     buildTagTree,
     endpointMatchesSidebarFilter,
@@ -38,6 +39,8 @@ export default function Sidebar(props: SidebarProps) {
         onToggleCollapse,
         onOpenSchemaExplorer,
         showSchemaExplorer,
+        onOpenNotes,
+        showNotes,
         showCompatibility,
         selectedMethods,
         selectedTags,
@@ -94,6 +97,7 @@ export default function Sidebar(props: SidebarProps) {
         onCloseMobile,
         onOpenMobile,
     } = props;
+    const {hiddenEndpointKeys, unhideAllEndpoints} = useEndpointNotes();
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
     const selectedServerDefinition = useMemo(() => {
@@ -341,7 +345,11 @@ export default function Sidebar(props: SidebarProps) {
             clearSortCloseTimer();
         };
     }, [settingsMenuOpen]);
-    const tagTree = useMemo(() => buildTagTree(spec, sidebarConfig, activeAuth), [spec, sidebarConfig, activeAuth]);
+    const hiddenEndpointSet = useMemo(() => new Set(hiddenEndpointKeys), [hiddenEndpointKeys]);
+    const tagTree = useMemo(
+        () => buildTagTree(spec, sidebarConfig, activeAuth, hiddenEndpointSet),
+        [spec, sidebarConfig, activeAuth, hiddenEndpointSet],
+    );
     const mainSearchQuery = searchQuery.trim().toLowerCase();
     const hasMainSidebarFilters =
         !!mainSearchQuery || selectedMethods.length > 0 || selectedTags.length > 0 || onlyProtected !== null;
@@ -349,7 +357,7 @@ export default function Sidebar(props: SidebarProps) {
         if (!hasMainSidebarFilters && !sidebarConfig.hideDeprecatedEndpoints) return tagTree;
         const terms = mainSearchQuery.split(/[\s._-]+/).filter(Boolean);
         const predicate = (ep: TreeNode['endpoints'][number]) => {
-            if (sidebarConfig.hideDeprecatedEndpoints && ep.operation?.deprecated) return false;
+            if (sidebarConfig.hideDeprecatedEndpoints && ep.operation?.deprecated && !ep.isHidden) return false;
             const methodUpper = ep.method.toUpperCase();
             const opTags = ep.operation?.tags?.length ? ep.operation.tags : ['General'];
             if (selectedMethods.length > 0 && !selectedMethods.includes(methodUpper)) return false;
@@ -614,9 +622,11 @@ export default function Sidebar(props: SidebarProps) {
             <CollapsedSidebarRail
                 isOverview={isOverview}
                 showSchemaExplorer={showSchemaExplorer}
+                showNotes={showNotes}
                 showAbout={showAbout}
                 onOpenHome={onOpenHome}
                 onOpenSchemaExplorer={onOpenSchemaExplorer}
+                onOpenNotes={onOpenNotes}
                 onOpenAbout={onOpenAbout}
             />
         );
@@ -627,9 +637,11 @@ export default function Sidebar(props: SidebarProps) {
             overviewActive={isOverview}
             aboutActive={showAbout}
             schemasActive={showSchemaExplorer}
+            notesActive={showNotes}
             onOpenHome={navTo(onOpenHome)}
             onOpenAbout={navTo(onOpenAbout)}
             onOpenSchemas={navTo(onOpenSchemaExplorer)}
+            onOpenNotes={navTo(onOpenNotes)}
             onOpenPermanent={onOpenViewPermanent}
             onContextMenu={(event, view) =>
                 openContextMenu(event, {
@@ -922,6 +934,12 @@ export default function Sidebar(props: SidebarProps) {
                 openSort={openSortMenu}
                 scheduleSortClose={scheduleSortMenuClose}
                 updateConfig={updateSidebarConfig}
+                hiddenEndpointCount={hiddenEndpointKeys.length}
+                onUnhideAllEndpoints={() => {
+                    unhideAllEndpoints();
+                    setSettingsMenuOpen(false);
+                    closeAllSubmenus();
+                }}
             />
 
             <div className="flex-1 relative min-h-0 nav-scroll-wrapper">

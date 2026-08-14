@@ -3,15 +3,18 @@ import clsx from 'clsx';
 import type {OpenApiSpec} from '@/src/types';
 import type {ViewTabKind} from '@/src/types/tabs';
 import {Tip} from '@/src/components/common/Tooltip';
+import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 
 interface SidebarPageNavigationProps {
     spec: OpenApiSpec | null;
     overviewActive: boolean;
     aboutActive: boolean;
     schemasActive: boolean;
+    notesActive: boolean;
     onOpenHome: () => void;
     onOpenAbout: () => void;
     onOpenSchemas: () => void;
+    onOpenNotes: () => void;
     onOpenPermanent: (view: ViewTabKind) => void;
     onContextMenu: (event: MouseEvent, view: ViewTabKind) => void;
 }
@@ -87,12 +90,15 @@ export default function SidebarPageNavigation({
     overviewActive,
     aboutActive,
     schemasActive,
+    notesActive,
     onOpenHome,
     onOpenAbout,
     onOpenSchemas,
+    onOpenNotes,
     onOpenPermanent,
     onContextMenu,
 }: SidebarPageNavigationProps) {
+    const {notes} = useEndpointNotes();
     return (
         <>
             <PageButton
@@ -126,6 +132,18 @@ export default function SidebarPageNavigation({
                 onOpen={onOpenSchemas}
                 onPermanent={() => onOpenPermanent('schemas')}
                 onContextMenu={event => onContextMenu(event, 'schemas')}
+            />
+            <PageButton
+                id="view:notes"
+                label="Local Notes"
+                tip="Browse local endpoint notes and tasks"
+                icon="ph-fill ph-note-pencil"
+                active={notesActive}
+                inactiveClass="text-[var(--sidebar-text)] hover:bg-[var(--surface-hover)]"
+                count={notes.length}
+                onOpen={onOpenNotes}
+                onPermanent={() => onOpenPermanent('notes')}
+                onContextMenu={event => onContextMenu(event, 'notes')}
             />
         </>
     );

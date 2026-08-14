@@ -350,8 +350,9 @@ export const specStorage = {
     remove(specKey: string, name: string): Promise<void> {
         return storage.removeAsync(this.key(specKey, name));
     },
-    async clear(specKey: string): Promise<void> {
-        const keys = storage.keys(SPEC_PREFIX).filter(key => this.specKeyOf(key) === specKey);
+    async clear(specKey: string, preserveNames: string[] = []): Promise<void> {
+        const preserved = new Set(preserveNames.map(name => this.key(specKey, name)));
+        const keys = storage.keys(SPEC_PREFIX).filter(key => this.specKeyOf(key) === specKey && !preserved.has(key));
         await Promise.all(keys.map(key => storage.removeAsync(key)));
     },
     clearAll(): Promise<void> {

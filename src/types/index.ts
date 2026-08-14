@@ -19,6 +19,7 @@ export type {
 } from './openapi';
 export type {ParsedRoute, EndpointRef} from './route';
 export type {ExamineResponse, ExamineInputs} from './examine';
+export type {EndpointNote, EndpointNoteColor, EndpointNoteDraft, EndpointNoteType} from './notes';
 export type {Diagnostic, DiagnosticSeverity} from './diagnostics';
 export {diagnostic} from './diagnostics';
 export type {

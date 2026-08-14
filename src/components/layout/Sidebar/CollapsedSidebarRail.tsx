@@ -1,24 +1,30 @@
 import clsx from 'clsx';
 import {Tip} from '../../common/Tooltip';
 import pkg from '../../../../package.json';
+import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 
 interface CollapsedSidebarRailProps {
     isOverview: boolean;
     showSchemaExplorer: boolean;
+    showNotes: boolean;
     showAbout: boolean;
     onOpenHome: () => void;
     onOpenSchemaExplorer: () => void;
+    onOpenNotes: () => void;
     onOpenAbout: () => void;
 }
 
 export default function CollapsedSidebarRail({
     isOverview,
     showSchemaExplorer,
+    showNotes,
     showAbout,
     onOpenHome,
     onOpenSchemaExplorer,
+    onOpenNotes,
     onOpenAbout,
 }: CollapsedSidebarRailProps) {
+    const {notes} = useEndpointNotes();
     return (
         <div
             className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
@@ -51,6 +57,32 @@ export default function CollapsedSidebarRail({
                         )}
                     >
                         <i className="ph-fill ph-diamonds-four text-[16px]" />
+                    </button>
+                </Tip>
+                <Tip content="Local Notes">
+                    <button
+                        onClick={onOpenNotes}
+                        aria-current={showNotes ? 'page' : undefined}
+                        className={clsx(
+                            'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                            showNotes
+                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                        )}
+                    >
+                        <i className="ph-fill ph-note-pencil text-[16px]" />
+                        {notes.length > 0 && (
+                            <span
+                                className={clsx(
+                                    'absolute right-0.5 top-0.5 min-w-3.5 rounded-full px-1 text-center font-mono text-[7px] font-black',
+                                    showNotes
+                                        ? 'bg-[var(--primary-contrast)] text-[var(--primary)]'
+                                        : 'bg-[var(--primary)] text-[var(--primary-contrast)]',
+                                )}
+                            >
+                                {notes.length > 99 ? '99+' : notes.length}
+                            </span>
+                        )}
                     </button>
                 </Tip>
                 <Tip content="About">
