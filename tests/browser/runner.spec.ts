@@ -175,6 +175,48 @@ const richRunnerSpecText = () =>
         },
     });
 
+const cyclicSchemaSpecText = () =>
+    JSON.stringify({
+        openapi: '3.2.0',
+        info: {title: 'Cyclic Schema Fixture', version: '1'},
+        paths: {
+            '/customers': {
+                post: {
+                    operationId: 'createCustomer',
+                    summary: 'Create cyclic customer',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {schema: {$ref: '#/components/schemas/Customer'}},
+                        },
+                    },
+                    responses: {
+                        '200': {
+                            description: 'Created customer',
+                            content: {
+                                'application/json': {schema: {$ref: '#/components/schemas/Customer'}},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        components: {
+            schemas: {
+                Customer: {
+                    type: 'object',
+                    required: ['role'],
+                    properties: {name: {type: 'string'}, role: {$ref: '#/components/schemas/GuestRole'}},
+                },
+                GuestRole: {
+                    type: 'object',
+                    required: ['customer'],
+                    properties: {customer: {$ref: '#/components/schemas/Customer'}},
+                },
+            },
+        },
+    });
+
 test.beforeAll(async () => {
     apiServer = createServer((request, response) => {
         response.setHeader('access-control-allow-origin', '*');
@@ -411,12 +453,49 @@ test('uses shared rich field descriptions, enum cases, focus frames, and array a
     expect(toolbarGap).toBeGreaterThanOrEqual(6);
 });
 
+test('renders cyclic OpenAPI schemas in documentation, Runner, and schema views without recursion failures', async ({
+    page,
+}) => {
+    await page.goto('/');
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: /open specification file/i}).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+        name: 'cyclic-schema.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(cyclicSchemaSpecText()),
+    });
+    await page.getByText('Create cyclic customer', {exact: true}).first().click();
+    await expect(page.getByText('Endpoint documentation could not be rendered')).toHaveCount(0);
+    await expect(page.getByText('role.customer', {exact: true}).first()).toBeVisible();
+
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    await expect(page.getByText(/points back to a schema already shown in this branch/i).first()).toBeVisible();
+    await expect(page.getByText('API Runner form could not be rendered')).toHaveCount(0);
+
+    const base = new URL(page.url()).pathname.match(/^(\/parsable\/[^/]+)/)?.[1];
+    expect(base).toBeTruthy();
+    await page.goto(`${base}/schema-explorer?schemas=Customer`);
+    await expect(page.getByRole('dialog', {name: /Customer/})).toBeVisible();
+    await expect(page.getByText('Schema Explorer could not be rendered')).toHaveCount(0);
+});
+
 test('creates local Markdown notes and todos, auto-hides endpoints, and manages hidden endpoints', async ({page}) => {
+    test.setTimeout(90_000);
     await loadSpecification(page);
     const sidebar = page.locator('[data-opendoc-sidebar]');
     const endpoint = sidebar.getByText('Send permissive validation request', {exact: true});
     await endpoint.click({button: 'right'});
-    await page.getByRole('button', {name: 'Create local note'}).click();
+    const createLocalNoteAction = page.getByRole('button', {name: 'Create local note'});
+    const contextNoteIcon = createLocalNoteAction.locator('i');
+    await expect(contextNoteIcon).toHaveCSS('color', 'rgb(245, 158, 11)');
+    await createLocalNoteAction.hover();
+    await expect(contextNoteIcon).toHaveCSS('color', 'rgb(245, 158, 11)');
+    await createLocalNoteAction.click();
 
     await expect(page.getByPlaceholder('Search endpoints…')).toHaveCount(0);
     const simpleNoteType = page.getByRole('button', {name: 'Simple note', exact: true});
@@ -426,7 +505,9 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(todoType).toHaveAttribute('aria-pressed', 'true');
     await page.getByPlaceholder('What needs to be done?').fill('Fix validation flow');
     await page.getByPlaceholder('Write Markdown…').fill('**Important:** verify the `400` response.');
-    await expect(page.getByRole('button', {name: /note tone$/})).toHaveCount(12);
+    await expect(page.getByRole('button', {name: /note tone$/})).toHaveCount(14);
+    await expect(page.getByRole('button', {name: 'White note tone'})).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Black note tone'})).toBeVisible();
     await page.getByRole('button', {name: 'Blue note tone'}).click();
     await expect(page.getByRole('button', {name: 'Blue note tone'})).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('dialog', {name: 'Choose note color'})).toHaveCount(0);
@@ -446,6 +527,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
         ),
     );
     expect(noteButtonStyle).toEqual(aiButtonStyle);
+    await expect(endpointNotesButton).toHaveCSS('width', '60px');
     const countStyle = await endpointNotesButton.locator('[data-endpoint-note-count]').evaluate(element => {
         const style = getComputedStyle(element);
         return {backgroundColor: style.backgroundColor, fontFamily: style.fontFamily};
@@ -459,13 +541,81 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect
         .poll(() => noteButtonIcon.evaluate(element => getComputedStyle(element).color))
         .toBe(aiButtonIconColor);
-    await expect(sidebar.getByLabel('1 local notes')).toBeVisible();
+
+    const selectedEndpointLink = endpoint.locator('xpath=ancestor::a');
+    const sidebarNoteIcon = sidebar.getByLabel('1 local notes');
+    await expect
+        .poll(async () => ({
+            endpoint: await selectedEndpointLink.evaluate(element => getComputedStyle(element).color),
+            note: await sidebarNoteIcon.evaluate(element => getComputedStyle(element).color),
+        }))
+        .toEqual({endpoint: 'rgb(255, 255, 255)', note: 'rgb(255, 255, 255)'});
+    await selectedEndpointLink.hover();
+    await expect(sidebarNoteIcon).toHaveCSS('color', 'rgb(255, 255, 255)');
+
+    await sidebar.getByText('Serve private media', {exact: true}).click();
+    await selectedEndpointLink.hover();
+    await expect(sidebarNoteIcon).toHaveCSS('color', 'rgb(245, 158, 11)');
+    const emptyEndpointNotesButton = page.getByRole('button', {name: 'Open endpoint notes (0)'});
+    await expect(emptyEndpointNotesButton).toHaveCSS('width', '60px');
+    await endpoint.click();
+
     await endpointNotesButton.click();
-    const listDialog = page.getByRole('dialog', {name: 'Endpoint Notes'});
-    await expect(listDialog).toContainText('Important:');
-    await listDialog.locator('button').filter({hasText: 'Fix validation flow'}).first().click();
+    const notesPanel = page.locator('[data-endpoint-notes-sidebar]');
+    await expect(notesPanel).toBeVisible();
+    await expect(page.getByRole('dialog', {name: 'Endpoint Notes'})).toHaveCount(0);
+    const panelNoteToggle = notesPanel.getByRole('button', {name: /Fix validation flow/}).first();
+    await expect(panelNoteToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(notesPanel.getByText('Important:', {exact: false})).toHaveCount(0);
+    await panelNoteToggle.click();
+    await expect(panelNoteToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(notesPanel).toContainText('Important:');
+
+    const parsableKey = decodeURIComponent(new URL(page.url()).pathname.split('/')[2]);
+    const expandedStateKey = `storage:opendoc:spec:${encodeURIComponent(parsableKey)}:${encodeURIComponent(
+        'endpoint_note_panel_expanded',
+    )}`;
+    await expect
+        .poll(async () => {
+            const stored = await readIndexedDbRecord(page, expandedStateKey);
+            try {
+                return JSON.parse(String(stored)).length;
+            } catch {
+                return 0;
+            }
+        })
+        .toBe(1);
+
+    const panelWidthBefore = (await notesPanel.boundingBox())?.width || 0;
+    await notesPanel.getByRole('separator', {name: 'Resize endpoint notes sidebar'}).press('ArrowLeft');
+    const panelWidthAfter = (await notesPanel.boundingBox())?.width || 0;
+    expect(panelWidthAfter).toBeGreaterThan(panelWidthBefore);
+    await expect
+        .poll(async () => {
+            const stored = await readIndexedDbRecord(page, 'storage:opendoc:ui:endpoint_notes_sidebar_width');
+            try {
+                return JSON.parse(String(stored));
+            } catch {
+                return 0;
+            }
+        })
+        .toBe(Math.round(panelWidthAfter));
+
+    await page.reload();
+    await expect(page.getByText('Browser Runner Fixture', {exact: true}).first()).toBeVisible();
+    await endpointNotesButton.click();
+    await expect(notesPanel).toBeVisible();
+    await expect(notesPanel.getByRole('button', {name: /Fix validation flow/}).first()).toHaveAttribute(
+        'aria-expanded',
+        'true',
+    );
+    await notesPanel.getByRole('button', {name: 'Open full note'}).click();
     const detailDialog = page.getByRole('dialog', {name: 'Fix validation flow'});
     await expect(detailDialog.locator('strong')).toContainText('Important:');
+    const viewerHeaderActions = await detailDialog
+        .locator('header button')
+        .evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')));
+    expect(viewerHeaderActions).toEqual(['Delete note', 'Edit note', 'Close Fix validation flow']);
     await detailDialog.getByRole('button', {name: 'Mark as done', exact: true}).click();
     const completionDialog = page.getByRole('dialog', {name: 'Complete todo and hide endpoint?'});
     const hideAfterCompletion = completionDialog.getByLabel('Hide endpoint after completion');
@@ -485,7 +635,18 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
         .getByRole('button', {name: 'Mark as done'})
         .click();
     await detailDialog.getByRole('button', {name: 'Close Fix validation flow'}).click();
-    await page.getByRole('dialog', {name: 'Endpoint Notes'}).getByRole('button', {name: 'Close', exact: true}).click();
+
+    await page.getByRole('button', {name: /Split View/i}).click();
+    await expect(notesPanel).toHaveCount(0);
+    await endpointNotesButton.click();
+    const listDialog = page.getByRole('dialog', {name: 'Endpoint Notes'});
+    await expect(listDialog).toContainText('Important:');
+    await listDialog.getByRole('button', {name: 'Close', exact: true}).click();
+
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    await endpointNotesButton.click();
+    await expect(notesPanel).toBeVisible();
+    await notesPanel.getByRole('button', {name: 'Close endpoint notes sidebar'}).click();
 
     await expect(sidebar.getByText('Hidden endpoints', {exact: true})).toBeVisible();
     await sidebar.getByRole('button', {name: 'Navigation settings'}).click();
@@ -502,7 +663,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(sidebar.getByText('Hidden endpoints', {exact: true})).toHaveCount(0);
 
     await sidebar.getByRole('button', {name: /Local Notes/}).click();
-    await expect(page).toHaveURL(/\/notes$/);
+    await expect(page).toHaveURL(/\/notes(?:\?|$)/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await expect(page.getByText('Fix validation flow', {exact: true})).toBeVisible();
     const localTodoCard = page.getByLabel('Open Fix validation flow');
@@ -514,6 +675,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     });
     expect(checkboxShape.radius).toBeGreaterThanOrEqual(checkboxShape.width / 2 - 1);
     await expect(localTodoCard).toHaveCSS('box-shadow', 'none');
+    await expect(localTodoCard).toHaveCSS('border-radius', '8px');
     const [cardBounds, cornerBounds] = await Promise.all([
         localTodoCard.boundingBox(),
         localTodoCard.locator('[data-note-corner-tone]').boundingBox(),
@@ -527,13 +689,25 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(page.getByRole('dialog', {name: 'Fix validation flow'})).toBeVisible();
     await page.getByRole('button', {name: 'Close Fix validation flow'}).click();
 
-    await page.getByRole('button', {name: 'New note', exact: true}).click();
+    const newNoteButton = page.getByRole('button', {name: 'New note', exact: true});
+    const newNoteColors = await newNoteButton.evaluate(element => ({
+        button: getComputedStyle(element).color,
+        icon: getComputedStyle(element.querySelector('i')!).color,
+    }));
+    expect(newNoteColors.icon).toBe(newNoteColors.button);
+    await newNoteButton.click();
     const endpointSearch = page.getByPlaceholder('Search endpoints…');
     await expect(endpointSearch).toBeFocused();
     await expect(page.locator('[data-note-limit-meter]')).toHaveCount(0);
     const picker = page.locator('[data-note-endpoint-picker]');
     const pickerList = page.locator('[data-note-endpoint-list]');
-    const [pickerBounds, pickerListBounds] = await Promise.all([picker.boundingBox(), pickerList.boundingBox()]);
+    const [pickerBounds, pickerListBounds, pickerHostBounds] = await Promise.all([
+        picker.boundingBox(),
+        pickerList.boundingBox(),
+        picker.locator('..').boundingBox(),
+    ]);
+    expect(Math.abs((pickerBounds?.height || 0) - (pickerHostBounds?.height || 0))).toBeLessThanOrEqual(1);
+    await expect(pickerList).toHaveCSS('overflow-y', 'auto');
     const pickerBottomGap =
         (pickerBounds?.y || 0) +
         (pickerBounds?.height || 0) -
@@ -565,19 +739,36 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
         0,
     );
     await page.getByText('Reference note', {exact: true}).click();
-    await expect(
-        page.getByRole('dialog', {name: 'Reference note'}).getByRole('link', {name: 'Read the docs'}),
-    ).toHaveAttribute('href', 'https://example.com/docs');
-    await page.getByRole('dialog', {name: 'Reference note'}).getByRole('button', {name: 'Delete'}).click();
+    const referenceDialog = page.getByRole('dialog', {name: 'Reference note'});
+    await expect(referenceDialog.getByRole('link', {name: 'Read the docs'})).toHaveAttribute(
+        'href',
+        'https://example.com/docs',
+    );
+    await expect(referenceDialog.locator('header')).toHaveCSS('border-bottom-width', '0px');
+    await expect(referenceDialog.locator('footer')).toHaveCSS('border-top-width', '0px');
+    await referenceDialog.getByRole('button', {name: 'Delete note'}).click();
     await page.getByRole('dialog', {name: 'Delete this note?'}).getByRole('button', {name: 'Delete note'}).click();
     await expect(page.getByText('Reference note', {exact: true})).toHaveCount(0);
 
-    await page.getByRole('button', {name: 'Delete all'}).click();
+    await sidebar.getByRole('button', {name: /Local Notes/}).click({button: 'right'});
+    const deleteAllNotesAction = page.getByRole('button', {name: /Delete all notes/});
+    await expect(deleteAllNotesAction).toContainText('1');
+    await deleteAllNotesAction.click();
     await page
         .getByRole('dialog', {name: 'Delete every local note?'})
         .getByRole('button', {name: 'Delete all notes'})
         .click();
     await expect(page.getByText('No local notes yet', {exact: true})).toBeVisible();
+    await expect
+        .poll(async () => {
+            const stored = await readIndexedDbRecord(page, expandedStateKey);
+            try {
+                return JSON.parse(String(stored)).length;
+            } catch {
+                return 0;
+            }
+        })
+        .toBe(0);
 });
 
 test('keeps endpoint context menus inside the available viewport', async ({page}) => {
@@ -660,7 +851,14 @@ test('validates note title and Markdown limits without blocking typing or pastin
     await content.fill('');
     await page.getByRole('button', {name: 'Create note', exact: true}).click();
     await endpoint.click();
-    await expect(page.getByRole('button', {name: 'Open endpoint notes (1)'})).toBeVisible();
+    const notesButton = page.getByRole('button', {name: 'Open endpoint notes (1)'});
+    await notesButton.click();
+    const panel = page.locator('[data-endpoint-notes-sidebar]');
+    await panel.getByRole('button', {name: /Valid title without details/}).click();
+    await panel.getByRole('button', {name: 'Open full note'}).click();
+    const emptyViewer = page.getByRole('dialog', {name: 'Valid title without details'});
+    await expect(emptyViewer.locator('[data-empty-note-content]')).toBeVisible();
+    await expect(emptyViewer.getByLabel('Empty note')).toBeVisible();
 });
 
 test('offers typed parameter suggestions without blocking custom negative-test values', async ({page}) => {

@@ -17,6 +17,7 @@ import MethodBadge from '../common/MethodBadge';
 import ConfirmModal from '../common/ConfirmModal';
 import {Tip} from '../common/Tooltip';
 import NoteEndpointPicker from './NoteEndpointPicker';
+import NoteViewerModal from './NoteViewerModal';
 
 function NotesDialog({
     title,
@@ -26,6 +27,8 @@ function NotesDialog({
     children,
     footer,
     maxWidth = 'max-w-2xl',
+    surfaceClassName = '',
+    contentClassName = '',
     escEnabled = true,
 }: {
     title: string;
@@ -35,6 +38,8 @@ function NotesDialog({
     children: ReactNode;
     footer?: ReactNode;
     maxWidth?: string;
+    surfaceClassName?: string;
+    contentClassName?: string;
     escEnabled?: boolean;
 }) {
     const {pendingTodoCompletionId} = useEndpointNotes();
@@ -50,7 +55,7 @@ function NotesDialog({
                 role="dialog"
                 aria-modal="true"
                 aria-label={title}
-                className={`modal-surface flex max-h-[82vh] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl`}
+                className={`modal-surface flex w-full ${maxWidth} ${surfaceClassName || 'max-h-[82vh]'} flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl`}
                 onMouseDown={event => event.stopPropagation()}
             >
                 <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:px-5">
@@ -76,7 +81,9 @@ function NotesDialog({
                         </button>
                     </Tip>
                 </header>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin sm:p-5">{children}</div>
+                <div className={contentClassName || 'min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin sm:p-5'}>
+                    {children}
+                </div>
                 {footer && (
                     <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:px-5">
                         {footer}
@@ -104,7 +111,7 @@ function NoteCard({note, onOpen, onDelete}: {note: EndpointNote; onOpen: () => v
                     onOpen();
                 }
             }}
-            className="group rounded-xl border p-3 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/30 cursor-pointer"
+            className="group rounded-lg border p-3 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/30 cursor-pointer"
             style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
         >
             <div className="flex items-start gap-2">
@@ -330,6 +337,7 @@ function NoteEditor({
         [operations, path, method],
     );
     const endpointSelectionLocked = !note && !!requestedEndpoint;
+    const showEndpointPicker = !note && !endpointSelectionLocked;
     const initialEndpoint = useMemo(() => {
         if (note) return {path: note.path, method: note.method};
         const fallback = requestedEndpoint || operations[0];
@@ -442,12 +450,18 @@ function NoteEditor({
                                     aria-label={`${option.label} note tone`}
                                     aria-pressed={color === option.id}
                                     onClick={() => setColor(option.id)}
-                                    className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer ${
+                                    className={`flex size-5 shrink-0 items-center justify-center rounded-full border border-[var(--border)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer ${
                                         color === option.id ? 'scale-110' : ''
                                     }`}
                                     style={{backgroundColor: option.tone}}
                                 >
-                                    {color === option.id && <i className="ph-bold ph-check text-[10px] text-white" />}
+                                    {color === option.id && (
+                                        <i
+                                            className={`ph-bold ph-check text-[10px] ${
+                                                option.id === 'white' ? 'text-black' : 'text-white'
+                                            }`}
+                                        />
+                                    )}
                                 </button>
                             </Tip>
                         ))}
@@ -533,7 +547,7 @@ function NoteEditor({
             <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Preview</span>
                 <div
-                    className="mt-1.5 max-h-72 min-h-36 overflow-y-auto rounded-2xl border p-4 scrollbar-thin"
+                    className="mt-1.5 max-h-72 min-h-36 overflow-y-auto rounded-lg border p-4 scrollbar-thin"
                     style={{
                         backgroundColor: selectedColor.background,
                         borderColor: selectedColor.border,
@@ -561,7 +575,9 @@ function NoteEditor({
                 }
                 icon={type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
                 onClose={onClose}
-                maxWidth={note || endpointSelectionLocked ? 'max-w-4xl' : 'max-w-6xl'}
+                maxWidth={showEndpointPicker ? 'max-w-6xl' : 'max-w-4xl'}
+                surfaceClassName={showEndpointPicker ? 'h-[92vh] sm:h-[86vh]' : ''}
+                contentClassName={showEndpointPicker ? 'min-h-0 flex-1 overflow-hidden' : ''}
                 footer={
                     <>
                         <button
@@ -587,10 +603,8 @@ function NoteEditor({
                     </>
                 }
             >
-                {note || endpointSelectionLocked ? (
-                    editor
-                ) : (
-                    <div className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(280px,.85fr)_minmax(0,1.5fr)]">
+                {showEndpointPicker ? (
+                    <div className="flex h-full min-h-0 flex-col md:flex-row">
                         <NoteEndpointPicker
                             spec={spec}
                             specKey={specKey}
@@ -599,8 +613,12 @@ function NoteEditor({
                                 setSelectedEndpoint({path: nextPath, method: nextMethod})
                             }
                         />
-                        {editor}
+                        <div className="modal-scroll-region min-h-0 min-w-0 flex-1 overflow-y-auto p-4 scrollbar-thin sm:p-5">
+                            {editor}
+                        </div>
                     </div>
+                ) : (
+                    editor
                 )}
             </NotesDialog>
         </>
@@ -608,98 +626,21 @@ function NoteEditor({
 }
 
 function NoteDetail({note, spec, onClose}: {note: EndpointNote; spec: OpenApiSpec; onClose: () => void}) {
-    const {requestToggleTodo, openEditNote, deleteNote, isEndpointHidden} = useEndpointNotes();
+    const {pendingTodoCompletionId, requestToggleTodo, openEditNote, deleteNote, isEndpointHidden} = useEndpointNotes();
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const color = endpointNoteColor(note.color);
     const operation = getOperation(spec, note.path, note.method);
     return (
         <>
-            <NotesDialog
-                title={endpointNoteTitle(note)}
-                subtitle={operation?.summary || `${note.method.toUpperCase()} ${note.path}`}
-                icon={note.type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
+            <NoteViewerModal
+                note={note}
+                operationTitle={operation?.summary || `${note.method.toUpperCase()} ${note.path}`}
+                endpointHidden={isEndpointHidden(note.path, note.method)}
+                escEnabled={!confirmDelete && !pendingTodoCompletionId}
                 onClose={onClose}
-                footer={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => setConfirmDelete(true)}
-                            className="mr-auto inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[10px] font-bold text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
-                        >
-                            <i className="ph ph-trash text-[13px]" />
-                            Delete
-                        </button>
-                        {note.type === 'todo' && (
-                            <button
-                                type="button"
-                                onClick={() => requestToggleTodo(note.id)}
-                                aria-label={note.done ? 'Mark as not done' : 'Mark as done'}
-                                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 text-[10px] font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                            >
-                                <i
-                                    className={`ph ${note.done ? 'ph-arrow-counter-clockwise' : 'ph-check'} text-[13px]`}
-                                />
-                                {note.done ? 'Mark not done' : 'Mark as done'}
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => openEditNote(note.id)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 text-[10px] font-bold text-[var(--primary-contrast)] hover:brightness-110 cursor-pointer"
-                        >
-                            <i className="ph ph-pencil-simple text-[13px]" />
-                            Edit
-                        </button>
-                    </>
-                }
-            >
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                    <MethodBadge method={note.method} size="xs" />
-                    <code className="min-w-0 flex-1 truncate text-[10px] text-[var(--text-heading)]">{note.path}</code>
-                    <span className="rounded-full bg-[var(--surface-hover)] px-2 py-1 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                        {note.type === 'todo' ? (note.done ? 'Todo · Done' : 'Todo · Open') : 'Simple note'}
-                    </span>
-                    {isEndpointHidden(note.path, note.method) && (
-                        <span className="rounded-full bg-[var(--text-muted)]/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                            Endpoint hidden
-                        </span>
-                    )}
-                </div>
-                <article
-                    className={`${note.done ? 'opacity-65' : ''} rounded-2xl border p-5`}
-                    style={{backgroundColor: color.background, borderColor: color.border, color: color.text}}
-                >
-                    {note.type === 'todo' && (
-                        <button
-                            type="button"
-                            onClick={() => requestToggleTodo(note.id)}
-                            className="mb-4 inline-flex items-center gap-2 rounded-xl bg-[var(--surface)]/45 px-3 py-2 text-[10px] font-bold hover:bg-[var(--surface)]/70 cursor-pointer"
-                        >
-                            <span
-                                className="flex size-5 items-center justify-center rounded-full border"
-                                style={{
-                                    borderColor: color.text,
-                                    backgroundColor: note.done ? color.dot : 'transparent',
-                                }}
-                            >
-                                {note.done && <i className="ph ph-check text-[12px] text-white" />}
-                            </span>
-                            {note.done ? 'Completed' : 'Mark todo as done'}
-                        </button>
-                    )}
-                    <Markdown
-                        text={note.content}
-                        className={`!text-inherit ${note.done ? 'line-through decoration-1' : ''}`}
-                    />
-                </article>
-                <div className="mt-3 flex flex-wrap gap-3 text-[9px] text-[var(--text-muted)]">
-                    <span>Created {new Date(note.createdAt).toLocaleString()}</span>
-                    <span>Updated {new Date(note.updatedAt).toLocaleString()}</span>
-                    {note.type === 'todo' && note.autoHideWhenTodosDone && (
-                        <span className="text-[var(--primary)]">Auto-hide enabled</span>
-                    )}
-                </div>
-            </NotesDialog>
+                onEdit={() => openEditNote(note.id)}
+                onDelete={() => setConfirmDelete(true)}
+                onToggleTodo={() => requestToggleTodo(note.id)}
+            />
             <ConfirmModal
                 isOpen={confirmDelete}
                 title="Delete this note?"

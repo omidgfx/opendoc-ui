@@ -69,7 +69,7 @@ CORS-enabled providers directly or an optional gateway.
   requests in the existing API Runner.
 - **Local mode** — no configuration at all: open `.json` / `.yaml` / `.yml` files from your
   device, with a persistent history of everything you opened.
-- **Local endpoint notes** — keep private Markdown notes and todos per endpoint, choose from twelve
+- **Local endpoint notes** — keep private Markdown notes and todos per endpoint, choose from fourteen
   translucent theme-safe tones, and optionally hide an endpoint after confirming its last todo.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
@@ -77,7 +77,7 @@ CORS-enabled providers directly or an optional gateway.
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; persistent state and raw documents use IndexedDB instead of consuming the localStorage quota.
-- **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; missing local files can be added after the root is opened.
+- **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; recursive property matrices and Runner forms stop at cycle boundaries, and missing local files can be added after the root is opened.
 - **Clean routes** — endpoint, schema, compatibility, and assistant links use normal paths while retaining legacy hash-link compatibility.
 - **Crash recovery** — view-level boundaries isolate malformed endpoint/schema content, while the global recovery screen remains the final fallback.
 
@@ -516,8 +516,9 @@ Notes are scoped to the selected specification, stored in IndexedDB-backed local
 never uploaded. The **Local Notes** sidebar page groups notes by endpoint and supports search plus
 simple-note/todo filters.
 
-- Notes render Markdown and use one of **12 predefined translucent tones** from a compact inline tone
-  selector. Tone opacity blends with the active light or dark theme instead of forcing pale cards.
+- Notes render Markdown and use one of **14 predefined translucent tones**, including white and black,
+  from a compact inline selector. Tone opacity blends with the active light or dark theme instead of
+  forcing pale cards.
 - A note has a required title (128 characters), optional Markdown details (4,096 characters), and an
   endpoint maximum of 100 notes. Soft progress meters appear only after typing, with countdowns near
   each limit.
@@ -526,14 +527,19 @@ simple-note/todo filters.
   opens a confirmation with a default-checked hide option that can be unchecked.
 - Endpoint context menus can create notes, open the endpoint note list, hide, or unhide the endpoint.
   Only the specification-wide **New note** action shows the searchable, always-expanded endpoint tree;
-  endpoint-specific actions keep their endpoint fixed. The tree follows sidebar sorting, tag, route,
-  compact-method, count, protection, deprecation, and hidden-endpoint preferences.
-- Endpoint headers always show the current note count, and noted endpoints receive a note marker in
-  the sidebar before deprecation/security indicators.
+  its independently scrolling sidebar fills the create modal. Endpoint-specific actions keep their
+  endpoint fixed. The tree follows sidebar sorting, tag, route, compact-method, count, protection,
+  deprecation, and hidden-endpoint preferences.
+- Endpoint headers use a fixed-width note counter, and noted endpoints receive a note marker in the
+  sidebar before deprecation/security indicators. In a single documentation or Runner view, the
+  counter toggles a resizable right notes sidebar; expanded-note state and sidebar width persist in
+  IndexedDB. In Split View, the same action retains the endpoint-notes modal.
 - Hidden endpoints move into one muted **Hidden endpoints** folder at the end of the tree. Use their
   context menu to restore one, or **Unhide all endpoints** from navigation settings.
 - Endpoint note lists and the Local Notes page use custom confirmation dialogs for individual and
-  bulk deletion. Opening a note uses a dedicated detail modal with edit and todo actions.
+  bulk deletion; **Delete all notes** is also available from the Local Notes navigation context menu.
+  Opening a note uses the tone-colored `NoteViewerModal`, with header edit/delete controls, todo actions,
+  and a centered empty-note state when no Markdown body exists.
 
 Resetting one specification preserves its local notes by default. The reset confirmation includes an
 unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all

@@ -2,6 +2,7 @@ import {useState} from 'react';
 import SchemaPropertiesTable from './SchemaPropertiesTable';
 import CodeViewer from '../common/CodeViewer';
 import Markdown from '../common/Markdown';
+import {flattenSchemaProperties} from '../../utils/schemaProperties';
 
 interface InteractiveSchemaViewProps {
     schema: any;
@@ -77,69 +78,7 @@ export default function InteractiveSchemaView({
     };
     const renderStandardSchema = (s: any) => {
         const resolvedS = resolveReference(s) || s;
-        const resolvedProps: {
-            [name: string]: any;
-        } = {};
-        const resolvePropertiesLocal = (
-            sObj: any,
-            prefix = '',
-            visited = new Set<string>(),
-        ): {
-            [name: string]: any;
-        } => {
-            if (!sObj) return {};
-            let props: {
-                [name: string]: any;
-            } = {};
-            if (sObj.$ref) {
-                const refName = getRefName(sObj.$ref);
-                if (visited.has(refName)) return {};
-                visited.add(refName);
-                const refSchema = resolveReference(sObj);
-                if (refSchema) {
-                    props = {...props, ...resolvePropertiesLocal(refSchema, prefix, visited)};
-                }
-                return props;
-            }
-            if (sObj.allOf && Array.isArray(sObj.allOf)) {
-                sObj.allOf.forEach((sub: any) => {
-                    props = {...props, ...resolvePropertiesLocal(sub, prefix, new Set(visited))};
-                });
-            }
-            if (sObj.properties) {
-                Object.entries(sObj.properties).forEach(([name, prop]: [string, any]) => {
-                    const key = prefix ? `${prefix}.${name}` : name;
-                    props[key] = prop;
-                    const res = resolveReference(prop);
-                    if (res && (res.type === 'object' || res.properties || res.allOf)) {
-                        const nested = resolvePropertiesLocal(res, key, new Set(visited));
-                        props = {...props, ...nested};
-                    } else if (res && res.type === 'array' && res.items) {
-                        const resItems = resolveReference(res.items);
-                        if (resItems && (resItems.type === 'object' || resItems.properties || resItems.allOf)) {
-                            const nested = resolvePropertiesLocal(resItems, `${key}.*`, new Set(visited));
-                            props = {...props, ...nested};
-                        }
-                    }
-                });
-            }
-            if (sObj.oneOf && Array.isArray(sObj.oneOf)) {
-                sObj.oneOf.forEach((sub: any) => {
-                    props = {...props, ...resolvePropertiesLocal(sub, prefix, new Set(visited))};
-                });
-            }
-            if (sObj.anyOf && Array.isArray(sObj.anyOf)) {
-                sObj.anyOf.forEach((sub: any) => {
-                    props = {...props, ...resolvePropertiesLocal(sub, prefix, new Set(visited))};
-                });
-            }
-            if (!sObj.properties && sObj.additionalProperties && typeof sObj.additionalProperties === 'object') {
-                const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
-                props[mapKey] = sObj.additionalProperties;
-            }
-            return props;
-        };
-        const properties = resolvePropertiesLocal(resolvedS);
+        const properties = flattenSchemaProperties(resolvedS, resolveReference);
         return (
             <div className="space-y-4">
                 {resolvedS.description && (

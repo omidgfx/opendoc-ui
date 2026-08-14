@@ -1,7 +1,20 @@
 export type EndpointNoteType = 'note' | 'todo';
 
 export type EndpointNoteColor =
-    'butter' | 'apricot' | 'rose' | 'blush' | 'lilac' | 'violet' | 'blue' | 'sky' | 'mint' | 'lime' | 'sand' | 'slate';
+    | 'butter'
+    | 'apricot'
+    | 'rose'
+    | 'blush'
+    | 'lilac'
+    | 'violet'
+    | 'blue'
+    | 'sky'
+    | 'mint'
+    | 'lime'
+    | 'sand'
+    | 'slate'
+    | 'white'
+    | 'black';
 
 export interface EndpointNote {
     id: string;

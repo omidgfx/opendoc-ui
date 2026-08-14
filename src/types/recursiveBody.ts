@@ -23,6 +23,7 @@ export interface FieldProps {
     required?: boolean;
     path: PathPart[];
     depth: number;
+    ancestorRefs?: ReadonlySet<string>;
     onChange: (path: PathPart[], value: unknown) => void;
     setPatternToTest: (pattern: string | null) => void;
     selectedFiles: Record<string, File | null>;

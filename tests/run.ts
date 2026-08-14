@@ -96,6 +96,7 @@ import {
 } from '@/src/utils/runnerResponse';
 import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
 import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
+import {flattenSchemaProperties} from '@/src/utils/schemaProperties';
 const test = (name: string, callback: () => void) => {
     callback();
     console.log(`✓ ${name}`);
@@ -1413,9 +1414,42 @@ test('extracts native enum case descriptions from Markdown tables for custom dro
         {value: 'choice:1', label: '2', description: 'EXPERT'},
     ]);
 });
-test('creates local endpoint notes with twelve predefined colors and stable endpoint keys', () => {
-    assert.equal(ENDPOINT_NOTE_COLORS.length, 12);
-    assert.equal(new Set(ENDPOINT_NOTE_COLORS.map(color => color.id)).size, 12);
+test('bounds cyclic schema property matrices and recursive Runner defaults', () => {
+    const cyclicSpec: any = {
+        openapi: '3.1.1',
+        info: {title: 'Cyclic schemas', version: '1'},
+        paths: {},
+        components: {
+            schemas: {
+                Customer: {
+                    type: 'object',
+                    properties: {role: {$ref: '#/components/schemas/GuestRole'}},
+                },
+                GuestRole: {
+                    type: 'object',
+                    properties: {customer: {$ref: '#/components/schemas/Customer'}},
+                },
+            },
+        },
+    };
+    const root = {$ref: '#/components/schemas/Customer'};
+    const before = JSON.stringify(cyclicSpec);
+    const properties = flattenSchemaProperties(root, schema => resolveReference(schema, cyclicSpec));
+    assert.deepEqual(Object.keys(properties), ['role', 'role.customer']);
+    assert.deepEqual(defaultBodyValue(root, cyclicSpec), {role: {customer: {}}});
+    assert.equal(JSON.stringify(cyclicSpec), before);
+});
+test('creates local endpoint notes with fourteen predefined colors and stable endpoint keys', () => {
+    assert.equal(ENDPOINT_NOTE_COLORS.length, 14);
+    assert.equal(new Set(ENDPOINT_NOTE_COLORS.map(color => color.id)).size, 14);
+    assert.equal(
+        ENDPOINT_NOTE_COLORS.some(color => color.id === 'white' && color.tone === '#ffffff'),
+        true,
+    );
+    assert.equal(
+        ENDPOINT_NOTE_COLORS.some(color => color.id === 'black' && color.tone === '#000000'),
+        true,
+    );
     assert.ok(
         ENDPOINT_NOTE_COLORS.every(
             color => color.background.includes('color-mix') && color.background.includes('transparent'),

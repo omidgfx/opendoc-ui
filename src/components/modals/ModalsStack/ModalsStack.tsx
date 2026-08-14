@@ -16,6 +16,7 @@ import type {OpenApiSpec} from '../../../types';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
 import {toCleanRouteHref} from '../../../utils/routing';
 import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
+import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -144,66 +145,8 @@ export default function ModalsStack({
             description: `Check out ${schemaName} schema in ${parsableKey} - ${componentsSchemas?.[schemaName]?.description?.slice(0, 140) || 'OpenAPI schema model'}`,
         });
     };
-    const traverseSchemaProperties = (
-        schema: any,
-        prefix = '',
-        visited = new Set<string>(),
-    ): {
-        [name: string]: any;
-    } => {
-        if (schema === undefined || schema === null) return {};
-        let props: {
-            [name: string]: any;
-        } = {};
-        if (schema.$ref) {
-            const ref = String(schema.$ref);
-            if (visited.has(ref)) return {};
-            visited.add(ref);
-            const refSchema = resolveReference(schema);
-            if (refSchema && refSchema !== schema) return traverseSchemaProperties(refSchema, prefix, visited);
-            return {};
-        }
-        if (schema.allOf && Array.isArray(schema.allOf)) {
-            schema.allOf.forEach((sub: any) => {
-                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
-            });
-        }
-        if (schema.properties) {
-            Object.entries(schema.properties).forEach(([name, prop]: [string, any]) => {
-                const key = prefix ? `${prefix}.${name}` : name;
-                props[key] = prop;
-                const resolved = resolveReference(prop);
-                if (resolved && (resolved.type === 'object' || resolved.properties || resolved.allOf)) {
-                    const nested = traverseSchemaProperties(resolved, key, new Set(visited));
-                    props = {...props, ...nested};
-                } else if (resolved && resolved.type === 'array' && resolved.items) {
-                    const resolvedItems = resolveReference(resolved.items);
-                    if (
-                        resolvedItems &&
-                        (resolvedItems.type === 'object' || resolvedItems.properties || resolvedItems.allOf)
-                    ) {
-                        const nested = traverseSchemaProperties(resolvedItems, `${key}.*`, new Set(visited));
-                        props = {...props, ...nested};
-                    }
-                }
-            });
-        }
-        if (schema.oneOf && Array.isArray(schema.oneOf)) {
-            schema.oneOf.forEach((sub: any) => {
-                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
-            });
-        }
-        if (schema.anyOf && Array.isArray(schema.anyOf)) {
-            schema.anyOf.forEach((sub: any) => {
-                props = {...props, ...traverseSchemaProperties(sub, prefix, new Set(visited))};
-            });
-        }
-        if (!schema.properties && schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-            const mapKey = prefix ? `${prefix}.«any key»` : '«any key»';
-            props[mapKey] = schema.additionalProperties;
-        }
-        return props;
-    };
+    const traverseSchemaProperties = (schema: any): Record<string, any> =>
+        flattenSchemaProperties(schema, resolveReference);
     const renderSchemaType = (prop: any): React.ReactNode => {
         if (!prop) {
             return <span className="text-xs font-mono opacity-50">any</span>;
@@ -416,7 +359,12 @@ export default function ModalsStack({
                     if (e.target === e.currentTarget) requestClose();
                 }}
             >
-                <div className="modal-surface modal-surface-tall w-full max-w-4xl max-h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]">
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${activeSchemaObj.schemaName} schema`}
+                    className="modal-surface modal-surface-tall w-full max-w-4xl max-h-[85vh] rounded-2xl border flex flex-col overflow-hidden shadow-2xl bg-[var(--surface)] border-[var(--border)]"
+                >
                     <SchemaViewerHeader
                         active={activeSchemaObj}
                         stack={modals}
