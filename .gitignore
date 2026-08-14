@@ -11,3 +11,4 @@ coverage/
 public/specs
 public/config.json
 obj/
+builder.config.json
