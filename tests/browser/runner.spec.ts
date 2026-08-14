@@ -101,6 +101,75 @@ const specText = () =>
         },
     });
 
+const richRunnerSpecText = () =>
+    JSON.stringify({
+        openapi: '3.1.1',
+        info: {title: 'Rich Runner Fields', version: '1'},
+        paths: {
+            '/forms': {
+                post: {
+                    summary: 'Edit rich runner form',
+                    parameters: [
+                        {
+                            name: 'state',
+                            in: 'query',
+                            description:
+                                '#### Available values\n\n| Value | Case |\n|---|---|\n| active | ACTIVE |\n| paused | PAUSED |',
+                            schema: {type: 'string', enum: ['active', 'paused']},
+                        },
+                    ],
+                    requestBody: {$ref: '#/components/requestBodies/RichBody'},
+                    responses: {'200': {description: 'OK'}},
+                },
+            },
+        },
+        components: {
+            requestBodies: {
+                RichBody: {
+                    content: {
+                        'application/json': {
+                            schema: {$ref: '#/components/schemas/RichBody'},
+                        },
+                    },
+                },
+            },
+            schemas: {
+                UUID: {
+                    type: 'string',
+                    format: 'uuid',
+                    description:
+                        'A reusable **UUID schema**. Read the [RFC reference](https://example.com/rfc4122) before sending it.',
+                    externalDocs: {description: 'RFC 4122 documentation', url: 'https://example.com/rfc4122'},
+                    example: '123e4567-e89b-12d3-a456-426614174000',
+                },
+                RichBody: {
+                    type: 'object',
+                    required: ['avatar_volume'],
+                    properties: {
+                        avatar_volume: {
+                            $ref: '#/components/schemas/UUID',
+                            description: 'UUID of the temporary volume containing the avatar image.',
+                        },
+                        gender: {
+                            description:
+                                '#### Available values\n\n| Value | Case |\n|---|---|\n| male | MALE |\n| female | FEMALE |',
+                            type: 'string',
+                            enum: ['male', 'female'],
+                        },
+                        players: {
+                            type: 'array',
+                            description: 'Players included in this request.',
+                            items: {
+                                type: 'object',
+                                properties: {name: {type: 'string', description: 'Player display name.'}},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
 test.beforeAll(async () => {
     apiServer = createServer((request, response) => {
         response.setHeader('access-control-allow-origin', '*');
@@ -253,6 +322,72 @@ test('runs deliberately invalid requests and keeps the last ten outcomes', async
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     await page.getByRole('button', {name: /API Runner/i}).click();
     await expect(page.getByRole('button', {name: 'Response history'})).toHaveCount(0);
+});
+
+test('uses shared rich field descriptions, enum cases, focus frames, and array action leaders', async ({page}) => {
+    await page.goto('/');
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: /open specification file/i}).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+        name: 'rich-runner-fields.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(richRunnerSpecText()),
+    });
+    await page.getByText('Edit rich runner form', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+
+    const stateFrame = page.getByRole('group', {name: 'state parameter field'});
+    await expect(stateFrame).toBeVisible();
+    await expect(page.getByText('Available values', {exact: true})).toHaveCount(0);
+    await stateFrame.click({position: {x: 10, y: 10}});
+    await expect(stateFrame).toHaveAttribute('data-runner-field-active', 'true');
+    await page.getByRole('button', {name: 'state documented values'}).click();
+    await expect(page.getByRole('option', {name: /active ACTIVE/i})).toBeVisible();
+    await expect(page.getByRole('option', {name: /paused PAUSED/i})).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    const avatarInfo = page.getByRole('button', {name: 'Show avatar_volume description'});
+    await avatarInfo.click();
+    const descriptionTooltip = page.getByRole('tooltip');
+    await expect(descriptionTooltip).toContainText('UUID of the temporary volume');
+    await expect(descriptionTooltip).toContainText('UUID schema');
+    await expect(descriptionTooltip.getByRole('link', {name: 'RFC reference'})).toHaveAttribute(
+        'href',
+        'https://example.com/rfc4122',
+    );
+    await expect(descriptionTooltip.getByRole('button', {name: 'Close tooltip'})).toBeVisible();
+    expect(await descriptionTooltip.evaluate(element => getComputedStyle(element).userSelect)).not.toBe('none');
+    await descriptionTooltip.getByRole('button', {name: 'Inspect UUID'}).click();
+    await expect(page.getByText('UUID', {exact: true}).first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', {name: 'gender documented values'}).click();
+    await expect(page.getByRole('option', {name: /male MALE/i})).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', {name: 'Add item'}).click();
+    const itemFrame = page.getByRole('group', {name: 'Item 1 field'});
+    await expect(itemFrame).toBeVisible();
+    await expect(itemFrame.getByRole('button', {name: 'Move item up'})).toBeVisible();
+    await expect(itemFrame.getByRole('button', {name: 'Move item down'})).toBeVisible();
+    await expect(itemFrame.getByRole('button', {name: 'Remove item'})).toBeVisible();
+    await expect(itemFrame.locator('.border-dashed')).toHaveCount(1);
+    await itemFrame.click({position: {x: 80, y: 12}});
+    await expect(itemFrame).toHaveAttribute('data-runner-field-active', 'true');
+    const guideLines = page.locator('[aria-hidden="true"][class*="-start-4"]');
+    expect(await guideLines.evaluateAll(lines => lines.every(line => !line.className.includes('var(--primary)')))).toBe(
+        true,
+    );
+
+    await page.getByRole('button', {name: 'Raw JSON'}).click();
+    await expect(page.getByText('json request body', {exact: false})).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Prettify'})).toBeVisible();
+    await expect(page.getByRole('button', {name: 'Wrap'})).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('offers typed parameter suggestions without blocking custom negative-test values', async ({page}) => {
@@ -454,6 +589,50 @@ test('treats clean endpoint deep links as source of truth and opens a permanent 
     await expect(page.locator('[data-tab-id="post:/validate/{id}"]')).toHaveAttribute('data-tab-preview', 'false');
 });
 
+test('pushes workspace navigation and restores every view with browser Back and Forward', async ({page}) => {
+    await loadSpecification(page);
+    await page.getByText('Send permissive validation request', {exact: true}).first().click();
+    const validationUrl = page.url();
+    await expect(page).toHaveURL(/\/api\//);
+
+    await page.getByText('Serve private media', {exact: true}).first().click();
+    const mediaUrl = page.url();
+    expect(mediaUrl).not.toBe(validationUrl);
+
+    await page.getByRole('button', {name: /Schema Explorer/i}).click();
+    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await page.getByText('Tiny', {exact: true}).first().click();
+    await expect(page).toHaveURL(/\/schema-explorer\?schemas=Tiny$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await expect(page.locator('.modal-surface')).toHaveCount(0);
+    await page.locator('[data-nav-view="view:home"]').click();
+    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
+    await expect(page).toHaveURL(/\/compatibility$/);
+
+    await page.getByRole('button', {name: 'Back to Overview'}).click();
+    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/compatibility$/);
+    await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await expect(page.locator('[data-specification-statistics]')).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await expect(page.getByRole('heading', {name: 'Schema Explorer'})).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(mediaUrl);
+    await expect(page.locator('[data-tab-id="get:/media/{file_name}"]')).toHaveAttribute('data-tab-preview', 'false');
+    await page.goBack();
+    await expect(page).toHaveURL(validationUrl);
+    await expect(page.locator('[data-tab-id="post:/validate/{id}"]')).toHaveAttribute('data-tab-preview', 'false');
+    await page.goForward();
+    await expect(page).toHaveURL(mediaUrl);
+    await expect(page.getByText('Serve private media', {exact: true}).first()).toBeVisible();
+});
+
 test('anchors configured specs to the app root across clean deep links, reloads, and browser history', async ({
     page,
 }) => {
@@ -556,6 +735,7 @@ test('reports specification-wide Runner compatibility and undeclared binary unce
     await loadSpecification(page);
     await page.locator('[data-nav-view="view:home"]').click();
     await expect(page.locator('[data-specification-statistics]')).toContainText('Operations by method');
+    await expect(page.getByText('Operations', {exact: true})).toHaveCount(1);
     const report = page.locator('[data-runner-compatibility-report]');
     await expect(report).toBeVisible();
     await expect(report).toContainText('Runner Compatibility');
@@ -675,6 +855,17 @@ test('combines configured and local specifications in hybrid mode', async ({page
         ),
     });
     await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();
+
+    await page.goBack();
+    await expect(page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true})).toBeVisible();
+    await page.goForward();
+    await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();
+    await page.goBack();
+    await expect(page.locator('.app-topbar').getByText('Bundled Demo API', {exact: true})).toBeVisible();
+    await expect(page.locator('[data-specification-statistics]')).toBeVisible();
+    await page.goForward();
+    await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();
+    await expect(page.locator('[data-specification-statistics]')).toBeVisible();
 
     await page.reload();
     await expect(page.locator('.app-topbar').getByText('My Local Hybrid API', {exact: true})).toBeVisible();

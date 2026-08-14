@@ -14,7 +14,7 @@ interface ResponsePanelProps {
     onDeleteResponse: (index: number) => void;
     onExecute: () => void;
     onCancel: () => void;
-    onClear: () => void;
+    onClear: () => void | Promise<void>;
 }
 
 function formatJson(text: string) {
@@ -60,9 +60,9 @@ export default function ResponsePanel({
                         <span className="uppercase font-bold opacity-60 hidden sm:inline text-[9px] tracking-widest shrink-0">
                             URL
                         </span>
-                        <span className="opacity-85 truncate select-all text-[11px]" title={requestUrl}>
-                            {requestUrl}
-                        </span>
+                        <Tip content={requestUrl} wrapperClassName="min-w-0 flex-1">
+                            <span className="block truncate text-[11px] opacity-85 select-all">{requestUrl}</span>
+                        </Tip>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 select-none">
                         <span

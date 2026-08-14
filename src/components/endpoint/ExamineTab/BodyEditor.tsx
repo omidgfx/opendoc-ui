@@ -4,6 +4,7 @@ import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
 import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
 import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
+import RunnerFieldFrame from './RunnerFieldFrame';
 
 const SchemaJsonEditor = lazy(() => import('../../schema/SchemaJsonEditor'));
 
@@ -27,6 +28,7 @@ interface BodyEditorProps {
     setPatternToTest: (p: string | null) => void;
     themeMode: 'light' | 'dark';
     onExecute: () => void;
+    onOpenSchema: (schemaName: string) => void;
 }
 
 const topLevelFields = (value: BodyValue): Record<string, string> => {
@@ -57,6 +59,7 @@ export default function BodyEditor(props: BodyEditorProps) {
         setPatternToTest,
         themeMode,
         onExecute,
+        onOpenSchema,
     } = props;
     const resolvedBody = resolveRequestBody(operation.requestBody, spec);
     const contentSchema = resolvedBody?.content?.[requestBodyType]?.schema;
@@ -97,7 +100,7 @@ export default function BodyEditor(props: BodyEditorProps) {
     }
     if (bodyEditorMode === 'form' && isTopLevelBinary) {
         return (
-            <div className="space-y-4 animate-in fade-in">
+            <RunnerFieldFrame className="space-y-4 p-1 animate-in fade-in" ariaLabel="Request body file field">
                 <div
                     className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center transition-colors hover:border-[var(--primary)]"
                     onDragOver={event => {
@@ -135,7 +138,7 @@ export default function BodyEditor(props: BodyEditorProps) {
                             : 'Supports drag & drop or manual upload'}
                     </p>
                 </div>
-            </div>
+            </RunnerFieldFrame>
         );
     }
     if (bodyEditorMode === 'form') {
@@ -148,6 +151,7 @@ export default function BodyEditor(props: BodyEditorProps) {
                 setPatternToTest={setPatternToTest}
                 selectedFiles={selectedFiles}
                 setSelectedFiles={setSelectedFiles}
+                onOpenSchema={onOpenSchema}
             />
         );
     }

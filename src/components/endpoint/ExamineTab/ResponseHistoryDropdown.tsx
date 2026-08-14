@@ -2,13 +2,14 @@ import {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import type {ExamineResponse} from '../../../types';
 import ConfirmModal from '../../common/ConfirmModal';
+import {Tip} from '../../common/Tooltip';
 
 interface ResponseHistoryDropdownProps {
     history: ExamineResponse[];
     selectedIndex: number;
     onSelect: (response: ExamineResponse) => void;
     onDelete: (index: number) => void;
-    onClearAll: () => void;
+    onClearAll: () => void | Promise<void>;
 }
 
 const outcomeLabel = (response: ExamineResponse) =>
@@ -156,12 +157,11 @@ export default function ResponseHistoryDropdown({
                                     </span>
                                 )}
                             </div>
-                            <p
-                                className="mt-0.5 truncate font-mono text-[9px] text-[var(--text-muted)]"
-                                title={response.requestUrl}
-                            >
-                                {response.requestUrl || 'No request URL'}
-                            </p>
+                            <Tip content={response.requestUrl || 'No request URL'} fullWidth>
+                                <p className="mt-0.5 truncate font-mono text-[9px] text-[var(--text-muted)]">
+                                    {response.requestUrl || 'No request URL'}
+                                </p>
+                            </Tip>
                         </div>
                         <button
                             type="button"

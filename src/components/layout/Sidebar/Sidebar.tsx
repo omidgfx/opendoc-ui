@@ -767,9 +767,9 @@ export default function Sidebar(props: SidebarProps) {
                                             key={name}
                                             className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-center gap-2 text-[9px] text-[var(--text-muted)]"
                                         >
-                                            <span className="truncate font-mono" title={variable.description || name}>
-                                                {name}
-                                            </span>
+                                            <Tip content={variable.description || name} fullWidth>
+                                                <span className="block truncate font-mono">{name}</span>
+                                            </Tip>
                                             {variable.enum?.length ? (
                                                 <CustomDropdown
                                                     value={serverVariableValues[name] ?? variable.default}

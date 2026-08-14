@@ -361,13 +361,11 @@ export default function Topbar({
                         <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-medium truncate">
                             <span className="truncate">{title}</span>
                             {specFreshness?.freshness === 'stale' && (
-                                <span
-                                    role="status"
-                                    title="Using cached specification"
-                                    className="shrink-0 text-[var(--method-put)]"
-                                >
-                                    <i className="ph ph-warning-circle" />
-                                </span>
+                                <Tip content="Using cached specification">
+                                    <span role="status" className="shrink-0 text-[var(--method-put)]">
+                                        <i className="ph ph-warning-circle" />
+                                    </span>
+                                </Tip>
                             )}
                         </div>
                     </div>

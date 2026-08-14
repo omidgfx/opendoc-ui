@@ -1,4 +1,12 @@
-import {type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useState} from 'react';
+import {
+    type Dispatch,
+    type MutableRefObject,
+    type SetStateAction,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../types';
 import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
 import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
@@ -14,6 +22,7 @@ type NavigationSnapshot = {
     showWelcome: boolean;
     [key: string]: unknown;
 };
+export type HistoryNavigationIntent = 'replace' | 'push' | 'restore';
 
 interface UseWorkspaceRoutingOptions {
     parsables: ParsableConfig;
@@ -69,6 +78,8 @@ interface UseWorkspaceRoutingOptions {
     openEndpointPermanent: (path: string, method: string) => void;
     openViewTabPermanent: (view: ViewTabKind, query?: string) => void;
     ensureViewTabFromState: (override?: any) => void;
+    historyIntentRef: MutableRefObject<HistoryNavigationIntent>;
+    restoreSpecificationFromRoute?: (key: string) => Promise<boolean>;
 }
 
 const hasExplicitTab = () => {
@@ -140,30 +151,41 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         openEndpointPermanent,
         openViewTabPermanent,
         ensureViewTabFromState,
+        historyIntentRef,
+        restoreSpecificationFromRoute,
     } = options;
+    const routeRestoreRef = useRef<string | null>(null);
+    const restoringSpecKeyRef = useRef('');
     const syncHashToState = useCallback(() => {
         const parsed = parseSmartRoute(getCurrentSmartRoute());
-        if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey && parsables[parsed.parsableKey]) {
-            setSpec(null);
-            setLoadedSpecKey('');
-            setSelectedEndpoint(null);
-            setShowWelcome(false);
-            setShowHome(false);
-            setShowSchemaExplorer(false);
-            setShowCompatibility(false);
-            setShowAbout(false);
-            setShowAssistant(false);
-            setAssistantContextEndpoints([]);
-            setSearchQuery('');
-            setResultsQuery('');
-            setSelectedMethods([]);
-            setSelectedTags([]);
-            setOnlyProtected(null);
-            setTabs([]);
-            setActiveTabId(null);
-            setViewModes({});
-            setExamineResponses({});
-            setSelectedSpecKey(parsed.parsableKey);
+        if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey) {
+            if (parsables[parsed.parsableKey]) {
+                setSpec(null);
+                setLoadedSpecKey('');
+                setSelectedEndpoint(null);
+                setShowWelcome(false);
+                setShowHome(false);
+                setShowSchemaExplorer(false);
+                setShowCompatibility(false);
+                setShowAbout(false);
+                setShowAssistant(false);
+                setAssistantContextEndpoints([]);
+                setSearchQuery('');
+                setResultsQuery('');
+                setSelectedMethods([]);
+                setSelectedTags([]);
+                setOnlyProtected(null);
+                setTabs([]);
+                setActiveTabId(null);
+                setViewModes({});
+                setExamineResponses({});
+                setSelectedSpecKey(parsed.parsableKey);
+            } else if (restoreSpecificationFromRoute && restoringSpecKeyRef.current !== parsed.parsableKey) {
+                restoringSpecKeyRef.current = parsed.parsableKey;
+                void restoreSpecificationFromRoute(parsed.parsableKey).finally(() => {
+                    if (restoringSpecKeyRef.current === parsed.parsableKey) restoringSpecKeyRef.current = '';
+                });
+            }
             return;
         }
         if (
@@ -172,7 +194,6 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             specRouteReadyRef.current !== selectedSpecKey
         )
             return;
-        if (!hasExplicitSpecRoute(parsed, getCurrentSmartRoute())) return;
         if (navStateRef.current.showWelcome) setShowWelcome(false);
         setSearchQuery(parsed.searchQuery || '');
         setResultsQuery(parsed.searchQuery || '');
@@ -206,6 +227,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             setModalStack(valid.length ? valid : []);
         }
         if (hasEmptySearchRoute(parsed)) openViewTabPermanent('search');
+        else if (parsed.showHome) openViewTabPermanent('home');
         else
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
@@ -232,6 +254,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowWelcome,
         setShowHome,
         setShowSchemaExplorer,
+        setShowCompatibility,
         setShowAbout,
         setShowAssistant,
         setAssistantContextEndpoints,
@@ -251,6 +274,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setModalStack,
         openViewTabPermanent,
         ensureViewTabFromState,
+        restoreSpecificationFromRoute,
     ]);
     const updateHashFromState = useCallback(() => {
         if (
@@ -282,7 +306,22 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             searchSecured: searchInUrl ? onlyProtected : null,
             activeSpec: spec,
         });
-        if (getCurrentSmartRoute() !== hash) window.history.replaceState(window.history.state, '', hash);
+        const currentRoute = getCurrentSmartRoute();
+        const intent = historyIntentRef.current;
+        if (intent !== 'push' && routeRestoreRef.current) {
+            if (currentRoute === hash) {
+                routeRestoreRef.current = null;
+                historyIntentRef.current = 'replace';
+            }
+            setIsUpdatingHash(false);
+            return;
+        }
+        if (currentRoute !== hash) {
+            if (intent === 'push') window.history.pushState(window.history.state, '', hash);
+            else window.history.replaceState(window.history.state, '', hash);
+        }
+        routeRestoreRef.current = null;
+        historyIntentRef.current = 'replace';
         setIsUpdatingHash(false);
     }, [
         isLoadingSpec,
@@ -319,7 +358,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             return;
         const parsed = parseSmartRoute(getCurrentSmartRoute());
         if (parsed.parsableKey && parsed.parsableKey !== selectedSpecKey) return;
-        if (!hasExplicitSpecRoute(parsed, getCurrentSmartRoute())) {
+        if (!hasExplicitSpecRoute(parsed, getCurrentSmartRoute()) && !parsed.parsableKey) {
             specRouteReadyRef.current = selectedSpecKey;
             return;
         }
@@ -353,6 +392,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setModalStack(parsed.schemas.filter(name => spec.components?.schemas?.[name]));
         if (hasExplicitTab()) setSelectedViewMode(routeMode(parsed.tab));
         if (hasEmptySearchRoute(parsed)) openViewTabPermanent('search');
+        else if (parsed.showHome) openViewTabPermanent('home');
         else
             ensureViewTabFromState({
                 searchQuery: parsed.searchQuery || '',
@@ -380,6 +420,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setOnlyProtected,
         setShowHome,
         setShowSchemaExplorer,
+        setShowCompatibility,
         setShowAbout,
         setShowAssistant,
         setShowWelcome,
@@ -408,7 +449,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
     }, [selectedViewMode, selectedSpecKey, modeRestoredForKey]);
     useEffect(() => {
         if (isLoadingSpec) return;
-        const timer = window.setTimeout(updateHashFromState, 300);
+        const timer = window.setTimeout(updateHashFromState, historyIntentRef.current === 'push' ? 0 : 300);
         return () => window.clearTimeout(timer);
     }, [
         selectedSpecKey,
@@ -427,7 +468,10 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
     ]);
     useEffect(() => {
         const onRouteChange = () => {
-            if (!isUpdatingHash && !isLoadingSpec) syncHashToState();
+            if (isUpdatingHash || isLoadingSpec) return;
+            routeRestoreRef.current = getCurrentSmartRoute();
+            historyIntentRef.current = 'restore';
+            syncHashToState();
         };
         window.addEventListener('hashchange', onRouteChange);
         window.addEventListener('popstate', onRouteChange);

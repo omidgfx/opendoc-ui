@@ -1,36 +1,27 @@
 import {useEffect, useRef, useState} from 'react';
+import type {OpenApiSpec} from '../../../types';
 import CustomDropdown from '../../common/CustomDropdown';
+import {enumDropdownOptions, enumValueDescriptions, enumValueText} from '../../../utils/enumOptions';
+import {resolved} from '../../../utils/runner/recursiveBody';
 
 interface ParameterInputProps {
     param: any;
     value: any;
     onChange: (val: any) => void;
+    spec: OpenApiSpec;
 }
-
-const choiceText = (value: unknown): string => {
-    if (value === null) return 'null';
-    if (value === undefined) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'object') {
-        try {
-            return JSON.stringify(value);
-        } catch {
-            return String(value);
-        }
-    }
-    return String(value);
-};
 
 const schemaType = (schema: any, fallback?: unknown): string => {
     if (Array.isArray(schema?.type)) return schema.type.find((item: string) => item !== 'null') || 'string';
     return String(schema?.type || fallback || 'string');
 };
 
-export default function ParameterInput({param, value, onChange}: ParameterInputProps) {
+export default function ParameterInput({param, value, onChange, spec}: ParameterInputProps) {
     const [pendingItem, setPendingItem] = useState('');
     const [manualMode, setManualMode] = useState(false);
     const customInputRef = useRef<HTMLInputElement | null>(null);
-    const schema = param.schema ?? param;
+    const sourceSchema = param.schema ?? param;
+    const schema = resolved(sourceSchema, spec);
     const itemSchema = schema.items || param.items || {};
     const type = schemaType(schema, param.type);
     const isArray = type === 'array' || param.type === 'array';
@@ -44,10 +35,10 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
                 : null
         : null;
     const stringValue = value === undefined || value === null ? '' : String(value);
-    const documentedIndex = enumValues?.findIndex((item: any) => choiceText(item) === stringValue) ?? -1;
+    const documentedIndex = enumValues?.findIndex((item: any) => enumValueText(item) === stringValue) ?? -1;
     const customValueActive = manualMode || (stringValue !== '' && documentedIndex < 0 && !!enumValues);
     const selectedValues: string[] = Array.isArray(value)
-        ? value.map(choiceText)
+        ? value.map(enumValueText)
         : value === undefined || value === null || value === ''
           ? []
           : String(value)
@@ -78,10 +69,11 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
 
     if (isArray && Array.isArray(itemSchema.enum)) {
         const enumValues = itemSchema.enum as any[];
-        const enumTexts = enumValues.map(choiceText);
+        const enumTexts = enumValues.map(enumValueText);
+        const enumDescriptions = enumValueDescriptions(itemSchema);
         const customValues = selectedValues.filter(item => !enumTexts.includes(item));
         const toggle = (item: any) => {
-            const text = choiceText(item);
+            const text = enumValueText(item);
             onChange(
                 selectedValues.includes(text)
                     ? selectedValues.filter(valueItem => valueItem !== text)
@@ -99,16 +91,23 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
                 <div className="flex flex-wrap gap-2">
                     {enumValues.map((item, index) => (
                         <label
-                            key={`${choiceText(item)}:${index}`}
+                            key={`${enumValueText(item)}:${index}`}
                             className="inline-flex cursor-pointer select-none items-center gap-1.5 text-xs"
                         >
                             <input
                                 type="checkbox"
-                                checked={selectedValues.includes(choiceText(item))}
+                                checked={selectedValues.includes(enumValueText(item))}
                                 onChange={() => toggle(item)}
                                 className="h-3.5 w-3.5 accent-[var(--primary)]"
                             />
-                            <span className="font-mono">{choiceText(item)}</span>
+                            <span className="min-w-0">
+                                <span className="block font-mono">{enumValueText(item)}</span>
+                                {enumDescriptions.get(enumValueText(item)) && (
+                                    <span className="block text-[9px] text-[var(--text-muted)]">
+                                        {enumDescriptions.get(enumValueText(item))}
+                                    </span>
+                                )}
+                            </span>
                         </label>
                     ))}
                 </div>
@@ -240,14 +239,18 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
                             return;
                         }
                         const index = Number(selected.split(':')[1]);
-                        onChange(index >= 0 ? choiceText(enumValues[index]) : '');
+                        onChange(index >= 0 ? enumValueText(enumValues[index]) : '');
                     }}
                     options={[
                         {value: '__empty__', label: '— Empty / omitted —'},
-                        ...enumValues.map((item: any, index: number) => ({
-                            value: `documented:${index}`,
-                            label: choiceText(item),
-                        })),
+                        ...enumDropdownOptions(
+                            enumValues,
+                            {
+                                ...schema,
+                                description: param.description || sourceSchema.description || schema.description,
+                            },
+                            (_item, index) => `documented:${index}`,
+                        ),
                         {value: '__custom__', label: 'Custom value…'},
                     ]}
                     className="w-full"
@@ -286,7 +289,7 @@ export default function ParameterInput({param, value, onChange}: ParameterInputP
             className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]"
             placeholder={
                 example !== undefined
-                    ? choiceText(example)
+                    ? enumValueText(example)
                     : type === 'object'
                       ? 'JSON value'
                       : schema.format

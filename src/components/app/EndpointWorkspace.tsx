@@ -40,7 +40,7 @@ interface EndpointWorkspaceProps {
     responseHistory: ExamineResponse[];
     onResponseChange: (response: ExamineResponse) => void;
     onDeleteResponse: (index: number) => void;
-    onClearResponse: () => void;
+    onClearResponse: () => void | Promise<void>;
     onOpenSchema: (schemaName: string) => void;
     onGenerateCode: () => void;
     onAskAINewConversation: () => void;
@@ -115,6 +115,7 @@ export default function EndpointWorkspace({
                 onResponseChange={onResponseChange}
                 onDeleteResponse={onDeleteResponse}
                 onClearResponse={onClearResponse}
+                onOpenSchema={onOpenSchema}
             />
         </ViewErrorBoundary>
     );

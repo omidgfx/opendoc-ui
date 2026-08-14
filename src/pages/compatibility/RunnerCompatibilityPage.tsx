@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react';
 import type {OpenApiSpec} from '../../types';
 import CustomDropdown from '../../components/common/CustomDropdown';
+import {Tip} from '../../components/common/Tooltip';
 import MethodBadge from '../../components/common/MethodBadge';
 import ReferenceStatusNotice from '../../components/common/ReferenceStatusNotice';
 import {collectReferenceIssues, createBundledOpenApiDocument, missingReferenceDocuments} from '../../utils/openapi';
@@ -13,6 +14,7 @@ interface RunnerCompatibilityPageProps {
     specKey: string;
     onSelectEndpoint: (path: string, method: string) => void;
     onAddReferencedFiles?: () => void;
+    onBackToOverview: () => void;
 }
 
 const downloadText = (text: string, fileName: string, type: string) => {
@@ -66,11 +68,20 @@ const ratingPresentation: Record<
 
 const RATINGS: RunnerCompatibilityRating[] = ['A', 'B', 'C', 'D'];
 
+const TooltipCell = ({value, className}: {value: string; className: string}) => (
+    <td className={className}>
+        <Tip content={value} fullWidth disabled={!value || value === '—'}>
+            <span className="block truncate">{value}</span>
+        </Tip>
+    </td>
+);
+
 export default function RunnerCompatibilityPage({
     spec,
     specKey,
     onSelectEndpoint,
     onAddReferencedFiles,
+    onBackToOverview,
 }: RunnerCompatibilityPageProps) {
     const report = useMemo(() => analyzeRunnerCompatibility(spec), [spec]);
     const issues = useMemo(() => collectReferenceIssues(spec), [spec]);
@@ -119,6 +130,16 @@ export default function RunnerCompatibilityPage({
                 <header className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
                         <div className="flex items-center gap-2">
+                            <Tip content="Back to Overview" placement="bottom">
+                                <button
+                                    type="button"
+                                    onClick={onBackToOverview}
+                                    aria-label="Back to Overview"
+                                    className="flex size-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
+                                >
+                                    <i className="ph ph-arrow-left text-[17px]" />
+                                </button>
+                            </Tip>
                             <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
                                 <i className="ph-fill ph-shield-check text-[19px]" />
                             </span>
@@ -155,28 +176,31 @@ export default function RunnerCompatibilityPage({
                             </span>
                             Original
                         </button>
-                        <button
-                            type="button"
-                            disabled={hasUnresolvedReferences}
-                            title={
+                        <Tip
+                            content={
                                 hasUnresolvedReferences
                                     ? 'Add the missing referenced files before creating a bundled copy.'
                                     : 'Download a derived self-contained copy; the original remains unchanged.'
                             }
-                            onClick={() =>
-                                downloadText(
-                                    JSON.stringify(createBundledOpenApiDocument(spec), null, 2),
-                                    `${safeName || 'openapi'}-bundled.json`,
-                                    'application/json',
-                                )
-                            }
-                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-3 text-[10px] font-extrabold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/14 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                         >
-                            <span className="flex size-6 items-center justify-center rounded-lg bg-[var(--accent)]/10">
-                                <i className="ph ph-package text-[17px]" />
-                            </span>
-                            Bundled copy
-                        </button>
+                            <button
+                                type="button"
+                                disabled={hasUnresolvedReferences}
+                                onClick={() =>
+                                    downloadText(
+                                        JSON.stringify(createBundledOpenApiDocument(spec), null, 2),
+                                        `${safeName || 'openapi'}-bundled.json`,
+                                        'application/json',
+                                    )
+                                }
+                                className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/8 px-3 text-[10px] font-extrabold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/14 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            >
+                                <span className="flex size-6 items-center justify-center rounded-lg bg-[var(--accent)]/10">
+                                    <i className="ph ph-package text-[17px]" />
+                                </span>
+                                Bundled copy
+                            </button>
+                        </Tip>
                         <button
                             type="button"
                             onClick={() =>
@@ -258,14 +282,17 @@ export default function RunnerCompatibilityPage({
                                     ? (ratingCounts[current] / report.totalOperations) * 100
                                     : 0;
                                 return percentage > 0 ? (
-                                    <span
+                                    <Tip
                                         key={current}
-                                        title={`${current}: ${ratingCounts[current]} (${Math.round(percentage)}%)`}
-                                        style={{
-                                            width: `${percentage}%`,
-                                            backgroundColor: ratingPresentation[current].color,
-                                        }}
-                                    />
+                                        content={`${current}: ${ratingCounts[current]} (${Math.round(percentage)}%)`}
+                                        wrapperClassName="h-full"
+                                        wrapperStyle={{width: `${percentage}%`}}
+                                    >
+                                        <span
+                                            className="block h-full w-full"
+                                            style={{backgroundColor: ratingPresentation[current].color}}
+                                        />
+                                    </Tip>
                                 ) : null;
                             })}
                         </div>
@@ -402,31 +429,21 @@ export default function RunnerCompatibilityPage({
                                                 <span className="truncate font-mono">{endpoint.path}</span>
                                             </button>
                                         </td>
-                                        <td className="max-w-56 truncate px-2 py-1.5" title={endpoint.summary}>
-                                            {endpoint.summary}
-                                        </td>
-                                        <td className="max-w-44 truncate px-2 py-1.5 font-mono" title={endpoint.auth}>
-                                            {endpoint.auth}
-                                        </td>
+                                        <TooltipCell value={endpoint.summary} className="max-w-56 px-2 py-1.5" />
+                                        <TooltipCell value={endpoint.auth} className="max-w-44 px-2 py-1.5 font-mono" />
                                         <td className="px-2 py-1.5 font-mono">{endpoint.parameterCount}</td>
-                                        <td
-                                            className="max-w-36 truncate px-2 py-1.5 font-mono"
-                                            title={endpoint.requestMediaTypes.join(', ')}
-                                        >
-                                            {endpoint.requestMediaTypes.join(', ') || '—'}
-                                        </td>
-                                        <td
-                                            className="max-w-36 truncate px-2 py-1.5 font-mono"
-                                            title={endpoint.responseMediaTypes.join(', ')}
-                                        >
-                                            {endpoint.responseMediaTypes.join(', ') || '—'}
-                                        </td>
-                                        <td
-                                            className="max-w-60 truncate px-2 py-1.5"
-                                            title={endpoint.notes.join(' · ')}
-                                        >
-                                            {endpoint.notes.join(' · ') || 'Ready'}
-                                        </td>
+                                        <TooltipCell
+                                            value={endpoint.requestMediaTypes.join(', ') || '—'}
+                                            className="max-w-36 px-2 py-1.5 font-mono"
+                                        />
+                                        <TooltipCell
+                                            value={endpoint.responseMediaTypes.join(', ') || '—'}
+                                            className="max-w-36 px-2 py-1.5 font-mono"
+                                        />
+                                        <TooltipCell
+                                            value={endpoint.notes.join(' · ') || 'Ready'}
+                                            className="max-w-60 px-2 py-1.5"
+                                        />
                                     </tr>
                                 ))}
                             </tbody>

@@ -4,6 +4,7 @@ import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
 import {remoteRequestModeLabel} from '../../utils/remoteSpec';
 import {formatRelativeTime} from '../../utils/specification/selector';
 import ConfirmModal from '../common/ConfirmModal';
+import {Tip} from '../common/Tooltip';
 
 interface RemoteSpecificationControlsProps {
     selectedKey: string;
@@ -131,12 +132,11 @@ export default function RemoteSpecificationControls({
                                                     </span>
                                                 )}
                                             </span>
-                                            <span
-                                                className="block truncate font-mono text-[9px] text-[var(--text-muted)]"
-                                                title={entry.url}
-                                            >
-                                                {displayUrl(entry.url)}
-                                            </span>
+                                            <Tip content={entry.url} fullWidth>
+                                                <span className="block truncate font-mono text-[9px] text-[var(--text-muted)]">
+                                                    {displayUrl(entry.url)}
+                                                </span>
+                                            </Tip>
                                             <span className="block text-[8px] text-[var(--text-muted)]/80">
                                                 {formatRelativeTime(entry.openedAt)}
                                                 {entry.requestMode &&

@@ -12,6 +12,7 @@ export interface RecursiveBodyFormProps {
     setPatternToTest: (pattern: string | null) => void;
     selectedFiles: Record<string, File | null>;
     setSelectedFiles: (value: Record<string, File | null>) => void;
+    onOpenSchema: (schemaName: string) => void;
 }
 
 export interface FieldProps {
@@ -26,6 +27,7 @@ export interface FieldProps {
     setPatternToTest: (pattern: string | null) => void;
     selectedFiles: Record<string, File | null>;
     setSelectedFiles: (value: Record<string, File | null>) => void;
+    onOpenSchema: (schemaName: string) => void;
     focusedPath: PathPart[] | null;
     setFocusedPath: (path: PathPart[]) => void;
     actions?: ReactNode;

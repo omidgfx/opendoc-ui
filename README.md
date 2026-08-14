@@ -561,10 +561,12 @@ no download link, and shows metadata only. Every endpoint keeps its **last 10 tr
 per specification in IndexedDB-backed storage (with an emergency localStorage fallback only when IndexedDB is unavailable), including HTTP responses,
 browser/network failures, validation outcomes, timeouts, and cancellations.
 
-The Overview page keeps a specification-wide **Runner Compatibility** summary. A dedicated sidebar
-page adds a compact endpoint matrix with A–D ratings, numeric scores, auth, parameter counts, request
-and response media, and scoped findings. It also lists missing reference files, can append them to a
-local bundle, exports the immutable original or a derived bundled copy, and generates `llms.txt`.
+The Overview page keeps a specification-wide **Runner Compatibility** summary and shortcut. Its full
+matrix remains part of Overview navigation, keeps Overview selected in the sidebar, and provides a
+visible Back to Overview control. The matrix adds A–D ratings, numeric scores, auth, parameter counts,
+request and response media, and scoped findings. It also lists missing reference files, can append
+them to a local bundle, exports the immutable original or a derived bundled copy, and generates
+`llms.txt`.
 Compatibility remains a static preflight—not a promise about CORS, DNS, authentication state, server
 behavior, or payloads missing from the specification. File-serving operations should declare a 2xx response media
 type and a `string` schema with `format: binary`; when that success response is omitted, OpenDoc can
@@ -572,9 +574,12 @@ only recognize binary data from the real response headers after the request has 
 
 Request bodies have two complementary paths: the manual recursive form handles nested objects,
 arrays of objects, arrays of arrays, enums, defaults, examples, and add/remove/reorder controls;
-Raw mode remains available for payloads that need exact text. The raw editor selects JSON, YAML, XML,
-JavaScript, HTML, or plain-text behavior from the media type and does not apply JSON diagnostics to
-non-JSON bodies.
+Raw mode remains available for payloads that need exact text. Simple parameter fields and recursive
+body fields share the same focus frames, description popovers, schema links, and custom dropdowns.
+Plain descriptions stay inline up to the compact threshold; Markdown descriptions move completely
+into selectable, closable popovers with working links. Enum Markdown tables can supply lighter case
+labels inside dropdown options. The raw editor selects JSON, YAML, XML, JavaScript, HTML, or plain-text
+behavior from the media type and does not apply JSON diagnostics to non-JSON bodies.
 
 The Runner is intentionally **permissive, not a client-side API validator**. Pattern mismatches,
 malformed JSON, missing non-path values, and questionable server values are reported as notices but
@@ -894,11 +899,14 @@ OpenDoc uses clean History API routes and still accepts legacy `#/...` links. Ma
 
 Query parameters include `?tab=examine|doc`, `?schemas=a,b`, and `?search=...`; response deep links
 append `#response-<code>`. Endpoint links are authoritative: loading or refreshing one always opens
-that endpoint as a permanent tab. Static deployments must serve `index.html` for unknown routes;
-OpenDoc builds `dist/404.html`, and the included nginx configuration already provides SPA fallback.
+that endpoint as a permanent tab. User navigation pushes History API entries, while search/filter
+edits update the current entry; browser Back and Forward restore views, endpoints, tabs, response
+links, schema stacks, and configured/local/remote specifications without rewriting the destination
+URL. Static deployments must serve `index.html` for unknown routes; OpenDoc builds `dist/404.html`,
+and the included nginx configuration already provides SPA fallback.
 
-In local mode the key is `local:<fileName>`, and it maps back into the local history on
-reload.
+In local mode the key is `local:<fileName>`, and the clean route maps it back into local history on
+reload or browser history traversal.
 
 ---
 

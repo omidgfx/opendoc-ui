@@ -3,8 +3,17 @@ import {resolveReference} from '@/src/utils/openapi';
 import type {PathPart} from '@/src/types/recursiveBody';
 
 export const DESCRIPTION_TOOLTIP_THRESHOLD = 80;
+export const containsMarkdown = (description?: string): boolean => {
+    if (!description?.trim()) return false;
+    return (
+        /(^|\n)\s{0,3}(#{1,6}\s|>|[-+*]\s|\d+\.\s|```|~~~)/m.test(description) ||
+        /\[[^\]]+\]\([^)]+\)/.test(description) ||
+        /(^|\n)\s*\|.+\|\s*(\n|$)/m.test(description) ||
+        /(\*\*|__|`)[^\n]+(\*\*|__|`)/.test(description)
+    );
+};
 export const usesDescriptionTooltip = (description?: string): boolean =>
-    !!description && description.trim().length > DESCRIPTION_TOOLTIP_THRESHOLD;
+    !!description && (description.trim().length > DESCRIPTION_TOOLTIP_THRESHOLD || containsMarkdown(description));
 export const resolved = (schema: any, spec: OpenApiSpec): any => {
     if (schema === true) return {'x-opendoc-boolean-schema': true};
     if (schema === false) return {'x-opendoc-boolean-schema': false, title: 'No value satisfies this schema'};

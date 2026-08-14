@@ -1,4 +1,5 @@
 import {createPortal} from 'react-dom';
+import {useState} from 'react';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
@@ -9,7 +10,7 @@ interface ConfirmModalProps {
     confirmLabel?: string;
     cancelLabel?: string;
     destructive?: boolean;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -24,7 +25,8 @@ export default function ConfirmModal({
     onClose,
 }: ConfirmModalProps) {
     const transition = useModalTransition(isOpen, onClose);
-    useEscClose(isOpen, transition.requestClose);
+    const [confirming, setConfirming] = useState(false);
+    useEscClose(isOpen && !confirming, transition.requestClose);
     if (!transition.shouldRender || typeof document === 'undefined') return null;
     return createPortal(
         <div
@@ -42,18 +44,29 @@ export default function ConfirmModal({
                 <div className="flex justify-end gap-2 bg-[var(--background)] px-5 py-3">
                     <button
                         type="button"
+                        disabled={confirming}
                         onClick={transition.requestClose}
-                        className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                        className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                     >
                         {cancelLabel}
                     </button>
                     <button
                         type="button"
+                        disabled={confirming}
                         onClick={() => {
-                            onConfirm();
-                            transition.requestClose();
+                            setConfirming(true);
+                            void (async () => {
+                                try {
+                                    await onConfirm();
+                                } catch (error) {
+                                    console.error('Confirmation action failed', error);
+                                } finally {
+                                    setConfirming(false);
+                                    transition.requestClose();
+                                }
+                            })();
                         }}
-                        className={`rounded-lg px-4 py-2 text-xs font-bold cursor-pointer ${
+                        className={`rounded-lg px-4 py-2 text-xs font-bold disabled:cursor-wait disabled:opacity-60 cursor-pointer ${
                             destructive
                                 ? 'bg-[var(--method-delete)] text-[var(--method-delete-contrast)] hover:brightness-110'
                                 : 'bg-[var(--primary)] text-[var(--primary-contrast)] hover:brightness-110'

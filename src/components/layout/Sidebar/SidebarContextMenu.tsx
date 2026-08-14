@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import type {ViewTabKind} from '@/src/types/tabs';
+import {Tip} from '@/src/components/common/Tooltip';
 
 export type SidebarContextTarget =
     | {
@@ -51,19 +52,20 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
                 Copy link
             </button>
             {target.type === 'endpoint' && (
-                <button
-                    type="button"
-                    disabled={!hasAIProfile}
-                    title={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'}
-                    className={clsx(
-                        button,
-                        hasAIProfile ? '' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50',
-                    )}
-                    onClick={() => hasAIProfile && act('ask-ai')}
-                >
-                    <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]" />
-                    {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
-                </button>
+                <Tip content={hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile first'} fullWidth>
+                    <button
+                        type="button"
+                        disabled={!hasAIProfile}
+                        className={clsx(
+                            button,
+                            hasAIProfile ? '' : 'cursor-not-allowed text-[var(--text-muted)] opacity-50',
+                        )}
+                        onClick={() => hasAIProfile && act('ask-ai')}
+                    >
+                        <i className="ph-fill ph-sparkle text-[12px] text-[var(--primary)]" />
+                        {hasAIProfile ? 'Ask AI about this endpoint' : 'Create an AI profile to use AI'}
+                    </button>
+                </Tip>
             )}
             <div className="my-1 border-t border-[var(--border)]" />
             <button className={button} onClick={() => act('share')}>
