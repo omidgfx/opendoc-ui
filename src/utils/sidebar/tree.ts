@@ -6,12 +6,14 @@ import {getPathItemOperations} from '@/src/utils/openapi/operations';
 export interface TreeNode {
     name: string;
     children: Record<string, TreeNode>;
+    isHiddenGroup?: boolean;
     endpoints: Array<{
         path: string;
         method: string;
         operation: any;
         isProtected: boolean;
         isAuthorized: boolean;
+        isHidden?: boolean;
     }>;
 }
 
@@ -102,19 +104,30 @@ export function readSidebarConfig(specKey: string): SidebarConfig {
     return normalizeSidebarConfig(stored);
 }
 
-export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig, activeAuth?: ActiveAuth): TreeNode {
+export function buildTagTree(
+    spec: OpenApiSpec | null,
+    config: SidebarConfig,
+    activeAuth?: ActiveAuth,
+    hiddenEndpointKeys: ReadonlySet<string> = new Set(),
+): TreeNode {
     const root: TreeNode = {name: '', children: {}, endpoints: []};
     if (!spec?.paths) return root;
     const byTag: Record<string, typeof root.endpoints> = {};
+    const hiddenEndpoints: typeof root.endpoints = [];
     Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
         if (!pathItem) return;
         getPathItemOperations(pathItem).forEach(({method, operation}) => {
             const tags = operation.tags?.length ? operation.tags : ['General'];
             const isProtected = isOperationProtected(spec, operation);
             const isAuthorized = activeAuth ? isOperationAuthenticated(spec, activeAuth, operation) : false;
+            const endpoint = {path: pathStr, method, operation, isProtected, isAuthorized};
+            if (hiddenEndpointKeys.has(`${method.toLowerCase()}:${pathStr}`)) {
+                hiddenEndpoints.push({...endpoint, isHidden: true});
+                return;
+            }
             tags.forEach((tag: string) => {
                 if (!byTag[tag]) byTag[tag] = [];
-                byTag[tag].push({path: pathStr, method, operation, isProtected, isAuthorized});
+                byTag[tag].push(endpoint);
             });
         });
     });
@@ -127,6 +140,14 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig, ac
         }
         node.endpoints.push(...endpoints);
     });
+    if (hiddenEndpoints.length > 0) {
+        root.children['Hidden endpoints'] = {
+            name: 'Hidden endpoints',
+            children: {},
+            endpoints: hiddenEndpoints,
+            isHiddenGroup: true,
+        };
+    }
     const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {sensitivity: 'base'});
     const direction = config.sortDirection === 'desc' ? -1 : 1;
     const endpointName = (endpoint: TreeNode['endpoints'][number]) => endpoint.operation?.summary || endpoint.path;
@@ -145,7 +166,10 @@ export function buildTagTree(spec: OpenApiSpec | null, config: SidebarConfig, ac
     const sort = (n: TreeNode): TreeNode => {
         const sorted: Record<string, TreeNode> = {};
         Object.entries(n.children)
-            .sort(([a], [b]) => compareText(a, b) * direction)
+            .sort(([a, left], [b, right]) => {
+                if (left.isHiddenGroup !== right.isHiddenGroup) return left.isHiddenGroup ? 1 : -1;
+                return compareText(a, b) * direction;
+            })
             .forEach(([key, child]) => {
                 sorted[key] = sort(child);
             });

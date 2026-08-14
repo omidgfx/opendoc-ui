@@ -1,7 +1,15 @@
 import type {ParsedRoute} from '../types';
 import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
 
-const VALID_VIEW_TAB_KINDS: ViewTabKind[] = ['home', 'search', 'schemas', 'compatibility', 'about', 'assistant'];
+const VALID_VIEW_TAB_KINDS: ViewTabKind[] = [
+    'home',
+    'search',
+    'schemas',
+    'notes',
+    'compatibility',
+    'about',
+    'assistant',
+];
 const VALID_TAB_VIEW_MODES = ['docs', 'examine', 'both'] as const;
 export type StoredTabViewMode = (typeof VALID_TAB_VIEW_MODES)[number];
 export const isValidTabViewMode = (value: unknown): value is StoredTabViewMode =>
@@ -48,6 +56,7 @@ export const hasExplicitSpecRoute = (route: ParsedRoute, hash: string): boolean 
         route.endpoint ||
         route.legacyOperationId ||
         route.showSchemaExplorer ||
+        route.showNotes ||
         route.showCompatibility ||
         route.showAbout ||
         route.showAssistant ||

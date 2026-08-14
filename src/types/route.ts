@@ -6,6 +6,7 @@ export interface EndpointRef {
 export interface ParsedRoute {
     parsableKey: string;
     showSchemaExplorer: boolean;
+    showNotes: boolean;
     showCompatibility: boolean;
     showHome: boolean;
     showAbout: boolean;

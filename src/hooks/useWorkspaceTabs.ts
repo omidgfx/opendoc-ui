@@ -21,6 +21,7 @@ export type WorkspaceViewMode = 'docs' | 'examine' | 'both';
 type NavigationSnapshot = {
     searchQuery: string;
     showSchemaExplorer: boolean;
+    showNotes: boolean;
     showCompatibility: boolean;
     showAbout: boolean;
     showAssistant: boolean;
@@ -51,6 +52,8 @@ interface UseWorkspaceTabsOptions {
     setShowHome: Dispatch<SetStateAction<boolean>>;
     showSchemaExplorer: boolean;
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
+    showNotes: boolean;
+    setShowNotes: Dispatch<SetStateAction<boolean>>;
     showCompatibility: boolean;
     setShowCompatibility: Dispatch<SetStateAction<boolean>>;
     showAbout: boolean;
@@ -83,6 +86,8 @@ export function useWorkspaceTabs({
     setShowHome,
     showSchemaExplorer,
     setShowSchemaExplorer,
+    showNotes,
+    setShowNotes,
     showCompatibility,
     setShowCompatibility,
     showAbout,
@@ -108,11 +113,12 @@ export function useWorkspaceTabs({
         (view: ViewTabKind | null) => {
             setShowHome(view === 'home');
             setShowSchemaExplorer(view === 'schemas');
+            setShowNotes(view === 'notes');
             setShowCompatibility(view === 'compatibility');
             setShowAbout(view === 'about');
             setShowAssistant(view === 'assistant');
         },
-        [setShowHome, setShowSchemaExplorer, setShowCompatibility, setShowAbout, setShowAssistant],
+        [setShowHome, setShowSchemaExplorer, setShowNotes, setShowCompatibility, setShowAbout, setShowAssistant],
     );
     const withPreviewLast = useCallback((list: TabItem[]): TabItem[] => {
         const previewIdx = list.findIndex(t => t.isPreview);
@@ -395,6 +401,7 @@ export function useWorkspaceTabs({
     const navStateRef = useRef({
         searchQuery: '',
         showSchemaExplorer: false,
+        showNotes: false,
         showCompatibility: false,
         showAbout: false,
         showAssistant: false,
@@ -407,6 +414,7 @@ export function useWorkspaceTabs({
     navStateRef.current = {
         searchQuery,
         showSchemaExplorer,
+        showNotes,
         showCompatibility,
         showAbout,
         showAssistant,
@@ -420,6 +428,7 @@ export function useWorkspaceTabs({
         (override?: {
             searchQuery?: string;
             showSchemaExplorer?: boolean;
+            showNotes?: boolean;
             showCompatibility?: boolean;
             showAbout?: boolean;
             showAssistant?: boolean;
@@ -437,13 +446,15 @@ export function useWorkspaceTabs({
                     ? 'search'
                     : s.showSchemaExplorer
                       ? 'schemas'
-                      : s.showCompatibility
-                        ? 'compatibility'
-                        : s.showAssistant
-                          ? 'assistant'
-                          : s.showAbout
-                            ? 'about'
-                            : null;
+                      : s.showNotes
+                        ? 'notes'
+                        : s.showCompatibility
+                          ? 'compatibility'
+                          : s.showAssistant
+                            ? 'assistant'
+                            : s.showAbout
+                              ? 'about'
+                              : null;
             if (s.showWelcome && !expected) return;
             if (!expected) return;
             if (expected === 'assistant') setAssistantUnread(false);

@@ -8,6 +8,7 @@ import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
 import {getOperation} from '../../utils/openapi';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
+import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -76,11 +77,13 @@ export default function EndpointWorkspace({
     onGenerateCode,
     onAskAINewConversation,
 }: EndpointWorkspaceProps) {
+    const {noteCountForEndpoint, openEndpointNotes} = useEndpointNotes();
     const operation = getOperation(spec, endpoint.path, endpoint.method);
     if (!operation) return null;
     const docsActive = selectedTab !== 'both' || activeSplitPane === 'docs';
     const runnerActive = selectedTab !== 'both' || activeSplitPane === 'examine';
     const endpointKey = `${endpoint.method.toLowerCase()}:${endpoint.path}`;
+    const endpointNoteCount = noteCountForEndpoint(endpoint.path, endpoint.method);
     const docs = (
         <ViewErrorBoundary resetKey={`docs:${endpointKey}`} title="Endpoint documentation could not be rendered">
             <ViewTab
@@ -123,6 +126,19 @@ export default function EndpointWorkspace({
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
             <div className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
                 <div className="flex items-center gap-1.5 text-[10.5px] min-w-0 overflow-hidden">
+                    <Tip content="Open endpoint notes">
+                        <button
+                            type="button"
+                            onClick={() => openEndpointNotes(endpoint.path, endpoint.method)}
+                            aria-label={`Open endpoint notes (${endpointNoteCount})`}
+                            className="mr-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-2.5 font-bold text-[var(--text-heading)] transition-colors hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)] cursor-pointer"
+                        >
+                            <i className="ph-fill ph-note-pencil text-[14px]" />
+                            <span className="min-w-4 rounded-full bg-[var(--primary)]/10 px-1.5 py-0.5 text-center font-mono text-[9px] text-[var(--primary)]">
+                                {endpointNoteCount}
+                            </span>
+                        </button>
+                    </Tip>
                     <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden sm:inline">
                         Endpoint:
                     </span>

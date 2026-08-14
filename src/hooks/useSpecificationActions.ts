@@ -4,6 +4,7 @@ import {clearAllCachedSpecs, clearCachedSpec} from '../utils/specCache';
 import {specStorage, uiStorage} from '../utils/storage';
 import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/aiStorage';
 import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
+import {ENDPOINT_NOTES_STORAGE_NAME} from '../utils/endpointNotes';
 
 interface UseSpecificationActionsOptions {
     selectedSpecKey: string;
@@ -85,9 +86,9 @@ export function useSpecificationActions({
         [selectedSpecKey, refreshSpec],
     );
     const resetSpecification = useCallback(
-        async (specKey: string) => {
+        async (specKey: string, options: {clearNotes?: boolean} = {}) => {
             await clearAIConversations(specKey);
-            await specStorage.clear(specKey);
+            await specStorage.clear(specKey, options.clearNotes ? [] : [ENDPOINT_NOTES_STORAGE_NAME]);
             const source = parsables[specKey];
             if (source?.url) await clearCachedSpec(source.url);
             else if (activeRemoteSpec?.key === specKey) await clearCachedSpec(activeRemoteSpec.url);

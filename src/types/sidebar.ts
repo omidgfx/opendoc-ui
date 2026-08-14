@@ -15,6 +15,8 @@ export interface SidebarProps {
     onToggleCollapse: () => void;
     onOpenSchemaExplorer: () => void;
     showSchemaExplorer: boolean;
+    onOpenNotes: () => void;
+    showNotes: boolean;
     showCompatibility: boolean;
     selectedMethods: string[];
     setSelectedMethods: Dispatch<SetStateAction<string[]>>;
@@ -77,7 +79,7 @@ export interface SidebarProps {
     onOpenLocalFile: () => void;
     onDisplayRoutesChange?: (displayRoutes: boolean) => void;
     onReloadSpecification: (key: string) => void | Promise<void>;
-    onResetSpecification: (key: string) => void;
+    onResetSpecification: (key: string, options?: {clearNotes?: boolean}) => void | Promise<void>;
     onResetAllConfigurations: () => void;
     onRefreshSpec: () => void;
     isRefreshingSpec: boolean;

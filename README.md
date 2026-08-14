@@ -28,6 +28,7 @@ CORS-enabled providers directly or an optional gateway.
   - [Build-time settings](#build-time-settings)
   - [Downloader services](#downloader-services)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
+- [Local endpoint notes and hidden endpoints](#local-endpoint-notes-and-hidden-endpoints)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
   - [Framework AI gateway examples](#framework-ai-gateway-examples)
@@ -68,6 +69,10 @@ CORS-enabled providers directly or an optional gateway.
   requests in the existing API Runner.
 - **Local mode** — no configuration at all: open `.json` / `.yaml` / `.yml` files from your
   device, with a persistent history of everything you opened.
+- **Local endpoint notes** — keep private Markdown notes and task lists per endpoint, choose from
+  twelve light note colors, mark tasks complete, and optionally hide an endpoint when its work is done.
+- **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
+  then unhide them individually or restore every hidden endpoint from navigation settings.
 - **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
@@ -504,6 +509,28 @@ allowlist where practical.
 
 ---
 
+## Local endpoint notes and hidden endpoints
+
+OpenDoc can keep private notes beside individual operations without changing the OpenAPI document.
+Notes are scoped to the selected specification, stored in IndexedDB-backed local persistence, and
+never uploaded. The **Local Notes** sidebar page groups notes by endpoint and supports search plus
+simple-note/task filters.
+
+- Notes render Markdown and can use one of **12 predefined light colors** from the custom color picker.
+- A note can be a simple reference or a task/todo with a persistent done state.
+- Tasks can opt into **auto-hide endpoint when all endpoint tasks are done**.
+- Endpoint context menus can create notes, open the endpoint note list, hide, or unhide the endpoint.
+- Endpoint headers always show the current note count, and noted endpoints receive a note marker in
+  the sidebar before deprecation/security indicators.
+- Hidden endpoints move into one muted **Hidden endpoints** folder at the end of the tree. Use their
+  context menu to restore one, or **Unhide all endpoints** from navigation settings.
+- Endpoint note lists and the Local Notes page use custom confirmation dialogs for individual and
+  bulk deletion. Opening a note uses a dedicated detail modal with edit and task actions.
+
+Resetting one specification preserves its local notes by default. The reset confirmation includes an
+unchecked **Clear local notes too** option for intentionally deleting them. Reset All still clears all
+per-spec data, including notes.
+
 ## OpenDoc UI assistant
 
 The topbar sparkle button opens a dedicated **OpenDoc UI** assistant page. You can also right-click
@@ -892,6 +919,7 @@ OpenDoc uses clean History API routes and still accepts legacy `#/...` links. Ma
 | `/parsable/<key>`                              | Home of the configured/local specification |
 | `/parsable/<key>/api/<endpointId>`             | A specific endpoint in a permanent tab     |
 | `/parsable/<key>/schema-explorer?schemas=name` | Schema Explorer with a schema open         |
+| `/parsable/<key>/notes`                        | Local endpoint notes and tasks             |
 | `/parsable/<key>/compatibility`                | Endpoint Runner compatibility matrix       |
 | `/parsable/<key>/about`                        | About page for that specification          |
 | `/parsable/<key>/assistant`                    | OpenDoc UI assistant                       |
@@ -958,6 +986,8 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 | `opendoc:spec:<key>:tabs`                                   | Open tabs (endpoints + view tabs) with active tab                                               |
 | `opendoc:spec:<key>:inputs:<method>:<path>`                 | Saved runner inputs per endpoint                                                                |
 | `opendoc:spec:<key>:response_history:<method>:<path>`       | Last 10 Runner outcomes per endpoint                                                            |
+| `opendoc:spec:<key>:endpoint_notes`                         | Local Markdown notes and tasks grouped by endpoint                                              |
+| `opendoc:spec:<key>:hidden_endpoints`                       | Endpoint keys moved into the muted Hidden endpoints folder                                      |
 | `opendoc:spec:<key>:scroll:<method>:<path>`                 | Docs scroll position per endpoint                                                               |
 | `opendoc:spec:<key>:ai_conversations`                       | Saved AI conversations for this specification                                                   |
 | `opendoc_spec_cache_v2:<url>`                               | Validated generic cache record; large raw copies use dedicated IndexedDB records                |

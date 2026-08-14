@@ -40,6 +40,8 @@ import {useConfigBootstrap} from './hooks/useConfigBootstrap';
 import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
 import {useSpecificationActions} from './hooks/useSpecificationActions';
 import {consumeOAuthResult} from './utils/oauthFlow';
+import {EndpointNotesProvider} from './contexts/EndpointNotesContext';
+import EndpointNotesModalLayer from './components/notes/EndpointNotesModalLayer';
 
 declare global {
     interface Window {
@@ -76,6 +78,7 @@ export default function App() {
     const [showWelcome, setShowWelcome] = useState(false);
     const [showHome, setShowHome] = useState(true);
     const [showSchemaExplorer, setShowSchemaExplorer] = useState(false);
+    const [showNotes, setShowNotes] = useState(false);
     const [showCompatibility, setShowCompatibility] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
@@ -232,6 +235,8 @@ export default function App() {
         setShowHome,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showNotes,
+        setShowNotes,
         showCompatibility,
         setShowCompatibility,
         showAbout,
@@ -303,6 +308,7 @@ export default function App() {
             setShowWelcome(false);
             setShowHome(false);
             setShowSchemaExplorer(false);
+            setShowNotes(false);
             setShowCompatibility(false);
             setShowAbout(false);
             setShowAssistant(false);
@@ -450,6 +456,8 @@ export default function App() {
         setShowAssistant,
         showSchemaExplorer,
         setShowSchemaExplorer,
+        showNotes,
+        setShowNotes,
         showCompatibility,
         setShowCompatibility,
         selectedEndpoint,
@@ -557,6 +565,7 @@ export default function App() {
                 showAbout: view === 'about',
                 showAssistant: view === 'assistant',
                 showSchemaExplorer: view === 'schemas',
+                showNotes: view === 'notes',
                 showCompatibility: view === 'compatibility',
                 endpoint: null,
                 tab: 'docs',
@@ -692,6 +701,7 @@ export default function App() {
         openEndpointPreviewWithHistory(path, method);
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowNotes(false);
         setShowCompatibility(false);
         setShowAbout(false);
         setShowAssistant(false);
@@ -772,6 +782,7 @@ export default function App() {
                 setActiveTabId(null);
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowNotes(false);
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setSearchQuery('');
@@ -839,6 +850,11 @@ export default function App() {
         openViewTab('schemas');
         closeMobileIfNeeded();
     };
+    const handleOpenNotes = () => {
+        setScrollIntent({type: 'view', id: 'view:notes'});
+        openViewTab('notes');
+        closeMobileIfNeeded();
+    };
     const handleOpenCompatibility = () => {
         setScrollIntent({type: 'view', id: 'view:compatibility'});
         openViewTab('compatibility');
@@ -854,6 +870,7 @@ export default function App() {
         setSelectedTab('examine');
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowNotes(false);
         setShowCompatibility(false);
         setShowAbout(false);
         setShowAssistant(false);
@@ -985,6 +1002,7 @@ export default function App() {
         setShowWelcome(false);
         setShowHome(false);
         setShowSchemaExplorer(false);
+        setShowNotes(false);
         setShowCompatibility(false);
         setShowAbout(false);
         setShowAssistant(false);
@@ -1064,6 +1082,7 @@ export default function App() {
             examineResponses={examineResponses}
             setExamineResponses={setExamineResponses}
             showSchemaExplorer={showSchemaExplorer}
+            showNotes={showNotes}
             showCompatibility={showCompatibility}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
@@ -1080,6 +1099,7 @@ export default function App() {
             onHidePageViews={() => {
                 setShowHome(false);
                 setShowSchemaExplorer(false);
+                setShowNotes(false);
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
@@ -1093,278 +1113,288 @@ export default function App() {
     };
     return (
         <TooltipProvider>
-            <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
-                <div
-                    style={styleVars}
-                    className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]"
-                >
-                    <input
-                        ref={hiddenFileInputRef}
-                        type="file"
-                        multiple
-                        accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml"
-                        className="hidden"
-                        onChange={handleFileChosen}
-                    />
+            <EndpointNotesProvider specKey={selectedParsableKey}>
+                <OperationLinkProvider spec={spec} parsableKey={selectedParsableKey}>
+                    <div
+                        style={styleVars}
+                        className="app-viewport w-full min-h-0 overflow-hidden flex flex-col font-sans transition-colors duration-150 text-[var(--text)] bg-[var(--background)]"
+                    >
+                        <input
+                            ref={hiddenFileInputRef}
+                            type="file"
+                            multiple
+                            accept=".json,.yaml,.yml,application/json,text/yaml,text/x-yaml"
+                            className="hidden"
+                            onChange={handleFileChosen}
+                        />
 
-                    <Topbar
-                        parsables={parsables}
-                        selectedParsableKey={selectedParsableKey}
-                        onSelectParsable={handleSelectParsable}
-                        activeAuth={activeAuth}
-                        onUpdateAuth={setActiveAuth}
-                        onOpenAuthModal={() => setShowAuthModal(true)}
-                        searchQuery={searchQuery}
-                        onSearchChange={handleSearchChange}
-                        onDownloadSpec={handleDownload}
-                        title={spec?.info?.title || 'OpenDoc UI'}
-                        showSchemaExplorer={showSchemaExplorer}
-                        spec={spec}
-                        specFreshness={specFetchInfo}
-                        showHome={showHome}
-                        isCollapsed={isSidebarCollapsed}
-                        onToggleCollapse={onToggleCollapse}
-                        onOpenMobileSidebar={() => setMobileOpen(true)}
-                        onOpenAssistant={handleOpenAssistant}
-                        selectedThemeName={selectedThemeName}
-                        onSelectTheme={setSelectedThemeName}
-                        onOpenThemeModal={() => setShowThemeModal(true)}
-                        isLocalMode={isLocalMode}
-                        canOpenLocal={canOpenLocal}
-                        onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                        onRefreshSpec={handleRefreshSpec}
-                        onReloadSpecification={handleReloadSpecification}
-                        onResetSpecification={handleResetSpecification}
-                        onResetAllConfigurations={handleResetAllConfigurations}
-                        isRefreshingSpec={isRefreshingSpec}
-                        localHistory={localHistory}
-                        onSelectHistoryEntry={handleSelectHistoryEntry}
-                        onRemoveHistoryEntry={handleRemoveHistoryEntry}
-                        onClearHistory={handleClearHistory}
-                        localOpenError={localOpenError}
-                        onDismissLocalError={() => setLocalOpenError(null)}
-                        remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
-                        downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
-                        remoteHistory={remoteHistory}
-                        remoteOpenError={remoteOpenError}
-                        isLoadingRemoteSpec={isLoadingRemoteSpec}
-                        remoteLoadStatus={remoteLoadStatus}
-                        onLoadRemoteUrl={loadRemoteSpec}
-                        onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
-                        onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
-                        onClearRemoteHistory={handleClearRemoteHistory}
-                        onSearchHasResults={searchHasResults}
-                        hideSearch={false}
-                    />
+                        <Topbar
+                            parsables={parsables}
+                            selectedParsableKey={selectedParsableKey}
+                            onSelectParsable={handleSelectParsable}
+                            activeAuth={activeAuth}
+                            onUpdateAuth={setActiveAuth}
+                            onOpenAuthModal={() => setShowAuthModal(true)}
+                            searchQuery={searchQuery}
+                            onSearchChange={handleSearchChange}
+                            onDownloadSpec={handleDownload}
+                            title={spec?.info?.title || 'OpenDoc UI'}
+                            showSchemaExplorer={showSchemaExplorer}
+                            spec={spec}
+                            specFreshness={specFetchInfo}
+                            showHome={showHome}
+                            isCollapsed={isSidebarCollapsed}
+                            onToggleCollapse={onToggleCollapse}
+                            onOpenMobileSidebar={() => setMobileOpen(true)}
+                            onOpenAssistant={handleOpenAssistant}
+                            selectedThemeName={selectedThemeName}
+                            onSelectTheme={setSelectedThemeName}
+                            onOpenThemeModal={() => setShowThemeModal(true)}
+                            isLocalMode={isLocalMode}
+                            canOpenLocal={canOpenLocal}
+                            onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                            onRefreshSpec={handleRefreshSpec}
+                            onReloadSpecification={handleReloadSpecification}
+                            onResetSpecification={handleResetSpecification}
+                            onResetAllConfigurations={handleResetAllConfigurations}
+                            isRefreshingSpec={isRefreshingSpec}
+                            localHistory={localHistory}
+                            onSelectHistoryEntry={handleSelectHistoryEntry}
+                            onRemoveHistoryEntry={handleRemoveHistoryEntry}
+                            onClearHistory={handleClearHistory}
+                            localOpenError={localOpenError}
+                            onDismissLocalError={() => setLocalOpenError(null)}
+                            remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
+                            downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+                            remoteHistory={remoteHistory}
+                            remoteOpenError={remoteOpenError}
+                            isLoadingRemoteSpec={isLoadingRemoteSpec}
+                            remoteLoadStatus={remoteLoadStatus}
+                            onLoadRemoteUrl={loadRemoteSpec}
+                            onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
+                            onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
+                            onClearRemoteHistory={handleClearRemoteHistory}
+                            onSearchHasResults={searchHasResults}
+                            hideSearch={false}
+                        />
 
-                    <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
-                        {isLoadingSpec ? (
-                            <SpecLoadingState />
-                        ) : !spec ? (
-                            content()
-                        ) : (
-                            <>
-                                <Sidebar
-                                    spec={spec}
-                                    parsables={isMobile ? parsables : undefined}
-                                    selectedParsableKey={selectedParsableKey}
-                                    onSelectParsable={isMobile ? handleSelectParsable : undefined}
-                                    selectedServer={selectedServer}
-                                    onSelectServer={setSelectedServer}
-                                    isCollapsed={desktopCollapsed}
-                                    onToggleCollapse={() => setDesktopCollapsed(c => !c)}
-                                    onOpenSchemaExplorer={handleOpenSchemaExplorer}
-                                    showSchemaExplorer={showSchemaExplorer}
-                                    showCompatibility={showCompatibility}
-                                    selectedMethods={selectedMethods}
-                                    setSelectedMethods={setSelectedMethods}
-                                    selectedTags={selectedTags}
-                                    setSelectedTags={setSelectedTags}
-                                    onlyProtected={onlyProtected}
-                                    setOnlyProtected={setOnlyProtected}
-                                    searchQuery={searchQuery}
-                                    selectedEndpoint={selectedEndpoint}
-                                    onSelectEndpoint={handleSelectEndpoint}
-                                    onMiddleClickEndpoint={openEndpointPermanentWithHistory}
-                                    getEndpointHref={(path, method) =>
-                                        generateSmartRoute({
-                                            parsableKey: selectedParsableKey,
-                                            showHome: false,
-                                            showAbout: false,
-                                            showAssistant: false,
-                                            showSchemaExplorer: false,
-                                            endpoint: {path, method},
-                                            tab: 'docs',
-                                            schemaModals: [],
-                                            responseCode: null,
-                                            searchQuery: '',
-                                            searchMethods: [],
-                                            searchTags: [],
-                                            searchSecured: null,
-                                            activeSpec: spec,
-                                        })
-                                    }
-                                    onOpenHome={handleOpenHome}
-                                    onOpenAbout={handleOpenAbout}
-                                    onOpenViewPermanent={openViewTabPermanentWithHistory}
-                                    onContextAction={handleContextAction}
-                                    scrollIntent={scrollIntent}
-                                    setScrollIntent={setScrollIntent}
-                                    showHome={showHome}
-                                    showAbout={showAbout}
-                                    showAssistant={showAssistant}
-                                    assistantContextEndpoints={assistantContextEndpoints}
-                                    hasAIProfile={hasAIProfile}
-                                    themeMode={currentThemeMode}
-                                    resolvedThemeMode={resolvedThemeMode}
-                                    onToggleThemeMode={toggleThemeMode}
-                                    selectedThemeName={selectedThemeName}
-                                    onOpenThemeModal={() => setShowThemeModal(true)}
-                                    onOpenAuthModal={() => setShowAuthModal(true)}
-                                    activeAuth={activeAuth}
-                                    onDownloadSpec={handleDownload}
-                                    isLocalMode={isLocalMode}
-                                    canOpenLocal={canOpenLocal}
-                                    onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                                    onDisplayRoutesChange={setSidebarDisplayRoutes}
-                                    onReloadSpecification={handleReloadSpecification}
-                                    onResetSpecification={handleResetSpecification}
-                                    onResetAllConfigurations={handleResetAllConfigurations}
-                                    onRefreshSpec={handleRefreshSpec}
-                                    isRefreshingSpec={isRefreshingSpec}
-                                    localHistory={localHistory}
-                                    onSelectHistoryEntry={handleSelectHistoryEntry}
-                                    onRemoveHistoryEntry={handleRemoveHistoryEntry}
-                                    onClearHistory={handleClearHistory}
-                                    localOpenError={localOpenError}
-                                    onDismissLocalError={() => setLocalOpenError(null)}
-                                    remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
-                                    downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
-                                    remoteHistory={remoteHistory}
-                                    remoteOpenError={remoteOpenError}
-                                    isLoadingRemoteSpec={isLoadingRemoteSpec}
-                                    remoteLoadStatus={remoteLoadStatus}
-                                    onLoadRemoteUrl={loadRemoteSpec}
-                                    onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
-                                    onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
-                                    onClearRemoteHistory={handleClearRemoteHistory}
-                                    mobileOpen={mobileOpen}
-                                    onCloseMobile={() => setMobileOpen(false)}
-                                    onOpenMobile={() => setMobileOpen(true)}
-                                />
-                                <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
-                                    {endpointTabs.length > 0 && spec && (
-                                        <EndpointTabs
-                                            tabs={endpointTabs}
-                                            activeTabId={activeTabId}
-                                            onSelectTab={handleSelectTab}
-                                            onCloseTab={handleCloseTab}
-                                            onDoubleClickTab={handleDoubleClickTab}
-                                            onCloseAllLeft={handleCloseAllLeft}
-                                            onCloseAllRight={handleCloseAllRight}
-                                            onCloseOthers={handleCloseOthers}
-                                            onReorderTabs={handleReorderTabs}
-                                            assistantUnread={assistantUnread}
-                                            onOpenSwitcher={openSwitcher}
-                                        />
-                                    )}
-                                    <div
-                                        className={clsx(
-                                            'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
-                                            assistantTabActive ? 'hidden' : 'flex',
-                                        )}
-                                    >
-                                        {content()}
-                                    </div>
-                                    <div
-                                        className={clsx(
-                                            'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
-                                            assistantTabActive ? 'flex' : 'hidden',
-                                        )}
-                                    >
-                                        {spec && (
-                                            <AIAssistantView
-                                                spec={spec}
-                                                parsableKey={selectedParsableKey}
-                                                selectedEndpoints={assistantContextEndpoints}
-                                                selectedServer={selectedServer}
-                                                activeAuth={activeAuth}
-                                                activeTab={selectedTab}
-                                                searchQuery={searchQuery}
-                                                settings={aiSettings}
-                                                hasAIProfile={hasAIProfile}
-                                                isVisible={assistantTabActive}
-                                                newConversationRequest={assistantNewConversationRequest}
-                                                onNewConversationRequestHandled={id =>
-                                                    setAssistantNewConversationRequest(current =>
-                                                        current?.id === id ? null : current,
-                                                    )
-                                                }
-                                                onOpenSettings={() => setShowAISettings(true)}
-                                                onClearEndpointContext={() => setAssistantContextEndpoints([])}
-                                                onRemoveEndpointContext={(path, method) =>
-                                                    setAssistantContextEndpoints(current =>
-                                                        current.filter(
-                                                            endpoint =>
-                                                                !(endpoint.path === path && endpoint.method === method),
-                                                        ),
-                                                    )
-                                                }
-                                                onOpenEndpoint={handleSelectEndpoint}
-                                                onOpenRunner={handleOpenRunner}
-                                                onBridgeAction={handleAssistantBridgeAction}
-                                                onResponseFinished={handleAssistantResponseFinished}
+                        <div className="flex-1 flex overflow-hidden w-full h-full min-w-0 relative">
+                            {isLoadingSpec ? (
+                                <SpecLoadingState />
+                            ) : !spec ? (
+                                content()
+                            ) : (
+                                <>
+                                    <Sidebar
+                                        spec={spec}
+                                        parsables={isMobile ? parsables : undefined}
+                                        selectedParsableKey={selectedParsableKey}
+                                        onSelectParsable={isMobile ? handleSelectParsable : undefined}
+                                        selectedServer={selectedServer}
+                                        onSelectServer={setSelectedServer}
+                                        isCollapsed={desktopCollapsed}
+                                        onToggleCollapse={() => setDesktopCollapsed(c => !c)}
+                                        onOpenSchemaExplorer={handleOpenSchemaExplorer}
+                                        showSchemaExplorer={showSchemaExplorer}
+                                        onOpenNotes={handleOpenNotes}
+                                        showNotes={showNotes}
+                                        showCompatibility={showCompatibility}
+                                        selectedMethods={selectedMethods}
+                                        setSelectedMethods={setSelectedMethods}
+                                        selectedTags={selectedTags}
+                                        setSelectedTags={setSelectedTags}
+                                        onlyProtected={onlyProtected}
+                                        setOnlyProtected={setOnlyProtected}
+                                        searchQuery={searchQuery}
+                                        selectedEndpoint={selectedEndpoint}
+                                        onSelectEndpoint={handleSelectEndpoint}
+                                        onMiddleClickEndpoint={openEndpointPermanentWithHistory}
+                                        getEndpointHref={(path, method) =>
+                                            generateSmartRoute({
+                                                parsableKey: selectedParsableKey,
+                                                showHome: false,
+                                                showAbout: false,
+                                                showAssistant: false,
+                                                showSchemaExplorer: false,
+                                                endpoint: {path, method},
+                                                tab: 'docs',
+                                                schemaModals: [],
+                                                responseCode: null,
+                                                searchQuery: '',
+                                                searchMethods: [],
+                                                searchTags: [],
+                                                searchSecured: null,
+                                                activeSpec: spec,
+                                            })
+                                        }
+                                        onOpenHome={handleOpenHome}
+                                        onOpenAbout={handleOpenAbout}
+                                        onOpenViewPermanent={openViewTabPermanentWithHistory}
+                                        onContextAction={handleContextAction}
+                                        scrollIntent={scrollIntent}
+                                        setScrollIntent={setScrollIntent}
+                                        showHome={showHome}
+                                        showAbout={showAbout}
+                                        showAssistant={showAssistant}
+                                        assistantContextEndpoints={assistantContextEndpoints}
+                                        hasAIProfile={hasAIProfile}
+                                        themeMode={currentThemeMode}
+                                        resolvedThemeMode={resolvedThemeMode}
+                                        onToggleThemeMode={toggleThemeMode}
+                                        selectedThemeName={selectedThemeName}
+                                        onOpenThemeModal={() => setShowThemeModal(true)}
+                                        onOpenAuthModal={() => setShowAuthModal(true)}
+                                        activeAuth={activeAuth}
+                                        onDownloadSpec={handleDownload}
+                                        isLocalMode={isLocalMode}
+                                        canOpenLocal={canOpenLocal}
+                                        onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+                                        onDisplayRoutesChange={setSidebarDisplayRoutes}
+                                        onReloadSpecification={handleReloadSpecification}
+                                        onResetSpecification={handleResetSpecification}
+                                        onResetAllConfigurations={handleResetAllConfigurations}
+                                        onRefreshSpec={handleRefreshSpec}
+                                        isRefreshingSpec={isRefreshingSpec}
+                                        localHistory={localHistory}
+                                        onSelectHistoryEntry={handleSelectHistoryEntry}
+                                        onRemoveHistoryEntry={handleRemoveHistoryEntry}
+                                        onClearHistory={handleClearHistory}
+                                        localOpenError={localOpenError}
+                                        onDismissLocalError={() => setLocalOpenError(null)}
+                                        remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
+                                        downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+                                        remoteHistory={remoteHistory}
+                                        remoteOpenError={remoteOpenError}
+                                        isLoadingRemoteSpec={isLoadingRemoteSpec}
+                                        remoteLoadStatus={remoteLoadStatus}
+                                        onLoadRemoteUrl={loadRemoteSpec}
+                                        onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
+                                        onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
+                                        onClearRemoteHistory={handleClearRemoteHistory}
+                                        mobileOpen={mobileOpen}
+                                        onCloseMobile={() => setMobileOpen(false)}
+                                        onOpenMobile={() => setMobileOpen(true)}
+                                    />
+                                    <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
+                                        {endpointTabs.length > 0 && spec && (
+                                            <EndpointTabs
+                                                tabs={endpointTabs}
+                                                activeTabId={activeTabId}
+                                                onSelectTab={handleSelectTab}
+                                                onCloseTab={handleCloseTab}
+                                                onDoubleClickTab={handleDoubleClickTab}
+                                                onCloseAllLeft={handleCloseAllLeft}
+                                                onCloseAllRight={handleCloseAllRight}
+                                                onCloseOthers={handleCloseOthers}
+                                                onReorderTabs={handleReorderTabs}
+                                                assistantUnread={assistantUnread}
+                                                onOpenSwitcher={openSwitcher}
                                             />
                                         )}
+                                        <div
+                                            className={clsx(
+                                                'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
+                                                assistantTabActive ? 'hidden' : 'flex',
+                                            )}
+                                        >
+                                            {content()}
+                                        </div>
+                                        <div
+                                            className={clsx(
+                                                'flex-1 h-full min-h-0 min-w-0 flex-col overflow-hidden',
+                                                assistantTabActive ? 'flex' : 'hidden',
+                                            )}
+                                        >
+                                            {spec && (
+                                                <AIAssistantView
+                                                    spec={spec}
+                                                    parsableKey={selectedParsableKey}
+                                                    selectedEndpoints={assistantContextEndpoints}
+                                                    selectedServer={selectedServer}
+                                                    activeAuth={activeAuth}
+                                                    activeTab={selectedTab}
+                                                    searchQuery={searchQuery}
+                                                    settings={aiSettings}
+                                                    hasAIProfile={hasAIProfile}
+                                                    isVisible={assistantTabActive}
+                                                    newConversationRequest={assistantNewConversationRequest}
+                                                    onNewConversationRequestHandled={id =>
+                                                        setAssistantNewConversationRequest(current =>
+                                                            current?.id === id ? null : current,
+                                                        )
+                                                    }
+                                                    onOpenSettings={() => setShowAISettings(true)}
+                                                    onClearEndpointContext={() => setAssistantContextEndpoints([])}
+                                                    onRemoveEndpointContext={(path, method) =>
+                                                        setAssistantContextEndpoints(current =>
+                                                            current.filter(
+                                                                endpoint =>
+                                                                    !(
+                                                                        endpoint.path === path &&
+                                                                        endpoint.method === method
+                                                                    ),
+                                                            ),
+                                                        )
+                                                    }
+                                                    onOpenEndpoint={handleSelectEndpoint}
+                                                    onOpenRunner={handleOpenRunner}
+                                                    onBridgeAction={handleAssistantBridgeAction}
+                                                    onResponseFinished={handleAssistantResponseFinished}
+                                                />
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                </>
+                            )}
+                        </div>
 
-                    <AppModalLayer
-                        spec={spec}
-                        specKey={selectedParsableKey}
-                        selectedServer={selectedServer}
-                        schemaStack={modalsStack}
-                        setSchemaStack={setModalsStackWithHistory}
-                        onPopSchema={handlePopSchema}
-                        onPushSchema={handlePushSchema}
-                        codeEndpoint={codeGenEndpoint}
-                        setCodeEndpoint={setCodeGenEndpoint}
-                        activeAuth={activeAuth}
-                        authOperation={
-                            selectedEndpoint ? getOperation(spec, selectedEndpoint.path, selectedEndpoint.method) : null
-                        }
-                        setActiveAuth={setActiveAuth}
-                        authOpen={showAuthModal}
-                        setAuthOpen={setShowAuthModal}
-                        switcherOpen={switcherOpen}
-                        tabs={endpointTabs}
-                        activeTabId={activeTabId}
-                        switcherIndex={switcherIndex}
-                        onCancelSwitcher={cancelSwitcher}
-                        onSelectSwitcherTab={id => {
-                            handleSelectTab(id);
-                            setSwitcherOpen(false);
-                        }}
-                        shareTarget={shareTarget}
-                        setShareTarget={setShareTarget}
-                        themeOpen={showThemeModal}
-                        setThemeOpen={setShowThemeModal}
-                        selectedThemeName={selectedThemeName}
-                        setSelectedThemeName={setSelectedThemeName}
-                        currentThemeMode={currentThemeMode}
-                        setCurrentThemeMode={setCurrentThemeMode}
-                        resolvedThemeMode={resolvedThemeMode}
-                        toggleThemeMode={toggleThemeMode}
-                        aiSettingsOpen={showAISettings}
-                        setAISettingsOpen={setShowAISettings}
-                        aiSettings={aiSettings}
-                        onSaveAISettings={handleAISettingsSave}
-                    />
-                </div>
-            </OperationLinkProvider>
+                        <AppModalLayer
+                            spec={spec}
+                            specKey={selectedParsableKey}
+                            selectedServer={selectedServer}
+                            schemaStack={modalsStack}
+                            setSchemaStack={setModalsStackWithHistory}
+                            onPopSchema={handlePopSchema}
+                            onPushSchema={handlePushSchema}
+                            codeEndpoint={codeGenEndpoint}
+                            setCodeEndpoint={setCodeGenEndpoint}
+                            activeAuth={activeAuth}
+                            authOperation={
+                                selectedEndpoint
+                                    ? getOperation(spec, selectedEndpoint.path, selectedEndpoint.method)
+                                    : null
+                            }
+                            setActiveAuth={setActiveAuth}
+                            authOpen={showAuthModal}
+                            setAuthOpen={setShowAuthModal}
+                            switcherOpen={switcherOpen}
+                            tabs={endpointTabs}
+                            activeTabId={activeTabId}
+                            switcherIndex={switcherIndex}
+                            onCancelSwitcher={cancelSwitcher}
+                            onSelectSwitcherTab={id => {
+                                handleSelectTab(id);
+                                setSwitcherOpen(false);
+                            }}
+                            shareTarget={shareTarget}
+                            setShareTarget={setShareTarget}
+                            themeOpen={showThemeModal}
+                            setThemeOpen={setShowThemeModal}
+                            selectedThemeName={selectedThemeName}
+                            setSelectedThemeName={setSelectedThemeName}
+                            currentThemeMode={currentThemeMode}
+                            setCurrentThemeMode={setCurrentThemeMode}
+                            resolvedThemeMode={resolvedThemeMode}
+                            toggleThemeMode={toggleThemeMode}
+                            aiSettingsOpen={showAISettings}
+                            setAISettingsOpen={setShowAISettings}
+                            aiSettings={aiSettings}
+                            onSaveAISettings={handleAISettingsSave}
+                        />
+                        <EndpointNotesModalLayer spec={spec} />
+                    </div>
+                </OperationLinkProvider>
+            </EndpointNotesProvider>
         </TooltipProvider>
     );
 }

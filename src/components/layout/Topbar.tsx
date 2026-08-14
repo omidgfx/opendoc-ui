@@ -39,7 +39,7 @@ interface TopbarProps {
     onOpenLocalFile: () => void;
     onRefreshSpec: () => void;
     onReloadSpecification: (key: string) => void | Promise<void>;
-    onResetSpecification: (key: string) => void;
+    onResetSpecification: (key: string, options?: {clearNotes?: boolean}) => void | Promise<void>;
     onResetAllConfigurations: () => void;
     isRefreshingSpec: boolean;
     localHistory: LocalHistoryEntry[];

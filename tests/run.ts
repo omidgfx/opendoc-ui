@@ -62,7 +62,8 @@ import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGener
 import {parseSpecDraft} from '@/src/utils/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specSource';
 import {parseEmojis} from '@/src/data/emoji';
-import {endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
+import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
+import {createEndpointNote, ENDPOINT_NOTE_COLORS, endpointNoteKey, endpointNoteTitle} from '@/src/utils/endpointNotes';
 import {
     buildDownloaderUrl,
     normalizeDownloaderTemplate,
@@ -813,7 +814,7 @@ test('discovers OAS 3.2 QUERY and arbitrary additional operations through one op
         true,
     );
 });
-test('generates and parses clean routes for endpoints and compatibility views', () => {
+test('generates and parses clean routes for endpoints, notes, and compatibility views', () => {
     const operation: any = {operationId: 'listItems', responses: {'200': {description: 'ok'}}};
     const spec: any = {...baseSpec, paths: {'/items': {get: operation}}};
     assert.equal(
@@ -830,6 +831,22 @@ test('generates and parses clean routes for endpoints and compatibility views', 
         }),
         '/parsable/Route%20API/api/listItems',
     );
+    assert.equal(
+        generateSmartRoute({
+            parsableKey: 'Route API',
+            showHome: false,
+            showAbout: false,
+            showAssistant: false,
+            showSchemaExplorer: false,
+            showNotes: true,
+            endpoint: null,
+            tab: 'docs',
+            schemaModals: [],
+        }),
+        '/parsable/Route%20API/notes',
+    );
+    const notes = parseSmartRoute('/parsable/Route%20API/notes');
+    assert.equal(notes.showNotes, true);
     const compatibility = parseSmartRoute('/parsable/Route%20API/compatibility');
     assert.equal(compatibility.parsableKey, 'Route API');
     assert.equal(compatibility.showCompatibility, true);
@@ -1384,6 +1401,41 @@ test('extracts native enum case descriptions from Markdown tables for custom dro
         {value: 'choice:0', label: '1', description: 'NOVICE'},
         {value: 'choice:1', label: '2', description: 'EXPERT'},
     ]);
+});
+test('creates local endpoint notes with twelve predefined colors and stable endpoint keys', () => {
+    assert.equal(ENDPOINT_NOTE_COLORS.length, 12);
+    assert.equal(new Set(ENDPOINT_NOTE_COLORS.map(color => color.id)).size, 12);
+    const note = createEndpointNote({
+        path: '/items',
+        method: 'POST',
+        type: 'task',
+        title: '',
+        content: '**Ship** the endpoint',
+        color: 'mint',
+        autoHideWhenTasksDone: true,
+    });
+    assert.equal(note.method, 'post');
+    assert.equal(note.done, false);
+    assert.equal(endpointNoteTitle(note), 'Ship the endpoint');
+    assert.equal(endpointNoteKey(note.path, note.method), 'post:/items');
+});
+test('moves hidden endpoints into one final gray-folder tree group', () => {
+    const spec: any = {
+        ...baseSpec,
+        paths: {
+            '/visible': {get: {tags: ['General'], summary: 'Visible', responses: {'200': {description: 'ok'}}}},
+            '/hidden': {post: {tags: ['General'], summary: 'Hidden', responses: {'200': {description: 'ok'}}}},
+        },
+    };
+    const tree = buildTagTree(spec, normalizeSidebarConfig({}), undefined, new Set(['post:/hidden']));
+    assert.deepEqual(Object.keys(tree.children), ['General', 'Hidden endpoints']);
+    assert.equal(tree.children['Hidden endpoints'].isHiddenGroup, true);
+    assert.equal(tree.children['Hidden endpoints'].endpoints.length, 1);
+    assert.equal(tree.children['Hidden endpoints'].endpoints[0].isHidden, true);
+    assert.equal(
+        tree.children.General.endpoints.some(endpoint => endpoint.path === '/hidden'),
+        false,
+    );
 });
 test('creates typed defaults for recursive object and array schemas', () => {
     const schema = {

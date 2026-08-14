@@ -1,5 +1,5 @@
 import {createPortal} from 'react-dom';
-import {useState} from 'react';
+import {useId, useState} from 'react';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
@@ -25,6 +25,7 @@ export default function ConfirmModal({
     onClose,
 }: ConfirmModalProps) {
     const transition = useModalTransition(isOpen, onClose);
+    const titleId = useId();
     const [confirming, setConfirming] = useState(false);
     useEscClose(isOpen && !confirming, transition.requestClose);
     if (!transition.shouldRender || typeof document === 'undefined') return null;
@@ -36,9 +37,16 @@ export default function ConfirmModal({
                 if (event.target === event.currentTarget) transition.requestClose();
             }}
         >
-            <div className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                className="modal-surface modal-confirm-surface w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+            >
                 <div className="border-b border-[var(--border)] px-5 py-4">
-                    <h3 className="text-sm font-extrabold text-[var(--text-heading)]">{title}</h3>
+                    <h3 id={titleId} className="text-sm font-extrabold text-[var(--text-heading)]">
+                        {title}
+                    </h3>
                     <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{message}</p>
                 </div>
                 <div className="flex justify-end gap-2 bg-[var(--background)] px-5 py-3">

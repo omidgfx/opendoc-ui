@@ -131,7 +131,7 @@ export default function SchemaJsonEditor({
                     </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-                    <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--background)] p-0.5">
+                    <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--background)] p-0.5">
                         <Tip content="Search in editor (Ctrl+F)">
                             <SchemaEditorToolButton onClick={triggerFind} icon="ph-magnifying-glass" label="Find" />
                         </Tip>

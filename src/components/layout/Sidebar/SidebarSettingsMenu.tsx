@@ -33,6 +33,8 @@ interface SidebarSettingsMenuProps {
     openSort: () => void;
     scheduleSortClose: () => void;
     updateConfig: (patch: Partial<SidebarConfig>) => void;
+    hiddenEndpointCount: number;
+    onUnhideAllEndpoints: () => void;
 }
 
 export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
@@ -57,6 +59,8 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
         openSort: openSortMenu,
         scheduleSortClose: scheduleSortMenuClose,
         updateConfig: updateSidebarConfig,
+        hiddenEndpointCount,
+        onUnhideAllEndpoints,
     } = props;
     return (
         <>
@@ -470,6 +474,24 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 )}
                             >
                                 <i className="ph ph-check text-[11px]" />
+                            </span>
+                        </button>
+
+                        <div className="my-1 border-t border-[var(--border)]" />
+                        <button
+                            type="button"
+                            role="menuitem"
+                            disabled={hiddenEndpointCount === 0}
+                            onClick={() => {
+                                closeAllSubmenus();
+                                onUnhideAllEndpoints();
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                        >
+                            <i className="ph ph-eye text-[14px] text-[var(--primary)] shrink-0" />
+                            <span className="min-w-0 flex-1">Unhide all endpoints</span>
+                            <span className="rounded-full bg-[var(--text-muted)]/10 px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-muted)]">
+                                {hiddenEndpointCount}
                             </span>
                         </button>
                     </div>,
