@@ -3,10 +3,18 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
-## [Unreleased]
+## [0.1.12] — 2026-08-16
 
-Repository restructure.
+Fully responsive marketing site, modular builder CLI, repository restructure, and enforced
+architecture discipline.
 
+- makes the **marketing site fully responsive on mobile** — horizontal overflow eliminated at 320,
+  390, and 768 px across all seven pages, with ghost action buttons hidden on narrow screens, the
+  mobile navigation scrolling within the viewport, and the table of contents reflowing below the
+  header on small displays;
+- splits the **builder CLI** into a modular `scripts/builder/` structure — index, ui, validators,
+  config, env, docker, build, steps, artifacts, start, lifecycle, and paths modules — with no
+  change in behavior;
 - renames the two top-level reference directories to say what they are: `proxy/` → `downloaders/`
   (the six specification downloader services) and `ai-proxy/` → `ai-gateways/` (the nine AI gateway
   integrations), updating the builder, README, and website references;
@@ -19,7 +27,7 @@ Repository restructure.
   `public/demo/recursive-demo.json`;
 - regenerates the README Project structure section and updates the website's Compatibility, Deploy,
   and Developers pages to the new paths;
-- adopts the architecture discipline in minimal form: the last two
+- makes the architecture discipline explicit, documented, and enforced: the last two
   type-only `utils → components` imports move into `src/types/` (`CustomDropdownOption` into the
   new `types/ui.ts`, `TabItem`/`ViewTabKind` from the `types/tabs.ts` definitions they re-exported),
   a new Architecture section in the README documents the dependency direction
