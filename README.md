@@ -8,7 +8,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.12-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.13-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -17,7 +17,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.12](#version-012)
+- [Version 0.1.13](#version-013)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,28 +87,25 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.12
+## Version 0.1.13
 
-This release makes the marketing site fully responsive on mobile, splits the builder CLI into
-modules, reorganizes the repository into clearly named domains, and makes the architecture
-discipline explicit and enforced:
+This release redesigns the Active Server control and polishes schema presentation:
 
-- makes the **marketing site fully responsive on mobile** — zero horizontal overflow at 320, 390,
-  and 768 px across all seven pages, with ghost action buttons hidden, the mobile navigation
-  scrolling inside the viewport, and the table of contents reflowing on narrow screens;
-- splits the **builder CLI** (`npm run make`) into a modular `scripts/builder/` structure with no
-  behavior change;
-- renames the reference directories to say what they are: **`downloaders/`** (the six
-  specification downloader services, formerly `proxy/`) and **`ai-gateways/`** (the nine AI
-  gateway integrations, formerly `ai-proxy/`);
-- regroups **`src/utils` by domain** — `ai/`, `export/`, `notes/`, `runner/`, `specification/`,
-  `storage/`, `theme/` — with feature prefixes dropped inside domain folders and primary modules
-  promoted to folder indexes, so `src/utils` never imports components;
-- moves the Apple-emoji sprite renderer to `src/features/emoji/` and the recursive demo
-  specification to `public/demo/`;
-- documents the dependency direction (`components → hooks/contexts → utils → types`) and the
-  OpenAPI world / OpenDoc world boundary in a new README **Architecture** section, enforced on
-  every lint run by `scripts/verify-utils-contracts.mjs`.
+- replaces the inline server-variable editors in the sidebar with a compact **Active Server**
+  row — the server select with a configuration button at its right that opens a dedicated
+  **Server Variables modal** (enum dropdown or free input per variable, live resolved-URL
+  preview, apply/cancel), keeping the sidebar compact;
+- fixes server-variable handling at the root: changing a variable no longer replaces the
+  selected server template with the expanded URL (which silently reset the dropdown to the
+  first server and dropped the editors) — the template stays selected, variable values are
+  kept per server URL, and the resolved URL flows into the Runner, the response-panel URL
+  display, code generation, and the "Copy full endpoint URL" action through the resolver's
+  `selectedVariables` path;
+- shows **patternProperties** keys and **`not` constraints** in the schema property table
+  (locale patterns, "must not be the empty string" style constraints) as descriptive blocks
+  instead of an empty table;
+- labels **mutual TLS credentials** as "Client certificate" in the auth modal instead of
+  "unknown".
 
 ## Quick start
 
