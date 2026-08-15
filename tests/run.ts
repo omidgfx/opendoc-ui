@@ -1381,8 +1381,9 @@ test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple spri
     assert.match(parsed, /--emoji-sheet-left:-[\d.]+em;--emoji-sheet-top:-[\d.]+em/);
     assert.match(parsed, /:not_an_emoji:/);
 });
-test('defaults endpoint routes off and limits the local sidebar filter to visible text', () => {
-    assert.equal(normalizeSidebarConfig(undefined).displayRoutes, false);
+test('defaults endpoint routes on and limits the local sidebar filter to visible text', () => {
+    assert.equal(normalizeSidebarConfig(undefined).displayRoutes, true);
+    assert.equal(normalizeSidebarConfig({displayRoutes: false}).displayRoutes, false);
     assert.equal(normalizeSidebarConfig({displayRoutes: true}).displayRoutes, true);
     const endpoint: any = {
         path: '/internal/invoice-route',

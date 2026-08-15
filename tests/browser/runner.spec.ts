@@ -1457,10 +1457,13 @@ test('layers the local endpoint filter over global results without searching tag
     const reportEndpoint = sidebar.getByText('Export monthly report', {exact: true});
     const validationRoute = sidebar.getByText('/validate/{id}', {exact: true});
     await expect(validationEndpoint).toBeVisible();
-    await expect(validationRoute).toHaveCount(0);
+    await expect(validationRoute).toBeVisible();
     await sidebar.getByRole('button', {name: 'Navigation settings'}).click();
     const showEndpointRoutes = page.getByRole('menuitemcheckbox', {name: 'Show endpoint routes'});
+    await expect(showEndpointRoutes).toHaveAttribute('aria-checked', 'true');
+    await showEndpointRoutes.click();
     await expect(showEndpointRoutes).toHaveAttribute('aria-checked', 'false');
+    await expect(validationRoute).toHaveCount(0);
     await showEndpointRoutes.click();
     await expect(showEndpointRoutes).toHaveAttribute('aria-checked', 'true');
     await expect(validationRoute).toBeVisible();
