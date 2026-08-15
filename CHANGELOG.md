@@ -18,7 +18,14 @@ Repository restructure.
   points at `enabled.ts`/`disabled.ts` there) and the recursive demo specification into
   `public/demo/recursive-demo.json`;
 - regenerates the README Project structure section and updates the website's Compatibility, Deploy,
-  and Developers pages to the new paths.
+  and Developers pages to the new paths;
+- adopts the architecture discipline in minimal form: the last two
+  type-only `utils → components` imports move into `src/types/` (`CustomDropdownOption` into the
+  new `types/ui.ts`, `TabItem`/`ViewTabKind` from the `types/tabs.ts` definitions they re-exported),
+  a new Architecture section in the README documents the dependency direction
+  (`components → hooks/contexts → utils → types`) and the OpenAPI world / OpenDoc world boundary,
+  and `scripts/verify-utils-contracts.mjs` enforces both on every `npm run lint` — utils may not
+  import components, and may not import React outside the themeCss allowlist.
 
 ## [0.1.11] — 2026-08-15
 

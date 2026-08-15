@@ -11,7 +11,7 @@
     "clean": "node scripts/clean.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "prettier --check . && tsc --noEmit && node scripts/verify-ui-contracts.mjs",
+    "lint": "prettier --check . && tsc --noEmit && node scripts/verify-ui-contracts.mjs && node scripts/verify-utils-contracts.mjs",
     "make": "node scripts/builder/index.mjs",
     "test": "tsx tests/run.ts && tsx tests/serialization-matrix.ts && tsx tests/swagger2-matrix.ts && tsx tests/async.ts && tsx tests/conformance.ts",
     "test:browser": "playwright test",

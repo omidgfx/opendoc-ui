@@ -1132,6 +1132,42 @@ src/
 
 ---
 
+## Architecture
+
+The source tree follows one dependency direction:
+
+```
+components → hooks/contexts → utils → types
+```
+
+- `src/components` renders; it may import hooks, contexts, utils, and types.
+- `src/hooks` and `src/contexts` coordinate state and call into utils.
+- `src/utils` implements the logic — OpenAPI parsing and normalization, request
+  planning and execution, persistence, theming, AI bridging. It never imports
+  components, and it stays free of React except where a module is purely about
+  presentation typing (`utils/theme/themeCss.ts` returns `React.CSSProperties`).
+- `src/types` holds shared types and value objects with no runtime logic.
+
+The codebase draws the same boundary the product draws: the **OpenAPI world**
+(`utils/openapi/`, `types/openapi.ts`) understands specifications — parsing,
+reference resolution, serialization, diagnostics, compatibility — while the
+**OpenDoc world** (`utils/runner/`, `utils/storage/`, `utils/notes/`, `utils/ai/`,
+`types/tabs.ts`, …) is the application built around them: the runner, workspace
+tabs, notes, history, theming, and the AI assistant. The two meet only through
+the shared types and the app shell; nothing in the OpenAPI engine knows about
+tabs, notes, or AI providers.
+
+Deliberately, there is no `domain/application/infrastructure/presentation`
+layer split: at this scale each product domain maps one-to-one onto a `utils/`
+folder, and the use cases are the hooks and contexts. New layers appear only
+when a boundary gains a second implementation (a second parser, a second
+storage backend, a second HTTP client) and the indirection pays for itself.
+
+`npm run lint` enforces the utils boundary with
+`scripts/verify-utils-contracts.mjs`.
+
+---
+
 ## Deployment notes
 
 - Serve `dist/` from any static host. The app needs **no API** of its own.

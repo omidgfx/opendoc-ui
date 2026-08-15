@@ -1,11 +1,6 @@
 import React, {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
-
-export interface CustomDropdownOption {
-    value: string;
-    label: string;
-    description?: string;
-}
+import type {CustomDropdownOption} from '../../types/ui';
 
 interface CustomDropdownProps {
     value: string;

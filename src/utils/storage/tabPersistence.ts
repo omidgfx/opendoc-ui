@@ -1,5 +1,5 @@
 import type {ParsedRoute} from '../../types';
-import type {TabItem, ViewTabKind} from '../../components/endpoint/EndpointTabs';
+import type {TabItem, ViewTabKind} from '../../types/tabs';
 
 const VALID_VIEW_TAB_KINDS: ViewTabKind[] = [
     'home',
