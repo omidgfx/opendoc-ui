@@ -186,7 +186,16 @@ export default function SchemaPropertiesTable({
     };
     const patternEntries = Object.entries((schema as any)?.patternProperties || {});
     const notSchema = (schema as any)?.not;
-    if (Object.keys(properties).length === 0 && patternEntries.length === 0 && !notSchema) {
+    const isOpenObject =
+        (schema as any)?.type === 'object' &&
+        !schema.properties &&
+        (schema as any)?.additionalProperties !== undefined &&
+        (schema as any)?.additionalProperties !== false;
+    const additionalPropertiesSchema =
+        isOpenObject && (schema as any).additionalProperties !== true
+            ? (schema as any).additionalProperties
+            : undefined;
+    if (Object.keys(properties).length === 0 && patternEntries.length === 0 && !notSchema && !isOpenObject) {
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
     }
     return (
@@ -438,6 +447,31 @@ export default function SchemaPropertiesTable({
                             {describeNotConstraint(notSchema)}
                         </code>
                     </p>
+                </div>
+            )}
+            {isOpenObject && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Additional Properties
+                        </span>
+                        <Tip content="The object accepts any key; the value schema below applies to every additional key.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--text-muted)] whitespace-nowrap">
+                            (any key)
+                        </code>
+                        <div className="min-w-0">
+                            <div>{renderSchemaType(additionalPropertiesSchema)}</div>
+                            {additionalPropertiesSchema && additionalPropertiesSchema.description && (
+                                <p className="text-[10px] leading-relaxed text-[var(--text-muted)] mt-0.5">
+                                    {additionalPropertiesSchema.description}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
