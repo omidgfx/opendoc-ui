@@ -6,10 +6,10 @@ import {
     readLocalHistory,
     removeLocalHistoryEntry,
     upsertLocalHistory,
-} from '../utils/localHistory';
-import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
+} from '../utils/storage/localHistory';
+import {type LocalSpec, parseSpecDraft} from '../utils/specification/appSpec';
 import {processLocalOpenApiBundle} from '../utils/openapi/engine';
-import {registerRawSpecDocument, registerSpecDiagnostics} from '../utils/specSource';
+import {registerRawSpecDocument, registerSpecDiagnostics} from '../utils/specification/specSource';
 import {collectReferenceIssues, validateOpenApiDocument} from '../utils/openapi';
 import {diagnostic} from '../types';
 import * as jsYaml from 'js-yaml';

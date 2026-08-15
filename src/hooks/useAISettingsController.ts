@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from 'react';
 import type {AISettings} from '../types';
-import {readAIProfiles, readAISettings, writeAISettings} from '../utils/aiStorage';
+import {readAIProfiles, readAISettings, writeAISettings} from '../utils/ai/storage';
 
 export function useAISettingsController() {
     const [aiSettings, setAISettings] = useState<AISettings>(() => readAISettings());

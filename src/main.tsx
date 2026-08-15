@@ -3,8 +3,8 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import './index.css';
-import {hydrateStorageFromIndexedDb} from './utils/storage';
-import {handleOAuthCallback, recoverFromOAuthCallbackError} from './utils/oauthFlow';
+import {hydrateStorageFromIndexedDb} from './utils/storage/index';
+import {handleOAuthCallback, recoverFromOAuthCallbackError} from './utils/runner/oauthFlow';
 
 const mount = () =>
     createRoot(document.getElementById('root')!).render(

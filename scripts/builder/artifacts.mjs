@@ -87,12 +87,12 @@ export function writeArtifacts(config) {
     note('wrote ./builder.config.json');
     if (config.proxyExample !== 'none' && config.downloaderTemplate) {
         const origin = [config.deploymentOrigin, 'http://localhost:3000'].filter(Boolean).join(',');
-        writeExampleEnv(join(ROOT, 'proxy', config.proxyExample), 'proxy/config.env.example', {
+        writeExampleEnv(join(ROOT, 'downloaders', config.proxyExample), 'downloaders/config.env.example', {
             OPENDOC_ALLOWED_ORIGINS: origin,
         });
     }
     if (config.aiGateway.enabled && config.aiGateway.aiProxyExample !== 'none') {
-        writeExampleEnv(join(ROOT, 'ai-proxy', config.aiGateway.aiProxyExample), 'ai-proxy/config.env.example', {
+        writeExampleEnv(join(ROOT, 'ai-gateways', config.aiGateway.aiProxyExample), 'ai-gateways/config.env.example', {
             AI_GATEWAY_TOKEN: config.aiGateway.token,
             AI_GATEWAY_ORIGINS: config.aiGateway.origins,
             AI_PROVIDER: config.aiGateway.provider,

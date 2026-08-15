@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {uiStorage} from '../utils/storage';
+import {uiStorage} from '../utils/storage/index';
 import {readSidebarConfig} from '../utils/sidebar/tree';
 
 export function useSidebarController(selectedSpecKey: string, isMobile: boolean) {

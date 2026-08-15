@@ -1,7 +1,7 @@
 import {useCallback, useState} from 'react';
 import type {OpenApiSpec} from '../types';
-import {parseSpecDraft} from '../utils/appSpec';
-import {clearCachedSpec, fetchSpec, type FetchSpecResult, SpecFetchError} from '../utils/specCache';
+import {parseSpecDraft} from '../utils/specification/appSpec';
+import {clearCachedSpec, fetchSpec, type FetchSpecResult, SpecFetchError} from '../utils/storage/specCache';
 import {
     clearRemoteHistory,
     findRemoteHistoryEntry,
@@ -9,7 +9,7 @@ import {
     readRemoteHistory,
     removeRemoteHistoryEntry,
     upsertRemoteHistory,
-} from '../utils/remoteHistory';
+} from '../utils/storage/remoteHistory';
 import {
     createRemoteSpecRequester,
     normalizeRemoteSpecUrl,
@@ -18,13 +18,13 @@ import {
     RemoteSpecRequestError,
     type RemoteRequestAttempt,
     type RemoteRequestMode,
-} from '../utils/remoteSpec';
+} from '../utils/specification/remoteSpec';
 import {
     getRawSpecDocument,
     registerRawSpecDocument,
     registerSpecDiagnostics,
     registerSpecSourceUri,
-} from '../utils/specSource';
+} from '../utils/specification/specSource';
 import {processWithOpenApiEngine} from '../utils/openapi/engine';
 
 const MAX_REMOTE_SPEC_BYTES = 10 * 1024 * 1024;

@@ -1,8 +1,8 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec, Parsable} from '@/src/types';
 import {assertValidOpenApiDocument, getDocumentOperations, normalizeOpenApiSpec} from '@/src/utils/openapi';
-import {isOperationProtected} from '@/src/utils/auth';
-import {fetchSpecText} from '@/src/utils/specCache';
+import {isOperationProtected} from '@/src/utils/runner/auth';
+import {fetchSpecText} from '@/src/utils/storage/specCache';
 
 export interface SpecificationSummary {
     title: string;

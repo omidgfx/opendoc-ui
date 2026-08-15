@@ -5,7 +5,7 @@ import {
     analyzeRunnerCompatibility,
     type RunnerCompatibilityCategory,
     type RunnerCompatibilityFinding,
-} from '@/src/utils/runnerCompatibility';
+} from '@/src/utils/runner/runnerCompatibility';
 
 interface RunnerCompatibilityReportProps {
     spec: OpenApiSpec;

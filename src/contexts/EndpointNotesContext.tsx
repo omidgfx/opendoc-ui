@@ -17,7 +17,7 @@ import {
     writeExpandedEndpointNoteIds,
     writeHiddenEndpoints,
     writeTrashedNotes,
-} from '../utils/endpointNotes';
+} from '../utils/notes/index';
 
 export type EndpointNotesModalTarget =
     | {kind: 'list'; path: string; method: string}

@@ -38,7 +38,7 @@ export default defineConfig(({mode}) => {
             alias: {
                 '@opendoc-emoji': path.resolve(
                     __dirname,
-                    appleEmojisDisabled ? 'src/data/emoji.disabled.ts' : 'src/data/emoji.enabled.ts',
+                    appleEmojisDisabled ? 'src/features/emoji/disabled.ts' : 'src/features/emoji/enabled.ts',
                 ),
                 '@': path.resolve(__dirname, '.'),
             },

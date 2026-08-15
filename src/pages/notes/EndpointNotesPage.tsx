@@ -9,7 +9,7 @@ import {
     endpointNoteTitle,
     type EndpointNotesExportFile,
     parseEndpointNotesExport,
-} from '../../utils/endpointNotes';
+} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import CustomDropdown from '../../components/common/CustomDropdown';
 import MethodBadge from '../../components/common/MethodBadge';

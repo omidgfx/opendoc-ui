@@ -92,8 +92,8 @@ export async function stepDownloadProxy(prompter, existing) {
                 ),
             },
         );
-        if (result.proxyExample !== 'none' && !existsSync(join(ROOT, 'proxy', 'config.env.example'))) {
-            warning('No proxy/config.env.example found; skipping the example copy.');
+        if (result.proxyExample !== 'none' && !existsSync(join(ROOT, 'downloaders', 'config.env.example'))) {
+            warning('No downloaders/config.env.example found; skipping the example copy.');
             result.proxyExample = 'none';
         }
     } else {
@@ -232,8 +232,8 @@ export async function stepAiGateway(prompter, existing, deploymentOrigin) {
             ),
         },
     );
-    if (gateway.aiProxyExample !== 'none' && !existsSync(join(ROOT, 'ai-proxy', 'config.env.example'))) {
-        warning('No ai-proxy/config.env.example found; skipping the example copy.');
+    if (gateway.aiProxyExample !== 'none' && !existsSync(join(ROOT, 'ai-gateways', 'config.env.example'))) {
+        warning('No ai-gateways/config.env.example found; skipping the example copy.');
         gateway.aiProxyExample = 'none';
     }
     return gateway;

@@ -10,8 +10,8 @@ import {
 import type {ExamineResponse, OpenApiSpec, ParsableConfig, ParsedRoute} from '../types';
 import type {TabItem, ViewTabKind} from '../components/endpoint/EndpointTabs';
 import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute, resolveEndpointFromId} from '../utils/routing';
-import {specStorage} from '../utils/storage';
-import {hasExplicitSpecRoute} from '../utils/tabPersistence';
+import {specStorage} from '../utils/storage/index';
+import {hasExplicitSpecRoute} from '../utils/storage/tabPersistence';
 
 type Endpoint = {
     path: string;

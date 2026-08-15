@@ -4,13 +4,13 @@ import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useEscClose} from '../../hooks/useEscClose';
-import {beginOAuthAuthorization, oauthAuthorizationFlow} from '../../utils/oauthFlow';
+import {beginOAuthAuthorization, oauthAuthorizationFlow} from '../../utils/runner/oauthFlow';
 import {
     createEmptyAuth,
     getAuthSchemeLabel,
     getSecurityRequirementOptions,
     normalizeActiveAuth,
-} from '../../utils/auth';
+} from '../../utils/runner/auth';
 
 interface AuthModalProps {
     isOpen: boolean;

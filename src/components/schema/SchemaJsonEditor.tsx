@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import Editor from '@monaco-editor/react';
 import SchemaEditorToolButton from './SchemaEditorToolButton';
 import {Tip} from '../common/Tooltip';
-import {formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText} from '../../utils/bodyFormats';
+import {formatBodyText, getBodyEditorLanguage, getBodyFormat, validateBodyText} from '../../utils/runner/bodyFormats';
 
 interface SchemaJsonEditorProps {
     value: string;

@@ -77,7 +77,7 @@ CORS-enabled providers directly or an optional gateway.
   export/import every note as JSON with orphaned-note detection.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
-- **Remote URL loading** — optional build-time capability with CORS guidance, proxy/direct fallbacks,
+- **Remote URL loading** — optional build-time capability with CORS guidance, downloaders/direct fallbacks,
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; persistent state and raw documents use IndexedDB instead of consuming the localStorage quota.
@@ -253,7 +253,7 @@ child build process, and runtime settings land in `.env`.
   permissions are tightened to `0600` on Unix.
 - **`builder.config.json`** (gitignored) — the full answer set for reproducible re-runs. Secrets are
   **never** stored here; tokens and API keys stay in `.env` and are loaded back from there on reuse.
-- **`proxy/<framework>/.env`** and **`ai-proxy/<framework>/.env`** — only when you ask for a
+- **`downloaders/<framework>/.env`** and **`ai-gateways/<framework>/.env`** — only when you ask for a
   framework example, pre-filled with your origins, token, provider and model.
 
 ### Guarantees
@@ -449,7 +449,7 @@ not place a secret token in `VITE_SPEC_DOWNLOADER`; browser-visible build variab
 
 ### Downloader services
 
-The `proxy/` directory contains six standalone services. Every implementation exposes the same API:
+The `downloaders/` directory contains six standalone services. Every implementation exposes the same API:
 
 ```http
 GET /download?spec_url=<percent-encoded-http-or-https-url>
@@ -468,7 +468,7 @@ A successful download returns the raw JSON/YAML bytes. Errors use a consistent J
 }
 ```
 
-Copy `proxy/config.env.example` into your deployment configuration. The common settings are:
+Copy `downloaders/config.env.example` into your deployment configuration. The common settings are:
 
 ```env
 OPENDOC_ALLOWED_ORIGINS=https://docs.example.com,http://localhost:3000
@@ -500,7 +500,7 @@ OpenDoc bundle is served over both schemes.
 #### Node.js 22
 
 ```bash
-cd proxy/node
+cd downloaders/node
 OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 npm start
 ```
 
@@ -511,7 +511,7 @@ HTTP server.
 #### Python 3.11+
 
 ```bash
-cd proxy/python
+cd downloaders/python
 OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 python app.py
 ```
 
@@ -522,7 +522,7 @@ entry point.
 #### PHP 8.1+
 
 ```bash
-cd proxy/php
+cd downloaders/php
 OPENDOC_ALLOWED_ORIGINS=http://localhost:3000 php -S 0.0.0.0:8080 -t public public/index.php
 ```
 
@@ -533,17 +533,17 @@ into its normal response type. `public/index.php` is the ready-to-run standalone
 #### Go 1.23+
 
 ```bash
-cd proxy/go
+cd downloaders/go
 go run ./cmd/server
 ```
 
-Import `proxy/go/downloader` and mount `downloader.NewHandler(config)` in an existing `net/http`
+Import `downloaders/go/downloader` and mount `downloader.NewHandler(config)` in an existing `net/http`
 router, or use the included command directly.
 
 #### Java 21 / Spring Boot
 
 ```bash
-cd proxy/java
+cd downloaders/java
 mvn spring-boot:run
 ```
 
@@ -554,7 +554,7 @@ included `DownloaderApplication` launcher.
 #### C# / ASP.NET Core 8
 
 ```bash
-cd proxy/dotnet
+cd downloaders/dotnet
 dotnet run
 ```
 
@@ -565,7 +565,7 @@ service, target policy, rate limiter, and endpoint extension.
 Every implementation also includes a Dockerfile. Example:
 
 ```bash
-docker build -t opendoc-downloader proxy/go
+docker build -t opendoc-downloader downloaders/go
 docker run --rm -p 8080:8080 \
   -e OPENDOC_ALLOWED_ORIGINS=https://docs.example.com \
   opendoc-downloader
@@ -779,7 +779,7 @@ minimal; chat and model discovery require `Authorization: Bearer <AI_GATEWAY_TOK
 
 ### Framework AI gateway examples
 
-The `ai-proxy/` directory provides explicit integrations for popular languages and frameworks—not
+The `ai-gateways/` directory provides explicit integrations for popular languages and frameworks—not
 just generic language samples:
 
 | Directory     | Language / framework | Form                                                |
@@ -807,7 +807,7 @@ OPTIONS /api/ai/*
 response. `/api/ai/models` returns only the server-owned model or the exact server allowlist. The
 browser can never submit an API key, base URL, arbitrary upstream provider, or unapproved model.
 
-Copy `ai-proxy/config.env.example` and configure the same environment for any implementation:
+Copy `ai-gateways/config.env.example` and configure the same environment for any implementation:
 
 ```env
 AI_GATEWAY_TOKEN=replace-with-a-long-random-token
@@ -845,7 +845,7 @@ balancer. Never expose a hosted gateway with `AI_GATEWAY_DEV_MODE=true`.
 #### Express
 
 ```bash
-cd ai-proxy/express
+cd ai-gateways/express
 npm install
 npm start
 ```
@@ -855,7 +855,7 @@ Mount `createGatewayApp(configFromEnv())` in a larger Node service, or run `serv
 #### FastAPI
 
 ```bash
-cd ai-proxy/fastapi
+cd ai-gateways/fastapi
 pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8787
 ```
@@ -864,14 +864,14 @@ The exported `app` can also be mounted inside an existing FastAPI/Starlette depl
 
 #### Laravel
 
-Copy `ai-proxy/laravel/app`, `config/opendoc-ai.php`, and `routes/opendoc-ai.php` into the matching
+Copy `ai-gateways/laravel/app`, `config/opendoc-ai.php`, and `routes/opendoc-ai.php` into the matching
 Laravel directories. Register `App\Providers\OpenDocAiServiceProvider::class` in
 `bootstrap/providers.php`. The controller uses Laravel HTTP streaming, RateLimiter, and Cache; use
 Redis in production so limits are shared across workers.
 
 #### Django
 
-Install `ai-proxy/django/requirements.txt`, copy `opendoc_ai` into the project, add
+Install `ai-gateways/django/requirements.txt`, copy `opendoc_ai` into the project, add
 `"opendoc_ai"` to `INSTALLED_APPS`, and include its URL patterns:
 
 ```python
@@ -883,7 +883,7 @@ Use a shared Django cache backend in multi-worker deployments.
 #### Gin
 
 ```bash
-cd ai-proxy/gin
+cd ai-gateways/gin
 go run .
 ```
 
@@ -893,7 +893,7 @@ copyable service.
 #### Spring Boot
 
 ```bash
-cd ai-proxy/spring-boot
+cd ai-gateways/spring-boot
 mvn spring-boot:run
 ```
 
@@ -903,7 +903,7 @@ Existing Spring applications can register `GatewayController`, `GatewayLimits`, 
 #### ASP.NET Core
 
 ```bash
-cd ai-proxy/aspnet-core
+cd ai-gateways/aspnet-core
 dotnet run
 ```
 
@@ -918,7 +918,7 @@ and add the gems from `Gemfile.fragment`. Configure Redis-backed `Rails.cache` f
 #### Axum
 
 ```bash
-cd ai-proxy/axum
+cd ai-gateways/axum
 cargo run --release
 ```
 
@@ -1102,27 +1102,32 @@ legacy v0.1.0 keys are migrated into the namespaces once on first run. Known key
 ```
 compose.yaml             # cross-platform OpenDoc UI container deployment
 docker/                  # production image, nginx, config, and helper scripts
-public/                  # static assets; config.json lives here (pre-defined mode)
-proxy/                   # hardened Node/Python/PHP/Go/Java/.NET specification downloaders
-ai-proxy/                # Express/FastAPI/Django/Laravel/Gin/Spring/.NET/Rails/Axum AI gateways
+public/                  # static assets; demo specifications live under public/demo/
+downloaders/             # hardened Node/Python/PHP/Go/Java/.NET specification downloaders
+ai-gateways/             # Express/FastAPI/Django/Laravel/Gin/Spring/.NET/Rails/Axum AI gateways
+server/                  # the canonical Node AI gateway (ai-gateway.ts) and its policy module
+site/                    # the product website deployed at the GitHub Pages root
+scripts/
+  builder/               # the `npm run make` CLI: build, start, Docker, artifacts
+  clean.mjs · create-spa-fallback.mjs · verify-*.mjs   # build and CI support scripts
+tests/                   # unit suites, conformance matrices, fixtures, Playwright browser suite
 src/
   App.tsx                # root: config bootstrap, spec loading, state, routing
-  components/
-    layout/              # Topbar, Sidebar (desktop rail + mobile drawer)
-    views/               # Home, Search results, About, No-spec block page
-    endpoint/            # Docs tab, API runner tab, split view, endpoint tabs bar
-    schema/              # Schema explorer, JSON editor, property tables
-    modals/              # Spec selector, themes, auth, code generator, share, …
-    common/              # Tooltips, markdown, method badges, dropdowns, …
-  hooks/                 # breakpoints, resize split, swipe-to-open, esc-to-close
-  utils/
-    openapi/             # Swagger→OpenAPI 3 normalization, ref resolution
-    specCache.ts         # bounded-TTL remote cache backed by IndexedDB
-    indexedDb.ts         # primary browser persistence adapter
-    localHistory.ts      # local-file history persistence
-    routing.ts           # clean History API routing helpers
-  data/themes.ts         # theme palettes
+  components/            # domain folders: ai, app, common, endpoint, layout, modals, notes, schema
+  pages/                 # Home, Search results, Schema explorer, Notes, About, Status, Compatibility
+  hooks/                 # breakpoints, resize split, swipe-to-open, esc-to-close, tabs, routing
+  contexts/              # endpoint notes and operation link contexts
+  features/emoji/        # Apple-emoji sprite rendering, gated at build time by a Vite alias
+  data/                  # theme palettes and About content
   types/                 # shared TypeScript types
+  utils/
+    openapi/             # Swagger→OpenAPI 3 normalization, ref resolution, validation
+    runner/              # request planning and execution, compatibility report, mocks, auth, OAuth
+    storage/             # IndexedDB adapters: cache, local/remote/response history, tabs
+    specification/       # spec sources: remote loading, server resolution, the app spec
+    export/              # code generation, llms.txt export, schema export, zip
+    ai/                  # AI assistant bridge, providers, skills, settings persistence
+    notes/ · theme/ · sidebar/ · endpoint/    # notes, theming, sidebar tree, endpoint helpers
 ```
 
 ---

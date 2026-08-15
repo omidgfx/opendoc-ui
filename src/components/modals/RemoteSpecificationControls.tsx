@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import clsx from 'clsx';
-import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
-import {remoteRequestModeLabel} from '../../utils/remoteSpec';
+import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
+import {remoteRequestModeLabel} from '../../utils/specification/remoteSpec';
 import {formatRelativeTime} from '../../utils/specification/selector';
 import ConfirmModal from '../common/ConfirmModal';
 import {Tip} from '../common/Tooltip';

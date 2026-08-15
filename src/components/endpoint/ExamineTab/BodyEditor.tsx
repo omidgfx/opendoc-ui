@@ -1,8 +1,8 @@
 import {lazy, Suspense, useEffect, useState} from 'react';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
-import {formatBodyText, parseStructuredBody} from '../../../utils/bodyFormats';
-import {schemaDeclaresBinary} from '../../../utils/runnerResponse';
+import {formatBodyText, parseStructuredBody} from '../../../utils/runner/bodyFormats';
+import {schemaDeclaresBinary} from '../../../utils/runner/runnerResponse';
 import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
 import RunnerFieldFrame from './RunnerFieldFrame';
 

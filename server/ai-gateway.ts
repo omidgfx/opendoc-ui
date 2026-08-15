@@ -1,5 +1,5 @@
 import express from 'express';
-import {AIStreamError, fetchProviderModels, streamAIResponse} from '../src/utils/aiProviders';
+import {AIStreamError, fetchProviderModels, streamAIResponse} from '../src/utils/ai/providers';
 import type {AIRequestMessage, AISettings} from '../src/types';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from './ai-gateway-policy';
 const app = express();

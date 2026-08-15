@@ -1,6 +1,6 @@
 import {useState, type ReactNode} from 'react';
 import type {EndpointNote} from '../../types';
-import {endpointNoteKey, type EndpointNotesExportFile} from '../../utils/endpointNotes';
+import {endpointNoteKey, type EndpointNotesExportFile} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import {useEscClose} from '../../hooks/useEscClose';
 import {Tip} from '../common/Tooltip';

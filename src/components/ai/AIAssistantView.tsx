@@ -13,9 +13,9 @@ import AssistantConfirmModals from './assistant/AssistantConfirmModals';
 import ConversationSidebar from './assistant/ConversationSidebar';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
-import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens} from '../../utils/aiContext';
+import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens} from '../../utils/ai/context';
 import {getOperation} from '../../utils/openapi';
-import {streamAIResponse} from '../../utils/aiProviders';
+import {streamAIResponse} from '../../utils/ai/providers';
 import {
     createOpenDocUIActionId,
     formatOpenDocUIRunnerResult,
@@ -23,14 +23,14 @@ import {
     type OpenDocUIAction,
     type OpenDocUIRunnerResult,
     stripOpenDocUIActionBlocks,
-} from '../../utils/aiBridge';
+} from '../../utils/ai/bridge';
 import {
     newAIConversation,
     newAIMessage,
     readAIConversations,
     readAIConversationsAsync,
     writeAIConversations,
-} from '../../utils/aiStorage';
+} from '../../utils/ai/storage';
 
 interface AIAssistantViewProps {
     spec: OpenApiSpec;

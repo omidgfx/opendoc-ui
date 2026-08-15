@@ -1,5 +1,5 @@
 import type {EndpointNote} from '../../types';
-import {endpointNoteColor, endpointNoteTitle} from '../../utils/endpointNotes';
+import {endpointNoteColor, endpointNoteTitle} from '../../utils/notes/index';
 import {useEscClose} from '../../hooks/useEscClose';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
