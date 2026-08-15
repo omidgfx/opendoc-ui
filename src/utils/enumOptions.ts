@@ -1,4 +1,4 @@
-import type {CustomDropdownOption} from '../components/common/CustomDropdown';
+import type {CustomDropdownOption} from '../types/ui';
 
 export const enumValueText = (value: unknown): string => {
     if (value === null) return 'null';
