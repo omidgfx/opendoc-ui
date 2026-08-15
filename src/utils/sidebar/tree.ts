@@ -1,6 +1,6 @@
 import type {ActiveAuth, OpenApiSpec} from '@/src/types';
-import {specStorage} from '@/src/utils/storage';
-import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/auth';
+import {specStorage} from '@/src/utils/storage/index';
+import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/runner/auth';
 import {getPathItemOperations} from '@/src/utils/openapi/operations';
 
 export interface TreeNode {

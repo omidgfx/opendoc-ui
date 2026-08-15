@@ -2,8 +2,8 @@ import {type Dispatch, type MutableRefObject, type SetStateAction, useEffect, us
 import type {OpenApiSpec} from '../types';
 import type {TabItem} from '../components/endpoint/EndpointTabs';
 import {getCurrentSmartRoute, parseSmartRoute} from '../utils/routing';
-import {specStorage} from '../utils/storage';
-import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../utils/tabPersistence';
+import {specStorage} from '../utils/storage/index';
+import {hasExplicitSpecRoute, isValidTabPersistence, type StoredTabViewMode} from '../utils/storage/tabPersistence';
 import {getOperation} from '../utils/openapi';
 
 type ViewMode = 'docs' | 'examine' | 'both';

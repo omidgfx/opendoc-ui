@@ -7,8 +7,8 @@ import {
     endpointNoteTitle,
     readExpandedEndpointNoteIds,
     writeExpandedEndpointNoteIds,
-} from '../../utils/endpointNotes';
-import {uiStorage} from '../../utils/storage';
+} from '../../utils/notes/index';
+import {uiStorage} from '../../utils/storage/index';
 import {getOperation} from '../../utils/openapi';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';

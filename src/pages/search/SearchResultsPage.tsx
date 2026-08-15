@@ -9,7 +9,7 @@ import {Tip} from '@/src/components/common/Tooltip';
 import {useBreakpoint} from '@/src/hooks/useBreakpoint';
 import FiltersPanel from './FiltersPanel';
 import {useModalTransition} from '@/src/hooks/useModalTransition';
-import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/auth';
+import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/runner/auth';
 import {getDocumentOperations, getOperation} from '@/src/utils/openapi';
 import {absoluteRouteHref, toCleanRouteHref} from '@/src/utils/routing';
 

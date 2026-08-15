@@ -14,17 +14,17 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
-import {useSchemaViewer} from '@/src/hooks/endpoint/useSchemaViewer';
+import {useSchemaViewer} from '@/src/hooks/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
-import {specStorage, storage} from '../../../utils/storage';
+import {specStorage, storage} from '../../../utils/storage/index';
 import {
     getMergedParameters,
     getRefName,
     resolveReference as resolveOpenApiReference,
     resolveRequestBody,
 } from '../../../utils/openapi';
-import {isOperationAuthenticated, isOperationProtected} from '../../../utils/auth';
+import {isOperationAuthenticated, isOperationProtected} from '../../../utils/runner/auth';
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 
 interface ViewTabProps {

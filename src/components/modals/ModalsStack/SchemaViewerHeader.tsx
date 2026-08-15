@@ -1,6 +1,6 @@
 import type {WheelEvent} from 'react';
 import {Tip} from '@/src/components/common/Tooltip';
-import {generateSingleSchemaFile} from '@/src/utils/schemaExport';
+import {generateSingleSchemaFile} from '@/src/utils/export/schemaExport';
 
 interface SchemaItem {
     schemaName: string;

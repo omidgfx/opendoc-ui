@@ -3,9 +3,9 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import * as yaml from 'js-yaml';
 import {normalizeOpenApiSpec} from '../src/utils/openapi/index';
-import {executeRunnerRequest} from '../src/utils/runnerExecution';
-import {createEmptyAuth} from '../src/utils/auth';
-import {parameterStateKey} from '../src/utils/requestPlan';
+import {executeRunnerRequest} from '../src/utils/runner/runnerExecution';
+import {createEmptyAuth} from '../src/utils/runner/auth';
+import {parameterStateKey} from '../src/utils/runner/requestPlan';
 import {startRequestRecorder} from './support/requestRecorder';
 
 const recorder = await startRequestRecorder();

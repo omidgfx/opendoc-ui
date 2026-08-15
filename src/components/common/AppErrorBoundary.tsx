@@ -1,8 +1,8 @@
 import React from 'react';
 import pkg from '../../../package.json';
-import {clearAISessionSecrets, clearAllAIConversations} from '../../utils/aiStorage';
-import {clearAllCachedSpecs} from '../../utils/specCache';
-import {specStorage, uiStorage} from '../../utils/storage';
+import {clearAISessionSecrets, clearAllAIConversations} from '../../utils/ai/storage';
+import {clearAllCachedSpecs} from '../../utils/storage/specCache';
+import {specStorage, uiStorage} from '../../utils/storage/index';
 
 interface AppErrorBoundaryProps {
     children: React.ReactNode;

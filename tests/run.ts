@@ -9,11 +9,11 @@ import {
     isOperationAuthenticated,
     isOperationProtected,
     operationUsesCookieAuthentication,
-} from '../src/utils/auth';
-import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/aiContext';
-import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/aiBridge';
+} from '../src/utils/runner/auth';
+import {buildAIContext, buildAISystemPrompt, citationsFromText} from '../src/utils/ai/context';
+import {formatOpenDocUIRunnerResult, parseOpenDocUIActions} from '../src/utils/ai/bridge';
 import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from '../server/ai-gateway-policy';
-import {trimAIConversation} from '../src/utils/aiStorage';
+import {trimAIConversation} from '../src/utils/ai/storage';
 import {
     bodyEditorModeForMediaType,
     bodyTypeSupportsForm,
@@ -23,7 +23,7 @@ import {
     parseStructuredBody,
     serializeUrlEncodedBody,
     validateBodyText,
-} from '../src/utils/bodyFormats';
+} from '../src/utils/runner/bodyFormats';
 import {
     containsMarkdown,
     DESCRIPTION_TOOLTIP_THRESHOLD,
@@ -48,20 +48,20 @@ import {
     serializeOpenApiParameter,
     validateOpenApiDocument,
 } from '@/src/utils/openapi';
-import {compileBrowserRequest, parameterStateKey} from '@/src/utils/requestPlan';
+import {compileBrowserRequest, parameterStateKey} from '@/src/utils/runner/requestPlan';
 import {
     createTypeNameMap,
     generateAllTsContent,
     schemaToTsType,
     toSafeGeneratedFileName,
-} from '@/src/utils/schemaExport';
-import {sanitizeZipEntryName} from '@/src/utils/zip';
-import {generateValidatedMock, getMockSnippet} from '@/src/utils/mockGenerator';
+} from '@/src/utils/export/schemaExport';
+import {sanitizeZipEntryName} from '@/src/utils/export/zip';
+import {generateValidatedMock, getMockSnippet} from '@/src/utils/runner/mockGenerator';
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
-import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/codeGeneration';
-import {parseSpecDraft} from '@/src/utils/appSpec';
-import {getRawSpecDocument} from '@/src/utils/specSource';
-import {parseEmojis} from '@/src/data/emoji';
+import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/export/codeGeneration';
+import {parseSpecDraft} from '@/src/utils/specification/appSpec';
+import {getRawSpecDocument} from '@/src/utils/specification/specSource';
+import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {
     createEndpointNote,
@@ -78,27 +78,27 @@ import {
     endpointNoteTitle,
     parseEndpointNotesExport,
     reassignEndpointNote,
-} from '@/src/utils/endpointNotes';
+} from '@/src/utils/notes/index';
 import {
     buildDownloaderUrl,
     normalizeDownloaderTemplate,
     normalizeRemoteSpecUrl,
     remoteSpecKey,
     replaceUrlProtocol,
-} from '@/src/utils/remoteSpec';
+} from '@/src/utils/specification/remoteSpec';
 import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/utils/openapi/engine';
-import {registerSpecDiagnostics} from '@/src/utils/specSource';
+import {registerSpecDiagnostics} from '@/src/utils/specification/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {positionFor} from '@/src/components/common/tooltip/tooltipPosition';
-import {oauthAuthorizationFlow} from '@/src/utils/oauthFlow';
-import {createLlmsText} from '@/src/utils/llmsExport';
+import {oauthAuthorizationFlow} from '@/src/utils/runner/oauthFlow';
+import {createLlmsText} from '@/src/utils/export/llmsExport';
 import {
     declaredContentIsBinary,
     isBinaryResponseMediaType,
     isTextualResponseMediaType,
     responseHeadersIndicateBinary,
-} from '@/src/utils/runnerResponse';
-import {analyzeRunnerCompatibility} from '@/src/utils/runnerCompatibility';
+} from '@/src/utils/runner/runnerResponse';
+import {analyzeRunnerCompatibility} from '@/src/utils/runner/runnerCompatibility';
 import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
 import {
     flattenSchemaProperties,

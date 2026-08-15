@@ -1,8 +1,8 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {ThemeMode} from '../types';
 import {THEME_LIST} from '../data/themes';
-import {specStorage} from '../utils/storage';
-import {applyThemeCssVariables, createThemeCssVariables} from '../utils/themeCss';
+import {specStorage} from '../utils/storage/index';
+import {applyThemeCssVariables, createThemeCssVariables} from '../utils/theme/themeCss';
 
 export function useThemeController(selectedSpecKey: string) {
     const [selectedThemeName, setSelectedThemeName] = useState('Default Slate');

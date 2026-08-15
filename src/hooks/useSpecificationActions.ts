@@ -1,10 +1,10 @@
 import {type Dispatch, type SetStateAction, useCallback, useState} from 'react';
 import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
-import {clearAllCachedSpecs, clearCachedSpec} from '../utils/specCache';
-import {specStorage, uiStorage} from '../utils/storage';
-import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/aiStorage';
-import {type LocalSpec, parseSpecDraft} from '../utils/appSpec';
-import {ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME, ENDPOINT_NOTES_STORAGE_NAME} from '../utils/endpointNotes';
+import {clearAllCachedSpecs, clearCachedSpec} from '../utils/storage/specCache';
+import {specStorage, uiStorage} from '../utils/storage/index';
+import {clearAIConversations, clearAISessionSecrets, clearAllAIConversations} from '../utils/ai/storage';
+import {type LocalSpec, parseSpecDraft} from '../utils/specification/appSpec';
+import {ENDPOINT_NOTE_PANEL_EXPANDED_STORAGE_NAME, ENDPOINT_NOTES_STORAGE_NAME} from '../utils/notes/index';
 
 interface UseSpecificationActionsOptions {
     selectedSpecKey: string;

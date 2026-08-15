@@ -1,7 +1,7 @@
 import type {Dispatch, SetStateAction} from 'react';
 import type {OpenApiSpec, ParsableConfig, ThemeMode} from '@/src/types';
-import type {LocalHistoryEntry} from '@/src/utils/localHistory';
-import type {RemoteHistoryEntry} from '@/src/utils/remoteHistory';
+import type {LocalHistoryEntry} from '@/src/utils/storage/localHistory';
+import type {RemoteHistoryEntry} from '@/src/utils/storage/remoteHistory';
 import type {ViewTabKind} from '@/src/components/endpoint/EndpointTabs';
 
 export interface SidebarProps {

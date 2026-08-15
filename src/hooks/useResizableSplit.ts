@@ -1,6 +1,6 @@
 import type {RefObject} from 'react';
 import {useEffect, useRef, useState} from 'react';
-import {storage} from '../utils/storage';
+import {storage} from '../utils/storage/index';
 
 export function useResizableSplit(containerRef: RefObject<HTMLElement | null>, storageKey: string, minPx = 320) {
     const [leftWidth, setLeftWidth] = useState<number>(() => {

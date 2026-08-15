@@ -9,7 +9,7 @@ import {
     endpointNoteColor,
     endpointNoteTitle,
     noteCharacterCount,
-} from '../../utils/endpointNotes';
+} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import {useEscClose} from '../../hooks/useEscClose';
 import Markdown from '../common/Markdown';

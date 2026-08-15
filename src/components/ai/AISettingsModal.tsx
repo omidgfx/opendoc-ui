@@ -1,8 +1,8 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../types';
-import type {GatewayModelPolicyInfo} from '../../utils/aiProviders';
-import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/aiProviders';
+import type {GatewayModelPolicyInfo} from '../../utils/ai/providers';
+import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/ai/providers';
 import {
     DEFAULT_AI_SETTINGS,
     newAIProfile,
@@ -14,7 +14,7 @@ import {
     writeAIGatewayModelCatalog,
     writeAIModelCatalog,
     writeAIProfiles,
-} from '../../utils/aiStorage';
+} from '../../utils/ai/storage';
 import {Tip} from '../common/Tooltip';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';

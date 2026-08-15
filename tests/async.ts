@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {AIStreamError, fetchProviderModelCatalog, streamAIResponse} from '../src/utils/aiProviders';
-import {executeRunnerRequest} from '../src/utils/runnerExecution';
+import {AIStreamError, fetchProviderModelCatalog, streamAIResponse} from '../src/utils/ai/providers';
+import {executeRunnerRequest} from '../src/utils/runner/runnerExecution';
 import type {AISettings} from '../src/types';
 import {dereference, validate} from '@scalar/openapi-parser';
 import {processLocalOpenApiBundle} from '../src/utils/openapi/engine';
-import {clearCachedSpec, fetchSpec, writeCachedSpec} from '../src/utils/specCache';
-import {parseSpecDraft} from '../src/utils/appSpec';
-import {createRemoteSpecRequester, RemoteSpecRequestError} from '../src/utils/remoteSpec';
-import {beginOAuthAuthorization, consumeOAuthResult, handleOAuthCallback} from '../src/utils/oauthFlow';
+import {clearCachedSpec, fetchSpec, writeCachedSpec} from '../src/utils/storage/specCache';
+import {parseSpecDraft} from '../src/utils/specification/appSpec';
+import {createRemoteSpecRequester, RemoteSpecRequestError} from '../src/utils/specification/remoteSpec';
+import {beginOAuthAuthorization, consumeOAuthResult, handleOAuthCallback} from '../src/utils/runner/oauthFlow';
 const originalFetch = globalThis.fetch;
 const settings: AISettings = {
     transport: 'direct',
@@ -70,7 +70,7 @@ try {
         }),
         error => error instanceof Error && /exceeds/.test(error.message),
     );
-    console.log('✓ applies proxy/direct/scheme fallback policy and remote size limits');
+    console.log('✓ applies downloader/direct/scheme fallback policy and remote size limits');
 
     const preOAuthWindow = (globalThis as any).window;
     const preOAuthStorage = (globalThis as any).sessionStorage;

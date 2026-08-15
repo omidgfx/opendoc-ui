@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {specStorage} from '../../utils/storage';
+import {specStorage} from '../../utils/storage/index';
 
 const SEARCH_HISTORY_LIMIT = 10;
 type SearchHistoryDropdownProps = {

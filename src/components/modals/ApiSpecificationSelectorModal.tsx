@@ -1,10 +1,10 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {OpenApiSpec, Parsable, ParsableConfig} from '../../types';
-import {clearCachedSpec} from '../../utils/specCache';
+import {clearCachedSpec} from '../../utils/storage/specCache';
 import {Tip} from '../common/Tooltip';
-import type {LocalHistoryEntry} from '../../utils/localHistory';
-import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
+import type {LocalHistoryEntry} from '../../utils/storage/localHistory';
+import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import RemoteSpecificationModal from './RemoteSpecificationModal';
 import RemoteSpecificationControls from './RemoteSpecificationControls';

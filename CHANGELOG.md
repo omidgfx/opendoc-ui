@@ -3,6 +3,23 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [Unreleased]
+
+Repository restructure.
+
+- renames the two top-level reference directories to say what they are: `proxy/` → `downloaders/`
+  (the six specification downloader services) and `ai-proxy/` → `ai-gateways/` (the nine AI gateway
+  integrations), updating the builder, README, and website references;
+- regroups `src/utils` by domain — new `ai/`, `export/`, `notes/`, `runner/`, `specification/`, and
+  `storage/` folders absorb the flat utility files, with redundant feature prefixes dropped inside
+  domain folders (`aiBridge.ts` → `utils/ai/bridge.ts`) and primary modules promoted to folder
+  indexes (`storage.ts` → `utils/storage/index.ts`);
+- moves the Apple-emoji sprite renderer into `src/features/emoji/` (the build-time Vite alias now
+  points at `enabled.ts`/`disabled.ts` there) and the recursive demo specification into
+  `public/demo/recursive-demo.json`;
+- regenerates the README Project structure section and updates the website's Compatibility, Deploy,
+  and Developers pages to the new paths.
+
 ## [0.1.11] — 2026-08-15
 
 Product website, hash-based deep links, capability showcase demo, and sidebar routes on by default.

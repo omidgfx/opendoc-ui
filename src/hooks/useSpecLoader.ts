@@ -1,13 +1,13 @@
 import {useEffect, useRef, useState} from 'react';
 import type {OpenApiSpec, Parsable, ParsableConfig} from '../types';
-import {fetchSpec, type FetchSpecResult} from '../utils/specCache';
-import {parseSpecDraft} from '../utils/appSpec';
+import {fetchSpec, type FetchSpecResult} from '../utils/storage/specCache';
+import {parseSpecDraft} from '../utils/specification/appSpec';
 import {
     getRawSpecDocument,
     registerRawSpecDocument,
     registerSpecDiagnostics,
     registerSpecSourceUri,
-} from '../utils/specSource';
+} from '../utils/specification/specSource';
 import {processWithOpenApiEngine} from '../utils/openapi/engine';
 
 export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig) {

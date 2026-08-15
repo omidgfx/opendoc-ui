@@ -5,9 +5,9 @@ import {Tip} from '../../components/common/Tooltip';
 import MethodBadge from '../../components/common/MethodBadge';
 import ReferenceStatusNotice from '../../components/common/ReferenceStatusNotice';
 import {collectReferenceIssues, createBundledOpenApiDocument, missingReferenceDocuments} from '../../utils/openapi';
-import {analyzeRunnerCompatibility, type RunnerCompatibilityRating} from '../../utils/runnerCompatibility';
-import {getRawSpecDocument} from '../../utils/specSource';
-import {createLlmsText} from '../../utils/llmsExport';
+import {analyzeRunnerCompatibility, type RunnerCompatibilityRating} from '../../utils/runner/runnerCompatibility';
+import {getRawSpecDocument} from '../../utils/specification/specSource';
+import {createLlmsText} from '../../utils/export/llmsExport';
 
 interface RunnerCompatibilityPageProps {
     spec: OpenApiSpec;

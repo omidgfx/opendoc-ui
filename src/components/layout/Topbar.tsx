@@ -4,10 +4,10 @@ import type {ActiveAuth, OpenApiSpec, ParsableConfig} from '../../types';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
 import {Tip} from '../common/Tooltip';
-import type {LocalHistoryEntry} from '../../utils/localHistory';
-import type {RemoteHistoryEntry} from '../../utils/remoteHistory';
+import type {LocalHistoryEntry} from '../../utils/storage/localHistory';
+import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
 import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
-import {specStorage} from '../../utils/storage';
+import {specStorage} from '../../utils/storage/index';
 import Logo from '@/src/assets/logo.svg?react';
 
 interface TopbarProps {

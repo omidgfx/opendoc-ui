@@ -1,7 +1,7 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '@/src/types';
 import {getRefName} from '@/src/utils/openapi';
-import {getMockSnippet as generateMockSnippet} from '@/src/utils/mockGenerator';
+import {getMockSnippet as generateMockSnippet} from '@/src/utils/runner/mockGenerator';
 
 export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
     const getMockSnippet = (schema: any): string => generateMockSnippet(schema, spec, 'response');

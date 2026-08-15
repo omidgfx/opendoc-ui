@@ -12,7 +12,11 @@ import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
 import EndpointWorkspace, {type ActiveSplitPane, type EndpointViewMode} from './EndpointWorkspace';
 import {getOperation} from '../../utils/openapi';
-import {appendResponseHistory, clearResponseHistory, removeResponseHistoryAt} from '../../utils/responseHistory';
+import {
+    appendResponseHistory,
+    clearResponseHistory,
+    removeResponseHistoryAt,
+} from '../../utils/storage/responseHistory';
 
 interface WorkspaceContentProps {
     spec: OpenApiSpec | null;

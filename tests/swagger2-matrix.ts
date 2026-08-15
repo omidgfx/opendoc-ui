@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as yaml from 'js-yaml';
 import {normalizeOpenApiSpec} from '../src/utils/openapi';
-import {compileBrowserRequest, parameterStateKey} from '../src/utils/requestPlan';
-import {createEmptyAuth} from '../src/utils/auth';
+import {compileBrowserRequest, parameterStateKey} from '../src/utils/runner/requestPlan';
+import {createEmptyAuth} from '../src/utils/runner/auth';
 
 const raw: any = yaml.load(readFileSync('tests/fixtures/swagger2-conformance.yaml', 'utf8'));
 const spec: any = normalizeOpenApiSpec(raw);

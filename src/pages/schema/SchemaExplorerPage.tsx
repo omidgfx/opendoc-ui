@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
-import {generateAndDownloadZip, generateSingleSchemaFile} from '../../utils/schemaExport';
+import {generateAndDownloadZip, generateSingleSchemaFile} from '../../utils/export/schemaExport';
 import ShareModal from '@/src/components/modals/ShareModal';
 import {useEscClose} from '../../hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';

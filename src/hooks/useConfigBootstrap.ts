@@ -1,10 +1,10 @@
 import {type Dispatch, type SetStateAction, useEffect} from 'react';
 import type {AISettings, ParsableConfig} from '../types';
-import {findLocalHistoryEntry, readLocalHistory} from '../utils/localHistory';
-import {readRemoteHistory} from '../utils/remoteHistory';
+import {findLocalHistoryEntry, readLocalHistory} from '../utils/storage/localHistory';
+import {readRemoteHistory} from '../utils/storage/remoteHistory';
 import {getCurrentSmartRoute, parseSmartRoute} from '../utils/routing';
-import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage';
-import type {ConfigSource} from '../utils/appSpec';
+import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage/index';
+import type {ConfigSource} from '../utils/specification/appSpec';
 
 interface UseConfigBootstrapOptions {
     setConfigSource: Dispatch<SetStateAction<ConfigSource>>;

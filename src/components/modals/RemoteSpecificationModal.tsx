@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {useModalTransition} from '../../hooks/useModalTransition';
-import {normalizeRemoteSpecUrl} from '../../utils/remoteSpec';
+import {normalizeRemoteSpecUrl} from '../../utils/specification/remoteSpec';
 
 interface RemoteSpecificationModalProps {
     isOpen: boolean;

@@ -197,8 +197,8 @@ AI_GATEWAY_UPSTREAM_TIMEOUT_MS=60000</code></pre>
       </div>
       <p>
         Run it with <code>npm run ai-gateway</code>. The frontend proxies
-        <code>/api/ai</code> to it in development, and reference implementations for eight backend
-        frameworks live under <code>ai-proxy/</code> for teams that want the gateway in their own
+        <code>/api/ai</code> to it in development, and reference implementations for nine backend
+        frameworks live under <code>ai-gateways/</code> for teams that want the gateway in their own
         language and stack.
       </p>
     </section>
@@ -216,7 +216,7 @@ VITE_SPEC_DOWNLOADER=https://proxy.example.com/download?spec_url={URL}</code></p
       </div>
       <p>
         Reference downloader services for Node, Python, PHP, Go, Java and .NET ship under
-        <code>proxy/</code>, each enforcing origin allowlists, size and timeout limits, redirect caps,
+        <code>downloaders/</code>, each enforcing origin allowlists, size and timeout limits, redirect caps,
         port restrictions and rate limiting.
       </p>
     </section>

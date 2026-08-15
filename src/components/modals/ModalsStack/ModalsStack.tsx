@@ -12,7 +12,7 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import {useEscClose} from '../../../hooks/useEscClose';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
-import {getMockSnippet as generateMockSnippet} from '../../../utils/mockGenerator';
+import {getMockSnippet as generateMockSnippet} from '../../../utils/runner/mockGenerator';
 import type {OpenApiSpec} from '../../../types';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
 import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';

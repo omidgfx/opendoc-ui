@@ -1,4 +1,4 @@
-import {actionLabel, type OpenDocUIAction, parseOpenDocUIActions} from '../../../utils/aiBridge';
+import {actionLabel, type OpenDocUIAction, parseOpenDocUIActions} from '../../../utils/ai/bridge';
 
 interface AssistantActionsProps {
     text: string;

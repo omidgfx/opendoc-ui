@@ -4,7 +4,7 @@ import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from './t
 import {absoluteRouteHref, generateSmartRoute, getCurrentSmartRoute, parseSmartRoute} from './utils/routing';
 
 import {getDocumentOperations, getOperation} from './utils/openapi';
-import {uiStorage} from './utils/storage';
+import {uiStorage} from './utils/storage/index';
 import {useBreakpoint} from './hooks/useBreakpoint';
 import Topbar from './components/layout/Topbar';
 import Sidebar from './components/layout/Sidebar/Sidebar';
@@ -18,13 +18,13 @@ import {
     dispatchOpenDocUIAction,
     dispatchOpenDocUIRunnerResult,
     type OpenDocUIAction,
-} from './utils/aiBridge';
-import {executeRunnerRequest} from './utils/runnerExecution';
-import {createEmptyAuth} from './utils/auth';
-import {getRawSpecDocument} from './utils/specSource';
-import {appendResponseHistory, readResponseHistory} from './utils/responseHistory';
-import type {FetchSpecResult} from './utils/specCache';
-import {type ConfigSource, endpointKey, type EndpointKey} from './utils/appSpec';
+} from './utils/ai/bridge';
+import {executeRunnerRequest} from './utils/runner/runnerExecution';
+import {createEmptyAuth} from './utils/runner/auth';
+import {getRawSpecDocument} from './utils/specification/specSource';
+import {appendResponseHistory, readResponseHistory} from './utils/storage/responseHistory';
+import type {FetchSpecResult} from './utils/storage/specCache';
+import {type ConfigSource, endpointKey, type EndpointKey} from './utils/specification/appSpec';
 import SpecLoadingState from './components/app/SpecLoadingState';
 import AppModalLayer from './components/app/AppModalLayer';
 import WorkspaceContent from './components/app/WorkspaceContent';
@@ -34,12 +34,12 @@ import {useSidebarController} from './hooks/useSidebarController';
 import {useSpecLoader} from './hooks/useSpecLoader';
 import {useLocalSpecifications} from './hooks/useLocalSpecifications';
 import {useRemoteSpecifications} from './hooks/useRemoteSpecifications';
-import {REMOTE_SPEC_BUILD_CONFIG} from './utils/remoteBuildConfig';
+import {REMOTE_SPEC_BUILD_CONFIG} from './utils/specification/remoteBuildConfig';
 import {type HistoryNavigationIntent, useWorkspaceRouting} from './hooks/useWorkspaceRouting';
 import {useConfigBootstrap} from './hooks/useConfigBootstrap';
 import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
 import {useSpecificationActions} from './hooks/useSpecificationActions';
-import {consumeOAuthResult} from './utils/oauthFlow';
+import {consumeOAuthResult} from './utils/runner/oauthFlow';
 import {EndpointNotesProvider} from './contexts/EndpointNotesContext';
 import EndpointNotesModalLayer from './components/notes/EndpointNotesModalLayer';
 

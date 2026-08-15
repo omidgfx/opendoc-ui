@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
-import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/codeGeneration';
+import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/export/codeGeneration';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 

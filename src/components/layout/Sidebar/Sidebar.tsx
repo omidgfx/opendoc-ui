@@ -6,7 +6,7 @@ import {useSwipeEdgeOpen} from '../../../hooks/useSwipeOpen';
 import CustomDropdown from '../../common/CustomDropdown';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
-import {specStorage, uiStorage} from '../../../utils/storage';
+import {specStorage, uiStorage} from '../../../utils/storage/index';
 import {OPEN_DOC_WEBSITE_URL} from '@/src/data/about';
 import pkg from '../../../../package.json';
 import FolderTreeActionIcon from './FolderTreeActionIcon';
