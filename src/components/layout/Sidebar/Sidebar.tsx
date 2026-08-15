@@ -36,6 +36,8 @@ export default function Sidebar(props: SidebarProps) {
         onSelectParsable,
         selectedServer,
         onSelectServer,
+        serverVariables,
+        onOpenServerVariables,
         isCollapsed,
         onToggleCollapse,
         onOpenSchemaExplorer,
@@ -106,28 +108,16 @@ export default function Sidebar(props: SidebarProps) {
         const servers = spec.servers || [];
         return servers.find(server => server.url === selectedServer) || servers[0] || null;
     }, [spec, selectedServer]);
-    const [serverVariableValues, setServerVariableValues] = useState<Record<string, string>>({});
-    useEffect(() => {
-        setServerVariableValues(
-            Object.fromEntries(
-                Object.entries(selectedServerDefinition?.variables || {}).map(([name, variable]) => [
-                    name,
-                    String(variable.default ?? ''),
-                ]),
-            ),
-        );
-    }, [selectedParsableKey, selectedServerDefinition?.url]);
-    const updateServerVariable = (name: string, value: string) => {
-        const next = {...serverVariableValues, [name]: value};
-        setServerVariableValues(next);
-        if (selectedServerDefinition) {
-            const expanded = selectedServerDefinition.url.replace(
-                /\{([^{}]+)}/g,
-                (placeholder, variableName) => next[variableName] ?? placeholder,
-            );
-            onSelectServer(expanded);
-        }
-    };
+    const resolvedServerUrl = useMemo(() => {
+        const definition = selectedServerDefinition;
+        if (!definition) return selectedServer;
+        const values = serverVariables[definition.url] || {};
+        return String(definition.url || '').replace(/\{([^{}]+)}/g, (placeholder, name: string) => {
+            const variable = definition.variables?.[name];
+            const value = values[name] ?? variable?.default;
+            return value !== undefined && value !== '' ? String(value) : placeholder;
+        });
+    }, [selectedServerDefinition, selectedServer, serverVariables]);
     const [width, setWidth] = useState<number>(() => {
         const saved = uiStorage.getJSON<number>('sidebar_width', 280, v => Number.isFinite(v));
         return Math.max(220, Math.min(480, saved));
@@ -763,54 +753,40 @@ export default function Sidebar(props: SidebarProps) {
                 </div>
             )}
 
-            <div className="px-3 py-1 border-b shrink-0 border-[var(--border)] space-y-2">
+            <div className="px-3 py-1 border-b shrink-0 border-[var(--border)]">
                 {spec?.servers && spec.servers.length > 0 && (
                     <div>
                         <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
                             Active Server
                         </label>
-                        <CustomDropdown
-                            value={selectedServerDefinition?.url || selectedServer}
-                            onChange={onSelectServer}
-                            options={spec.servers.map(s => ({value: s.url, label: s.description || s.url}))}
-                            icon="ph ph-hard-drives text-[14px]"
-                            className="w-full"
-                        />
-                        <Tip content={selectedServer}>
+                        <div className="flex items-center gap-1">
+                            <CustomDropdown
+                                value={selectedServerDefinition?.url || selectedServer}
+                                onChange={onSelectServer}
+                                options={spec.servers.map(s => ({value: s.url, label: s.description || s.url}))}
+                                icon="ph ph-hard-drives text-[14px]"
+                                className="flex-1 min-w-0 h-7"
+                            />
+                            {selectedServerDefinition?.variables &&
+                                Object.keys(selectedServerDefinition.variables).length > 0 && (
+                                    <Tip content="Configure server variables">
+                                        <button
+                                            type="button"
+                                            onClick={onOpenServerVariables}
+                                            aria-label="Configure server variables"
+                                            className="shrink-0 size-7.5 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+                                        >
+                                            <i className="ph ph-sliders-horizontal text-[14px]"></i>
+                                        </button>
+                                    </Tip>
+                                )}
+                        </div>
+                        <Tip content={resolvedServerUrl}>
                             <div className="mt-1 text-[10px] leading-none truncate flex items-center gap-1 text-[var(--text-muted)]">
                                 <i className="ph ph-globe text-[12px]"></i>
-                                <span className="font-mono select-text truncate">{selectedServer}</span>
+                                <span className="font-mono select-text truncate">{resolvedServerUrl}</span>
                             </div>
                         </Tip>
-                        {selectedServerDefinition?.variables &&
-                            Object.keys(selectedServerDefinition.variables).length > 0 && (
-                                <div className="mt-2 grid gap-2">
-                                    {Object.entries(selectedServerDefinition.variables).map(([name, variable]) => (
-                                        <label
-                                            key={name}
-                                            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-center gap-2 text-[9px] text-[var(--text-muted)]"
-                                        >
-                                            <Tip content={variable.description || name} fullWidth>
-                                                <span className="block truncate font-mono">{name}</span>
-                                            </Tip>
-                                            {variable.enum?.length ? (
-                                                <CustomDropdown
-                                                    value={serverVariableValues[name] ?? variable.default}
-                                                    onChange={value => updateServerVariable(name, value)}
-                                                    options={variable.enum.map(value => ({value, label: value}))}
-                                                    className="min-w-0"
-                                                />
-                                            ) : (
-                                                <input
-                                                    value={serverVariableValues[name] ?? variable.default}
-                                                    onChange={event => updateServerVariable(name, event.target.value)}
-                                                    className="min-w-0 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[9px] text-[var(--text-heading)] outline-none focus:border-[var(--primary)]"
-                                                />
-                                            )}
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
                     </div>
                 )}
             </div>

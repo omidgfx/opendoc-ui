@@ -14,6 +14,7 @@ interface CodeGeneratorModalProps {
     method: string;
     operation: any;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     activeAuth: ActiveAuth;
 }
 
@@ -25,13 +26,22 @@ export default function CodeGeneratorModal({
     method,
     operation,
     selectedServer,
+    serverVariables,
     activeAuth,
 }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState('curl');
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     useEscClose(isOpen, requestClose);
     if (!shouldRender) return null;
-    const codegenRequest = buildCodegenRequest({spec, path, method, operation, selectedServer, activeAuth});
+    const codegenRequest = buildCodegenRequest({
+        spec,
+        path,
+        method,
+        operation,
+        selectedServer,
+        serverVariables,
+        activeAuth,
+    });
     const generateSnippet = (lang: string) => generateRequestSnippet(lang as CodeLanguage, codegenRequest);
     const getLanguageLabel = (lang: string) => {
         switch (lang) {

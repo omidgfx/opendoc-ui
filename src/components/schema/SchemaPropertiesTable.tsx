@@ -1,7 +1,7 @@
 import React from 'react';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
-import {RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
+import {describeNotConstraint, RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
 
 interface SchemaPropertiesTableProps {
     properties: {
@@ -184,211 +184,262 @@ export default function SchemaPropertiesTable({
         }
         return null;
     };
-    if (Object.keys(properties).length === 0) {
+    const patternEntries = Object.entries((schema as any)?.patternProperties || {});
+    const notSchema = (schema as any)?.not;
+    if (Object.keys(properties).length === 0 && patternEntries.length === 0 && !notSchema) {
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
     }
     return (
         <div className="border rounded-xl overflow-hidden mt-2 mb-3 border-[var(--border)] bg-[var(--background)]">
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs min-w-[560px]">
-                    <thead>
-                        <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
-                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                Field Target
-                            </th>
-                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                Type/Structure
-                            </th>
-                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider animate-pulse text-[var(--primary)] text-[var(--text-heading)]">
-                                EXAMPLE
-                            </th>
-                            <th
-                                className="px-3 w-full py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]"
-                                style={{width: '100%'}}
-                            >
-                                <div className={'flex justify-between'}>
-                                    <span>Description</span>
-                                    {useModal && (inspectName ?? schemaName) && (
-                                        <Tip content={`Inspect ${inspectName ?? schemaName} schema`}>
-                                            <button
-                                                type="button"
-                                                onClick={() => onPushSchema(inspectName ?? schemaName!)}
-                                                className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]"
-                                            >
-                                                <i className="ph ph-diamonds-four text-[11px]"></i>
-                                                <span className="hidden sm:inline">Inspect Schema</span>
-                                            </button>
-                                        </Tip>
-                                    )}
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {Object.entries(properties).map(([name, pVal]) => {
-                            let isRequired = false;
-                            const nameParts = name.split('.');
-                            let schemaContext = resolveReference(schema);
-                            for (let i = 0; i < nameParts.length; i++) {
-                                const part = nameParts[i];
-                                if (!schemaContext) break;
-                                if (schemaContext.required && schemaContext.required.includes(part)) {
-                                    isRequired = true;
-                                    break;
-                                }
-                                if (schemaContext.properties && schemaContext.properties[part]) {
-                                    schemaContext = resolveReference(schemaContext.properties[part]);
-                                } else {
-                                    break;
-                                }
-                            }
-                            const isComplexType =
-                                pVal.$ref ||
-                                pVal.type === 'object' ||
-                                pVal.type === 'array' ||
-                                pVal.properties ||
-                                pVal.items ||
-                                pVal.allOf ||
-                                pVal.anyOf ||
-                                pVal.oneOf;
-                            const pattern = resolvePattern(pVal);
-                            const recursive = schemaIsRecursive(pVal, resolveReference);
-                            return (
-                                <tr
-                                    key={name}
-                                    className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]"
+            {Object.keys(properties).length > 0 && (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs min-w-[560px]">
+                        <thead>
+                            <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
+                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
+                                    Field Target
+                                </th>
+                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
+                                    Type/Structure
+                                </th>
+                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider animate-pulse text-[var(--primary)] text-[var(--text-heading)]">
+                                    EXAMPLE
+                                </th>
+                                <th
+                                    className="px-3 w-full py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]"
+                                    style={{width: '100%'}}
                                 >
-                                    <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
-                                        <div className={'flex items-start gap-1'}>
-                                            <span className="break-all">{name}</span>
-                                            {isRequired && (
-                                                <Tip content="Required field">
-                                                    <span className="text-[var(--method-delete)] leading-none -mt-0.5 font-semibold text-[16px] cursor-help">
-                                                        *
-                                                    </span>
-                                                </Tip>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2.5 whitespace-nowrap">
-                                        <div className="flex flex-col gap-1">
-                                            <div>{renderSchemaType(pVal)}</div>
-                                            {recursive && (
-                                                <div className="mt-0.5">
-                                                    <Tip content="Recursive schema — reuses a schema from this branch; expansion stops at the first cycle.">
-                                                        <span className="inline-flex items-center gap-1 w-fit rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)] select-none">
-                                                            <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px]`} />
-                                                            recursive
+                                    <div className={'flex justify-between'}>
+                                        <span>Description</span>
+                                        {useModal && (inspectName ?? schemaName) && (
+                                            <Tip content={`Inspect ${inspectName ?? schemaName} schema`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onPushSchema(inspectName ?? schemaName!)}
+                                                    className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]"
+                                                >
+                                                    <i className="ph ph-diamonds-four text-[11px]"></i>
+                                                    <span className="hidden sm:inline">Inspect Schema</span>
+                                                </button>
+                                            </Tip>
+                                        )}
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.entries(properties).map(([name, pVal]) => {
+                                let isRequired = false;
+                                const nameParts = name.split('.');
+                                let schemaContext = resolveReference(schema);
+                                for (let i = 0; i < nameParts.length; i++) {
+                                    const part = nameParts[i];
+                                    if (!schemaContext) break;
+                                    if (schemaContext.required && schemaContext.required.includes(part)) {
+                                        isRequired = true;
+                                        break;
+                                    }
+                                    if (schemaContext.properties && schemaContext.properties[part]) {
+                                        schemaContext = resolveReference(schemaContext.properties[part]);
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                const isComplexType =
+                                    pVal.$ref ||
+                                    pVal.type === 'object' ||
+                                    pVal.type === 'array' ||
+                                    pVal.properties ||
+                                    pVal.items ||
+                                    pVal.allOf ||
+                                    pVal.anyOf ||
+                                    pVal.oneOf;
+                                const pattern = resolvePattern(pVal);
+                                const recursive = schemaIsRecursive(pVal, resolveReference);
+                                return (
+                                    <tr
+                                        key={name}
+                                        className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]"
+                                    >
+                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
+                                            <div className={'flex items-start gap-1'}>
+                                                <span className="break-all">{name}</span>
+                                                {isRequired && (
+                                                    <Tip content="Required field">
+                                                        <span className="text-[var(--method-delete)] leading-none -mt-0.5 font-semibold text-[16px] cursor-help">
+                                                            *
                                                         </span>
                                                     </Tip>
-                                                </div>
-                                            )}
-                                            {pVal.format && (
-                                                <div className="text-[10px] font-mono flex items-center gap-1">
-                                                    <span>format:</span>
-                                                    <code className="px-1 py-0.5 rounded bg-[var(--background)] text-[var(--accent)] text-[var(--accent)] border border-[var(--border)] font-mono select-all text-[9.5px]">
-                                                        {pVal.format}
-                                                    </code>
-                                                </div>
-                                            )}
-                                            {pattern && (
-                                                <div className="text-[10px] font-mono flex items-center gap-1 mt-0.5">
-                                                    <span>pattern:</span>
-                                                    <code className="px-1 py-0.5 rounded bg-[var(--background)] max-w-24 truncate bg-[var(--background)] text-[var(--method-put)] border border-[var(--border)] font-mono select-all text-[9.5px]">
-                                                        {pattern}
-                                                    </code>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onTestPattern(pattern)}
-                                                        className="px-1 whitespace-nowrap py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 hover:underline inline-flex items-center gap-0.5 rounded cursor-pointer transition-colors"
-                                                    >
-                                                        <i className="ph ph-dna text-[8px]"></i> Test Pattern
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2.5 whitespace-nowrap">
-                                        <div className="flex flex-col gap-1.5">
-                                            {isComplexType && (
-                                                <Tip content="Generate simulated example for this sub-schema">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onViewExample(name, pVal)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0"
-                                                    >
-                                                        {recursive ? (
-                                                            <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px]`} />
-                                                        ) : (
-                                                            <i className="ph ph-dna text-[9px]"></i>
-                                                        )}{' '}
-                                                        View Example
-                                                    </button>
-                                                </Tip>
-                                            )}
-
-                                            {!isComplexType &&
-                                                (pVal.example !== undefined || pVal.default !== undefined) && (
-                                                    <div className="text-[10px] font-mono opacity-75">
-                                                        <span className="text-[var(--text-muted)] mr-1">
-                                                            {pVal.example !== undefined ? 'ex:' : 'def:'}
-                                                        </span>
-                                                        <code className="text-[10.5px] px-1 py-0.2 rounded bg-[var(--background)] border text-[var(--method-get)] font-mono">
-                                                            {String(
-                                                                pVal.example !== undefined
-                                                                    ? pVal.example
-                                                                    : pVal.default,
-                                                            )}
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1">
+                                                <div>{renderSchemaType(pVal)}</div>
+                                                {recursive && (
+                                                    <div className="mt-0.5">
+                                                        <Tip content="Recursive schema — reuses a schema from this branch; expansion stops at the first cycle.">
+                                                            <span className="inline-flex items-center gap-1 w-fit rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)] select-none">
+                                                                <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px]`} />
+                                                                recursive
+                                                            </span>
+                                                        </Tip>
+                                                    </div>
+                                                )}
+                                                {pVal.format && (
+                                                    <div className="text-[10px] font-mono flex items-center gap-1">
+                                                        <span>format:</span>
+                                                        <code className="px-1 py-0.5 rounded bg-[var(--background)] text-[var(--accent)] text-[var(--accent)] border border-[var(--border)] font-mono select-all text-[9.5px]">
+                                                            {pVal.format}
                                                         </code>
                                                     </div>
                                                 )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
-                                        {pVal.description ? (
-                                            <div className="markdown-body">
-                                                <Markdown text={pVal.description} />
+                                                {pattern && (
+                                                    <div className="text-[10px] font-mono flex items-center gap-1 mt-0.5">
+                                                        <span>pattern:</span>
+                                                        <code className="px-1 py-0.5 rounded bg-[var(--background)] max-w-24 truncate bg-[var(--background)] text-[var(--method-put)] border border-[var(--border)] font-mono select-all text-[9.5px]">
+                                                            {pattern}
+                                                        </code>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onTestPattern(pattern)}
+                                                            className="px-1 whitespace-nowrap py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 hover:underline inline-flex items-center gap-0.5 rounded cursor-pointer transition-colors"
+                                                        >
+                                                            <i className="ph ph-dna text-[8px]"></i> Test Pattern
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <span className="text-[var(--text-muted)] italic text-[11px]">
-                                                No description
-                                            </span>
-                                        )}
-                                        {pVal.externalDocs && pVal.externalDocs.url && (
-                                            <div className="mt-1.5">
-                                                <a
-                                                    href={pVal.externalDocs.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors"
-                                                >
-                                                    <i className="ph ph-arrow-square-out text-[8px]"></i>
-                                                    <span>{pVal.externalDocs.description || 'External Docs'}</span>
-                                                </a>
+                                        </td>
+                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1.5">
+                                                {isComplexType && (
+                                                    <Tip content="Generate simulated example for this sub-schema">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onViewExample(name, pVal)}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0"
+                                                        >
+                                                            {recursive ? (
+                                                                <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px]`} />
+                                                            ) : (
+                                                                <i className="ph ph-dna text-[9px]"></i>
+                                                            )}{' '}
+                                                            View Example
+                                                        </button>
+                                                    </Tip>
+                                                )}
+
+                                                {!isComplexType &&
+                                                    (pVal.example !== undefined || pVal.default !== undefined) && (
+                                                        <div className="text-[10px] font-mono opacity-75">
+                                                            <span className="text-[var(--text-muted)] mr-1">
+                                                                {pVal.example !== undefined ? 'ex:' : 'def:'}
+                                                            </span>
+                                                            <code className="text-[10.5px] px-1 py-0.2 rounded bg-[var(--background)] border text-[var(--method-get)] font-mono">
+                                                                {String(
+                                                                    pVal.example !== undefined
+                                                                        ? pVal.example
+                                                                        : pVal.default,
+                                                                )}
+                                                            </code>
+                                                        </div>
+                                                    )}
                                             </div>
-                                        )}
-                                        {pVal.enum && (
-                                            <div className="mt-1.5 flex flex-wrap gap-1 items-center">
-                                                <span className="font-semibold text-[10px] text-[var(--text-muted)]">
-                                                    Enum:
+                                        </td>
+                                        <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
+                                            {pVal.description ? (
+                                                <div className="markdown-body">
+                                                    <Markdown text={pVal.description} />
+                                                </div>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)] italic text-[11px]">
+                                                    No description
                                                 </span>
-                                                {pVal.enum.map((vEnum: any) => (
-                                                    <span
-                                                        key={vEnum}
-                                                        className="px-1.5 py-0.5 rounded text-[10px] font-mono border bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]"
+                                            )}
+                                            {pVal.externalDocs && pVal.externalDocs.url && (
+                                                <div className="mt-1.5">
+                                                    <a
+                                                        href={pVal.externalDocs.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors"
                                                     >
-                                                        {vEnum}
+                                                        <i className="ph ph-arrow-square-out text-[8px]"></i>
+                                                        <span>{pVal.externalDocs.description || 'External Docs'}</span>
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {pVal.enum && (
+                                                <div className="mt-1.5 flex flex-wrap gap-1 items-center">
+                                                    <span className="font-semibold text-[10px] text-[var(--text-muted)]">
+                                                        Enum:
                                                     </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+                                                    {pVal.enum.map((vEnum: any) => (
+                                                        <span
+                                                            key={vEnum}
+                                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono border bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]"
+                                                        >
+                                                            {vEnum}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {patternEntries.length > 0 && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Pattern Properties
+                        </span>
+                        <Tip content="Keys matching these regular expressions accept the value schema below.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="space-y-1.5">
+                        {patternEntries.map(([patternKey, patternValue]: [string, any]) => (
+                            <div key={patternKey} className="flex items-start gap-2.5">
+                                <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--method-put)] whitespace-nowrap">
+                                    {patternKey}
+                                </code>
+                                <div className="min-w-0">
+                                    <div>{renderSchemaType(patternValue)}</div>
+                                    {patternValue.description && (
+                                        <p className="text-[10px] leading-relaxed text-[var(--text-muted)] mt-0.5">
+                                            {patternValue.description}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {notSchema && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Not Constraint
+                        </span>
+                        <Tip content="Any value that matches the constraint below is rejected.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+                        Must not be{' '}
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--method-delete)]">
+                            {describeNotConstraint(notSchema)}
+                        </code>
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

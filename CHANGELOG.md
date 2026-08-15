@@ -3,6 +3,24 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [Unreleased]
+
+Server variable editing and schema-table polish.
+
+- replaces the inline server-variable editors in the sidebar with a compact **Active Server**
+  control — the server select with a configuration button at its right that opens a dedicated
+  **Server Variables modal** (enum dropdown or free input per variable, live resolved-URL preview,
+  apply/cancel), keeping the sidebar compact;
+- fixes server-variable handling at the root: changing a variable no longer replaces the selected
+  server template with the expanded URL (which silently reset the dropdown to the first server and
+  dropped the editors); the template stays selected, variable values are kept per server URL, and
+  the resolved URL flows into the Runner and code generation through the resolver's
+  `selectedVariables` path;
+- shows **patternProperties** keys and **`not` constraints** in the schema property table
+  (LocalizedLabels' locale pattern, NotBlankMarker's rejection of the empty string) as descriptive
+  blocks instead of an empty table;
+- labels **mutual TLS credentials** as "Client certificate" in the auth modal instead of "unknown".
+
 ## [0.1.12] — 2026-08-16
 
 Fully responsive marketing site, modular builder CLI, repository restructure, and enforced

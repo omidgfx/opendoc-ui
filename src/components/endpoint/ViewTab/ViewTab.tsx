@@ -6,6 +6,7 @@ import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import MethodBadge from '../../common/MethodBadge';
 import PatternPreview from '../../common/PatternPreview';
+import {expandServerUrl} from '../../../utils/specification/serverResolver';
 import CustomDropdown from '../../common/CustomDropdown';
 import clsx from 'clsx';
 import ShareModal from '../../modals/ShareModal';
@@ -36,6 +37,7 @@ interface ViewTabProps {
     onOpenSchemaModal: (schemaName: string) => void;
     activeAuth: ActiveAuth;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     activeResponseCode?: string | null;
     onSelectResponseCode?: (code: string | null) => void;
     parsableKey?: string;
@@ -69,6 +71,7 @@ export default function ViewTab({
     onOpenSchemaModal,
     activeAuth,
     selectedServer,
+    serverVariables,
     activeResponseCode,
     onSelectResponseCode,
     parsableKey = '',
@@ -415,7 +418,9 @@ export default function ViewTab({
     const requestBodyMatrixSchema = activeRequestBodyVariant ?? selectedRequestBodyContent?.schema;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
-    const fullEndpointUrl = selectedServer ? `${selectedServer.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : path;
+    const fullEndpointUrl = selectedServer
+        ? `${expandServerUrl(selectedServer, serverVariables).replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
+        : path;
     return (
         <div
             ref={scrollContainerRef}

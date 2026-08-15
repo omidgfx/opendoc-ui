@@ -74,6 +74,26 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
             return next;
         });
     };
+    const credentialTypeLabel = (type: string): string => {
+        switch (type) {
+            case 'bearer':
+                return 'Bearer token';
+            case 'basic':
+                return 'Basic auth';
+            case 'apiKey':
+                return 'API key';
+            case 'cookie':
+                return 'Cookie';
+            case 'oauth2':
+                return 'OAuth2';
+            case 'openIdConnect':
+                return 'OpenID Connect';
+            case 'mutualTLS':
+                return 'Client certificate';
+            default:
+                return 'Unknown';
+        }
+    };
     function credentialFor(id: string): AuthCredential {
         const scheme: any = schemes[id];
         const existing = credentialsRef.current[id] || credentials[id];
@@ -113,6 +133,7 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
         if (scheme?.type === 'http' && scheme.scheme === 'bearer') return {schemeId: id, type: 'bearer'};
         if (scheme?.type === 'oauth2') return {schemeId: id, type: 'oauth2'};
         if (scheme?.type === 'openIdConnect') return {schemeId: id, type: 'openIdConnect'};
+        if (scheme?.type === 'mutualTLS') return {schemeId: id, type: 'mutualTLS'};
         return {schemeId: id, type: 'unknown'};
     }
     const save = () => {
@@ -233,7 +254,7 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                                         </div>
                                     </div>
                                     <span className="rounded bg-[var(--primary)]/10 px-2 py-1 text-[9px] font-bold uppercase text-[var(--primary)]">
-                                        {credential.type}
+                                        {credentialTypeLabel(credential.type)}
                                     </span>
                                 </div>
                                 {(credential.type === 'apiKey' || credential.type === 'cookie') && (

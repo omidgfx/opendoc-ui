@@ -1,11 +1,13 @@
 import CodeViewer from '../../common/CodeViewer';
 import type {ExamineResponse} from '../../../types';
 import {Tip} from '../../common/Tooltip';
+import {expandServerUrl} from '../../../utils/specification/serverResolver';
 import ResponseHistoryDropdown from './ResponseHistoryDropdown';
 
 interface ResponsePanelProps {
     method: string;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     path: string;
     isRunning: boolean;
     response: ExamineResponse | null;
@@ -28,6 +30,7 @@ function formatJson(text: string) {
 export default function ResponsePanel({
     method,
     selectedServer,
+    serverVariables,
     path,
     isRunning,
     response,
@@ -47,7 +50,7 @@ export default function ResponsePanel({
                 (item.timestamp === response?.timestamp && item.requestUrl === response?.requestUrl),
         ),
     );
-    const requestUrl = response?.requestUrl || `${selectedServer}${path}`;
+    const requestUrl = response?.requestUrl || `${expandServerUrl(selectedServer, serverVariables)}${path}`;
     return (
         <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">

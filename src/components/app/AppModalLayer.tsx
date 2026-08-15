@@ -3,6 +3,7 @@ import type {ActiveAuth, AISettings, OpenApiSpec, Operation, ThemeMode} from '..
 import type {TabItem} from '../endpoint/EndpointTabs';
 import ModalsStack from '../modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from '../modals/CodeGeneratorModal';
+import ServerVariablesModal from '../modals/ServerVariablesModal';
 import AuthModal from '../modals/AuthModal';
 import ShareModal from '../modals/ShareModal';
 import ThemeSelectorModal from '../modals/ThemeSelectorModal';
@@ -21,6 +22,10 @@ interface AppModalLayerProps {
     spec: OpenApiSpec | null;
     specKey: string;
     selectedServer: string;
+    serverVariables: Record<string, Record<string, string>>;
+    onChangeServerVariables: (url: string, values: Record<string, string>) => void;
+    serverVariablesOpen: boolean;
+    setServerVariablesOpen: Dispatch<SetStateAction<boolean>>;
     schemaStack: string[];
     setSchemaStack: Dispatch<SetStateAction<string[]>>;
     onPopSchema: () => void;
@@ -66,6 +71,10 @@ export default function AppModalLayer({
     spec,
     specKey,
     selectedServer,
+    serverVariables,
+    onChangeServerVariables,
+    serverVariablesOpen,
+    setServerVariablesOpen,
     schemaStack,
     setSchemaStack,
     onPopSchema,
@@ -98,6 +107,9 @@ export default function AppModalLayer({
     aiSettings,
     onSaveAISettings,
 }: AppModalLayerProps) {
+    const variablesServer = serverVariablesOpen
+        ? (spec?.servers || []).find(entry => entry.url === selectedServer) || null
+        : null;
     return (
         <>
             {spec?.components?.schemas && (
@@ -130,7 +142,16 @@ export default function AppModalLayer({
                     method={codeEndpoint.method}
                     operation={getOperation(spec, codeEndpoint.path, codeEndpoint.method) || {}}
                     selectedServer={selectedServer}
+                    serverVariables={serverVariables[selectedServer] ?? {}}
                     activeAuth={activeAuth}
+                />
+            )}
+            {variablesServer && (
+                <ServerVariablesModal
+                    server={variablesServer}
+                    initialValues={serverVariables[variablesServer.url] ?? {}}
+                    onApply={values => onChangeServerVariables(variablesServer.url, values)}
+                    onClose={() => setServerVariablesOpen(false)}
                 />
             )}
             <AuthModal

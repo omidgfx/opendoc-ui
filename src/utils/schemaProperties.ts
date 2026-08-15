@@ -102,6 +102,20 @@ export const schemaIsRecursive = (schema: any, resolveReference: SchemaReference
  * Reference and object ancestry are path-local so legitimate sibling reuse is
  * retained while recursive schemas terminate at the first cycle.
  */
+/** Human-readable summary of a JSON Schema `not` sub-schema, e.g. `{const: ''}` -> `""`. */
+export const describeNotConstraint = (notSchema: any): string => {
+    if (!notSchema || typeof notSchema !== 'object') return 'the listed values';
+    const parts: string[] = [];
+    if (notSchema.const !== undefined) parts.push(JSON.stringify(notSchema.const));
+    if (Array.isArray(notSchema.enum)) parts.push(notSchema.enum.map(value => JSON.stringify(value)).join(' or '));
+    if (notSchema.type) {
+        const types = Array.isArray(notSchema.type) ? notSchema.type.join('/') : notSchema.type;
+        parts.push(`values of type ${types}`);
+    }
+    if (notSchema.pattern) parts.push(`values matching ${notSchema.pattern}`);
+    return parts.length > 0 ? parts.join(', ') : 'the listed values';
+};
+
 export const flattenSchemaProperties = (
     rootSchema: any,
     resolveReference: SchemaReferenceResolver,

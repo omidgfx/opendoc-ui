@@ -4,6 +4,14 @@ import {getSpecSourceUri} from './specSource';
 
 export type ServerSource = 'operation' | 'path' | 'root' | 'default';
 
+/** Expand `{variable}` placeholders in a server URL with the given values; unknown
+ *  placeholders are left untouched so the template stays visible. */
+export const expandServerUrl = (url: string, values?: Record<string, string>): string =>
+    String(url || '').replace(/\{([^{}]+)}/g, (placeholder, name: string) => {
+        const value = values?.[name];
+        return value !== undefined && value !== '' ? String(value) : placeholder;
+    });
+
 export interface ResolvedServer {
     source: ServerSource;
     definition: ServerDefinition;

@@ -15,6 +15,7 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
     const [loadedSpecKey, setLoadedSpecKey] = useState('');
     const [isLoadingSpec, setIsLoadingSpec] = useState(false);
     const [selectedServer, setSelectedServer] = useState('');
+    const [serverVariables, setServerVariables] = useState<Record<string, Record<string, string>>>({});
     const [specFetchInfo, setSpecFetchInfo] = useState<FetchSpecResult<OpenApiSpec> | null>(null);
     const loadSequenceRef = useRef(0);
     const loadSpec = async (specKey: string, parsable: Parsable, forceRefresh = false) => {
@@ -55,7 +56,10 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
             setSpecFetchInfo(fetchInfo);
             setSpec(document);
             setLoadedSpecKey(document ? specKey : '');
-            if (document) setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
+            if (document) {
+                setSelectedServer(document.servers?.[0]?.url || 'https://api.example.com');
+                setServerVariables({});
+            }
         } catch (error) {
             if (sequence !== loadSequenceRef.current) return;
             console.error(`Failed to load spec '${specKey}'`, error);
@@ -80,6 +84,8 @@ export function useSpecLoader(selectedSpecKey: string, parsables: ParsableConfig
         setIsLoadingSpec,
         selectedServer,
         setSelectedServer,
+        serverVariables,
+        setServerVariables,
         specFetchInfo,
         setSpecFetchInfo,
         loadSpec,
