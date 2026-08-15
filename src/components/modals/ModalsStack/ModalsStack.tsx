@@ -15,7 +15,7 @@ import SchemaExampleModal from './SchemaExampleModal';
 import {getMockSnippet as generateMockSnippet} from '../../../utils/mockGenerator';
 import type {OpenApiSpec} from '../../../types';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
-import {toCleanRouteHref} from '../../../utils/routing';
+import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';
 import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
 import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 
@@ -133,10 +133,7 @@ export default function ModalsStack({
         if (typeof window === 'undefined') return '';
         const encodedKey = encodeURIComponent(parsableKey);
         const encodedSchema = encodeURIComponent(schemaName);
-        return new URL(
-            toCleanRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`),
-            window.location.origin,
-        ).href;
+        return absoluteRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`);
     };
     const handleShareSchema = (schemaName: string) => {
         const url = getSchemaShareUrl(schemaName);

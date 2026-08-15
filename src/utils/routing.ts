@@ -23,8 +23,18 @@ export const getCurrentSmartRoute = (): string => {
 
 export const toCleanRouteHref = (route: string): string => {
     if (!route.startsWith('#/')) return route;
-    const base = getRouteBasePath().replace(/\/$/, '');
-    return `${base}${route.slice(1)}` || '/';
+    // Hash-based deep links: the fragment never reaches the server, so the
+    // same URL works on any static host (GitHub Pages, nginx, file:// ...)
+    // without rewrite rules, and survives a refresh untouched.
+    return route;
+};
+
+/** Resolve a route to an absolute URL against the current document, so the
+ *  deployment base path is always included (e.g. /repo/demo/#/parsable/...). */
+export const absoluteRouteHref = (route: string): string => {
+    const href = toCleanRouteHref(route);
+    if (typeof window === 'undefined') return href;
+    return new URL(href, window.location.href).href;
 };
 export const getEndpointId = (operation: any, path: string, method: string): string => {
     if (operation?.operationId) return operation.operationId;

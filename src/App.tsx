@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, ParsableConfig} from './types';
-import {generateSmartRoute, getCurrentSmartRoute, parseSmartRoute} from './utils/routing';
+import {absoluteRouteHref, generateSmartRoute, getCurrentSmartRoute, parseSmartRoute} from './utils/routing';
 
 import {getDocumentOperations, getOperation} from './utils/openapi';
 import {uiStorage} from './utils/storage';
@@ -541,7 +541,7 @@ export default function App() {
     } | null>(null);
     const endpointDeepLink = useCallback(
         (path: string, method: string) =>
-            new URL(
+            absoluteRouteHref(
                 generateSmartRoute({
                     parsableKey: selectedParsableKey,
                     showHome: false,
@@ -553,8 +553,7 @@ export default function App() {
                     schemaModals: [],
                     activeSpec: spec,
                 }),
-                window.location.origin,
-            ).href,
+            ),
         [spec, selectedParsableKey],
     );
     const viewDeepLink = useCallback(
@@ -573,7 +572,7 @@ export default function App() {
                 activeSpec: spec,
             });
             if (view === 'search') route += `${route.includes('?') ? '&' : '?'}search=`;
-            return new URL(route, window.location.origin).href;
+            return absoluteRouteHref(route);
         },
         [selectedParsableKey, spec],
     );

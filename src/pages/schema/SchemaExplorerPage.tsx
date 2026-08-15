@@ -4,7 +4,7 @@ import {generateAndDownloadZip, generateSingleSchemaFile} from '../../utils/sche
 import ShareModal from '@/src/components/modals/ShareModal';
 import {useEscClose} from '../../hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
-import {toCleanRouteHref} from '@/src/utils/routing';
+import {absoluteRouteHref, toCleanRouteHref} from '@/src/utils/routing';
 import SearchHighlightedText from '@/src/components/layout/Sidebar/SearchHighlightedText';
 
 interface SchemaExplorerProps {
@@ -52,10 +52,7 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
         if (typeof window === 'undefined') return '';
         const encodedKey = encodeURIComponent(parsableKey);
         const encodedSchema = encodeURIComponent(schemaName);
-        return new URL(
-            toCleanRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`),
-            window.location.origin,
-        ).href;
+        return absoluteRouteHref(`#/parsable/${encodedKey}/schema-explorer?schemas=${encodedSchema}`);
     };
     const handleShareSchema = (schemaName: string, schema: any) => {
         const url = getSchemaShareUrl(schemaName);
