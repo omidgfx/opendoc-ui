@@ -3,7 +3,7 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
-## [Unreleased]
+## [0.1.13] — 2026-08-16
 
 Server variable editing and schema-table polish.
 
