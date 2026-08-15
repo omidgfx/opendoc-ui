@@ -1,139 +1,2598 @@
-openapi: 3.1.0
+openapi: 3.2.0
+$self: https://omidgfx.github.io/opendoc-ui/demo/demo/openapi.yaml
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
 info:
-  title: OpenDoc Petstore Demo
-  version: 1.0.0
+  title: OpenDoc UI — Complete Capability Showcase
+  summary: A deliberately feature-dense OpenAPI document built to demonstrate OpenDoc UI.
+  version: 1.0.0-demo
   description: |
-    A compact demonstration specification for OpenDoc UI. Browse schemas,
-    configure authentication, generate snippets, and use the API Runner.
+    # Welcome to the OpenDoc UI showcase
+
+    This specification is a **guided product demo**, a **visual regression fixture**, and a
+    **Runner playground** in one file. It deliberately combines ordinary API design with difficult
+    OpenAPI and JSON Schema cases.
+
+    ## Suggested tour
+
+    1. Browse the nested tag folders in the sidebar.
+    2. Press **Ctrl/⌘ + K** and search for `serialization`, `binary`, `recursive`, or `OAuth`.
+    3. Open an endpoint in **Documentation**, **API Runner**, and **Split View**.
+    4. Save Runner inputs, send the same request several times, and inspect **Response History**.
+    5. Open **Schema Explorer** and inspect `RichRequest`, `CustomerCommand`, `TreeNode`, and `LocalizedLabels`.
+    6. Open **Runner Compatibility** to see A–D ratings and browser-specific findings.
+    7. Create Markdown notes or todos, hide an endpoint, and test the local workspace workflow.
+    8. Generate request snippets and export the TypeScript schema package.
+
+    > **Live requests:** the first server is [HTTPBin](https://httpbin.org), a public echo service.
+    > Network execution still depends on its availability and current CORS policy. Documentation,
+    > examples, forms, schemas, code generation, notes, deep links, and compatibility analysis work
+    > without a successful network request.
+
+    | Area | Included in this document |
+    |---|---|
+    | Navigation | Nested tags, every fixed HTTP method, OAS 3.2 `QUERY`, and `additionalOperations` |
+    | Parameters | Path, query, query-string, header, cookie, content-based, styles, and `explode` |
+    | Bodies | JSON, vendor JSON, YAML, XML, text, HTML, JavaScript, forms, multipart, and binary |
+    | Schemas | `$ref`, `allOf`, `oneOf`, `anyOf`, `not`, recursion, maps, enums, constraints, boolean schemas, `prefixItems`, `patternProperties`, `unevaluatedProperties`, and `if`/`then`/`else` |
+    | Security | Public overrides, Basic, Bearer, API keys, OAuth 2, OIDC, cookies, mTLS, AND, and OR |
+    | Responses | Named examples, multiple media types, headers, status families, links, and binary metadata |
+    | Events | Callbacks and provider-initiated webhooks |
+
+    **Design note:** descriptions intentionally use headings, lists, tables, links, blockquotes,
+    inline `code`, and fenced code so OpenDoc's Markdown renderer can be demonstrated throughout.
+  termsOfService: https://github.com/omidgfx/opendoc-ui
   contact:
     name: OpenDoc UI
     url: https://github.com/omidgfx/opendoc-ui
+    email: opendoc-ui@example.com
+  license:
+    name: MIT
+    identifier: MIT
+
+externalDocs:
+  description: OpenDoc UI repository and product documentation
+  url: https://github.com/omidgfx/opendoc-ui
+
 servers:
-  - url: https://petstore3.swagger.io/api/v3
-    description: Public Swagger Petstore server
+  - url: https://httpbin.org
+    name: httpbin
+    description: Live CORS echo service — recommended for the Runner demo
+  - url: https://{host}
+    name: variable-host
+    description: Variable host template — demonstrates server-variable controls
+    variables:
+      host:
+        default: httpbin.org
+        enum:
+          - httpbin.org
+          - postman-echo.com
+        description: |
+          Pick a host. **HTTPBin** matches the paths in this showcase; the alternative exists to
+          demonstrate documented server-variable values and may not implement equivalent routes.
+  - url: https://{region}.{environment}.example.com/{version}
+    name: conceptual-multiregion
+    description: Non-runnable conceptual multi-variable server
+    variables:
+      region:
+        default: eu
+        enum: [eu, us, ap]
+        description: Deployment region.
+      environment:
+        default: sandbox
+        enum: [sandbox, staging, api]
+        description: Deployment environment.
+      version:
+        default: v1
+        enum: [v1, v2]
+        description: Base API version.
+
+security: []
+
 tags:
-  - name: Pets
-    description: Pet lookup and creation
-  - name: Store
-    description: Store inventory
+  - name: 01 Tour
+    description: Start here for a compact overview of navigation, Markdown, servers, and references.
+  - name: 01 Tour/Servers
+    description: Root, path-item, and operation-level server selection and variables.
+  - name: 01 Tour/Reusable paths
+    description: Reusable Path Item Objects from `components.pathItems`.
+  - name: 01 Tour/HTTP methods
+    description: Fixed methods, OAS 3.2 QUERY, and arbitrary additional operations.
+  - name: 02 Parameters/Path styles
+    description: Simple, label, and matrix path serialization.
+  - name: 02 Parameters/Query styles
+    description: Form, space-delimited, pipe-delimited, deep-object, and content-based parameters.
+  - name: 02 Parameters/Headers & cookies
+    description: Header serialization and browser-managed cookie limitations.
+  - name: 02 Parameters/Merging & OAS 3.2
+    description: Path/operation parameter merging and the OAS 3.2 query-string location.
+  - name: 03 Request bodies/Rich JSON
+    description: Recursive generated forms with constraints, defaults, examples, maps, and arrays.
+  - name: 03 Request bodies/Composition
+    description: Selectable oneOf/anyOf branches and allOf composition.
+  - name: 03 Request bodies/Media types
+    description: Raw editor language switching across structured and textual media.
+  - name: 03 Request bodies/Forms & files
+    description: URL encoding, multipart FormData, file fields, and encoding metadata.
+  - name: 03 Request bodies/Recursion
+    description: Cycle-safe forms and schema inspection.
+  - name: 04 Responses/Status gallery
+    description: Response navigation, headers, examples, schemas, enums, and deep links.
+  - name: 04 Responses/Binary & streaming
+    description: Safe binary detection, metadata-only handling, truncation, cancellation, and timeouts.
+  - name: 05 Security/Public & HTTP
+    description: Anonymous operations, Basic auth, and Bearer tokens.
+  - name: 05 Security/API keys
+    description: Header/query/cookie API keys and composed requirements.
+  - name: 05 Security/OAuth & OIDC
+    description: OAuth flows, PKCE discovery, scopes, OpenID Connect, and mTLS.
+  - name: 06 Events/Callbacks & links
+    description: Provider callbacks and response workflow links.
+  - name: 06 Events/Webhooks
+    description: Provider-initiated operations shown on the specification overview.
+  - name: 07 Compatibility/Browser limits
+    description: Deliberate browser and contract edge cases for the compatibility matrix.
+
 paths:
-  /pet/{petId}:
+  /anything/tour/hello:
     get:
-      tags: [Pets]
-      summary: Find a pet by ID
-      operationId: getPetById
+      tags: [01 Tour]
+      summary: Start the OpenDoc UI guided tour
+      operationId: startGuidedTour
+      description: |
+        ## A compact first stop
+
+        This operation is intentionally simple so the surrounding OpenDoc workspace is easy to
+        introduce before opening denser examples.
+
+        **OpenDoc UI capabilities to demonstrate**
+
+        - Markdown rendering with **emphasis**, `inline code`, lists, links, and a fenced sample.
+        - Endpoint tabs, preview-versus-permanent tabs, context menus, sharing, and deep links.
+        - Documentation, API Runner, and resizable Split View.
+        - Code generation with credentials represented as safe placeholders.
+        - Local Markdown notes, todos, endpoint hiding, and per-spec persistence.
+
+        ```bash
+        curl https://httpbin.org/anything/tour/hello
+        ```
+
+        > Try sending this endpoint repeatedly, then use **Response History** to switch between the
+        > last ten transaction outcomes. Reload the browser to show that history persists.
+      externalDocs:
+        description: OpenDoc UI on GitHub
+        url: https://github.com/omidgfx/opendoc-ui
       parameters:
-        - name: petId
-          in: path
-          required: true
-          description: Numeric pet identifier
+        - $ref: '#/components/parameters/TraceId'
+        - name: greeting
+          in: query
+          description: A friendly value echoed by the demo server.
           schema:
-            type: integer
-            format: int64
-            minimum: 1
-          example: 1
+            type: string
+            minLength: 1
+            maxLength: 60
+            default: Hello from OpenDoc UI
+          example: Hello from OpenDoc UI
       responses:
         '200':
-          description: Pet found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Pet'
-              example:
-                id: 1
-                name: Milo
-                status: available
-        '404':
-          description: Pet not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /pet:
+          $ref: '#/components/responses/HelloResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/ProblemResponse'
+
+  /anything/tour/scoped-server/{tenant}:
+    parameters:
+      - $ref: '#/components/parameters/TenantPath'
+    servers:
+      - url: https://httpbin.org/anything/path-scope
+        description: Path-item server — inherited by GET
+    get:
+      tags: [01 Tour/Servers]
+      summary: Inherit a path-item server
+      operationId: demonstratePathServer
+      description: |
+        ## Path-item server precedence
+
+        This operation has no `servers` field, so OpenDoc resolves the server declared on the Path
+        Item Object. The full URL preview and generated snippets should include
+        `/anything/path-scope` before this route.
+
+        **Demonstrates:** server precedence, path-level parameters, full-URL copying, and the Runner's
+        substituted request URL.
+      responses:
+        '200':
+          $ref: '#/components/responses/EchoResponse'
     post:
-      tags: [Pets]
-      summary: Create a pet
-      operationId: addPet
+      tags: [01 Tour/Servers]
+      summary: Override with an operation server and variables
+      operationId: demonstrateOperationServer
+      description: |
+        ## Operation-level server precedence
+
+        The POST operation overrides the Path Item server with a variable base path.
+
+        - `basePath=anything/operation-scope` is the documented default.
+        - OpenDoc resolves operation servers before path and root servers.
+        - The selected server, path value, and body are reflected in generated code.
+      servers:
+        - url: https://httpbin.org/{basePath}
+          description: Operation-specific variable server
+          variables:
+            basePath:
+              default: anything/operation-scope
+              enum: [anything/operation-scope, anything/alternate-scope]
+              description: HTTPBin catch-all prefix used for the demo.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  default: Operation servers win
+      responses:
+        '200':
+          $ref: '#/components/responses/EchoResponse'
+
+  /anything/tour/reused/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identifier that demonstrates reusable-style path metadata.
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+        example: reusable_123
+    get:
+      tags: [01 Tour/Reusable paths]
+      summary: Resolve reusable parameter, response, and schema references
+      operationId: getReusablePathItem
+      description: |
+        This route combines local `$ref` values for responses, headers, and schemas while its complete
+        Path Item template is also preserved in `components.pathItems.ReusableEchoPath`.
+
+        **Demonstrates:** internal reference resolution, derived bundled export, reusable parameter
+        metadata, deep links, and source immutability. OpenDoc renders from a normalized semantic
+        document while retaining the untouched original for download.
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/methods:
+    get:
+      tags: [01 Tour/HTTP methods]
+      summary: GET method badge and request
+      operationId: methodGet
+      description: |
+        Demonstrates a standard **GET** operation, method coloring, sidebar method filters, search,
+        method statistics on Overview, and a body-free Runner request.
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    post:
+      tags: [01 Tour/HTTP methods]
+      summary: POST method badge and request body
+      operationId: methodPost
+      description: |
+        Demonstrates **POST**, JSON body generation, mock defaults, raw/form switching, and code
+        snippets for a request with a payload.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action: {type: string, default: create}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    put:
+      tags: [01 Tour/HTTP methods]
+      summary: PUT method badge and idempotent update
+      operationId: methodPut
+      description: |
+        Demonstrates the **PUT** method color, operation discovery, generated snippets, and an
+        idempotent-style JSON update payload.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                replace: {type: boolean, default: true}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    patch:
+      tags: [01 Tour/HTTP methods]
+      summary: PATCH method badge and merge patch
+      operationId: methodPatch
+      description: |
+        Demonstrates **PATCH** and a vendor-specific structured body. OpenDoc recognizes
+        `application/merge-patch+json` as JSON in the editor and response tooling.
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              status: active
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    delete:
+      tags: [01 Tour/HTTP methods]
+      summary: DELETE method badge
+      operationId: methodDelete
+      description: |
+        Demonstrates **DELETE**, destructive-method coloring, compact method labels, method filters,
+        and a successful response without a request body.
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    head:
+      tags: [01 Tour/HTTP methods]
+      summary: HEAD response without a body
+      operationId: methodHead
+      description: |
+        Demonstrates **HEAD** and the Runner response panel when only status and headers are expected.
+        It is useful for checking how body-less transactions are stored in history.
+      responses:
+        '200':
+          description: Headers only
+          headers:
+            X-Demo-Method:
+              schema: {type: string}
+              example: HEAD
+    options:
+      tags: [01 Tour/HTTP methods]
+      summary: OPTIONS capability discovery
+      operationId: methodOptions
+      description: |
+        Demonstrates **OPTIONS**, uncommon fixed-method badges, and response headers such as `Allow`.
+      responses:
+        '204':
+          description: Capability metadata only
+          headers:
+            Allow:
+              schema: {type: string}
+              example: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+    trace:
+      tags: [01 Tour/HTTP methods]
+      summary: TRACE browser restriction edge case
+      operationId: methodTrace
+      deprecated: true
+      description: |
+        Demonstrates the **TRACE** operation in navigation and documentation. It is also marked
+        `deprecated`, which exercises the deprecated badge and the **Hide deprecated endpoints**
+        sidebar setting. Browser Fetch forbids TRACE for security reasons, so execution is expected to
+        fail as a transport outcome that can still be inspected in OpenDoc's response panel and history.
+      responses:
+        '200':
+          description: TRACE echo if the transport permits it
+          content:
+            message/http:
+              schema: {type: string}
+    query:
+      tags: [01 Tour/HTTP methods]
+      summary: OAS 3.2 QUERY operation
+      operationId: methodQuery
+      description: |
+        Demonstrates the OpenAPI **3.2 `QUERY` Operation Object**, including discovery, method badges,
+        search, routing, compatibility reporting, AI context, and code generation.
+
+        > The public HTTPBin deployment may not accept QUERY; a failure is still a useful Runner
+        > transport demonstration.
+      requestBody:
+        content:
+          application/query+json:
+            schema:
+              type: object
+              properties:
+                where: {type: string, example: status = "active"}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+    additionalOperations:
+      PURGE:
+        tags: [01 Tour/HTTP methods]
+        summary: OAS 3.2 additional PURGE operation
+        operationId: methodPurge
+        description: |
+          Demonstrates OpenAPI 3.2 **`additionalOperations`** with an arbitrary `PURGE` method.
+          OpenDoc exposes it through the same operation model used by fixed methods.
+
+          Execution depends on browser and server support; documentation, deep linking, filtering,
+          snippets, and compatibility analysis remain available regardless.
+        responses:
+          '204':
+            description: Cache purged
+
+  /anything/parameters/path/{simple}/{label}/{matrix}:
+    get:
+      tags: [02 Parameters/Path styles]
+      summary: Exercise simple, label, and matrix path serialization
+      operationId: serializePathStyles
+      description: |
+        ## Three path styles in one request
+
+        Fill the Runner fields and inspect the substituted URL before sending.
+
+        | Placeholder | Schema | Style | Example result |
+        |---|---|---|---|
+        | `simple` | string | `simple` | `blue` |
+        | `label` | array | `label`, exploded | `.red.green` |
+        | `matrix` | object | `matrix`, exploded | `;x=10;y=20` |
+
+        **OpenDoc potential:** this makes serialization observable instead of hiding it behind a
+        generic text box. Arrays are editable as chips, objects accept JSON, required path omissions
+        are the one class of missing input that blocks execution, and generated code uses the same
+        canonical request plan as the Runner.
+      parameters:
+        - name: simple
+          in: path
+          required: true
+          description: A primitive path value using the OpenAPI default `simple` style.
+          style: simple
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+            default: blue
+        - name: label
+          in: path
+          required: true
+          description: An array serialized with a leading dot and dot-separated exploded values.
+          style: label
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 4
+            items:
+              type: string
+              enum: [red, green, blue]
+          example: [red, green]
+        - name: matrix
+          in: path
+          required: true
+          description: Enter a JSON object such as `{"x":10,"y":20}` to produce matrix segments.
+          style: matrix
+          explode: true
+          schema:
+            type: object
+            properties:
+              x: {type: integer, default: 10}
+              y: {type: integer, default: 20}
+          example: {x: 10, y: 20}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/parameters/query:
+    get:
+      tags: [02 Parameters/Query styles]
+      summary: Exercise every major query serialization style
+      operationId: serializeQueryStyles
+      description: |
+        ## Query serialization laboratory
+
+        This operation places several legal OpenAPI query representations side by side.
+
+        - Repeated and compact **form arrays**.
+        - `spaceDelimited` and `pipeDelimited` arrays.
+        - `deepObject`, exploded object, and compact object forms.
+        - `allowReserved` URL-like values with safe delimiter handling.
+        - A content-based JSON parameter and multiple named examples.
+        - Enum suggestions that remain permissive for negative testing.
+
+        > Select documented values, then type an undocumented value. OpenDoc intentionally warns
+        > where useful but does not over-police negative API tests.
+      parameters:
+        - name: tagsExploded
+          in: query
+          description: |
+            Repeated query values (`?tagsExploded=alpha&tagsExploded=beta`).
+
+            | Value | Meaning |
+            |---|---|
+            | `alpha` | First documented tag |
+            | `beta` | Second documented tag |
+            | `release` | Production release traffic |
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [alpha, beta, release]
+          example: [alpha, beta]
+        - name: tagsCompact
+          in: query
+          description: One comma-separated query value.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: {type: string}
+          example: [one, two]
+        - name: words
+          in: query
+          description: Space-delimited array serialization.
+          style: spaceDelimited
+          explode: false
+          schema:
+            type: array
+            items: {type: string}
+          example: [open, doc]
+        - name: pipes
+          in: query
+          description: Pipe-delimited array serialization.
+          style: pipeDelimited
+          explode: false
+          schema:
+            type: array
+            items: {type: string}
+          example: [fast, clear, local]
+        - name: filter
+          in: query
+          description: A deep-object filter; enter `{"status":"active","owner":"omid"}`.
+          style: deepObject
+          explode: true
+          schema:
+            $ref: '#/components/schemas/SearchFilter'
+          example: {status: active, owner: omid}
+        - name: flatFilter
+          in: query
+          description: An object whose keys become independent query parameters.
+          style: form
+          explode: true
+          schema:
+            type: object
+            properties:
+              role: {type: string}
+              region: {type: string}
+          example: {role: admin, region: eu}
+        - name: compactFilter
+          in: query
+          description: A compact object serialized as alternating comma-separated keys and values.
+          style: form
+          explode: false
+          schema:
+            type: object
+            properties:
+              role: {type: string}
+              active: {type: boolean}
+          example: {role: editor, active: true}
+        - name: next
+          in: query
+          description: A URL-like value that exercises `allowReserved` without allowing query injection.
+          allowReserved: true
+          schema:
+            type: string
+            format: uri
+          example: https://example.com/items?page=2&sort=name#results
+        - name: payload
+          in: query
+          description: A content-based Parameter Object serialized as compact JSON.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  flags:
+                    type: array
+                    items: {type: string}
+                  dryRun: {type: boolean}
+          example: {flags: [a, b], dryRun: true}
+        - name: state
+          in: query
+          deprecated: true
+          description: |
+            A deprecated enum with descriptions extracted from this Markdown table.
+
+            | Value | Case | Description |
+            |---|---|---|
+            | `active` | ACTIVE | Normal traffic |
+            | `paused` | PAUSED | Temporarily suspended |
+            | `archived` | ARCHIVED | Read-only historical data |
+          schema:
+            type: string
+            enum: [active, paused, archived]
+          examples:
+            normal:
+              summary: Normal traffic
+              value: active
+            suspended:
+              summary: Suspended traffic
+              value: paused
+        - name: optionalEmpty
+          in: query
+          allowEmptyValue: true
+          description: May be deliberately sent as an empty value.
+          schema: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/parameters/headers-cookies:
+    get:
+      tags: [02 Parameters/Headers & cookies]
+      summary: Serialize header arrays, objects, and cookie parameters
+      operationId: serializeHeadersAndCookies
+      description: |
+        ## Header and cookie behavior
+
+        **Header controls** demonstrate primitives, arrays, objects, patterns, examples, and a
+        browser-controlled header. **Cookie parameters** deliberately trigger a Runner Compatibility
+        browser finding because JavaScript cannot inject a raw `Cookie` header.
+
+        - Custom headers are merged case-insensitively.
+        - The browser may reject `Cookie`, `Host`, `Origin`, `Content-Length`, and other forbidden names.
+        - Browser-managed cookies use `credentials: include` when the effective operation needs them.
+        - The response history records network failures and diagnostics as first-class outcomes.
+      parameters:
+        - $ref: '#/components/parameters/TraceId'
+        - name: X-Regions
+          in: header
+          description: Comma-separated simple-style header array.
+          style: simple
+          explode: false
+          schema:
+            type: array
+            items: {type: string, enum: [eu, us, ap]}
+          example: [eu, us]
+        - name: X-Filter
+          in: header
+          description: Exploded object header; enter a JSON object.
+          style: simple
+          explode: true
+          schema:
+            type: object
+            properties:
+              plan: {type: string}
+              tier: {type: integer}
+          example: {plan: pro, tier: 2}
+        - name: Origin
+          in: header
+          description: Deliberately browser-controlled; used to surface a transport notice.
+          schema: {type: string, format: uri}
+          example: https://docs.example.com
+        - name: preferences
+          in: cookie
+          description: Cookie object values are browser-managed in direct Runner mode.
+          style: form
+          explode: true
+          schema:
+            type: object
+            properties:
+              theme: {type: string, enum: [light, dark]}
+              density: {type: string, enum: [compact, comfortable]}
+          example: {theme: dark, density: compact}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/parameters/merged/{resourceId}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+      - $ref: '#/components/parameters/Locale'
+    get:
+      tags: [02 Parameters/Merging & OAS 3.2]
+      summary: Merge path and operation parameters with an override
+      operationId: mergeParameterLevels
+      description: |
+        ## Effective parameter resolution
+
+        OpenDoc merges Path Item parameters with operation parameters by the `(name, in)` identity.
+        The operation-level `locale` below replaces the reusable path-level version while
+        `resourceId` remains inherited.
+
+        Pair this endpoint with the next **OAS 3.2 query-string** operation: normal `query`
+        parameters and a whole-query-string parameter are intentionally separated because the
+        OpenAPI 3.2 contract forbids using both locations on the same operation.
+      parameters:
+        - name: locale
+          in: query
+          description: Operation override of the reusable Locale parameter.
+          schema:
+            type: string
+            enum: [en-GB, fa-IR, nl-NL]
+            default: nl-NL
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/parameters/querystring:
+    get:
+      tags: [02 Parameters/Merging & OAS 3.2]
+      summary: Serialize one whole OAS 3.2 query-string parameter
+      operationId: serializeWholeQueryString
+      description: |
+        ## Whole-query-string serialization
+
+        OpenAPI 3.2 adds `in: querystring` for treating the entire query string as one value. The
+        parameter must use `content`, may appear only once, and cannot coexist with ordinary
+        `in: query` parameters on the same operation.
+
+        This example uses `application/x-www-form-urlencoded`, so OpenDoc expands the object into
+        top-level pairs such as `?cursor=next-123&include=owner`. It demonstrates 3.2 parsing,
+        content-based parameter controls, canonical Runner planning, and generated snippets.
+      parameters:
+        - name: rawQuery
+          in: querystring
+          description: OAS 3.2 query-string object serialized into independent query pairs.
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                properties:
+                  cursor: {type: string}
+                  include: {type: string}
+              encoding:
+                include:
+                  style: form
+                  explode: false
+          examples:
+            compact:
+              summary: OAS 3.2 data and serialized values
+              dataValue: {cursor: next-123, include: owner}
+              serializedValue: cursor=next-123&include=owner
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/bodies/rich:
+    post:
+      tags: [03 Request bodies/Rich JSON]
+      summary: Edit a deeply typed recursive JSON form
+      operationId: submitRichRequest
+      description: |
+        ## The main Runner form showcase
+
+        Open this operation in **Split View** and compare the documentation matrix with the generated
+        request form. The reusable `RichRequest` schema demonstrates:
+
+        - `allOf` composition and inherited required properties.
+        - Strings, numbers, integers, booleans, dates, date-times, formats, patterns, and `const`.
+        - Defaults, examples, numeric bounds, `multipleOf`, and nullable type unions.
+        - Arrays of primitives, arrays of objects, arrays of arrays, maps, add/remove/reorder controls.
+        - Markdown field descriptions, schema links, external docs, and pattern testing.
+        - `readOnly` omission from request mocks and `writeOnly` omission from response mocks.
+
+        > Runner validation is deliberately permissive. Try violating a pattern or bound and inspect
+        > the advisory notice; only an unresolved required path placeholder blocks execution.
+      requestBody:
+        $ref: '#/components/requestBodies/RichPayload'
+      responses:
+        '200':
+          description: Echoed rich request
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EchoEnvelope'
+                  - type: object
+                    properties:
+                      received:
+                        $ref: '#/components/schemas/RichRequest'
+              examples:
+                accepted:
+                  summary: Accepted rich payload
+                  value:
+                    requestId: 123e4567-e89b-12d3-a456-426614174000
+                    received:
+                      title: OpenDoc showcase
+                      mode: live
+                      priority: 5
+        '422': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/bodies/variants:
+    post:
+      tags: [03 Request bodies/Composition]
+      summary: Switch among named oneOf command branches
+      operationId: submitCustomerCommand
+      description: |
+        ## Selectable schema branches
+
+        The request body uses `oneOf` with referenced branches. OpenDoc labels the choices from their
+        schema names, generates branch-specific defaults, and keeps the edited branch selected.
+
+        1. **CreateCustomer** — nested object with required fields.
+        2. **LinkExistingCustomer** — a compact identifier command.
+        3. **DeleteCustomerData** — a `const`-driven command.
+        4. **null** — a pure-null branch rendered as real JSON `null`.
+
+        The schema also declares a discriminator so raw OpenAPI inspection and downstream tooling can
+        understand the intended polymorphism.
+      requestBody:
+        $ref: '#/components/requestBodies/CustomerCommandPayload'
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/Customer'
+                  - $ref: '#/components/schemas/AsyncJob'
+              examples:
+                immediate:
+                  summary: Immediate customer result
+                  value: {id: cust_123, name: Ada Lovelace, status: active}
+                queued:
+                  summary: Queued asynchronous result
+                  value: {id: job_123, state: queued, progress: 0}
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/bodies/media:
+    post:
+      tags: [03 Request bodies/Media types]
+      summary: Switch raw editors across JSON, YAML, XML, text, HTML, and JavaScript
+      operationId: submitMultipleMediaTypes
+      description: |
+        ## Media-aware body editing
+
+        Use the content-type selector in the Runner. OpenDoc switches syntax highlighting and
+        formatting rules without applying JSON validation to non-JSON text.
+
+        | Media type | Expected editor behavior |
+        |---|---|
+        | `application/json` | Recursive form or JSON raw editor |
+        | `application/vnd.opendoc+json` | Vendor JSON detection via `+json` |
+        | `application/yaml` | YAML parsing and formatting |
+        | `application/xml` | XML raw editing |
+        | `text/plain` | Unconstrained plain text |
+        | `text/html` | HTML highlighting |
+        | `application/javascript` | JavaScript highlighting |
+
+        This operation also references an OAS 3.2 reusable **Media Type Object**.
+      requestBody:
+        required: true
+        description: Choose a media type to demonstrate mode and language selection.
+        content:
+          application/json:
+            $ref: '#/components/mediaTypes/DemoJson'
+          application/vnd.opendoc+json:
+            schema:
+              $ref: '#/components/schemas/FreeFormObject'
+            example: {vendor: opendoc, enabled: true}
+          application/yaml:
+            schema:
+              $ref: '#/components/schemas/FreeFormObject'
+            example: |
+              product: OpenDoc UI
+              features:
+                - docs
+                - runner
+                - ai
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/XmlMessage'
+            example: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <message><title>OpenDoc UI</title><enabled>true</enabled></message>
+          text/plain:
+            schema: {type: string}
+            example: Exact plain-text payload — JSON rules do not apply.
+          text/html:
+            schema: {type: string}
+            example: '<article><h1>OpenDoc UI</h1><p>HTML body demo</p></article>'
+          application/javascript:
+            schema: {type: string}
+            example: 'export const product = "OpenDoc UI";'
+      responses:
+        '200':
+          description: Echo in several representational formats
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EchoEnvelope'}
+            application/yaml:
+              schema: {$ref: '#/components/schemas/EchoEnvelope'}
+            application/xml:
+              schema: {$ref: '#/components/schemas/XmlMessage'}
+            text/plain:
+              schema: {type: string}
+
+  /anything/bodies/forms:
+    post:
+      tags: [03 Request bodies/Forms & files]
+      summary: Build URL-encoded and multipart forms with files
+      operationId: submitFormsAndFiles
+      description: |
+        ## Browser-native form transports
+
+        Toggle between `application/x-www-form-urlencoded` and `multipart/form-data`.
+
+        - URL-encoded arrays become repeated or styled key/value pairs.
+        - Multipart uses browser `FormData`; OpenDoc removes an explicit multipart `Content-Type` so
+          the browser can add the required boundary.
+        - Binary schema fields become file pickers with drag-and-drop support.
+        - Encoding `contentType`, `style`, and `explode` influence individual parts.
+        - Custom per-part headers are documented but produce a **partial compatibility** finding,
+          because browser FormData cannot emit arbitrary part headers.
+
+        > This endpoint is intentionally both useful and imperfect: it shows users exactly where the
+        > browser transport boundary is instead of pretending all multipart metadata is executable.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FormSubmission'
+            encoding:
+              tags:
+                style: form
+                explode: true
+              metadata:
+                contentType: application/json
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartSubmission'
+            encoding:
+              metadata:
+                contentType: application/json
+                headers:
+                  X-Part-Signature:
+                    description: Demonstration-only custom part header.
+                    schema: {type: string}
+              tags:
+                style: form
+                explode: true
+              attachment:
+                contentType: application/octet-stream
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '413':
+          description: Payload too large
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /anything/bodies/binary:
+    put:
+      tags: [03 Request bodies/Forms & files]
+      summary: Upload a top-level binary request body
+      operationId: uploadBinaryBody
+      description: |
+        ## Top-level file upload
+
+        A `string` with `format: binary` becomes a file picker rather than a text field. OpenDoc sends
+        the selected `File`/`Blob` using the declared media type and generates transport-appropriate
+        snippets without inventing a raw multipart boundary.
+
+        **Try:** select a small file, save Runner inputs, clear the form, and compare what persists.
+        Browser file handles are intentionally not serialized as ordinary local state.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Any small demonstration file.
+          image/png:
+            schema:
+              type: string
+              contentEncoding: binary
+              contentMediaType: image/png
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/bodies/recursive:
+    post:
+      tags: [03 Request bodies/Recursion]
+      summary: Render a recursive tree without overflowing
+      operationId: submitRecursiveTree
+      description: |
+        ## Cycle-safe schema handling
+
+        `TreeNode.children.items` points back to `TreeNode`. OpenDoc expands useful properties, marks
+        recursive/reused branches with a loop icon, and stops at the cycle boundary.
+
+        This endpoint is useful for demonstrating that recursion safety is shared across:
+
+        - Documentation property matrices.
+        - Schema modals and Schema Explorer.
+        - Generated examples and typed defaults.
+        - Recursive Runner forms.
+        - TypeScript model generation.
+
+        Switch to **Raw** mode when you want to author a deeper recursive value manually.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TreeNode'}
+            example:
+              id: root
+              label: Root node
+              children:
+                - id: child-1
+                  label: First child
+                  children: []
+      responses:
+        '200':
+          description: Echoed tree
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TreeNode'}
+
+  /anything/responses/gallery:
+    get:
+      tags: [04 Responses/Status gallery]
+      summary: Browse response codes, media types, headers, schemas, and examples
+      operationId: responseGallery
+      description: |
+        ## Response documentation stress test
+
+        This operation is designed for OpenDoc's vertical response-code navigator and deep links.
+
+        - Success, redirect, client-error, server-error, status-range, and `default` entries.
+        - Multiple media types and named examples on one response.
+        - Reusable response and header components.
+        - Example, schema, and enum-oriented response tabs.
+        - Response sharing through `#response-<code>` URLs.
+        - Keyboard response navigation with **Ctrl/⌘ + Arrow Up/Down**.
+
+        > Collapse several responses, deep-link to `422`, reload, and use Back/Forward to demonstrate
+        > URL-authoritative workspace restoration.
+      parameters:
+        - name: scenario
+          in: query
+          description: Select which conceptual response the demo server should represent.
+          schema:
+            type: string
+            enum: [success, created, redirect, validation, rate-limit, failure]
+            default: success
+      responses:
+        '200':
+          description: Successful response with several representations
+          headers:
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+            X-RateLimit-Limit: {$ref: '#/components/headers/RateLimitLimit'}
+            X-RateLimit-Remaining: {$ref: '#/components/headers/RateLimitRemaining'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CustomerPage'}
+              examples:
+                populated:
+                  summary: Two customers
+                  description: A normal paginated result.
+                  value:
+                    items:
+                      - {id: cust_1, name: Ada Lovelace, status: active}
+                      - {id: cust_2, name: Grace Hopper, status: paused}
+                    page: 1
+                    pageSize: 20
+                    total: 2
+                empty:
+                  summary: Empty page
+                  value: {items: [], page: 1, pageSize: 20, total: 0}
+                oas32DataValue:
+                  summary: OpenAPI 3.2 Example Object using dataValue
+                  dataValue: {items: [], page: 2, pageSize: 20, total: 0}
+                  serializedValue: '{"items":[],"page":2,"pageSize":20,"total":0}'
+            application/xml:
+              schema: {$ref: '#/components/schemas/CustomerPage'}
+            application/yaml:
+              schema: {$ref: '#/components/schemas/CustomerPage'}
+            text/plain:
+              schema: {type: string}
+              example: 2 customers found
+          links:
+            getFirstCustomer:
+              operationId: getLinkedResource
+              parameters:
+                id: '$response.body#/items/0/id'
+              description: Follow the first returned customer ID.
+        '201':
+          description: Resource created
+          headers:
+            Location:
+              description: URL of the new resource.
+              schema: {type: string, format: uri}
+              example: https://api.example.com/customers/cust_123
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Customer'}
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '302':
+          description: Temporary redirect
+          headers:
+            Location:
+              description: Redirect destination.
+              required: true
+              schema: {type: string, format: uri}
+              example: https://example.com/new-location
+        '206':
+          description: Enum-only partial status response
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkflowState'}
+              example: running
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+        '401':
+          description: Missing or invalid credentials
+          headers:
+            WWW-Authenticate:
+              schema: {type: string}
+              example: Bearer realm="opendoc-demo"
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: Validation failure with field details
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ValidationProblem'}
+              examples:
+                titleRequired:
+                  summary: Missing title
+                  value:
+                    type: https://example.com/problems/validation
+                    title: Request validation failed
+                    status: 422
+                    errors:
+                      - {pointer: /title, code: required, message: Title is required}
+                modeInvalid:
+                  summary: Unsupported mode
+                  value:
+                    type: https://example.com/problems/validation
+                    title: Request validation failed
+                    status: 422
+                    errors:
+                      - {pointer: /mode, code: enum, message: Mode is not documented}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '4XX':
+          description: Other client-error status range
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '5XX':
+          description: Server error status range
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        default:
+          description: Any response not covered above
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FreeFormObject'}
+
+  /anything/responses/enum:
+    get:
+      tags: [04 Responses/Status gallery]
+      summary: Show an enum response and Markdown case descriptions
+      operationId: getWorkflowState
+      description: |
+        The success schema is a reusable enum whose Markdown table documents every case. Use this to
+        demonstrate enum presentation in Documentation, rich dropdown descriptions in Runner fields,
+        schema search, and TypeScript union generation.
+      responses:
+        '200':
+          description: Current workflow state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkflowState'}
+              examples:
+                queued: {value: queued}
+                running: {value: running}
+                finished: {value: succeeded}
+
+  /status/204:
+    get:
+      tags: [04 Responses/Status gallery]
+      summary: Receive a real no-content response
+      operationId: getNoContent
+      description: |
+        HTTPBin returns a real **204**. The Runner should show status, timing, URL, timestamp, and
+        headers without pretending a structured payload exists. The transaction remains available in
+        persistent response history.
+      responses:
+        '204': {$ref: '#/components/responses/NoContent'}
+
+  /bytes/{size}:
+    get:
+      tags: [04 Responses/Binary & streaming]
+      summary: Detect a declared binary response and cancel its body stream
+      operationId: getBinaryBytes
+      description: |
+        ## Safe binary behavior
+
+        OpenDoc sends the request but does **not** automatically download or buffer binary data. When
+        the OpenAPI response or actual headers indicate binary/attachment content, it cancels the body
+        stream after headers and displays metadata instead.
+
+        Demonstrates:
+
+        - `application/octet-stream` plus `format: binary`.
+        - `Content-Disposition` and `Content-Length` response headers.
+        - Binary findings and the special **A · 95** compatibility score.
+        - No browser download event and bounded persistent history.
+      parameters:
+        - name: size
+          in: path
+          required: true
+          description: Number of random bytes requested from HTTPBin.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 65536
+            default: 64
+      responses:
+        '200':
+          description: Random binary bytes — metadata only in OpenDoc
+          headers:
+            Content-Length:
+              description: Declared payload size.
+              schema: {type: integer}
+            Content-Disposition:
+              description: Optional attachment metadata.
+              schema: {type: string}
+              example: attachment; filename="demo.bin"
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '416': {$ref: '#/components/responses/ProblemResponse'}
+
+  /delay/{seconds}:
+    get:
+      tags: [04 Responses/Binary & streaming]
+      summary: Cancel a slow request or observe the 30-second timeout
+      operationId: delayedResponse
+      description: |
+        Start this request and press **Cancel** before it finishes. OpenDoc records cancellation,
+        timeout, network error, validation failure, and HTTP response outcomes in the same bounded
+        transaction history model.
+
+        - User cancellation produces `cancelled`.
+        - The Runner timeout is 30 seconds.
+        - Switching endpoints or unmounting the Runner aborts an in-flight request safely.
+        - Response history keeps the last ten outcomes per specification + method + path.
+      parameters:
+        - name: seconds
+          in: path
+          required: true
+          description: Delay requested from HTTPBin; use `5` for a comfortable cancellation demo.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 5
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '504': {$ref: '#/components/responses/ProblemResponse'}
+
+  /status/418:
+    get:
+      tags: [07 Compatibility/Browser limits]
+      summary: Declare no successful response
+      operationId: noDeclaredSuccess
+      description: |
+        This deliberately unusual contract declares only **418**. OpenDoc can still run it, but the
+        compatibility report assigns a partial finding because no `2xx` or `default` response exists
+        from which to pre-classify a successful payload.
+
+        Use it to explain the distinction between **static specification analysis** and the real
+        server response, whose headers remain authoritative.
+      responses:
+        '418':
+          description: I am a teapot
+          content:
+            text/plain:
+              schema: {type: string}
+              example: '-=[ teapot ]=-'
+
+  /anything/security/public:
+    get:
+      tags: [05 Security/Public & HTTP]
+      summary: Explicitly public operation
+      operationId: publicSecurityOverride
+      description: |
+        `security: []` explicitly disables inherited requirements. Configure a token globally, run
+        this operation, and inspect generated snippets: OpenDoc must not leak or apply credentials to
+        an operation whose effective security is public.
+      security: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/security/bearer:
+    get:
+      tags: [05 Security/Public & HTTP]
+      summary: Apply an HTTP Bearer token
+      operationId: bearerProtectedOperation
+      description: |
+        Demonstrates a protected indicator, the per-spec authorization modal, a named Bearer scheme,
+        JWT formatting hints, authorization state coloring, redacted AI context, and credential-safe
+        generated snippets.
       security:
-        - bearerAuth: []
-        - apiKey: []
+        - BearerAuth: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '401': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/security/basic:
+    get:
+      tags: [05 Security/Public & HTTP]
+      summary: Apply HTTP Basic authentication
+      operationId: basicProtectedOperation
+      description: |
+        Demonstrates username/password controls and an RFC 7617 `Authorization: Basic …` request.
+        Secrets remain scoped to this specification and are replaced with placeholders in generated
+        examples rather than copied into exportable code.
+      security:
+        - BasicAuth: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '401': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/security/api-keys:
+    get:
+      tags: [05 Security/API keys]
+      summary: Require header and query API keys together
+      operationId: composedApiKeyRequirement
+      description: |
+        A single Security Requirement Object means **AND**: both `HeaderApiKey` and `QueryApiKey`
+        must be configured and applied simultaneously. OpenDoc preserves their real scheme IDs,
+        reports incomplete authorization, and serializes each credential into its declared location.
+      security:
+        - HeaderApiKey: []
+          QueryApiKey: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '403': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/security/alternatives:
+    get:
+      tags: [05 Security/API keys]
+      summary: Choose among OR security alternatives including anonymous access
+      operationId: alternativeSecurityRequirements
+      description: |
+        Separate Security Requirement Objects mean **OR**. The authorization modal presents each
+        alternative independently:
+
+        1. Bearer token.
+        2. Header API key.
+        3. OAuth scope.
+        4. Anonymous `{}` access.
+
+        The anonymous alternative is important: a lock icon must not imply that credentials are
+        mandatory when the contract explicitly permits public access.
+      security:
+        - BearerAuth: []
+        - HeaderApiKey: []
+        - OAuth2: [demo:read]
+        - {}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/security/cookie:
+    get:
+      tags: [05 Security/API keys]
+      summary: Use a browser-managed session cookie
+      operationId: cookieProtectedOperation
+      description: |
+        Cookie API-key schemes are transport-dependent in a browser. OpenDoc shows one informational
+        authorization note, uses `credentials: include`, and does not claim it can inject a manual
+        `Cookie` header.
+
+        This endpoint should receive a **browser-limited (B)** compatibility classification.
+      security:
+        - CookieSession: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '401': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/security/oauth:
+    get:
+      tags: [05 Security/OAuth & OIDC]
+      summary: Discover OAuth 2 authorization code with PKCE
+      operationId: oauthProtectedOperation
+      description: |
+        The OAuth scheme declares authorization-code, implicit, client-credentials, and password
+        flows. OpenDoc can discover the browser authorization flow, collect a client ID and scopes,
+        construct PKCE (`S256`), validate `state`, and exchange a returned code when the token endpoint
+        permits browser CORS.
+
+        The URLs are documentation-only examples; do not expect the placeholder identity server to
+        complete a real login.
+      security:
+        - OAuth2: [demo:read, profile]
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '401': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/security/oidc:
+    get:
+      tags: [05 Security/OAuth & OIDC]
+      summary: Supply an OpenID Connect access token
+      operationId: oidcProtectedOperation
+      description: |
+        Demonstrates an `openIdConnect` security scheme and manual Bearer-token execution. OpenDoc
+        preserves the discovery URL in the specification while keeping request execution explicit and
+        credentials spec-scoped.
+      security:
+        - OpenIdConnect: [openid, profile]
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+  /anything/security/mtls:
+    get:
+      tags: [05 Security/OAuth & OIDC]
+      summary: Document browser-managed mutual TLS
+      operationId: mutualTlsOperation
+      description: |
+        Client-certificate selection is controlled by the browser and operating system, not by a
+        JavaScript API client. OpenDoc documents the `mutualTLS` scheme and reports the transport
+        dependency rather than presenting a fake certificate field.
+      security:
+        - MutualTLS: []
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+        '401': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/events/jobs:
+    post:
+      tags: [06 Events/Callbacks & links]
+      summary: Create a job with a provider callback
+      operationId: createAsyncJob
+      description: |
+        ## Callback-aware operation
+
+        The primary POST is runnable, while the callback operation is initiated later by the API
+        provider. OpenDoc's compatibility report identifies callback operations as documentation-only
+        for the outbound Runner.
+
+        The callback URL is taken from `$request.body#/callbackUrl`, and the `202` response includes a
+        Link Object to `getLinkedResource`. This makes the specification useful for AI-grounded workflow
+        explanations even though OpenDoc does not pretend to host callback receivers.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Pet'
+              $ref: '#/components/schemas/CreateJobRequest'
             example:
-              name: Luna
-              status: available
+              task: export-customer-data
+              callbackUrl: https://client.example.com/hooks/jobs
+      callbacks:
+        jobStatusChanged:
+          '{$request.body#/callbackUrl}':
+            post:
+              summary: Receive a job status update
+              operationId: receiveJobStatus
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema: {$ref: '#/components/schemas/AsyncJob'}
+              responses:
+                '204':
+                  description: Callback accepted
       responses:
-        '200':
-          description: Pet created
+        '202':
+          description: Job queued
+          headers:
+            Location:
+              schema: {type: string, format: uri}
+              example: https://api.example.com/jobs/job_123
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Pet'
-        '422':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /store/inventory:
+              schema: {$ref: '#/components/schemas/AsyncJob'}
+              example: {id: job_123, state: queued, progress: 0}
+          links:
+            getJob:
+              operationId: getLinkedResource
+              parameters:
+                id: '$response.body#/id'
+              description: Open the newly created job resource.
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/events/linked/{id}:
     get:
-      tags: [Store]
-      summary: Get store inventory
-      operationId: getInventory
-      security:
-        - apiKey: []
+      tags: [06 Events/Callbacks & links]
+      summary: Resolve a response Link Object target
+      operationId: getLinkedResource
+      description: |
+        A small target operation for Link Objects declared elsewhere in the spec. Search by the shared
+        `operationId`, open both endpoints in permanent tabs, and demonstrate how OpenDoc's workspace,
+        AI context, and deep links help users follow contract-level relationships.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Linked resource identifier.
+          schema: {type: string}
+          example: job_123
       responses:
         '200':
-          description: Status-to-count inventory map
+          description: Linked resource
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  type: integer
-                  format: int32
-              example:
-                available: 12
-                pending: 3
-                sold: 7
+                oneOf:
+                  - $ref: '#/components/schemas/AsyncJob'
+                  - $ref: '#/components/schemas/Customer'
+
+  /anything/compatibility/get-body:
+    get:
+      tags: [07 Compatibility/Browser limits]
+      summary: Document a GET request body that browser Fetch must omit
+      operationId: getWithBody
+      description: |
+        OpenAPI can describe this unusual GET body, but browser Fetch does not permit sending it.
+        OpenDoc therefore keeps the body visible in documentation, omits it from the materialized
+        browser request, and emits a precise transport diagnostic.
+
+        This endpoint is deliberately included to make the compatibility report explain a real
+        limitation instead of silently failing or blocking the entire operation.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                diagnostic: {type: string, default: browser-body-test}
+      responses:
+        '200': {$ref: '#/components/responses/EchoResponse'}
+
+webhooks:
+  paymentSettled:
+    post:
+      tags: [06 Events/Webhooks]
+      summary: Receive a settled payment event
+      operationId: webhookPaymentSettled
+      description: |
+        Provider-initiated webhook shown on the Overview page. It is documentation-only in the
+        outbound Runner but remains available to the parser, schema tooling, AI context, and exports.
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: HMAC signature supplied by the provider.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventId, paymentId, amount]
+              properties:
+                eventId: {type: string, format: uuid}
+                paymentId: {type: string}
+                amount: {$ref: '#/components/schemas/Money'}
+      responses:
+        '204':
+          description: Event accepted
+  customerLifecycle:
+    post:
+      tags: [06 Events/Webhooks]
+      summary: Receive a customer lifecycle event
+      operationId: webhookCustomerLifecycle
+      description: Demonstrates a second webhook card and a polymorphic event payload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  title: CustomerCreatedEvent
+                  required: [type, customer]
+                  properties:
+                    type: {const: customer.created}
+                    customer: {$ref: '#/components/schemas/Customer'}
+                - type: object
+                  title: CustomerDeletedEvent
+                  required: [type, customerId]
+                  properties:
+                    type: {const: customer.deleted}
+                    customerId: {type: string}
+      responses:
+        '202':
+          description: Event queued
+
 components:
   securitySchemes:
-    bearerAuth:
+    BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    apiKey:
+      description: |
+        Paste a short-lived **Bearer token**. OpenDoc scopes credentials to this specification,
+        redacts them from AI context, and uses placeholders in code generation.
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Username and password encoded according to RFC 7617.
+    HeaderApiKey:
       type: apiKey
       in: header
+      name: X-API-Key
+      description: API key sent in a custom header.
+    QueryApiKey:
+      type: apiKey
+      in: query
       name: api_key
+      description: API key appended as a query parameter.
+    CookieSession:
+      type: apiKey
+      in: cookie
+      name: opendoc_session
+      description: Browser-managed session cookie; JavaScript cannot inject the raw Cookie header.
+    OAuth2:
+      type: oauth2
+      description: Demonstration OAuth 2 scheme with all standard flows.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://identity.example.com/oauth/authorize
+          tokenUrl: https://identity.example.com/oauth/token
+          refreshUrl: https://identity.example.com/oauth/refresh
+          scopes:
+            demo:read: Read demonstration resources
+            demo:write: Modify demonstration resources
+            profile: Read the current profile
+        implicit:
+          authorizationUrl: https://identity.example.com/oauth/authorize
+          scopes:
+            demo:read: Read demonstration resources
+        clientCredentials:
+          tokenUrl: https://identity.example.com/oauth/token
+          scopes:
+            demo:admin: Administer demonstration resources
+        password:
+          tokenUrl: https://identity.example.com/oauth/token
+          scopes:
+            legacy: Demonstration-only legacy scope
+    OpenIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: https://identity.example.com/.well-known/openid-configuration
+      description: OpenID Connect discovery document; Runner accepts a manually supplied access token.
+    MutualTLS:
+      type: mutualTLS
+      description: Client certificate selection remains browser/OS managed.
+
+  parameters:
+    TraceId:
+      name: X-Trace-Id
+      in: header
+      required: false
+      description: |
+        Optional distributed-tracing identifier.
+
+        - Pattern testing is available from the field metadata.
+        - Invalid values remain sendable for negative testing.
+      schema:
+        type: string
+        pattern: '^[A-Fa-f0-9]{16,32}$'
+      example: 4bf92f3577b34da6a3ce929d0e0e4736
+    TenantPath:
+      name: tenant
+      in: path
+      required: true
+      description: Tenant slug used in the substituted route.
+      schema:
+        type: string
+        pattern: '^[a-z][a-z0-9-]{1,31}$'
+        default: acme
+    ResourceId:
+      name: resourceId
+      in: path
+      required: true
+      description: Stable resource ID shared at Path Item level.
+      schema:
+        type: string
+        pattern: '^[a-z]+_[A-Za-z0-9]+$'
+      example: item_123
+    Locale:
+      name: locale
+      in: query
+      required: false
+      description: Reusable locale that is overridden on one operation.
+      schema:
+        type: string
+        enum: [en-US, fa-IR]
+        default: en-US
+    Page:
+      name: page
+      in: query
+      description: One-based page number.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: Number of items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  headers:
+    RequestId:
+      description: Correlation identifier assigned by the server.
+      schema:
+        type: string
+        format: uuid
+      example: 123e4567-e89b-12d3-a456-426614174000
+    RateLimitLimit:
+      description: Maximum requests in the current window.
+      schema: {type: integer, minimum: 0}
+      example: 1000
+    RateLimitRemaining:
+      description: Requests remaining in the current window.
+      schema: {type: integer, minimum: 0}
+      example: 999
+    RetryAfter:
+      description: Seconds before another attempt.
+      schema: {type: integer, minimum: 1}
+      example: 30
+
+  responses:
+    HelloResponse:
+      description: Friendly echo response
+      headers:
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/HelloMessage'}
+          examples:
+            default:
+              summary: Default greeting
+              value:
+                message: Hello from OpenDoc UI
+                product: OpenDoc UI
+                capabilities: [documentation, runner, schemas, notes, ai]
+    EchoResponse:
+      description: Request details echoed by the demonstration server
+      headers:
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/EchoEnvelope'}
+          examples:
+            basic:
+              summary: Basic echo envelope
+              value:
+                requestId: 123e4567-e89b-12d3-a456-426614174000
+                method: GET
+                url: https://httpbin.org/anything/example
+                headers: {Accept: application/json}
+                query: {demo: 'true'}
+                body: null
+    ProblemResponse:
+      description: RFC 9457-style problem details
+      headers:
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+          examples:
+            badRequest:
+              summary: Bad request
+              value:
+                type: https://example.com/problems/bad-request
+                title: Bad request
+                status: 400
+                detail: The submitted request could not be processed.
+                instance: /requests/req_123
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After: {$ref: '#/components/headers/RetryAfter'}
+        X-RateLimit-Limit: {$ref: '#/components/headers/RateLimitLimit'}
+        X-RateLimit-Remaining: {$ref: '#/components/headers/RateLimitRemaining'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+          example:
+            type: https://example.com/problems/rate-limit
+            title: Too many requests
+            status: 429
+            detail: Retry after the documented delay.
+    NoContent:
+      description: Successful response without a payload
+      headers:
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+
+  requestBodies:
+    RichPayload:
+      required: true
+      description: |
+        A reusable request body with named examples. OpenDoc can reset the Runner from the first
+        explicit example or generate a typed mock from the schema.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/RichRequest'}
+          examples:
+            complete:
+              summary: Broad feature example
+              value:
+                clientRequestId: 123e4567-e89b-12d3-a456-426614174000
+                title: OpenDoc capability demonstration
+                mode: live
+                priority: 5
+                ratio: 0.75
+                enabled: true
+                scheduledAt: '2026-08-15T12:30:00Z'
+                dueDate: '2026-08-20'
+                contactEmail: developer@example.com
+                website: https://github.com/omidgfx/opendoc-ui
+                nullableNote: null
+                constantKind: showcase
+                tags: [docs, runner]
+                owner:
+                  id: user_123
+                  displayName: Original Developer
+                  address:
+                    line1: Damrak 1
+                    city: Amsterdam
+                    countryCode: NL
+                checkpoints:
+                  - {name: Parse, passed: true}
+                  - {name: Render, passed: true}
+                matrix:
+                  - [1, 2]
+                  - [3, 4]
+                metadata:
+                  source: demo
+                  audience: developers
+            minimal:
+              summary: Minimal required values
+              value:
+                clientRequestId: 123e4567-e89b-12d3-a456-426614174000
+                title: Minimal example
+                mode: dry-run
+    CustomerCommandPayload:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/CustomerCommand'}
+          examples:
+            create:
+              summary: Create a customer
+              value:
+                kind: create
+                name: Ada Lovelace
+                email: ada@example.com
+            link:
+              summary: Link an existing customer
+              value:
+                kind: link
+                customerId: cust_123
+
+  mediaTypes:
+    DemoJson:
+      schema:
+        $ref: '#/components/schemas/FreeFormObject'
+      examples:
+        featureFlags:
+          summary: Feature flags
+          value:
+            product: OpenDoc UI
+            features: [docs, runner, schemas, notes, ai]
+            enabled: true
+
+  pathItems:
+    ReusableEchoPath:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifier declared once on a reusable Path Item Object.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+          example: reusable_123
+      get:
+        tags: [01 Tour/Reusable paths]
+        summary: Resolve a reusable Path Item Object
+        operationId: getReusablePathItem
+        description: |
+          This route is a local `$ref` to `components.pathItems.ReusableEchoPath`.
+
+          **Demonstrates:** internal reference resolution, derived bundled export, reusable path-level
+          parameters, deep links after dereferencing, and source immutability. OpenDoc renders from a
+          normalized semantic document while retaining the untouched original for download.
+        responses:
+          '200': {$ref: '#/components/responses/EchoResponse'}
+
+  examples:
+    CustomerExample:
+      summary: A complete customer
+      description: Reusable Example Object retained for compatible OpenAPI tooling.
+      value:
+        id: cust_123
+        name: Katherine Johnson
+        status: active
+
+  links:
+    LinkedResource:
+      operationId: getLinkedResource
+      parameters:
+        id: '$response.body#/id'
+      description: Follow an ID returned in a response.
+
   schemas:
+    HelloMessage:
+      type: object
+      title: Hello message
+      description: A friendly response used by the first endpoint.
+      required: [message, product, capabilities]
+      properties:
+        message:
+          type: string
+          example: Hello from OpenDoc UI
+        product:
+          type: string
+          const: OpenDoc UI
+        capabilities:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          items:
+            type: string
+            enum: [documentation, runner, schemas, notes, ai]
+
+    EchoEnvelope:
+      type: object
+      description: |
+        A normalized conceptual echo response. The real public server can add fields; this schema is
+        intentionally useful for generated examples, property matrices, and TypeScript export.
+      required: [requestId, method, url, headers, query]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Server-generated correlation ID; omitted from request mocks.
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE, QUERY, PURGE]
+        url:
+          type: string
+          format: uri
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        query:
+          type: object
+          additionalProperties: true
+        body:
+          description: Parsed body, text, or null.
+          type: [object, array, string, number, boolean, 'null']
+        receivedSecret:
+          type: string
+          writeOnly: true
+          description: Demonstrates response-mock omission for write-only fields.
+
+    BaseRequest:
+      type: object
+      required: [clientRequestId]
+      properties:
+        clientRequestId:
+          type: string
+          format: uuid
+          description: |
+            Client-generated idempotency identifier.
+
+            See the [UUID specification](https://www.rfc-editor.org/rfc/rfc9562) for format guidance.
+          externalDocs:
+            description: RFC 9562
+            url: https://www.rfc-editor.org/rfc/rfc9562
+          example: 123e4567-e89b-12d3-a456-426614174000
+        clientVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          default: 1.0.0
+
+    RichRequest:
+      title: Rich request form
+      description: The central request-schema showcase used by the rich JSON endpoint.
+      allOf:
+        - $ref: '#/components/schemas/BaseRequest'
+        - type: object
+          required: [title, mode]
+          properties:
+            title:
+              type: string
+              minLength: 3
+              maxLength: 80
+              pattern: '^[A-Za-z0-9][A-Za-z0-9 _.-]+$'
+              description: |
+                A human-readable title. This **Markdown description** is intentionally long enough to
+                move into OpenDoc's closable field-description popover and includes `inline code`.
+              default: OpenDoc showcase
+            mode:
+              type: string
+              enum: [dry-run, live, replay]
+              default: dry-run
+              description: |
+                #### Available values
+
+                | Value | Case | Meaning |
+                |---|---|---|
+                | `dry-run` | DRY_RUN | Prepare but do not commit |
+                | `live` | LIVE | Execute against the selected server |
+                | `replay` | REPLAY | Repeat a previously stored scenario |
+            priority:
+              type: integer
+              format: int32
+              minimum: 0
+              maximum: 10
+              multipleOf: 1
+              default: 5
+            ratio:
+              type: number
+              format: double
+              exclusiveMinimum: 0
+              exclusiveMaximum: 1
+              multipleOf: 0.05
+              default: 0.75
+            enabled:
+              type: boolean
+              default: true
+            scheduledAt:
+              type: string
+              format: date-time
+              example: '2026-08-15T12:30:00Z'
+            dueDate:
+              type: string
+              format: date
+              example: '2026-08-20'
+            contactEmail:
+              type: string
+              format: email
+              example: developer@example.com
+            website:
+              type: string
+              format: uri
+              example: https://github.com/omidgfx/opendoc-ui
+            ipAddress:
+              type: string
+              format: ipv4
+              example: 192.0.2.10
+            ipv6Address:
+              type: string
+              format: ipv6
+              example: 2001:db8::1
+            hostname:
+              type: string
+              format: hostname
+              example: api.example.com
+            reference:
+              type: string
+              format: uri-reference
+              example: /v1/customers/42
+            accountId:
+              type: integer
+              format: int64
+              example: 724983915734013
+            temperature:
+              type: number
+              format: float
+              example: 36.6
+            payload:
+              type: string
+              format: byte
+              description: Base64-encoded payload — exercises the byte string format badge.
+              example: aGVsbG8=
+            secret:
+              type: string
+              format: password
+              writeOnly: true
+              description: Sensitive input omitted from response examples and redacted from AI context.
+            serverReceipt:
+              type: string
+              readOnly: true
+              description: Read-only server output omitted from the request form default.
+            nullableNote:
+              type: [string, 'null']
+              description: Use **Set null** to emit a real JSON null value.
+              example: null
+            constantKind:
+              type: string
+              const: showcase
+              default: showcase
+            tags:
+              type: array
+              minItems: 1
+              maxItems: 6
+              uniqueItems: true
+              description: Add, remove, and reorder documented or custom array values.
+              items:
+                type: string
+                enum: [docs, runner, schemas, notes, ai, demo]
+            owner:
+              $ref: '#/components/schemas/UserProfile'
+              description: Direct description plus linked reusable schema documentation.
+            checkpoints:
+              type: array
+              minItems: 1
+              maxItems: 5
+              items:
+                $ref: '#/components/schemas/Checkpoint'
+            matrix:
+              type: array
+              maxItems: 4
+              items:
+                type: array
+                maxItems: 4
+                items:
+                  type: integer
+            metadata:
+              type: object
+              description: A dynamic map. Use **Add property** in the generated form.
+              additionalProperties:
+                type: string
+            labels:
+              $ref: '#/components/schemas/LocalizedLabels'
+              description: Locale-tagged labels with advanced object-keyword constraints.
+            pet:
+              $ref: '#/components/schemas/Pet'
+            flexibleValue:
+              anyOf:
+                - type: string
+                  title: Text value
+                - type: integer
+                  title: Numeric value
+                - type: 'null'
+              description: anyOf branch selector including a pure-null option.
+
+    LocalizedLabels:
+      title: Advanced object-keyword map
+      description: |
+        Exercises Draft 2020-12 object keywords beyond `properties`:
+
+        - `patternProperties` for locale-tagged keys such as `en` or `fa-IR`.
+        - `minProperties` / `maxProperties` object bounds.
+        - `unevaluatedProperties: false` to reject undeclared keys.
+
+        The regular `default` property renders in the form and schema matrix;
+        the patterned keys remain fully editable in Raw JSON mode and visible in
+        the Schema Explorer and TypeScript export.
+      type: object
+      minProperties: 1
+      maxProperties: 8
+      properties:
+        default:
+          type: string
+          description: Fallback label shown when no locale key matches.
+          example: Overview
+      patternProperties:
+        '^[a-z]{2}(-[A-Z]{2})?$':
+          type: string
+          description: Locale-tagged label, for example `en` or `fa-IR`.
+      unevaluatedProperties: false
+
+    UserProfile:
+      type: object
+      description: Reusable user profile with nested address data.
+      externalDocs:
+        description: User-profile design guide
+        url: https://example.com/docs/user-profile
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          pattern: '^user_[A-Za-z0-9]+$'
+          example: user_123
+        displayName:
+          type: string
+          minLength: 1
+          example: Original Developer
+        address:
+          $ref: '#/components/schemas/Address'
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [viewer, editor, owner]
+
+    Address:
+      type: object
+      required: [line1, city, countryCode]
+      properties:
+        line1: {type: string, example: Damrak 1}
+        line2: {type: [string, 'null'], example: null}
+        city: {type: string, example: Amsterdam}
+        postalCode: {type: string, pattern: '^[0-9]{4} ?[A-Z]{2}$', example: 1012 LG}
+        countryCode: {type: string, pattern: '^[A-Z]{2}$', example: NL}
+
+    Checkpoint:
+      type: object
+      required: [name, passed]
+      properties:
+        name: {type: string, example: Parse}
+        passed: {type: boolean, default: false}
+        durationMs: {type: integer, minimum: 0, example: 12}
+
+    SearchFilter:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: '#/components/schemas/WorkflowState'
+        owner:
+          type: string
+        createdAfter:
+          type: string
+          format: date-time
+
+    WorkflowState:
+      type: string
+      enum: [queued, running, succeeded, failed, cancelled]
+      description: |
+        #### Workflow state values
+
+        | Value | Label | Meaning |
+        |---|---|---|
+        | `queued` | Waiting | Accepted but not started |
+        | `running` | In progress | Work is currently executing |
+        | `succeeded` | Complete | Finished successfully |
+        | `failed` | Failed | Finished with an error |
+        | `cancelled` | Cancelled | Stopped by a user or system |
+      example: running
+
+    CustomerCommand:
+      title: Customer command
+      description: Named oneOf branches used by both documentation and the Runner.
+      oneOf:
+        - $ref: '#/components/schemas/CreateCustomer'
+        - $ref: '#/components/schemas/LinkExistingCustomer'
+        - $ref: '#/components/schemas/DeleteCustomerData'
+        - type: 'null'
+      discriminator:
+        propertyName: kind
+        mapping:
+          create: '#/components/schemas/CreateCustomer'
+          link: '#/components/schemas/LinkExistingCustomer'
+          delete-data: '#/components/schemas/DeleteCustomerData'
+
+    CreateCustomer:
+      title: Create a new customer
+      type: object
+      required: [kind, name, email]
+      properties:
+        kind: {type: string, const: create}
+        name: {type: string, minLength: 1, example: Ada Lovelace}
+        email: {type: string, format: email, example: ada@example.com}
+        address: {$ref: '#/components/schemas/Address'}
+
+    LinkExistingCustomer:
+      title: Link an existing customer
+      type: object
+      required: [kind, customerId]
+      properties:
+        kind: {type: string, const: link}
+        customerId:
+          type: string
+          pattern: '^cust_[A-Za-z0-9]+$'
+          example: cust_123
+
+    DeleteCustomerData:
+      title: Delete customer data
+      type: object
+      required: [kind, customerId, confirmation]
+      properties:
+        kind: {type: string, const: delete-data}
+        customerId: {type: string, example: cust_123}
+        confirmation: {type: string, const: DELETE, default: DELETE}
+
+    Customer:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: {type: string, pattern: '^cust_[A-Za-z0-9]+$', readOnly: true, example: cust_123}
+        name: {type: string, example: Ada Lovelace}
+        status: {$ref: '#/components/schemas/WorkflowState'}
+        createdAt: {type: string, format: date-time, readOnly: true}
+
+    CustomerPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Customer'}
+        page: {type: integer, minimum: 1, example: 1}
+        pageSize: {type: integer, minimum: 1, example: 20}
+        total: {type: integer, minimum: 0, example: 2}
+
     Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: petType
+        mapping:
+          cat: '#/components/schemas/Cat'
+          dog: '#/components/schemas/Dog'
+
+    Cat:
+      type: object
+      required: [petType, name, huntingSkill]
+      properties:
+        petType: {type: string, const: cat}
+        name: {type: string, example: Luna}
+        huntingSkill:
+          type: string
+          enum: [clueless, lazy, adventurous, aggressive]
+          default: lazy
+
+    Dog:
+      type: object
+      required: [petType, name, packSize]
+      properties:
+        petType: {type: string, const: dog}
+        name: {type: string, example: Milo}
+        packSize: {type: integer, minimum: 0, default: 1}
+
+    TreeNode:
+      type: object
+      description: Directly recursive tree node; expansion stops at the first cycle.
+      required: [id, label, children]
+      properties:
+        id: {type: string, example: node_1}
+        label: {type: string, example: Root node}
+        parent:
+          anyOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/TreeNode'
+        children:
+          type: array
+          items:
+            anyOf:
+              - type: 'null'
+              - $ref: '#/components/schemas/TreeNode'
+
+    RecursiveA:
+      type: object
+      description: First half of an indirect recursive pair.
+      properties:
+        name: {type: string}
+        b: {$ref: '#/components/schemas/RecursiveB'}
+
+    RecursiveB:
+      type: object
+      description: Second half of an indirect recursive pair.
+      properties:
+        enabled: {type: boolean}
+        a: {$ref: '#/components/schemas/RecursiveA'}
+
+    FormSubmission:
       type: object
       required: [name]
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-          example: 1
-        name:
-          type: string
-          minLength: 1
-          example: Milo
-        status:
-          type: string
-          enum: [available, pending, sold]
-          default: available
-    ApiError:
+        name: {type: string, example: OpenDoc demo}
+        enabled: {type: boolean, default: true}
+        tags:
+          type: array
+          items: {type: string}
+        metadata:
+          type: object
+          additionalProperties: true
+
+    MultipartSubmission:
       type: object
-      required: [code, message]
+      required: [title, attachment]
       properties:
-        code:
-          type: integer
-          format: int32
-        message:
+        title: {type: string, example: Demo upload}
+        metadata:
+          type: object
+          properties:
+            category: {type: string, example: showcase}
+            public: {type: boolean, default: false}
+        tags:
+          type: array
+          items: {type: string}
+        attachment:
           type: string
+          format: binary
+          description: Primary file upload.
+        thumbnail:
+          type: [string, 'null']
+          format: binary
+          description: Optional second file.
+
+    XmlMessage:
+      type: object
+      xml:
+        name: message
+        namespace: https://example.com/opendoc
+        prefix: od
+      required: [title, enabled]
+      properties:
+        title:
+          type: string
+          xml: {name: title}
+          example: OpenDoc UI
+        enabled:
+          type: boolean
+          xml: {name: enabled}
+          default: true
+        labels:
+          type: array
+          xml: {name: labels, wrapped: true}
+          items:
+            type: string
+            xml: {name: label}
+
+    FreeFormObject:
+      type: object
+      description: Free-form object with arbitrary JSON properties.
+      additionalProperties: true
+      example:
+        product: OpenDoc UI
+        enabled: true
+
+    Money:
+      type: object
+      required: [currency, value]
+      properties:
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: EUR
+        value:
+          type: number
+          multipleOf: 0.01
+          minimum: 0
+          example: 19.95
+
+    CreateJobRequest:
+      type: object
+      required: [task, callbackUrl]
+      properties:
+        task:
+          type: string
+          enum: [export-customer-data, rebuild-index, send-digest]
+        callbackUrl:
+          type: string
+          format: uri
+        options:
+          type: object
+          additionalProperties: true
+
+    AsyncJob:
+      type: object
+      required: [id, state, progress]
+      properties:
+        id: {type: string, pattern: '^job_[A-Za-z0-9]+$', readOnly: true}
+        state: {$ref: '#/components/schemas/WorkflowState'}
+        progress: {type: number, minimum: 0, maximum: 1, default: 0}
+        result:
+          anyOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+        createdAt: {type: string, format: date-time, readOnly: true}
+
+    Problem:
+      type: object
+      description: RFC 9457-style problem details with optional recursive causes.
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri-reference, default: about:blank}
+        title: {type: string}
+        status: {type: integer, minimum: 100, maximum: 599}
+        detail: {type: string}
+        instance: {type: string, format: uri-reference}
+        traceId: {type: string}
+        causes:
+          type: array
+          items:
+            anyOf:
+              - type: 'null'
+              - $ref: '#/components/schemas/Problem'
+      additionalProperties: true
+
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      required: [pointer, code, message]
+      properties:
+        pointer: {type: string, example: /title}
+        code: {type: string, example: required}
+        message: {type: string, example: Title is required}
+        rejectedValue: {}
+
+    TupleExample:
+      type: array
+      title: JSON Schema tuple example
+      description: Exercises Draft 2020-12 `prefixItems` in Schema Explorer and raw schema editing.
+      prefixItems:
+        - {type: string}
+        - {type: integer}
+        - {type: boolean}
+      minItems: 3
+      maxItems: 3
+
+    ConditionalConfiguration:
+      type: object
+      title: Conditional JSON Schema example
+      description: Exercises `if` / `then` / `else`, dependent requirements, and schema preservation.
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [local, remote]}
+        path: {type: string}
+        url: {type: string, format: uri}
+        token: {type: string, writeOnly: true}
+      if:
+        properties:
+          kind: {const: remote}
+      then:
+        required: [url]
+      else:
+        required: [path]
+      dependentRequired:
+        token: [url]
+
+    ConflictingAllOf:
+      title: Deliberately conflicting allOf
+      description: Used to demonstrate conflict diagnostics in generated forms without mutating source schemas.
+      allOf:
+        - type: object
+          properties:
+            value: {type: string}
+        - type: object
+          properties:
+            value: {type: integer}
+
+    Anything:
+      title: Boolean true schema branch
+      description: Wraps a literal `true` JSON Schema branch for parser and UI inspection.
+      oneOf:
+        - true
+
+    Impossible:
+      title: Boolean false schema branch
+      description: Wraps a literal `false` JSON Schema branch for parser and UI inspection.
+      oneOf:
+        - false
+
+    NotBlankMarker:
+      title: Not-keyword branch
+      description: |
+        Wraps a JSON Schema `not` constraint — any value except the empty string.
+        Available for raw schema inspection and validation alongside the boolean
+        branches above.
+      not:
+        const: ''
+
+    123-widget:
+      type: object
+      description: Adversarial leading-digit schema name for TypeScript identifier generation.
+      properties:
+        widget-id: {type: string}
+
+    order-item:
+      type: object
+      description: Hyphenated schema and property names for code-generation escaping.
+      required: [unit-price]
+      properties:
+        unit-price: {type: number}
+        tax.rate: {type: number}
+
+    user.profile:
+      type: object
+      description: Dot-containing schema name exercises safe TypeScript identifiers and generated filenames.
+      properties:
+        display-name: {type: string}
+        favorite-items:
+          type: array
+          items: {$ref: '#/components/schemas/order-item'}

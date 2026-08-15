@@ -10,7 +10,7 @@ CORS-enabled providers directly or an optional gateway.
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
 ![Version](https://img.shields.io/badge/version-0.1.10-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
-**[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Petstore specification or open your own JSON/YAML files directly in the hybrid demo.
+**[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
 ---
 
@@ -363,7 +363,7 @@ spec selector while also allowing visitors to open local JSON/YAML files. Hybrid
 recent local-file history, preserves deep links to those files, and always keeps the configured
 specifications available for switching back. Files remain entirely in the visitor's browser.
 
-The **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/demo/)** uses this mode: it opens the bundled Petstore specification immediately, but visitors can still try OpenDoc UI with their own specifications.
+The **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/demo/)** uses this mode: it opens the bundled Complete Capability Showcase specification immediately, but visitors can still try OpenDoc UI with their own specifications.
 
 ### Mode 3 — No configuration (local mode)
 
@@ -1161,7 +1161,7 @@ Enable it once:
 
 The committed app remains in local mode during normal development. The workflow copies
 `public/demo/config.pages.json` to `public/config.json` only inside the disposable Actions runner,
-so the hosted demonstration opens the bundled Petstore demo automatically while hybrid mode still lets visitors open local specifications.
+so the hosted demonstration opens the bundled Complete Capability Showcase automatically while hybrid mode still lets visitors open local specifications.
 
 For a custom domain, set `VITE_BASE_PATH` to `/` in `pages.yml`. For a renamed repository, the
 existing workflow automatically uses `/${{ github.event.repository.name }}/`.
