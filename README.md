@@ -8,7 +8,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.11-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.12-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -17,7 +17,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.11](#version-011)
+- [Version 0.1.12](#version-012)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,26 +87,28 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.11
+## Version 0.1.12
 
-This release ships the product website, makes deep links work on any static host, replaces the demo
-with a full capability showcase, and shows endpoint routes by default:
+This release makes the marketing site fully responsive on mobile, splits the builder CLI into
+modules, reorganizes the repository into clearly named domains, and makes the architecture
+discipline explicit and enforced:
 
-- adds the **OpenDoc UI website** at the GitHub Pages root — seven pages (Home, Features, Guide,
-  Compatibility, Deploy, Developers, FAQ) with the Default Slate palette, dark/light/system theming,
-  Phosphor icons, and a footer crediting Pejman Chatrrouz;
-- **redesigns the website** with layered shadows and soft glows, an aurora hero with a browser-frame
-  mockup, centered segmented sub-navigation, scroll-reveal animations, and theme-aware screenshots;
-- links the application sidebar footer and the About page to the website, and deploys **site at the
-  root with the demo under /demo/** in one Pages artifact;
-- switches deep links **back to hash-based URLs** (`#/parsable/...`) so shared and refreshed links
-  work on GitHub Pages, nginx, S3 or even `file://` with zero rewrite configuration;
-- fixes the nginx image to serve **correct MIME types** for css, js, svg, fonts and images;
-- replaces the bundled demo with the **Complete Capability Showcase** — a feature-dense OpenAPI 3.2
-  document (43 operations, 41 schemas) covering every HTTP method, serialization style, body type,
-  security scheme, callback, webhook and schema keyword OpenDoc UI can render;
-- shows **endpoint routes in the sidebar by default** (the "Show endpoint routes" setting now
-  defaults to checked; users who disabled it keep their stored choice).
+- makes the **marketing site fully responsive on mobile** — zero horizontal overflow at 320, 390,
+  and 768 px across all seven pages, with ghost action buttons hidden, the mobile navigation
+  scrolling inside the viewport, and the table of contents reflowing on narrow screens;
+- splits the **builder CLI** (`npm run make`) into a modular `scripts/builder/` structure with no
+  behavior change;
+- renames the reference directories to say what they are: **`downloaders/`** (the six
+  specification downloader services, formerly `proxy/`) and **`ai-gateways/`** (the nine AI
+  gateway integrations, formerly `ai-proxy/`);
+- regroups **`src/utils` by domain** — `ai/`, `export/`, `notes/`, `runner/`, `specification/`,
+  `storage/`, `theme/` — with feature prefixes dropped inside domain folders and primary modules
+  promoted to folder indexes, so `src/utils` never imports components;
+- moves the Apple-emoji sprite renderer to `src/features/emoji/` and the recursive demo
+  specification to `public/demo/`;
+- documents the dependency direction (`components → hooks/contexts → utils → types`) and the
+  OpenAPI world / OpenDoc world boundary in a new README **Architecture** section, enforced on
+  every lint run by `scripts/verify-utils-contracts.mjs`.
 
 ## Quick start
 
