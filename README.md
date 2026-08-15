@@ -8,7 +8,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.10-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.11-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -17,7 +17,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.10](#version-010)
+- [Version 0.1.11](#version-011)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,28 +87,26 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.10
+## Version 0.1.11
 
-This release adds the interactive builder CLI and hardens it for real-world cross-platform use:
+This release ships the product website, makes deep links work on any static host, replaces the demo
+with a full capability showcase, and shows endpoint routes by default:
 
-- adds `npm run make`, a guided npm-only builder that collects deployment preferences (static files,
-  Docker image, or both), frontend build options (Apple Emoji sprite, base path, Load-from-URL), an
-  optional downloader proxy template with framework examples, an optional server-side AI gateway
-  (provider, model, base URL, API key, auto-generated gateway token, allowed origins, port, limits,
-  framework examples), and Docker options (image, container, host port, restart policy);
-- keeps `npm run build` byte-for-byte unchanged — build-time `VITE_*` options are injected only into
-  the child build process, and `.env` receives runtime settings only;
-- writes a gitignored `builder.config.json` for reproducible re-runs, never stores secrets in it
-  (tokens and API keys live in `.env` only), backs up `.env`, strips stale managed keys, and tightens
-  permissions on Unix;
-- verifies the build output with a fresh-dist snapshot and only then commits the configuration, so a
-  failed build cannot leave the project half-modified;
-- offers to start the result afterwards: local preview, dev server, Docker Compose (with `/healthz`
-  polling), or the AI gateway;
-- fixes child-process spawning on Windows (`npm.cmd` EINVAL after the CVE-2024-27980 fix) through a
-  shell-backed spawn helper shared by the build, the gateway, and the Docker probes.
-
----
+- adds the **OpenDoc UI website** at the GitHub Pages root — seven pages (Home, Features, Guide,
+  Compatibility, Deploy, Developers, FAQ) with the Default Slate palette, dark/light/system theming,
+  Phosphor icons, and a footer crediting Pejman Chatrrouz;
+- **redesigns the website** with layered shadows and soft glows, an aurora hero with a browser-frame
+  mockup, centered segmented sub-navigation, scroll-reveal animations, and theme-aware screenshots;
+- links the application sidebar footer and the About page to the website, and deploys **site at the
+  root with the demo under /demo/** in one Pages artifact;
+- switches deep links **back to hash-based URLs** (`#/parsable/...`) so shared and refreshed links
+  work on GitHub Pages, nginx, S3 or even `file://` with zero rewrite configuration;
+- fixes the nginx image to serve **correct MIME types** for css, js, svg, fonts and images;
+- replaces the bundled demo with the **Complete Capability Showcase** — a feature-dense OpenAPI 3.2
+  document (43 operations, 41 schemas) covering every HTTP method, serialization style, body type,
+  security scheme, callback, webhook and schema keyword OpenDoc UI can render;
+- shows **endpoint routes in the sidebar by default** (the "Show endpoint routes" setting now
+  defaults to checked; users who disabled it keep their stored choice).
 
 ## Quick start
 

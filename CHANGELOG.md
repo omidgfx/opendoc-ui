@@ -3,6 +3,36 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.1.11] — 2026-08-15
+
+Product website, hash-based deep links, capability showcase demo, and sidebar routes on by default.
+
+- adds the **OpenDoc UI website** at the GitHub Pages root: seven pages (Home, Features, Guide,
+  Compatibility, Deploy, Developers, FAQ) introducing the product and documenting it end to end,
+  with the Default Slate palette, dark/light/system theming, Phosphor icons, long-form copy, and a
+  footer crediting Pejman Chatrrouz with the tiny "Made with ♥ in Iran" signature;
+- **redesigns the website** with a depth-first visual language — layered shadows and soft glows
+  instead of heavy borders, an aurora hero with a browser-frame mockup and floating status chips,
+  centered segmented sub-navigation, scroll-reveal animations, a stats band, and theme-aware
+  screenshots that swap between light and dark captures;
+- links the application **sidebar footer** (OpenDoc UI name → website, GitHub stays the repo link)
+  and the **About page** footer (Website + GitHub links) to the new site;
+- deploys **site at the root and the demo under /demo/** in one GitHub Pages artifact;
+- switches deep links **back to hash-based URLs** (`#/parsable/...`): the fragment never reaches
+  the server, so shared and refreshed links work on any static host — GitHub Pages, nginx, S3, or
+  even `file://` — with zero rewrite configuration; legacy path-based links are still parsed;
+- fixes the nginx image to serve **correct MIME types** (`include /etc/nginx/mime.types`) so css,
+  js, svg, fonts and images are no longer refused by the browser;
+- replaces the demo with the **Complete Capability Showcase**, a feature-dense OpenAPI 3.2
+  document (43 operations, 41 schemas) exercising every surface — all HTTP methods plus QUERY and
+  additionalOperations, serialization styles, rich bodies, recursion, composition, every security
+  scheme, callbacks, links, webhooks, response galleries, and the Runner compatibility report —
+  extended with `patternProperties`/`unevaluatedProperties`/`not` cases, extra string formats, and
+  a `4XX` range response;
+- documents `npm run make` end to end in the README (question flow, artifacts, guarantees);
+- shows **endpoint routes in the sidebar by default** — the "Show endpoint routes" setting now
+  defaults to checked for new workspaces, while users who explicitly disabled it keep their choice.
+
 ## [0.1.10] — 2026-08-14
 
 Interactive builder CLI and cross-platform hardening.

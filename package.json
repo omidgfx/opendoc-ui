@@ -1,7 +1,7 @@
 {
   "name": "opendoc-ui",
   "private": true,
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
