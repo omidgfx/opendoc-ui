@@ -101,6 +101,7 @@ export const buildCodegenRequest = (input: {
     method: string;
     operation: Operation;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     activeAuth: ActiveAuth;
 }): CodegenRequest => {
     const pathItem = input.spec.paths?.[input.path] || {};
@@ -118,6 +119,7 @@ export const buildCodegenRequest = (input: {
     const preview = bodyPreview(input.spec, input.operation);
     const plan = compileBrowserRequest({
         ...input,
+        serverVariables: input.serverVariables,
         activeAuth: placeholderAuth(input.activeAuth),
         parameterValues,
         body: preview.body,

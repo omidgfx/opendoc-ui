@@ -44,6 +44,7 @@ interface EndpointWorkspaceProps {
     isMobile: boolean;
     activeAuth: ActiveAuth;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     resolvedThemeMode: 'light' | 'dark';
     activeResponseCode: string | null;
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
@@ -75,6 +76,7 @@ export default function EndpointWorkspace({
     isMobile,
     activeAuth,
     selectedServer,
+    serverVariables,
     resolvedThemeMode,
     activeResponseCode,
     setActiveResponseCode,
@@ -115,6 +117,7 @@ export default function EndpointWorkspace({
                 onOpenSchemaModal={onOpenSchema}
                 activeAuth={activeAuth}
                 selectedServer={selectedServer}
+                serverVariables={serverVariables}
                 activeResponseCode={activeResponseCode}
                 onSelectResponseCode={setActiveResponseCode}
                 parsableKey={parsableKey}
@@ -131,6 +134,7 @@ export default function EndpointWorkspace({
                 operation={operation}
                 activeAuth={activeAuth}
                 selectedServer={selectedServer}
+                serverVariables={serverVariables}
                 parsableKey={parsableKey}
                 themeMode={resolvedThemeMode}
                 responseHistory={responseHistory}

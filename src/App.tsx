@@ -68,6 +68,8 @@ export default function App() {
         setIsLoadingSpec,
         selectedServer,
         setSelectedServer,
+        serverVariables,
+        setServerVariables,
         specFetchInfo,
         setSpecFetchInfo,
         loadSpec,
@@ -175,6 +177,7 @@ export default function App() {
     }, []);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
+    const [showServerVariablesModal, setShowServerVariablesModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse[]>>({});
     const {
         selectedEndpoint,
@@ -1059,6 +1062,7 @@ export default function App() {
             setOnlyProtected={setOnlyProtected}
             selectedServer={selectedServer}
             setSelectedServer={setSelectedServer}
+            serverVariables={serverVariables}
             displayRoutes={sidebarDisplayRoutes}
             selectedEndpoint={selectedEndpoint}
             selectedViewMode={selectedTab}
@@ -1191,6 +1195,8 @@ export default function App() {
                                         onSelectParsable={isMobile ? handleSelectParsable : undefined}
                                         selectedServer={selectedServer}
                                         onSelectServer={setSelectedServer}
+                                        serverVariables={serverVariables}
+                                        onOpenServerVariables={() => setShowServerVariablesModal(true)}
                                         isCollapsed={desktopCollapsed}
                                         onToggleCollapse={() => setDesktopCollapsed(c => !c)}
                                         onOpenSchemaExplorer={handleOpenSchemaExplorer}
@@ -1352,6 +1358,12 @@ export default function App() {
                             spec={spec}
                             specKey={selectedParsableKey}
                             selectedServer={selectedServer}
+                            serverVariables={serverVariables}
+                            onChangeServerVariables={(url, values) =>
+                                setServerVariables(current => ({...current, [url]: values}))
+                            }
+                            serverVariablesOpen={showServerVariablesModal}
+                            setServerVariablesOpen={setShowServerVariablesModal}
                             schemaStack={modalsStack}
                             setSchemaStack={setModalsStackWithHistory}
                             onPopSchema={handlePopSchema}

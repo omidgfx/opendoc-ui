@@ -26,6 +26,7 @@ interface ExamineTabProps {
     operation: Operation;
     activeAuth: ActiveAuth;
     selectedServer: string;
+    serverVariables?: Record<string, string>;
     parsableKey?: string;
     themeMode?: 'light' | 'dark';
     responseHistory?: ExamineResponse[];
@@ -43,6 +44,7 @@ export default function ExamineTab({
     operation,
     activeAuth,
     selectedServer,
+    serverVariables,
     parsableKey = '',
     themeMode = 'dark',
     responseHistory = [],
@@ -245,6 +247,7 @@ export default function ExamineTab({
                 method,
                 operation,
                 selectedServer,
+                serverVariables,
                 activeAuth,
                 parameterValues: params,
                 headers,
@@ -582,6 +585,7 @@ export default function ExamineTab({
             <ResponsePanel
                 method={method}
                 selectedServer={selectedServer}
+                serverVariables={serverVariables}
                 path={path}
                 isRunning={isRunning}
                 response={response}

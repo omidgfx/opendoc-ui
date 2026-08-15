@@ -37,6 +37,7 @@ interface WorkspaceContentProps {
     setOnlyProtected: Dispatch<SetStateAction<boolean | null>>;
     selectedServer: string;
     setSelectedServer: Dispatch<SetStateAction<string>>;
+    serverVariables: Record<string, Record<string, string>>;
     displayRoutes: boolean;
     selectedEndpoint: {
         path: string;
@@ -99,6 +100,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         setOnlyProtected,
         selectedServer,
         setSelectedServer,
+        serverVariables,
         displayRoutes,
         selectedEndpoint,
         selectedViewMode,
@@ -202,6 +204,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     isMobile={isMobile}
                     activeAuth={activeAuth}
                     selectedServer={selectedServer}
+                    serverVariables={serverVariables[selectedServer] ?? {}}
                     resolvedThemeMode={resolvedThemeMode}
                     activeResponseCode={activeResponseCode}
                     setActiveResponseCode={setActiveResponseCode}

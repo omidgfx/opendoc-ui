@@ -11,6 +11,8 @@ export interface SidebarProps {
     onSelectParsable?: (key: string) => void;
     selectedServer: string;
     onSelectServer: (server: string) => void;
+    serverVariables: Record<string, Record<string, string>>;
+    onOpenServerVariables: () => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     onOpenSchemaExplorer: () => void;
