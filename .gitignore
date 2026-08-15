@@ -12,3 +12,4 @@ public/specs
 public/config.json
 obj/
 builder.config.json
+test-results/

@@ -426,6 +426,10 @@ export default function ViewTab({
           ]
         : null;
     const requestBodyMatrixSchema = activeRequestBodyVariant ?? selectedRequestBodyContent?.schema;
+    const requestBodyExample =
+        selectedRequestBodyContent?.example !== undefined
+            ? selectedRequestBodyContent.example
+            : selectedRequestBodyContent?.schema?.example;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     const fullEndpointUrl = selectedServer
@@ -750,6 +754,16 @@ export default function ViewTab({
                                             : requestBodyMatrixSchema?.title || null,
                                     )}
                                 </div>
+                                {requestBodyExample !== undefined && (
+                                    <div className="border-t border-[var(--border)] pt-2">
+                                        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Example
+                                        </h4>
+                                        <pre className="overflow-auto rounded-lg bg-[var(--background)] border border-[var(--border)] p-2.5 text-[10px] leading-relaxed font-mono text-[var(--text)]">
+                                            {JSON.stringify(requestBodyExample, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
                                 <div className="border-t border-[var(--border)] pt-2">
                                     <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                         Inspect Body Schema
