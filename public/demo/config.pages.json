@@ -2,8 +2,8 @@
   "theme": "default",
   "allowLocalSpecifications": true,
   "parsables": {
-    "OpenDoc Petstore Demo": {
-      "title": "OpenDoc Petstore Demo",
+    "OpenDoc UI Showcase": {
+      "title": "OpenDoc UI \u2014 Complete Capability Showcase",
       "url": "demo/openapi.yaml"
     }
   }
