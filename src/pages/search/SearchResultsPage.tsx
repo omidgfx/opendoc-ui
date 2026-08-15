@@ -11,7 +11,7 @@ import FiltersPanel from './FiltersPanel';
 import {useModalTransition} from '@/src/hooks/useModalTransition';
 import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/auth';
 import {getDocumentOperations, getOperation} from '@/src/utils/openapi';
-import {toCleanRouteHref} from '@/src/utils/routing';
+import {absoluteRouteHref, toCleanRouteHref} from '@/src/utils/routing';
 
 interface SearchResultsViewProps {
     spec: OpenApiSpec | null;
@@ -71,10 +71,9 @@ export default function SearchResultsView({
             const op = getOperation(spec, path, method);
             if (op?.operationId) endpointId = op.operationId;
         } catch {}
-        const url = new URL(
-            toCleanRouteHref(`#/parsable/${encodeURIComponent(parsableKey)}/api/${encodeURIComponent(endpointId)}`),
-            window.location.origin,
-        ).href;
+        const url = absoluteRouteHref(
+            `#/parsable/${encodeURIComponent(parsableKey)}/api/${encodeURIComponent(endpointId)}`,
+        );
         setShareModal({
             url,
             title: `${method.toUpperCase()} ${path} - ${summary || 'API Endpoint'}`,

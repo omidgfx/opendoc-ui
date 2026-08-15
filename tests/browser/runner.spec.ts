@@ -477,9 +477,9 @@ test('renders cyclic OpenAPI schemas in documentation, Runner, and schema views 
     await expect(page.getByText(/points back to a schema already shown in this branch/i).first()).toBeVisible();
     await expect(page.getByText('API Runner form could not be rendered')).toHaveCount(0);
 
-    const base = new URL(page.url()).pathname.match(/^(\/parsable\/[^/]+)/)?.[1];
-    expect(base).toBeTruthy();
-    await page.goto(`${base}/schema-explorer?schemas=Customer`);
+    const parsableKey = new URL(page.url()).hash.match(/^#\/parsable\/([^/?#]+)/)?.[1];
+    expect(parsableKey).toBeTruthy();
+    await page.goto(`/#/parsable/${parsableKey}/schema-explorer?schemas=Customer`);
     await expect(page.getByRole('dialog', {name: /Customer/})).toBeVisible();
     await expect(page.getByText('Schema Explorer could not be rendered')).toHaveCount(0);
 });
@@ -571,7 +571,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(panelNoteToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(notesPanel).toContainText('Important:');
 
-    const parsableKey = decodeURIComponent(new URL(page.url()).pathname.split('/')[2]);
+    const parsableKey = decodeURIComponent(new URL(page.url()).hash.match(/^#\/parsable\/([^/?#]+)/)?.[1] || '');
     const expandedStateKey = `storage:opendoc:spec:${encodeURIComponent(parsableKey)}:${encodeURIComponent(
         'endpoint_note_panel_expanded',
     )}`;
@@ -685,7 +685,7 @@ test('creates local Markdown notes and todos, auto-hides endpoints, and manages 
     await expect(sidebar.getByText('Hidden endpoints', {exact: true})).toHaveCount(0);
 
     await sidebar.getByRole('button', {name: /Local Notes/}).click();
-    await expect(page).toHaveURL(/\/notes(?:\?|$)/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/notes(?:\?|$)/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await expect(page.getByText('Fix validation flow', {exact: true})).toBeVisible();
     const localTodoCard = page.getByLabel('Open Fix validation flow');
@@ -1258,9 +1258,9 @@ test('migrates legacy localStorage state once and keeps IndexedDB as the primary
 test('treats clean endpoint deep links as source of truth and opens a permanent tab', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
-    await expect(page).toHaveURL(/\/parsable\/.*\/api\//);
+    await expect(page).toHaveURL(/#\/parsable\/.*\/api\//);
     const endpointUrl = page.url();
-    expect(endpointUrl).not.toContain('#/');
+    expect(endpointUrl).toContain('#/');
     await expect.poll(async () => Boolean(await readIndexedDbRecord(page, 'storage:opendoc_local_history'))).toBe(true);
     expect(
         await page.evaluate(() => Object.keys(localStorage).filter(key => key.toLowerCase().startsWith('opendoc'))),
@@ -1275,40 +1275,40 @@ test('pushes workspace navigation and restores every view with browser Back and 
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const validationUrl = page.url();
-    await expect(page).toHaveURL(/\/api\//);
+    await expect(page).toHaveURL(/#\/parsable\/.*\/api\//);
 
     await page.getByText('Serve private media', {exact: true}).first().click();
     const mediaUrl = page.url();
     expect(mediaUrl).not.toBe(validationUrl);
 
     await page.getByRole('button', {name: /Schema Explorer/i}).click();
-    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/schema-explorer$/);
     await page.getByText('Tiny', {exact: true}).first().click();
-    await expect(page).toHaveURL(/\/schema-explorer\?schemas=Tiny$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/schema-explorer\?schemas=Tiny$/);
     await page.goBack();
-    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/schema-explorer$/);
     await expect(page.locator('.modal-surface')).toHaveCount(0);
     await page.locator('[data-nav-view="view:notes"]').click();
-    await expect(page).toHaveURL(/\/notes$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/notes$/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await page.locator('[data-nav-view="view:home"]').click();
-    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+$/);
     await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
-    await expect(page).toHaveURL(/\/compatibility$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/compatibility$/);
 
     await page.locator('[data-nav-view="view:home"]').click();
-    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+$/);
     await page.goBack();
-    await expect(page).toHaveURL(/\/compatibility$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/compatibility$/);
     await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
     await page.goBack();
-    await expect(page).toHaveURL(/\/parsable\/[^/?#]+$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+$/);
     await expect(page.locator('[data-specification-statistics]')).toBeVisible();
     await page.goBack();
-    await expect(page).toHaveURL(/\/notes$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/notes$/);
     await expect(page.getByRole('heading', {name: 'Local Notes', exact: true})).toBeVisible();
     await page.goBack();
-    await expect(page).toHaveURL(/\/schema-explorer$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/schema-explorer$/);
     await expect(page.getByRole('heading', {name: 'Schema Explorer'})).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(mediaUrl);
@@ -1358,7 +1358,7 @@ test('anchors configured specs to the app root across clean deep links, reloads,
         await route.fulfill({contentType: 'application/json', body: configuredSpec});
     });
 
-    const deepLink = '/parsable/configured/api/listDeep';
+    const deepLink = '/#/parsable/configured/api/listDeep';
     await page.goto(deepLink);
     await expect(page.getByText('List deep-link records', {exact: true}).first()).toBeVisible();
     await expect(page.locator('[data-tab-id="get:/deep"]')).toHaveAttribute('data-tab-preview', 'false');
@@ -1376,7 +1376,7 @@ test('anchors configured specs to the app root across clean deep links, reloads,
 test('deep-linked responses collapse siblings, align to the top and receive the border effect', async ({page}) => {
     await loadSpecification(page);
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
-    await expect(page).toHaveURL(/\/api\//);
+    await expect(page).toHaveURL(/#\/parsable\/.*\/api\//);
     await page.evaluate(() => {
         const base = window.location.hash.replace(/#response-[^#]+$/, '');
         window.location.hash = `${base}#response-422`;
@@ -1434,7 +1434,7 @@ test('reports specification-wide Runner compatibility and undeclared binary unce
     await expect(report).toContainText('/exports/report');
 
     await page.getByRole('button', {name: 'Open Runner Compatibility'}).click();
-    await expect(page).toHaveURL(/\/compatibility$/);
+    await expect(page).toHaveURL(/#\/parsable\/[^/?#]+\/compatibility$/);
     await expect(page.getByRole('heading', {name: 'Runner Compatibility'})).toBeVisible();
     await expect(page.locator('[data-compatibility-statistics]')).toBeVisible();
     await expect(page.locator('[data-nav-view="view:compatibility"]')).toHaveAttribute('aria-current', 'page');
@@ -1575,7 +1575,7 @@ test('loads, caches and restores a remote specification URL with direct-mode COR
     await expect(page.getByText('CORS configuration help', {exact: true})).toBeVisible();
     await page.getByRole('button', {name: 'Load URL'}).click();
     await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
-    await expect(page).toHaveURL(/\/parsable\/remote%3A/);
+    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
 
     await page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true}).click();
     await expect(page.getByText('Recent URLs · 1', {exact: true})).toBeVisible();
@@ -1584,7 +1584,7 @@ test('loads, caches and restores a remote specification URL with direct-mode COR
 
     await page.reload();
     await expect(page.locator('.app-topbar').getByText('Browser Runner Fixture', {exact: true})).toBeVisible();
-    await expect(page).toHaveURL(/\/parsable\/remote%3A/);
+    await expect(page).toHaveURL(/#\/parsable\/remote%3A/);
 });
 
 test('turns protected indicators green when the effective auth requirement is configured', async ({page}) => {

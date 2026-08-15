@@ -851,7 +851,7 @@ test('generates and parses clean routes for endpoints, notes, and compatibility 
             schemaModals: [],
             activeSpec: spec,
         }),
-        '/parsable/Route%20API/api/listItems',
+        '#/parsable/Route%20API/api/listItems',
     );
     assert.equal(
         generateSmartRoute({
@@ -865,13 +865,17 @@ test('generates and parses clean routes for endpoints, notes, and compatibility 
             tab: 'docs',
             schemaModals: [],
         }),
-        '/parsable/Route%20API/notes',
+        '#/parsable/Route%20API/notes',
     );
-    const notes = parseSmartRoute('/parsable/Route%20API/notes');
+    const notes = parseSmartRoute('#/parsable/Route%20API/notes');
     assert.equal(notes.showNotes, true);
-    const compatibility = parseSmartRoute('/parsable/Route%20API/compatibility');
+    const compatibility = parseSmartRoute('#/parsable/Route%20API/compatibility');
     assert.equal(compatibility.parsableKey, 'Route API');
     assert.equal(compatibility.showCompatibility, true);
+    // Legacy path-based deep links are still parsed for backward compatibility.
+    const legacy = parseSmartRoute('/parsable/Route%20API/compatibility');
+    assert.equal(legacy.parsableKey, 'Route API');
+    assert.equal(legacy.showCompatibility, true);
 });
 test('exports specification-native operations and schemas as llms.txt without mutating the source', () => {
     const spec: any = {
