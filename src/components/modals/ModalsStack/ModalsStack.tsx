@@ -341,7 +341,7 @@ export default function ModalsStack({
             return {code: JSON.stringify(value, null, 2), markers: []};
         };
         const generated = generateValidatedMock(schema, viewerSpec);
-        if (!generated.ok) return plain();
+        if (generated.value === undefined) return plain();
         try {
             const prepared = prepareMockForAnnotation(generated.value);
             const value: any = prepared.value;

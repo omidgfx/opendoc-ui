@@ -21,15 +21,30 @@ export type MockStubKind = 'recursive' | 'max-depth';
 
 /** Kinds a gutter marker can report for a serialized mock line. */
 export type MockLineMarkerKind =
-    MockStubKind | 'ref' | 'branch' | 'deprecated' | 'read-only' | 'write-only' | 'enum' | 'format' | 'pattern';
+    | MockStubKind
+    | 'ref'
+    | 'branch'
+    | 'deprecated'
+    | 'read-only'
+    | 'write-only'
+    | 'enum'
+    | 'format'
+    | 'pattern'
+    | 'required';
+
+export interface MockBranchOption {
+    label: string;
+    /** Set when the branch is a schema reference — enables linking to it. */
+    schemaName?: string;
+}
 
 export interface MockBranchInfo {
     kind: 'oneOf' | 'anyOf';
     /** 0-based index of the branch the example expands. */
     index: number;
     count: number;
-    /** Human labels for every branch, in declaration order. */
-    names: string[];
+    /** Every branch, in declaration order. */
+    options: MockBranchOption[];
 }
 
 export interface MockStubInfo {
@@ -43,6 +58,7 @@ export interface MockKeyMeta {
     ref?: string;
     /** True when the reference sits on the array items rather than the key. */
     refOnItems?: boolean;
+    required?: boolean;
     branch?: MockBranchInfo;
     deprecated?: boolean;
     readOnly?: boolean;
@@ -102,17 +118,20 @@ const isNullBranch = (branch: any): boolean => {
  */
 const pickCombinatorBranch = (branches: any[]): any => branches.find(branch => !isNullBranch(branch)) ?? branches[0];
 
-/** Human label for a combinator branch (reference name, title or type). */
-const branchLabel = (branch: any): string => {
-    if (branch === null || branch === undefined) return 'null';
-    if (typeof branch !== 'object') return String(branch);
-    if (branch.$ref) return refDisplayName(String(branch.$ref));
-    if (branch.title) return String(branch.title);
-    if (isNullBranch(branch)) return 'null';
+/** Label (and schema name, for references) of a combinator branch. */
+const branchOption = (branch: any): MockBranchOption => {
+    if (branch === null || branch === undefined) return {label: 'null'};
+    if (typeof branch !== 'object') return {label: String(branch)};
+    if (branch.$ref) {
+        const name = refDisplayName(String(branch.$ref));
+        return {label: name, schemaName: name};
+    }
+    if (branch.title) return {label: String(branch.title)};
+    if (isNullBranch(branch)) return {label: 'null'};
     const type = branch.type;
-    if (Array.isArray(type)) return type.join(' | ');
-    if (typeof type === 'string') return type;
-    return 'schema';
+    if (Array.isArray(type)) return {label: type.join(' | ')};
+    if (typeof type === 'string') return {label: type};
+    return {label: 'schema'};
 };
 
 /**
@@ -153,7 +172,7 @@ const collectKeyMeta = (child: any, spec: OpenApiSpec | null): MockKeyMeta => {
             kind: Array.isArray(child.oneOf) ? 'oneOf' : 'anyOf',
             index: Math.max(0, branches.indexOf(picked)),
             count: branches.length,
-            names: branches.map(branchLabel),
+            options: branches.map(branchOption),
         };
     }
 
@@ -194,15 +213,143 @@ const keyMetaHasFacts = (meta: MockKeyMeta): boolean =>
         meta.pattern,
     );
 
+/**
+ * Tiny regex sampler: synthesizes a string for the common constructs found
+ * in API patterns (literals, escapes, classes, quantifiers, groups,
+ * alternation). Returns undefined for constructs it does not understand.
+ */
+const sampleFromRegex = (pattern: string): string | undefined => {
+    let i = 0;
+    const source = pattern;
+    const fail = Symbol('fail');
+    const classChar = (body: string): string => {
+        if (body.startsWith('^')) return 'a';
+        /* first concrete character or range start / escape */
+        for (let k = 0; k < body.length; k++) {
+            const ch = body[k];
+            if (ch === '\\') {
+                const esc = body[k + 1];
+                if (esc === 'd') return '0';
+                if (esc === 'w') return 'a';
+                if (esc === 's') return ' ';
+                if (esc) return esc;
+                continue;
+            }
+            if (k + 2 < body.length && body[k + 1] === '-') return ch;
+            return ch;
+        }
+        return 'a';
+    };
+    const atom = (): string | typeof fail => {
+        const ch = source[i];
+        if (ch === undefined) return fail;
+        if (ch === '(') {
+            i++;
+            if (source.startsWith('?:', i)) i += 2;
+            else if (source[i] === '?') return fail; /* lookarounds etc. */
+            const inner = sequence();
+            if (inner === fail || source[i] !== ')') return fail;
+            i++;
+            return inner;
+        }
+        if (ch === '[') {
+            const end = source.indexOf(']', i + 1);
+            if (end === -1) return fail;
+            const body = source.slice(i + 1, end);
+            i = end + 1;
+            return classChar(body);
+        }
+        if (ch === '\\') {
+            const esc = source[i + 1];
+            i += 2;
+            if (esc === 'd') return '0';
+            if (esc === 'w') return 'a';
+            if (esc === 's') return ' ';
+            if (esc === 'b' || esc === 'B') return '';
+            if (esc === undefined) return fail;
+            return esc;
+        }
+        if (ch === '.') {
+            i++;
+            return 'a';
+        }
+        if (ch === '^' || ch === '$') {
+            i++;
+            return '';
+        }
+        if ('*+?{)|'.includes(ch)) return fail;
+        i++;
+        return ch;
+    };
+    const quantified = (): string | typeof fail => {
+        const base = atom();
+        if (base === fail) return fail;
+        const ch = source[i];
+        if (ch === '{') {
+            const end = source.indexOf('}', i);
+            if (end === -1) return fail;
+            const body = source.slice(i + 1, end);
+            i = end + 1;
+            const n = parseInt(body.split(',')[0], 10);
+            if (!Number.isFinite(n) || n < 0 || n > 256) return fail;
+            return base.repeat(n);
+        }
+        if (ch === '+') {
+            i++;
+            return base;
+        }
+        if (ch === '*' || ch === '?') {
+            i++;
+            return '';
+        }
+        return base;
+    };
+    const sequence = (): string | typeof fail => {
+        let out = '';
+        while (i < source.length && source[i] !== ')' && source[i] !== '|') {
+            const part = quantified();
+            if (part === fail) return fail;
+            out += part;
+        }
+        if (source[i] === '|') {
+            /* alternation: keep the first alternative, skip the rest */
+            let depth = 0;
+            while (i < source.length) {
+                const ch = source[i];
+                if (ch === '(') depth++;
+                else if (ch === ')') {
+                    if (depth === 0) break;
+                    depth--;
+                } else if (ch === '\\') i++;
+                i++;
+            }
+        }
+        return out;
+    };
+    const result = sequence();
+    if (result === fail || i < source.length) return undefined;
+    return result;
+};
+
 const mockFromPattern = (pattern: string): string => {
     if (!pattern) return 'string';
-    if (pattern.includes('uuid')) return '123e4567-e89b-12d3-a456-426614174000';
-    if (/\[0-9\]|\\d/.test(pattern)) return '12345';
-    if (/\[a-zA-Z0-9\]/.test(pattern)) return 'string123';
-    if (pattern.includes('@') || pattern.includes('email')) return 'user@example.com';
-    if (pattern.toLowerCase().includes('phone')) return '+1234567890';
-    if (pattern.toLowerCase().includes('date')) return '2026-08-09';
-    return 'string';
+    /* legacy heuristics first — they keep long-standing outputs stable;
+       the regex sampler only steps in when the heuristic fails the pattern */
+    let legacy: string;
+    if (pattern.includes('uuid')) legacy = '123e4567-e89b-12d3-a456-426614174000';
+    else if (/\[0-9\]|\\d/.test(pattern)) legacy = '12345';
+    else if (/\[a-zA-Z0-9\]/.test(pattern)) legacy = 'string123';
+    else if (pattern.includes('@') || pattern.includes('email')) legacy = 'user@example.com';
+    else if (pattern.toLowerCase().includes('phone')) legacy = '+1234567890';
+    else if (pattern.toLowerCase().includes('date')) legacy = '2026-08-09';
+    else legacy = 'string';
+    try {
+        const regExp = new RegExp(pattern);
+        if (regExp.test(legacy)) return legacy;
+        const sampled = sampleFromRegex(pattern);
+        if (sampled !== undefined && regExp.test(sampled)) return sampled;
+    } catch {}
+    return legacy;
 };
 
 const schemaType = (schema: any): string | undefined =>
@@ -237,7 +384,23 @@ const constrainedString = (schema: any): string => {
     else if (schema.pattern) value = mockFromPattern(schema.pattern);
     else value = 'string';
     const min = typeof schema.minLength === 'number' ? schema.minLength : 0;
-    if (value.length < min) value += 'x'.repeat(min - value.length);
+    if (value.length < min) {
+        if (schema.pattern) {
+            /* pad without breaking the pattern: repeat the last character and
+               keep the extension only if the regex still accepts it */
+            try {
+                const regExp = new RegExp(schema.pattern);
+                let extended = value;
+                const filler = extended.slice(-1) || 'x';
+                while (extended.length < min) extended += filler;
+                if (regExp.test(extended)) value = extended;
+            } catch {
+                value += 'x'.repeat(min - value.length);
+            }
+        } else {
+            value += 'x'.repeat(min - value.length);
+        }
+    }
     if (typeof schema.maxLength === 'number') value = value.slice(0, schema.maxLength);
     return value;
 };
@@ -275,12 +438,27 @@ export function generateMock(
     if (schema.default !== undefined) return schema.default;
     if (Array.isArray(schema.allOf)) {
         let merged: any = {};
+        const mergedMeta: Record<string, MockKeyMeta> = {};
         schema.allOf.forEach((sub: any) => {
             const subMock = generateMock(sub, spec, depth + 1, new Set(visited), usage);
-            if (typeof subMock === 'object' && subMock !== null && !Array.isArray(subMock))
+            if (typeof subMock === 'object' && subMock !== null && !Array.isArray(subMock)) {
+                /* the key-meta symbol is non-enumerable, spread drops it — carry it over */
+                Object.assign(mergedMeta, (subMock as any)[MOCK_KEY_META] || {});
                 merged = {...merged, ...subMock};
-            else if (subMock !== null) merged = subMock;
+            } else if (subMock !== null) merged = subMock;
         });
+        if (typeof merged === 'object' && merged !== null && !Array.isArray(merged)) {
+            /* required can live on the composing schema or any allOf part */
+            const required = new Set<string>([
+                ...(Array.isArray(schema.required) ? schema.required : []),
+                ...schema.allOf.flatMap((sub: any) => (Array.isArray(sub?.required) ? sub.required : [])),
+            ]);
+            required.forEach(key => {
+                if (!(key in merged)) return;
+                mergedMeta[key] = {...(mergedMeta[key] || {}), required: true};
+            });
+            if (Object.keys(mergedMeta).length > 0) Object.defineProperty(merged, MOCK_KEY_META, {value: mergedMeta});
+        }
         return merged;
     }
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
@@ -292,11 +470,13 @@ export function generateMock(
     if (type === 'object' || schema.properties || schema.additionalProperties) {
         const object: Record<string, unknown> = {};
         const keyMeta: Record<string, MockKeyMeta> = {};
+        const requiredKeys = new Set<string>(Array.isArray(schema.required) ? schema.required : []);
         Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
             if (usage === 'request' && child?.readOnly === true) return;
             if (usage === 'response' && child?.writeOnly === true) return;
             object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
             const meta = collectKeyMeta(child, spec);
+            if (requiredKeys.has(key)) meta.required = true;
             if (keyMetaHasFacts(meta)) keyMeta[key] = meta;
         });
         if (Object.keys(keyMeta).length > 0)
@@ -575,6 +755,8 @@ export const extractMockLineMarkers = (
                 if (meta && !seenKeyIds.has(id)) {
                     seenKeyIds.add(id);
                     const line = index + 1;
+                    /* type/format icons always lead the slot */
+                    if (meta.format) markers.push({line, kind: 'format', format: meta.format});
                     if (meta.ref) markers.push({line, kind: 'ref', ref: meta.ref, refOnItems: meta.refOnItems});
                     if (meta.branch) markers.push({line, kind: 'branch', branch: meta.branch});
                     if (meta.deprecated) markers.push({line, kind: 'deprecated'});
@@ -582,8 +764,8 @@ export const extractMockLineMarkers = (
                     if (meta.writeOnly) markers.push({line, kind: 'write-only'});
                     if (meta.enumValues)
                         markers.push({line, kind: 'enum', enumValues: meta.enumValues, isConst: meta.isConst});
-                    if (meta.format) markers.push({line, kind: 'format', format: meta.format});
                     if (meta.pattern) markers.push({line, kind: 'pattern', pattern: meta.pattern});
+                    if (meta.required) markers.push({line, kind: 'required'});
                 }
                 text = text.replace(keyMatch[0], '');
                 continue;
@@ -623,7 +805,9 @@ export const getMockSnippetWithMarkers = (
     indent = 2,
 ): {code: string; markers: MockLineMarker[]} => {
     const result = generateValidatedMock(schema, spec, usage);
-    if (!result.ok)
+    /* a value that merely failed validation is still worth showing —
+       dropping it would also drop every gutter marker on the example */
+    if (result.value === undefined)
         return {
             code: `// Mock unavailable: ${result.diagnostics.map(item => item.message).join('; ')}`,
             markers: [],

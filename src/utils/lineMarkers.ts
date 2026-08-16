@@ -7,17 +7,40 @@ import type {MockLineMarker} from './runner/mockGenerator';
  * appear in selections or clipboard copies. A line may carry several
  * markers — the gutter reserves a stable icon slot for all of them.
  */
+export interface CodeLineMarkerDetailItem {
+    label: string;
+    /** Set when the item is a schema reference — rendered as a link. */
+    schemaName?: string;
+    /** True for the item the example actually expands. */
+    active?: boolean;
+}
+
+/** Rich content for markers that deserve a description tooltip. */
+export interface CodeLineMarkerDetails {
+    title: string;
+    items: CodeLineMarkerDetailItem[];
+}
+
 export interface CodeLineMarker {
     /** 1-based line number the icon belongs to. */
     line: number;
-    /** Phosphor icon class, e.g. "ph ph-arrow-clockwise". */
-    icon: string;
+    /** Phosphor icon class, e.g. "ph ph-arrow-clockwise". Empty for dots. */
+    icon?: string;
     /** Tooltip shown when hovering the icon. */
     tip: string;
     /** Optional extra class for the icon (color / emphasis). */
     className?: string;
     /** When set, the icon becomes interactive (e.g. open the schema). */
     onClick?: () => void;
+    /**
+     * Render as the small circle after the line number instead of an icon
+     * in the slot (used for required properties).
+     */
+    dot?: boolean;
+    /** Rich content — rendered as a description tooltip (surface variant). */
+    details?: CodeLineMarkerDetails;
+    /** Opens a schema referenced from the details list. */
+    onOpenSchema?: (schemaName: string) => void;
 }
 
 export const DEPTH_LIMIT_ICON = 'ph ph-arrow-line-down';
@@ -83,7 +106,7 @@ export interface MockMarkerOptions {
  */
 export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: MockMarkerOptions): CodeLineMarker[] => {
     const recursiveLines = new Set(markers.filter(marker => marker.kind === 'recursive').map(marker => marker.line));
-    return markers.flatMap(marker => {
+    return markers.flatMap((marker): CodeLineMarker[] => {
         const line = marker.line;
         switch (marker.kind) {
             case 'recursive':
@@ -134,7 +157,16 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                         line,
                         icon: BRANCH_ICON,
                         className: 'text-[var(--method-post)]',
-                        tip: `${branch.kind}: example expands branch ${branch.index + 1} of ${branch.count} (${branch.names.join(' · ')}).`,
+                        tip: `${branch.kind}: example expands branch ${branch.index + 1} of ${branch.count}.`,
+                        details: {
+                            title: `${branch.kind} — ${branch.count} alternatives, branch ${branch.index + 1} shown`,
+                            items: branch.options.map((option, optionIndex) => ({
+                                label: option.label,
+                                schemaName: option.schemaName,
+                                active: optionIndex === branch.index,
+                            })),
+                        },
+                        onOpenSchema: options?.onOpenSchema,
                     },
                 ];
             }
@@ -175,6 +207,10 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                         tip: marker.isConst
                             ? `Constant value: ${previewValues(values, 1)}.`
                             : `Allowed values: ${previewValues(values)}.`,
+                        details: {
+                            title: marker.isConst ? 'Constant value' : `Allowed values (${values.length})`,
+                            items: values.slice(0, 24).map(value => ({label: JSON.stringify(value)})),
+                        },
                     },
                 ];
             }
@@ -203,6 +239,14 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                     },
                 ];
             }
+            case 'required':
+                return [
+                    {
+                        line,
+                        dot: true,
+                        tip: 'Required property.',
+                    },
+                ];
             default:
                 return [];
         }
