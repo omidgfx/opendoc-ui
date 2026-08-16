@@ -15,6 +15,7 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
+import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
 import {useSchemaViewer} from '@/src/hooks/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
@@ -86,6 +87,7 @@ export default function ViewTab({
     const [exampleModalContent, setExampleModalContent] = useState<{
         title: string;
         content: string;
+        lineMarkers?: CodeLineMarker[];
     } | null>(null);
     const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
     const exampleTransition = useModalTransition(!!exampleModalContent, () => setExampleModalContent(null));
@@ -370,22 +372,24 @@ export default function ViewTab({
                 getRefName={getRefName}
                 onPushSchema={onOpenSchemaModal}
                 inspectName={inspectName ?? null}
-                onViewExample={(name, subSchema) =>
+                onViewExample={(name, subSchema) => {
+                    const example = getMockSnippetWithMarkers(subSchema);
                     setExampleModalContent({
                         title: `${name} Simulated Example`,
-                        content: getMockSnippet(subSchema),
-                    })
-                }
+                        content: example.code,
+                        lineMarkers: mockMarkersToLineMarkers(example.markers),
+                    });
+                }}
                 onTestPattern={setPatternToTest}
                 useModal={true}
             />
         );
     };
     const {
-        getMockSnippet,
+        getMockSnippetWithMarkers,
         getSchemaDisplayName,
         getLanguageForContentType,
-        getResponseExampleSnippet,
+        getResponseExampleSnippetWithMarkers,
         humanizeSchemaName,
         getSchemaNamesFromResponse,
         truncateText,
@@ -1002,17 +1006,26 @@ export default function ViewTab({
                                                                                     )}
                                                                                 </div>
                                                                             </div>
-                                                                            <CodeViewer
-                                                                                code={getResponseExampleSnippet(
-                                                                                    activeSchema,
-                                                                                    cObj,
-                                                                                    cType,
-                                                                                )}
-                                                                                language={getLanguageForContentType(
-                                                                                    cType,
-                                                                                )}
-                                                                                maxHeight="none"
-                                                                            />
+                                                                            {(() => {
+                                                                                const example =
+                                                                                    getResponseExampleSnippetWithMarkers(
+                                                                                        activeSchema,
+                                                                                        cObj,
+                                                                                        cType,
+                                                                                    );
+                                                                                return (
+                                                                                    <CodeViewer
+                                                                                        code={example.code}
+                                                                                        language={getLanguageForContentType(
+                                                                                            cType,
+                                                                                        )}
+                                                                                        maxHeight="none"
+                                                                                        lineMarkers={mockMarkersToLineMarkers(
+                                                                                            example.markers,
+                                                                                        )}
+                                                                                    />
+                                                                                );
+                                                                            })()}
                                                                         </div>
                                                                     ) : activeResponseTab === 'enum' && isEnum ? (
                                                                         <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
@@ -1112,7 +1125,12 @@ export default function ViewTab({
                 zIndex="z-[3000]"
             >
                 {exampleModalContent && (
-                    <CodeViewer code={exampleModalContent.content} language="json" maxHeight="none" />
+                    <CodeViewer
+                        code={exampleModalContent.content}
+                        language="json"
+                        maxHeight="none"
+                        lineMarkers={exampleModalContent.lineMarkers}
+                    />
                 )}
             </EndpointInfoModal>
 

@@ -1,6 +1,8 @@
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import Prism from 'prismjs';
 import clsx from 'clsx';
+import {Tip} from './Tooltip';
+import type {CodeLineMarker} from '../../utils/lineMarkers';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-bash';
@@ -18,6 +20,18 @@ interface CodeViewerProps {
     code: string;
     language: string;
     maxHeight?: string;
+    /**
+     * Gutter annotations: icons rendered beside specific line numbers
+     * (e.g. the recursion icon on a line whose value was pruned because the
+     * schema references itself). Markers live outside the code text, so they
+     * are never part of a selection or the copy button's payload.
+     *
+     * When markers are provided the code is rendered exactly as passed —
+     * no JSON re-formatting — so the caller's line numbers stay correct.
+     */
+    lineMarkers?: CodeLineMarker[];
+    /** Line numbers render by default; pass false for chrome-less output. */
+    showLineNumbers?: boolean;
 }
 
 export function highlightCodeString(code: string, language: string): string {
@@ -47,10 +61,10 @@ export function highlightCodeString(code: string, language: string): string {
     }
 }
 
-export default function CodeViewer({code, language, maxHeight}: CodeViewerProps) {
+export default function CodeViewer({code, language, maxHeight, lineMarkers, showLineNumbers = true}: CodeViewerProps) {
     const [copied, setCopied] = useState(false);
     let finalCode = code;
-    if (language.toLowerCase() === 'json') {
+    if (language.toLowerCase() === 'json' && lineMarkers === undefined) {
         try {
             const obj = typeof code === 'string' ? JSON.parse(code) : code;
             finalCode = JSON.stringify(obj, null, 4);
@@ -62,6 +76,18 @@ export default function CodeViewer({code, language, maxHeight}: CodeViewerProps)
         setTimeout(() => setCopied(false), 2000);
     };
     const highlightedHtml = highlightCodeString(finalCode, language);
+    const lineCount = useMemo(() => Math.max(1, finalCode.split('\n').length), [finalCode]);
+    const markersByLine = useMemo(() => {
+        const map = new Map<number, CodeLineMarker[]>();
+        (lineMarkers || []).forEach(marker => {
+            if (!Number.isInteger(marker.line) || marker.line < 1 || marker.line > lineCount) return;
+            const bucket = map.get(marker.line);
+            if (bucket) bucket.push(marker);
+            else map.set(marker.line, [marker]);
+        });
+        return map;
+    }, [lineMarkers, lineCount]);
+    const gutterDigits = String(lineCount).length;
     return (
         <div className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]">
             <div className="px-4 py-1.5 border-b flex items-center justify-between bg-[var(--surface-hover)] border-[var(--border)]">
@@ -89,15 +115,43 @@ export default function CodeViewer({code, language, maxHeight}: CodeViewerProps)
                 </button>
             </div>
 
-            <pre
-                className="p-4 overflow-x-auto scrollbar-thin"
-                style={{
-                    maxHeight: maxHeight || '450px',
-                    overflowY: maxHeight === 'none' ? 'visible' : 'auto',
-                }}
-            >
-                <code dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
-            </pre>
+            <div className="flex items-stretch overflow-auto scrollbar-thin" style={{maxHeight: maxHeight || '450px'}}>
+                {showLineNumbers && (
+                    <div
+                        aria-hidden="true"
+                        className="select-none sticky left-0 z-[1] shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)]"
+                    >
+                        {Array.from({length: lineCount}, (_, index) => {
+                            const line = index + 1;
+                            const markers = markersByLine.get(line);
+                            return (
+                                <div key={line} className="flex h-[1.5em] items-center justify-end gap-1.5">
+                                    {markers?.map((marker, markerIndex) => (
+                                        <Tip key={markerIndex} content={marker.tip}>
+                                            <i
+                                                className={clsx(
+                                                    marker.icon,
+                                                    'text-[11px] leading-none cursor-help',
+                                                    marker.className || 'text-[var(--text-muted)]',
+                                                )}
+                                            />
+                                        </Tip>
+                                    ))}
+                                    <span
+                                        className="inline-block text-right text-[10px] opacity-70"
+                                        style={{minWidth: `${gutterDigits}ch`}}
+                                    >
+                                        {line}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                <pre className="p-4 flex-1">
+                    <code dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
+                </pre>
+            </div>
         </div>
     );
 }
