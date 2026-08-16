@@ -3,39 +3,48 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
-## [Unreleased]
+## [0.1.14] — 2026-08-17
 
-Multi-format request bodies and body format conversions.
+Website redesign, code-viewer line markers, multi-format request bodies, and documentation-view polish.
 
-- supports **every request body format an endpoint declares** in the Runner: JSON, YAML, XML,
-  and `application/x-www-form-urlencoded` query strings with bracket notation
+- **redesigns the marketing website** around the product's own brand identity (indigo #4F46E5 →
+  #6366F1 with the logo's cyan #0891B2 tail, emerald success states, ink neutrals): all-sans
+  typography (Manrope display, Inter body, JetBrains Mono details) with CSS-variable design tokens,
+  a light/dark/system theme toggle persisted to localStorage with a no-flash inline snippet, motion
+  (scroll progress bar, scroll-reveal choreography, stat count-up, animated gradient headlines)
+  gated behind `prefers-reduced-motion`, a landing hero embedding the live demo in an interactive
+  browser frame, a bento capability grid with hand-built miniatures of the real UI (endpoint tree,
+  Runner request, code generation, a Search tab modeled on the actual app, notes tones, deep-link
+  card, theme previews), and the Features/Guide/Compatibility/Deploy/Developers/FAQ subpages rebuilt
+  in the same system with scroll-spy sticky TOCs and redesigned tables;
+- fixes the site along the way: stat numbers render in the right font, the hero no longer
+  scroll-jumps when the demo iframe loads, and code blocks preserve line breaks;
+- adds **line numbers with annotation icons** to the code viewer, with a **gutter marker suite**
+  for schemas and runner responses: combinator branches (oneOf/anyOf alternatives named in the
+  tooltip), deprecated properties, usage-aware read-only/write-only locks, enum/const value lists,
+  mapped format icons, clickable pattern markers that open the Pattern Tester, response
+  truncation, encoded-binary detection and diff markers against the previous run — all recursion-
+  safe through nested anyOf/oneOf branches, with interaction polish (required dots, rich tooltips,
+  cycle-safe breadcrumbs, color-only hover);
+- supports **every request body format an endpoint declares** in the Runner: JSON, YAML, XML and
+  `application/x-www-form-urlencoded` query strings with bracket notation
   (`a=1&b=4&j[]=1&a[]=5&k[key]=foo`), alongside the existing text, HTML, JavaScript, binary and
   multipart bodies;
-- converts between formats transparently — the form always edits a JSON model, so a form change
-  is serialized to the active media type (JSON, YAML, XML with OpenAPI `xml` hints — element
-  names, attributes, wrapped arrays, namespaces and prefixes — or a bracket-notation query
-  string), and the raw editor parses any of those back into the form when it opens;
-- switches the body text with the media type dropdown: moving an endpoint from JSON to XML or
-  YAML converts the current payload instead of showing JSON text in an XML editor, and the raw
-  editor label reflects the format (Raw XML, Raw YAML, Raw Form);
-- seeds the body from the **currently selected media type's own example** (or a converted mock)
-  when resetting or reopening, so the XML example renders as XML, not JSON;
-- sends urlencoded bodies with bracket-notation nesting on the wire and keeps the Content-Type
-  header matched to the selected media type;
+- converts between body formats transparently — the form always edits a JSON model and serializes
+  to the active media type (XML honors OpenAPI `xml` hints: element names, attributes, wrapped
+  arrays, namespaces and prefixes), switching the media type dropdown converts the current payload
+  instead of showing stale JSON, the raw toggle labels follow the format (Raw XML, Raw YAML, Raw
+  Form), and seeding/Reset Examples use the selected media type's own example;
 - converts **out of unknown textual formats** (text/plain, text/html, application/javascript, …)
-  instead of passing stale text into a foreign editor: JSON-shaped text converts for real, and
-  any other payload is treated as a plain string that serializes into the target format (XML
-  wraps it in the schema root element, YAML emits a scalar, query strings use a `value` key), so
-  a spec with only XML and plain-text bodies converts cleanly in both directions.
-
-Documentation-view request body polish.
-
-- renders **open object bodies** in the schema property table: schemas with no declared
-  properties but `additionalProperties` (such as merge-patch bodies) now show an "Additional
-  Properties" block with the accepted value schema instead of an empty table;
-- shows the **request body example** in the endpoint documentation when the media type or its
-  schema declares one, so bodies like `application/merge-patch+json` with an example are no
-  longer invisible in the docs view.
+  instead of passing stale text into a foreign editor: JSON-shaped text converts for real, any
+  other payload becomes a plain string that serializes into the target format, so a spec with only
+  XML and plain-text bodies converts cleanly in both directions;
+- renders **open object bodies** in the documentation's schema property table (an "Additional
+  Properties" block for merge-patch-style schemas) and shows the **request body example** when the
+  media type declares one, so bodies like `application/merge-patch+json` are no longer invisible in
+  the docs view;
+- fixes parameter presentation: **long parameter descriptions** use the description tooltip instead
+  of truncation, and **every parameter example type** renders properly — never `[object Object]`.
 
 ## [0.1.13] — 2026-08-16
 
