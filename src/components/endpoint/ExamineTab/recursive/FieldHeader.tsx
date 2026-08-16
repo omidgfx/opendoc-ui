@@ -54,11 +54,9 @@ export default function FieldHeader({
     const primaryDescription = directDescription || inheritedDescription;
     const markdownDescription = containsMarkdown(primaryDescription);
     const longDescription = !markdownDescription && primaryDescription.length > DESCRIPTION_TOOLTIP_THRESHOLD;
-    const preview = markdownDescription
-        ? ''
-        : longDescription
-          ? `${primaryDescription.slice(0, DESCRIPTION_TOOLTIP_THRESHOLD)}...`
-          : primaryDescription;
+    /* long descriptions render only through the info tooltip — no inline
+       preview text — so ≤ threshold shows the full text, above it nothing */
+    const preview = markdownDescription || longDescription ? '' : primaryDescription;
     const showDescriptionTip =
         documents.some(document => usesDescriptionTooltip(document.text)) || canInspectSchema || !!externalDocs?.url;
     return (
