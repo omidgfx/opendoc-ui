@@ -121,6 +121,44 @@
     sections.forEach(function (s) { spy.observe(s); });
   }
 
+  /* ---------- live-demo iframe: lazy load + anti scroll-jump ----------
+     The embedded SPA can grab focus when it finishes booting, which makes
+     the browser scroll the page down to the iframe (jumping past the hero).
+     1) Only set src once the visitor actually scrolls the stage into view.
+     2) If focus lands in the iframe without any user interaction, blur it
+        and restore the scroll position. */
+  var demoFrame = document.querySelector('.stage-iframe[data-src]');
+  if (demoFrame) {
+    var userActed = false;
+    ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, function () { userActed = true; }, { passive: true, once: true });
+    });
+    var loadDemo = function () {
+      if (demoFrame.src) return;
+      demoFrame.src = demoFrame.getAttribute('data-src');
+      var guardUntil = Date.now() + 15000;
+      var guard = setInterval(function () {
+        if (Date.now() > guardUntil) { clearInterval(guard); return; }
+        if (!userActed && document.activeElement === demoFrame) {
+          var x = window.scrollX, y = window.scrollY;
+          demoFrame.blur();
+          if (document.activeElement === demoFrame && document.activeElement.blur) document.activeElement.blur();
+          window.scrollTo(x, y);
+        }
+      }, 120);
+    };
+    if ('IntersectionObserver' in window) {
+      var fio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { loadDemo(); fio.disconnect(); }
+        });
+      }, { rootMargin: '120px 0px' });
+      fio.observe(demoFrame);
+    } else {
+      loadDemo();
+    }
+  }
+
   /* ---------- current year ---------- */
   var year = document.getElementById('year');
   if (year) year.textContent = String(new Date().getFullYear());
