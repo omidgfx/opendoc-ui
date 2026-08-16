@@ -778,6 +778,7 @@ html[data-theme="dark"] .doc-sec h2 i{ color:var(--brand-bright); }
   font-family:var(--mono); font-size:13px; line-height:1.8;
   padding:18px 22px; overflow-x:auto; margin:14px 0 20px;
   border:1px solid var(--navy-3);
+  white-space:pre;
 }
 .code-block .c{ color:#525C85; } .code-block .k{ color:var(--brand-bright); } .code-block .s{ color:#7DD8EE; }
 
