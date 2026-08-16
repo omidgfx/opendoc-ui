@@ -108,6 +108,29 @@ test('keeps text already in the target format untouched', () => {
     assert.equal(convertBodyText(yaml, 'application/yaml', 'application/yaml'), yaml);
 });
 
+test('converts from unknown textual formats instead of passing through unchanged', () => {
+    // plain text -> XML wraps the payload in a root element
+    const xml = convertBodyText('plain payload', 'text/plain', 'application/xml');
+    assert.match(xml, /<root>plain payload<\/root>/);
+    // plain text -> JSON becomes a quoted JSON string
+    assert.equal(convertBodyText('plain payload', 'text/plain', 'application/json'), '"plain payload"');
+    // plain text -> YAML stays a valid scalar
+    assert.match(convertBodyText('plain payload', 'text/plain', 'application/yaml'), /plain payload/);
+    // plain text -> query string uses a value key
+    assert.equal(
+        convertBodyText('plain payload', 'text/plain', 'application/x-www-form-urlencoded'),
+        'value=plain%20payload',
+    );
+    // JSON-shaped unknown text converts for real
+    const yaml = convertBodyText('{"name":"OpenDoc"}', 'text/plain', 'application/yaml');
+    assert.match(yaml, /name: OpenDoc/);
+    // unknown -> unknown (both textual) stays untouched
+    assert.equal(convertBodyText('hello', 'text/plain', 'text/html'), 'hello');
+    // known -> unknown keeps the structured representation
+    const text = convertBodyText('<message><title>OpenDoc UI</title></message>', 'application/xml', 'text/plain');
+    assert.ok(text.includes('OpenDoc UI'));
+});
+
 test('urlencoded execution sends bracket notation and the right Content-Type', () => {
     const emptyAuth = {
         activeScheme: 'none',
