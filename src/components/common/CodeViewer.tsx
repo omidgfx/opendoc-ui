@@ -73,7 +73,6 @@ const stripeBackground = (color: string) => ({
 
 function MarkerIcon({marker}: {marker: CodeLineMarker}) {
     const iconClass = marker.icon || '';
-    const fillClass = iconClass.startsWith('ph ') ? iconClass.replace(/^ph /, 'ph-fill ') : iconClass;
     const tipContent = marker.details ? (
         <div className="w-[min(300px,calc(100vw-64px))] max-w-full select-text space-y-2 text-[var(--text)]">
             <div className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
@@ -109,15 +108,8 @@ function MarkerIcon({marker}: {marker: CodeLineMarker}) {
     ) : (
         marker.tip
     );
-    const icon = (hover: boolean) => (
-        <i
-            className={clsx(
-                hover ? fillClass : iconClass,
-                'text-[11px] leading-none',
-                hover ? 'hidden group-hover/gi:inline' : 'group-hover/gi:hidden',
-                marker.className || 'text-[var(--text-muted)]',
-            )}
-        />
+    const icon = (
+        <i className={clsx(iconClass, 'text-[11px] leading-none', marker.className || 'text-[var(--text-muted)]')} />
     );
     return (
         <Tip
@@ -128,15 +120,13 @@ function MarkerIcon({marker}: {marker: CodeLineMarker}) {
                 <button
                     type="button"
                     onClick={marker.onClick}
-                    className="group/gi flex items-center justify-center cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
+                    className="flex items-center justify-center cursor-pointer opacity-75 hover:opacity-100 transition-opacity"
                 >
-                    {icon(false)}
-                    {icon(true)}
+                    {icon}
                 </button>
             ) : (
-                <span className="group/gi inline-flex items-center cursor-help opacity-80 hover:opacity-100 transition-opacity">
-                    {icon(false)}
-                    {icon(true)}
+                <span className="inline-flex items-center cursor-help opacity-75 hover:opacity-100 transition-opacity">
+                    {icon}
                 </span>
             )}
         </Tip>
