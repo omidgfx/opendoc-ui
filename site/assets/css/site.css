@@ -357,6 +357,7 @@ html[data-theme="dark"] .stage-note i{ color:var(--brand-bright); }
   letter-spacing:-.03em; display:block; line-height:1;
   font-variant-numeric:tabular-nums;
 }
+.stat b span, .stat b em{ font:inherit; color:inherit; display:inline; margin:0; }
 .stat b em{
   font-style:normal;
   background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -365,7 +366,7 @@ html[data-theme="dark"] .stage-note i{ color:var(--brand-bright); }
   background:linear-gradient(96deg,#A5B4FC,#4CD3EE);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-.stat span{ display:block; margin-top:12px; font-size:14px; color:var(--muted); max-width:24ch; }
+.stat > span{ display:block; margin-top:12px; font-size:14px; color:var(--muted); max-width:24ch; }
 
 /* ---------- bento ---------- */
 .bento{ display:grid; grid-template-columns:repeat(12,1fr); gap:18px; }
