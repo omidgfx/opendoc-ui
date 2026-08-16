@@ -355,7 +355,7 @@ export default function ModalsStack({
             } else {
                 raw = JSON.stringify(value, null, 2);
             }
-            return extractMockLineMarkers(raw, prepared.stubs);
+            return extractMockLineMarkers(raw, prepared);
         } catch {
             return plain();
         }

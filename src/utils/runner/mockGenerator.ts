@@ -10,7 +10,17 @@ import {resolveReferenceResult} from '../openapi';
  */
 export const MOCK_STUB: unique symbol = Symbol('opendoc.mockStub');
 
+/**
+ * Per-property metadata attached (non-enumerably) to generated objects:
+ * which keys are required by the schema and which were produced from a
+ * referenced schema. Invisible to serialization and validation.
+ */
+export const MOCK_KEY_META: unique symbol = Symbol('opendoc.mockKeyMeta');
+
 export type MockStubKind = 'recursive' | 'max-depth';
+
+/** Kinds a gutter marker can report for a serialized mock line. */
+export type MockLineMarkerKind = MockStubKind | 'required' | 'ref';
 
 export interface MockStubInfo {
     kind: MockStubKind;
@@ -18,9 +28,20 @@ export interface MockStubInfo {
     ref?: string;
 }
 
-export interface MockLineMarker extends MockStubInfo {
+export interface MockKeyMeta {
+    required?: boolean;
+    /** Display name of the schema the property value was generated from. */
+    ref?: string;
+    /** True when the reference sits on the array items rather than the key. */
+    refOnItems?: boolean;
+}
+
+export interface MockLineMarker {
     /** 1-based line number inside the serialized snippet. */
     line: number;
+    kind: MockLineMarkerKind;
+    ref?: string;
+    refOnItems?: boolean;
 }
 
 const refDisplayName = (ref: string): string => {
@@ -135,11 +156,23 @@ export function generateMock(
     const type = schemaType(schema);
     if (type === 'object' || schema.properties || schema.additionalProperties) {
         const object: Record<string, unknown> = {};
+        const keyMeta: Record<string, MockKeyMeta> = {};
+        const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
         Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
             if (usage === 'request' && child?.readOnly === true) return;
             if (usage === 'response' && child?.writeOnly === true) return;
             object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
+            const meta: MockKeyMeta = {};
+            if (required.includes(key)) meta.required = true;
+            if (child?.$ref) meta.ref = refDisplayName(String(child.$ref));
+            else if (child?.items?.$ref) {
+                meta.ref = refDisplayName(String(child.items.$ref));
+                meta.refOnItems = true;
+            }
+            if (meta.required || meta.ref) keyMeta[key] = meta;
         });
+        if (Object.keys(keyMeta).length > 0)
+            Object.defineProperty(object, MOCK_KEY_META, {value: keyMeta, enumerable: false});
         if (
             schema.additionalProperties &&
             typeof schema.additionalProperties === 'object' &&
@@ -340,26 +373,32 @@ export const getMockSnippet = (schema: any, spec: OpenApiSpec | null, usage: Moc
 /* ------------------------------------------------------------------ */
 
 const MARK_TOKEN = (id: number) => `__ODUI_MARK_${id}__`;
+const KEY_TOKEN = (id: number) => `__ODUI_KEY_${id}__`;
 const MARK_JSON = /"__ODUI_MARK_(\d+)__"/;
 const MARK_XML = />__ODUI_MARK_(\d+)__</;
 const MARK_PHP = /'__ODUI_MARK_(\d+)__'/;
 const MARK_PLAIN = /__ODUI_MARK_(\d+)__/;
+const KEY_PLAIN = /__ODUI_KEY_(\d+)__/;
 
 export interface PreparedMockValue {
-    /** Deep copy of the mock where every stub is a unique placeholder string. */
+    /** Deep copy of the mock where stubs and annotated keys carry tokens. */
     value: unknown;
-    /** Stub metadata, indexed by placeholder id. */
+    /** Value-stub metadata, indexed by placeholder id. */
     stubs: MockStubInfo[];
+    /** Key metadata, indexed by key-token id. */
+    keys: MockKeyMeta[];
 }
 
 /**
  * Replaces every tagged stub inside a generated mock with a unique placeholder
- * string so any serializer (JSON, YAML, XML, PHP arrays, ...) carries the
- * position through to the emitted text. Use extractMockLineMarkers afterwards
- * to convert the placeholders back and learn their line numbers.
+ * string, and suffixes annotated property names (required / referenced-schema)
+ * with a key token, so any serializer (JSON, YAML, XML, PHP arrays, ...)
+ * carries those positions through to the emitted text. Use
+ * extractMockLineMarkers afterwards to strip the tokens and learn the lines.
  */
 export const prepareMockForAnnotation = (value: unknown): PreparedMockValue => {
     const stubs: MockStubInfo[] = [];
+    const keys: MockKeyMeta[] = [];
     const walk = (node: unknown): unknown => {
         if (node === null || typeof node !== 'object') return node;
         if (isMockStub(node)) {
@@ -367,29 +406,54 @@ export const prepareMockForAnnotation = (value: unknown): PreparedMockValue => {
             return MARK_TOKEN(stubs.length - 1);
         }
         if (Array.isArray(node)) return node.map(walk);
+        const keyMeta = (node as any)[MOCK_KEY_META] as Record<string, MockKeyMeta> | undefined;
         const out: Record<string, unknown> = {};
         Object.entries(node as Record<string, unknown>).forEach(([key, child]) => {
-            out[key] = walk(child);
+            const meta = keyMeta?.[key];
+            let outKey = key;
+            if (meta) {
+                keys.push(meta);
+                outKey = `${key}${KEY_TOKEN(keys.length - 1)}`;
+            }
+            out[outKey] = walk(child);
         });
         return out;
     };
-    return {value: walk(value), stubs};
+    return {value: walk(value), stubs, keys};
 };
 
 /**
- * Scans serialized text for annotation placeholders, records the 1-based line
- * each one landed on, and restores the text a reader should see (`{}` for
- * JSON/YAML object stubs, an empty node for XML, `[]` for PHP arrays).
+ * Scans serialized text for annotation tokens, records the 1-based line each
+ * one landed on, and restores the text a reader should see. Key tokens can
+ * appear more than once (e.g. XML opening and closing tags) — the marker is
+ * recorded for the first occurrence only, every occurrence is stripped.
  */
 export const extractMockLineMarkers = (
     code: string,
-    stubs: MockStubInfo[],
+    prepared: Pick<PreparedMockValue, 'stubs' | 'keys'>,
 ): {code: string; markers: MockLineMarker[]} => {
-    if (stubs.length === 0 || !code.includes('__ODUI_MARK_')) return {code, markers: []};
+    const {stubs, keys} = prepared;
+    if ((stubs.length === 0 && keys.length === 0) || !code.includes('__ODUI_')) return {code, markers: []};
     const markers: MockLineMarker[] = [];
+    const seenKeyIds = new Set<number>();
     const lines = code.split('\n').map((lineText, index) => {
         let text = lineText;
         for (;;) {
+            /* key tokens: strip, record required / ref markers once per id */
+            const keyMatch = text.match(KEY_PLAIN);
+            if (keyMatch) {
+                const id = Number(keyMatch[1]);
+                const meta = keys[id];
+                if (meta && !seenKeyIds.has(id)) {
+                    seenKeyIds.add(id);
+                    if (meta.required) markers.push({line: index + 1, kind: 'required'});
+                    if (meta.ref)
+                        markers.push({line: index + 1, kind: 'ref', ref: meta.ref, refOnItems: meta.refOnItems});
+                }
+                text = text.replace(keyMatch[0], '');
+                continue;
+            }
+            /* value stubs: restore the reader-facing text */
             let replacement = '{}';
             let match = text.match(MARK_JSON);
             if (!match) {
@@ -431,7 +495,7 @@ export const getMockSnippetWithMarkers = (
         };
     try {
         const prepared = prepareMockForAnnotation(result.value);
-        return extractMockLineMarkers(JSON.stringify(prepared.value, null, indent), prepared.stubs);
+        return extractMockLineMarkers(JSON.stringify(prepared.value, null, indent), prepared);
     } catch {
         return {code: '// Mock unavailable: value could not be serialized', markers: []};
     }

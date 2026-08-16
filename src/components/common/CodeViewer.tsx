@@ -87,6 +87,16 @@ export default function CodeViewer({code, language, maxHeight, lineMarkers, show
         });
         return map;
     }, [lineMarkers, lineCount]);
+    /* The icon holder is a fixed-width slot sized for the busiest line, so
+       numbers stay aligned no matter how many indicators a line carries. */
+    const maxIconsPerLine = useMemo(() => {
+        let max = 0;
+        markersByLine.forEach(bucket => {
+            if (bucket.length > max) max = bucket.length;
+        });
+        return max;
+    }, [markersByLine]);
+    const iconSlotWidth = maxIconsPerLine > 0 ? maxIconsPerLine * 15 : 0;
     const gutterDigits = String(lineCount).length;
     return (
         <div className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]">
@@ -125,20 +135,27 @@ export default function CodeViewer({code, language, maxHeight, lineMarkers, show
                             const line = index + 1;
                             const markers = markersByLine.get(line);
                             return (
-                                <div key={line} className="flex h-[1.5em] items-center justify-end gap-1.5">
-                                    {markers?.map((marker, markerIndex) => (
-                                        <Tip key={markerIndex} content={marker.tip}>
-                                            <i
-                                                className={clsx(
-                                                    marker.icon,
-                                                    'text-[11px] leading-none cursor-help',
-                                                    marker.className || 'text-[var(--text-muted)]',
-                                                )}
-                                            />
-                                        </Tip>
-                                    ))}
+                                <div key={line} className="flex h-[1.5em] items-center justify-end">
+                                    {iconSlotWidth > 0 && (
+                                        <span
+                                            className="flex items-center justify-end gap-[3px] shrink-0"
+                                            style={{width: `${iconSlotWidth}px`}}
+                                        >
+                                            {markers?.map((marker, markerIndex) => (
+                                                <Tip key={markerIndex} content={marker.tip}>
+                                                    <i
+                                                        className={clsx(
+                                                            marker.icon,
+                                                            'text-[11px] leading-none cursor-help',
+                                                            marker.className || 'text-[var(--text-muted)]',
+                                                        )}
+                                                    />
+                                                </Tip>
+                                            ))}
+                                        </span>
+                                    )}
                                     <span
-                                        className="inline-block text-right text-[10px] opacity-70"
+                                        className="inline-block text-right text-[10px] opacity-70 pl-1.5"
                                         style={{minWidth: `${gutterDigits}ch`}}
                                     >
                                         {line}
