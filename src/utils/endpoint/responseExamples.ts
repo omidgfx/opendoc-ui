@@ -133,7 +133,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         const fallback = () => ({code: getResponseExampleSnippet(schema, contentObj, contentType), markers: []});
         if (getFirstExplicitExample(contentObj) !== undefined) return fallback();
         const generated = generateValidatedMock(schema, spec, 'response');
-        if (!generated.ok) return fallback();
+        if (generated.value === undefined) return fallback();
         const prepared = prepareMockForAnnotation(generated.value);
         const value: any = prepared.value;
         const c = contentType.toLowerCase();

@@ -894,6 +894,15 @@ export default function App() {
         a.click();
     };
     const handlePushSchema = (name: string) => {
+        /* Navigating to a schema that is already in the breadcrumb walks back
+           to it (A → B → A cycles would otherwise grow the trail forever).
+           No history push either — the URL is replaced, so the browser
+           history is not polluted by the shortcut. */
+        const existing = modalsStack.lastIndexOf(name);
+        if (existing >= 0) {
+            setModalsStack(stack => stack.slice(0, existing + 1));
+            return;
+        }
         requestHistoryPush();
         setModalsStack(stack => [...stack, name]);
     };
