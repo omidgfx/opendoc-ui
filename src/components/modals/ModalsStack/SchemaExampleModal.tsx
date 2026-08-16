@@ -1,9 +1,11 @@
 import CodeViewer from '@/src/components/common/CodeViewer';
+import type {CodeLineMarker} from '@/src/utils/lineMarkers';
 
 interface Content {
     title: string;
     content: string;
     isJson?: boolean;
+    lineMarkers?: CodeLineMarker[];
 }
 
 interface SchemaExampleModalProps {
@@ -44,7 +46,12 @@ export default function SchemaExampleModal({visible, backdropClassName, value, o
                 </header>
                 <div className="modal-scroll-region p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
                     {value.isJson ? (
-                        <CodeViewer code={value.content} language="json" maxHeight="none" />
+                        <CodeViewer
+                            code={value.content}
+                            language="json"
+                            maxHeight="none"
+                            lineMarkers={value.lineMarkers}
+                        />
                     ) : (
                         <div className="whitespace-pre-wrap opacity-95">{value.content}</div>
                     )}

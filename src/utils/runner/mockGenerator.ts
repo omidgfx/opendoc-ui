@@ -2,6 +2,42 @@ import type {Diagnostic, OpenApiSpec} from '../../types';
 import {diagnostic} from '../../types';
 import {resolveReferenceResult} from '../openapi';
 
+/**
+ * Marks values generated in place of a pruned branch (a recursive reference
+ * or the depth guard). The symbol key is invisible to JSON.stringify and to
+ * mock validation, so tagged stubs serialize exactly like the plain `{}`
+ * they used to be — but annotators can find them again.
+ */
+export const MOCK_STUB: unique symbol = Symbol('opendoc.mockStub');
+
+export type MockStubKind = 'recursive' | 'max-depth';
+
+export interface MockStubInfo {
+    kind: MockStubKind;
+    /** Display name of the schema reference that closed the cycle. */
+    ref?: string;
+}
+
+export interface MockLineMarker extends MockStubInfo {
+    /** 1-based line number inside the serialized snippet. */
+    line: number;
+}
+
+const refDisplayName = (ref: string): string => {
+    const tail = ref.split('/').pop() || ref;
+    try {
+        return decodeURIComponent(tail);
+    } catch {
+        return tail;
+    }
+};
+
+const createMockStub = (kind: MockStubKind, ref?: string): Record<string, never> =>
+    ({[MOCK_STUB]: {kind, ref}}) as Record<string, never>;
+
+const isMockStub = (value: unknown): value is Record<string, never> =>
+    typeof value === 'object' && value !== null && MOCK_STUB in value;
+
 const mockFromPattern = (pattern: string): string => {
     if (!pattern) return 'string';
     if (pattern.includes('uuid')) return '123e4567-e89b-12d3-a456-426614174000';
@@ -62,10 +98,10 @@ export function generateMock(
     if (schema === true) return null;
     if (schema === false) throw new Error('No value can satisfy the boolean schema false.');
     if (schema === undefined || schema === null) return null;
-    if (depth > 64) return {};
+    if (depth > 64) return createMockStub('max-depth');
     if (schema.$ref) {
         const ref = String(schema.$ref);
-        if (visited.has(ref)) return {};
+        if (visited.has(ref)) return createMockStub('recursive', refDisplayName(ref));
         const nextVisited = new Set(visited);
         nextVisited.add(ref);
         const resolution = resolveReferenceResult(schema, spec);
@@ -296,5 +332,107 @@ export const getMockSnippet = (schema: any, spec: OpenApiSpec | null, usage: Moc
         return JSON.stringify(result.value, null, 2);
     } catch {
         return '// Mock unavailable: value could not be serialized';
+    }
+};
+
+/* ------------------------------------------------------------------ */
+/* Line-marker annotation                                             */
+/* ------------------------------------------------------------------ */
+
+const MARK_TOKEN = (id: number) => `__ODUI_MARK_${id}__`;
+const MARK_JSON = /"__ODUI_MARK_(\d+)__"/;
+const MARK_XML = />__ODUI_MARK_(\d+)__</;
+const MARK_PHP = /'__ODUI_MARK_(\d+)__'/;
+const MARK_PLAIN = /__ODUI_MARK_(\d+)__/;
+
+export interface PreparedMockValue {
+    /** Deep copy of the mock where every stub is a unique placeholder string. */
+    value: unknown;
+    /** Stub metadata, indexed by placeholder id. */
+    stubs: MockStubInfo[];
+}
+
+/**
+ * Replaces every tagged stub inside a generated mock with a unique placeholder
+ * string so any serializer (JSON, YAML, XML, PHP arrays, ...) carries the
+ * position through to the emitted text. Use extractMockLineMarkers afterwards
+ * to convert the placeholders back and learn their line numbers.
+ */
+export const prepareMockForAnnotation = (value: unknown): PreparedMockValue => {
+    const stubs: MockStubInfo[] = [];
+    const walk = (node: unknown): unknown => {
+        if (node === null || typeof node !== 'object') return node;
+        if (isMockStub(node)) {
+            stubs.push((node as any)[MOCK_STUB] as MockStubInfo);
+            return MARK_TOKEN(stubs.length - 1);
+        }
+        if (Array.isArray(node)) return node.map(walk);
+        const out: Record<string, unknown> = {};
+        Object.entries(node as Record<string, unknown>).forEach(([key, child]) => {
+            out[key] = walk(child);
+        });
+        return out;
+    };
+    return {value: walk(value), stubs};
+};
+
+/**
+ * Scans serialized text for annotation placeholders, records the 1-based line
+ * each one landed on, and restores the text a reader should see (`{}` for
+ * JSON/YAML object stubs, an empty node for XML, `[]` for PHP arrays).
+ */
+export const extractMockLineMarkers = (
+    code: string,
+    stubs: MockStubInfo[],
+): {code: string; markers: MockLineMarker[]} => {
+    if (stubs.length === 0 || !code.includes('__ODUI_MARK_')) return {code, markers: []};
+    const markers: MockLineMarker[] = [];
+    const lines = code.split('\n').map((lineText, index) => {
+        let text = lineText;
+        for (;;) {
+            let replacement = '{}';
+            let match = text.match(MARK_JSON);
+            if (!match) {
+                match = text.match(MARK_XML);
+                if (match) replacement = '><';
+            }
+            if (!match) {
+                match = text.match(MARK_PHP);
+                if (match) replacement = '[]';
+            }
+            if (!match) {
+                match = text.match(MARK_PLAIN);
+                if (match) replacement = '{}';
+            }
+            if (!match) return text;
+            const stub = stubs[Number(match[1])];
+            if (stub) markers.push({line: index + 1, ...stub});
+            text = text.replace(match[0], replacement);
+        }
+    });
+    return {code: lines.join('\n'), markers};
+};
+
+/**
+ * Marker-aware variant of getMockSnippet: serializes the generated mock as
+ * JSON and reports which lines hold pruned recursive / depth-guard branches.
+ */
+export const getMockSnippetWithMarkers = (
+    schema: any,
+    spec: OpenApiSpec | null,
+    usage: MockUsage = 'generic',
+    indent = 2,
+): {code: string; markers: MockLineMarker[]} => {
+    const result = generateValidatedMock(schema, spec, usage);
+    if (!result.ok)
+        return {
+            code: `// Mock unavailable: ${result.diagnostics.map(item => item.message).join('; ')}`,
+            markers: [],
+        };
+    try {
+        const prepared = prepareMockForAnnotation(result.value);
+        return extractMockLineMarkers(JSON.stringify(prepared.value, null, indent), prepared.stubs);
+    } catch {
+        return {code: '// Mock unavailable: value could not be serialized', markers: []};
     }
 };

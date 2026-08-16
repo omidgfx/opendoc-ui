@@ -1,8 +1,9 @@
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
 import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/export/codeGeneration';
+import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {useEscClose} from '../../hooks/useEscClose';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
@@ -42,7 +43,28 @@ export default function CodeGeneratorModal({
         serverVariables,
         activeAuth,
     });
-    const generateSnippet = (lang: string) => generateRequestSnippet(lang as CodeLanguage, codegenRequest);
+    const activeSnippet = useMemo(
+        () => generateRequestSnippet(selectedLang as CodeLanguage, codegenRequest),
+        [selectedLang, codegenRequest],
+    );
+    /* Gutter markers: badge every line that carries a redacted credential
+       placeholder, so it is obvious what must be replaced before running. */
+    const secretMarkers = useMemo<CodeLineMarker[]>(
+        () =>
+            activeSnippet.split('\n').flatMap((lineText, index) =>
+                /\bYOUR_[A-Z0-9_]+\b/.test(lineText)
+                    ? [
+                          {
+                              line: index + 1,
+                              icon: 'ph ph-key',
+                              className: 'text-[var(--method-put)]',
+                              tip: 'Redacted credential — replace the YOUR_… placeholder with a real value before running.',
+                          },
+                      ]
+                    : [],
+            ),
+        [activeSnippet],
+    );
     const getLanguageLabel = (lang: string) => {
         switch (lang) {
             case 'curl':
@@ -125,9 +147,10 @@ export default function CodeGeneratorModal({
 
                         <div className="p-1 bg-transparent">
                             <CodeViewer
-                                code={generateSnippet(selectedLang)}
+                                code={activeSnippet}
                                 language={getLanguageLabel(selectedLang)}
                                 maxHeight="420px"
+                                lineMarkers={secretMarkers}
                             />
                         </div>
                     </div>

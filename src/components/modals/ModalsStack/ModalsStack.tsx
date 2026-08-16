@@ -12,7 +12,14 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import {useEscClose} from '../../../hooks/useEscClose';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
-import {getMockSnippet as generateMockSnippet} from '../../../utils/runner/mockGenerator';
+import {
+    getMockSnippet as generateMockSnippet,
+    generateValidatedMock,
+    prepareMockForAnnotation,
+    extractMockLineMarkers,
+    type MockLineMarker,
+} from '../../../utils/runner/mockGenerator';
+import {mockMarkersToLineMarkers, type CodeLineMarker} from '../../../utils/lineMarkers';
 import type {OpenApiSpec} from '../../../types';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
 import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';
@@ -49,6 +56,7 @@ export default function ModalsStack({
         title: string;
         content: string;
         isJson?: boolean;
+        lineMarkers?: CodeLineMarker[];
     } | null>(null);
     const [activeTabs, setActiveTabs] = useState<{
         [index: number]: 'table' | 'example' | 'enum';
@@ -251,13 +259,13 @@ export default function ModalsStack({
         }
         return <span className="font-mono text-xs text-[var(--text)]">{renderTypeName(prop.type, prop.format)}</span>;
     };
-    const getMockSnippet = (schema: any): string =>
-        generateMockSnippet(schema, {
-            openapi: '3.1.1',
-            info: {title: 'Schema viewer', version: '1'},
-            paths: {},
-            components: {schemas: componentsSchemas || {}},
-        });
+    const viewerSpec = {
+        openapi: '3.1.1',
+        info: {title: 'Schema viewer', version: '1'},
+        paths: {},
+        components: {schemas: componentsSchemas || {}},
+    };
+    const getMockSnippet = (schema: any): string => generateMockSnippet(schema, viewerSpec);
     const escapeXml = (value: unknown) =>
         String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -308,24 +316,49 @@ export default function ModalsStack({
         }
         return 'null';
     };
-    const formatSimulationExample = (schema: any, schemaName: string, encoding: string) => {
-        const json = getMockSnippet(schema);
-        let value: any;
+    const formatSimulationExample = (
+        schema: any,
+        schemaName: string,
+        encoding: string,
+    ): {code: string; markers: MockLineMarker[]} => {
+        const plain = (): {code: string; markers: MockLineMarker[]} => {
+            const json = getMockSnippet(schema);
+            let value: any;
+            try {
+                value = JSON.parse(json);
+            } catch {
+                value = json;
+            }
+            if (encoding === 'application/xml') {
+                return {
+                    code: `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`,
+                    markers: [],
+                };
+            }
+            if (encoding === 'application/yaml')
+                return {code: jsYaml.dump(value, {noRefs: true, lineWidth: 100}), markers: []};
+            if (encoding === 'application/x-php-array') return {code: toPhpArray(value), markers: []};
+            return {code: JSON.stringify(value, null, 2), markers: []};
+        };
+        const generated = generateValidatedMock(schema, viewerSpec);
+        if (!generated.ok) return plain();
         try {
-            value = JSON.parse(json);
+            const prepared = prepareMockForAnnotation(generated.value);
+            const value: any = prepared.value;
+            let raw: string;
+            if (encoding === 'application/xml') {
+                raw = `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`;
+            } else if (encoding === 'application/yaml') {
+                raw = jsYaml.dump(value, {noRefs: true, lineWidth: 100});
+            } else if (encoding === 'application/x-php-array') {
+                raw = toPhpArray(value);
+            } else {
+                raw = JSON.stringify(value, null, 2);
+            }
+            return extractMockLineMarkers(raw, prepared.stubs);
         } catch {
-            value = json;
+            return plain();
         }
-        if (encoding === 'application/xml') {
-            return `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`;
-        }
-        if (encoding === 'application/yaml') {
-            return jsYaml.dump(value, {noRefs: true, lineWidth: 100});
-        }
-        if (encoding === 'application/x-php-array') {
-            return toPhpArray(value);
-        }
-        return typeof value === 'string' ? JSON.stringify(value, null, 2) : JSON.stringify(value, null, 2);
     };
     const activeSchemaObj = modals[modals.length - 1];
     const activeModalIndex = modals.length - 1;
@@ -501,15 +534,21 @@ export default function ModalsStack({
                                         </span>
                                     </div>
                                 )}
-                                <CodeViewer
-                                    code={formatSimulationExample(
+                                {(() => {
+                                    const simulation = formatSimulationExample(
                                         activeSchemaObj.schema,
                                         activeSchemaObj.schemaName,
                                         activeExampleEncoding,
-                                    )}
-                                    language={simulationLanguage}
-                                    maxHeight="none"
-                                />
+                                    );
+                                    return (
+                                        <CodeViewer
+                                            code={simulation.code}
+                                            language={simulationLanguage}
+                                            maxHeight="none"
+                                            lineMarkers={mockMarkersToLineMarkers(simulation.markers)}
+                                        />
+                                    );
+                                })()}
                             </div>
                         ) : activeTab === 'enum' && isEnum ? (
                             <div className="flex flex-wrap gap-2 p-3 rounded-xl border animate-in fade-in border-[var(--border)] bg-[var(--background)]">
@@ -545,13 +584,15 @@ export default function ModalsStack({
                                     resolveReference={resolveReference}
                                     getRefName={getRefName}
                                     onPushSchema={onPushSchema}
-                                    onViewExample={(name, subSchema) =>
+                                    onViewExample={(name, subSchema) => {
+                                        const example = formatSimulationExample(subSchema, name, 'application/json');
                                         setHelpModalContent({
                                             title: `${name} Simulated Example`,
-                                            content: getMockSnippet(subSchema),
+                                            content: example.code,
                                             isJson: true,
-                                        })
-                                    }
+                                            lineMarkers: mockMarkersToLineMarkers(example.markers),
+                                        });
+                                    }}
                                     onTestPattern={setPatternToTest}
                                 />
                             </div>

@@ -1,7 +1,14 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '@/src/types';
 import {getRefName} from '@/src/utils/openapi';
-import {getMockSnippet as generateMockSnippet} from '@/src/utils/runner/mockGenerator';
+import {
+    extractMockLineMarkers,
+    generateValidatedMock,
+    getMockSnippet as generateMockSnippet,
+    getMockSnippetWithMarkers as generateMockSnippetWithMarkers,
+    prepareMockForAnnotation,
+    type MockLineMarker,
+} from '@/src/utils/runner/mockGenerator';
 
 export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
     const getMockSnippet = (schema: any): string => generateMockSnippet(schema, spec, 'response');
@@ -110,6 +117,52 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             .replace(/([a-z])([A-Z])/g, '$1 $2')
             .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
             .toLowerCase();
+    const getMockSnippetWithMarkers = (schema: any): {code: string; markers: MockLineMarker[]} =>
+        generateMockSnippetWithMarkers(schema, spec, 'response', 4);
+    /**
+     * Marker-aware variant of getResponseExampleSnippet. Serializes the same
+     * generated example, but also reports which lines of the JSON / YAML / XML
+     * output hold branches pruned by recursion or the depth guard, so the code
+     * viewer can badge those line numbers.
+     */
+    const getResponseExampleSnippetWithMarkers = (
+        schema: any,
+        contentObj: any,
+        contentType: string,
+    ): {code: string; markers: MockLineMarker[]} => {
+        const fallback = () => ({code: getResponseExampleSnippet(schema, contentObj, contentType), markers: []});
+        if (getFirstExplicitExample(contentObj) !== undefined) return fallback();
+        const generated = generateValidatedMock(schema, spec, 'response');
+        if (!generated.ok) return fallback();
+        const prepared = prepareMockForAnnotation(generated.value);
+        const value: any = prepared.value;
+        const c = contentType.toLowerCase();
+        try {
+            let raw: string;
+            if (typeof value === 'string') return fallback();
+            if (c.includes('xml')) {
+                if (Array.isArray(value)) {
+                    const itemName = getSchemaDisplayName(schema?.items || schema, 'item');
+                    const children = value.map(item => toXml(item, itemName, 1)).join('\n');
+                    raw = `<?xml version="1.0" encoding="UTF-8"?>\n<response>\n${children}\n</response>`;
+                } else {
+                    raw = `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, getSchemaDisplayName(schema))}`;
+                }
+            } else if (c.includes('html')) {
+                return fallback();
+            } else if (c.includes('yaml') || c.includes('yml')) {
+                raw = jsYaml.dump(value);
+            } else if (c.includes('text') || c.includes('plain')) {
+                if (typeof value !== 'object' || value === null) return fallback();
+                raw = JSON.stringify(value, null, 4);
+            } else {
+                raw = JSON.stringify(value, null, 4);
+            }
+            return extractMockLineMarkers(raw, prepared.stubs);
+        } catch {
+            return fallback();
+        }
+    };
     const getSchemaNamesFromResponse = (resp: any): string[] => {
         if (!resp?.content) return [];
         const names = new Set<string>();
@@ -143,6 +196,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
     };
     return {
         getMockSnippet,
+        getMockSnippetWithMarkers,
         getMockValue,
         getFirstExplicitExample,
         escapeXml,
@@ -150,6 +204,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         getSchemaDisplayName,
         getLanguageForContentType,
         getResponseExampleSnippet,
+        getResponseExampleSnippetWithMarkers,
         humanizeSchemaName,
         getSchemaNamesFromResponse,
         truncateText,
