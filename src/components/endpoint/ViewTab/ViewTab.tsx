@@ -377,7 +377,12 @@ export default function ViewTab({
                     setExampleModalContent({
                         title: `${name} Simulated Example`,
                         content: example.code,
-                        lineMarkers: mockMarkersToLineMarkers(example.markers),
+                        lineMarkers: mockMarkersToLineMarkers(example.markers, {
+                            onOpenSchema: schemaName => {
+                                exampleTransition.requestClose();
+                                onOpenSchemaModal(schemaName);
+                            },
+                        }),
                     });
                 }}
                 onTestPattern={setPatternToTest}
@@ -1022,6 +1027,10 @@ export default function ViewTab({
                                                                                         maxHeight="none"
                                                                                         lineMarkers={mockMarkersToLineMarkers(
                                                                                             example.markers,
+                                                                                            {
+                                                                                                onOpenSchema:
+                                                                                                    onOpenSchemaModal,
+                                                                                            },
                                                                                         )}
                                                                                     />
                                                                                 );

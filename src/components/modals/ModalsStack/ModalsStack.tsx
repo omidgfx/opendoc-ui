@@ -545,7 +545,9 @@ export default function ModalsStack({
                                             code={simulation.code}
                                             language={simulationLanguage}
                                             maxHeight="none"
-                                            lineMarkers={mockMarkersToLineMarkers(simulation.markers)}
+                                            lineMarkers={mockMarkersToLineMarkers(simulation.markers, {
+                                                onOpenSchema: onPushSchema,
+                                            })}
                                         />
                                     );
                                 })()}
@@ -590,7 +592,12 @@ export default function ModalsStack({
                                             title: `${name} Simulated Example`,
                                             content: example.code,
                                             isJson: true,
-                                            lineMarkers: mockMarkersToLineMarkers(example.markers),
+                                            lineMarkers: mockMarkersToLineMarkers(example.markers, {
+                                                onOpenSchema: schemaName => {
+                                                    helpTransition.requestClose();
+                                                    onPushSchema(schemaName);
+                                                },
+                                            }),
                                         });
                                     }}
                                     onTestPattern={setPatternToTest}

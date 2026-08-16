@@ -20,7 +20,7 @@ export const MOCK_KEY_META: unique symbol = Symbol('opendoc.mockKeyMeta');
 export type MockStubKind = 'recursive' | 'max-depth';
 
 /** Kinds a gutter marker can report for a serialized mock line. */
-export type MockLineMarkerKind = MockStubKind | 'required' | 'ref';
+export type MockLineMarkerKind = MockStubKind | 'ref';
 
 export interface MockStubInfo {
     kind: MockStubKind;
@@ -29,7 +29,6 @@ export interface MockStubInfo {
 }
 
 export interface MockKeyMeta {
-    required?: boolean;
     /** Display name of the schema the property value was generated from. */
     ref?: string;
     /** True when the reference sits on the array items rather than the key. */
@@ -157,19 +156,17 @@ export function generateMock(
     if (type === 'object' || schema.properties || schema.additionalProperties) {
         const object: Record<string, unknown> = {};
         const keyMeta: Record<string, MockKeyMeta> = {};
-        const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
         Object.entries(schema.properties || {}).forEach(([key, child]: [string, any]) => {
             if (usage === 'request' && child?.readOnly === true) return;
             if (usage === 'response' && child?.writeOnly === true) return;
             object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
             const meta: MockKeyMeta = {};
-            if (required.includes(key)) meta.required = true;
             if (child?.$ref) meta.ref = refDisplayName(String(child.$ref));
             else if (child?.items?.$ref) {
                 meta.ref = refDisplayName(String(child.items.$ref));
                 meta.refOnItems = true;
             }
-            if (meta.required || meta.ref) keyMeta[key] = meta;
+            if (meta.ref) keyMeta[key] = meta;
         });
         if (Object.keys(keyMeta).length > 0)
             Object.defineProperty(object, MOCK_KEY_META, {value: keyMeta, enumerable: false});
@@ -446,7 +443,6 @@ export const extractMockLineMarkers = (
                 const meta = keys[id];
                 if (meta && !seenKeyIds.has(id)) {
                     seenKeyIds.add(id);
-                    if (meta.required) markers.push({line: index + 1, kind: 'required'});
                     if (meta.ref)
                         markers.push({line: index + 1, kind: 'ref', ref: meta.ref, refOnItems: meta.refOnItems});
                 }
