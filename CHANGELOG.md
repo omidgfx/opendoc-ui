@@ -3,6 +3,17 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [Unreleased]
+
+Documentation-view request body polish.
+
+- renders **open object bodies** in the schema property table: schemas with no declared
+  properties but `additionalProperties` (such as merge-patch bodies) now show an "Additional
+  Properties" block with the accepted value schema instead of an empty table;
+- shows the **request body example** in the endpoint documentation when the media type or its
+  schema declares one, so bodies like `application/merge-patch+json` with an example are no
+  longer invisible in the docs view.
+
 ## [0.1.13] — 2026-08-16
 
 Server variable editing and schema-table polish.
