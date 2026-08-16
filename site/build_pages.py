@@ -22,7 +22,7 @@ def shell(fname, title, desc, body):
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=8"/>
+<link rel="stylesheet" href="assets/css/site.css?v=9"/>
 <script>
 (function(){{try{{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -85,7 +85,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}}catch(e){
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=8"></script>
+<script src="assets/js/site.js?v=9"></script>
 </body>
 </html>
 '''
