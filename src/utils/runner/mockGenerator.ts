@@ -20,7 +20,17 @@ export const MOCK_KEY_META: unique symbol = Symbol('opendoc.mockKeyMeta');
 export type MockStubKind = 'recursive' | 'max-depth';
 
 /** Kinds a gutter marker can report for a serialized mock line. */
-export type MockLineMarkerKind = MockStubKind | 'ref';
+export type MockLineMarkerKind =
+    MockStubKind | 'ref' | 'branch' | 'deprecated' | 'read-only' | 'write-only' | 'enum' | 'format' | 'pattern';
+
+export interface MockBranchInfo {
+    kind: 'oneOf' | 'anyOf';
+    /** 0-based index of the branch the example expands. */
+    index: number;
+    count: number;
+    /** Human labels for every branch, in declaration order. */
+    names: string[];
+}
 
 export interface MockStubInfo {
     kind: MockStubKind;
@@ -33,6 +43,15 @@ export interface MockKeyMeta {
     ref?: string;
     /** True when the reference sits on the array items rather than the key. */
     refOnItems?: boolean;
+    branch?: MockBranchInfo;
+    deprecated?: boolean;
+    readOnly?: boolean;
+    writeOnly?: boolean;
+    /** Allowed values (enum) or the single const value. */
+    enumValues?: unknown[];
+    isConst?: boolean;
+    format?: string;
+    pattern?: string;
 }
 
 export interface MockLineMarker {
@@ -41,6 +60,11 @@ export interface MockLineMarker {
     kind: MockLineMarkerKind;
     ref?: string;
     refOnItems?: boolean;
+    branch?: MockBranchInfo;
+    enumValues?: unknown[];
+    isConst?: boolean;
+    format?: string;
+    pattern?: string;
 }
 
 const refDisplayName = (ref: string): string => {
@@ -78,9 +102,31 @@ const isNullBranch = (branch: any): boolean => {
  */
 const pickCombinatorBranch = (branches: any[]): any => branches.find(branch => !isNullBranch(branch)) ?? branches[0];
 
-/** Resolves the display name of a reference, looking through combinators. */
-const refNameFromChildSchema = (child: any): {ref?: string; refOnItems?: boolean} => {
-    const direct = (node: any): string | undefined => {
+/** Human label for a combinator branch (reference name, title or type). */
+const branchLabel = (branch: any): string => {
+    if (branch === null || branch === undefined) return 'null';
+    if (typeof branch !== 'object') return String(branch);
+    if (branch.$ref) return refDisplayName(String(branch.$ref));
+    if (branch.title) return String(branch.title);
+    if (isNullBranch(branch)) return 'null';
+    const type = branch.type;
+    if (Array.isArray(type)) return type.join(' | ');
+    if (typeof type === 'string') return type;
+    return 'schema';
+};
+
+/**
+ * Collects gutter-facing facts about a property: the referenced schema it
+ * expands, the combinator branch the example chose, and constraints worth
+ * surfacing (deprecated, readOnly/writeOnly, enum/const, format, pattern).
+ * Facts are read from the inline schema, the resolved reference, or the
+ * picked combinator branch — whichever actually describes the value.
+ */
+const collectKeyMeta = (child: any, spec: OpenApiSpec | null): MockKeyMeta => {
+    const meta: MockKeyMeta = {};
+    if (!child || typeof child !== 'object') return meta;
+
+    const refName = (node: any): string | undefined => {
         if (!node || typeof node !== 'object') return undefined;
         if (node.$ref) return refDisplayName(String(node.$ref));
         const branches = Array.isArray(node.oneOf) ? node.oneOf : Array.isArray(node.anyOf) ? node.anyOf : null;
@@ -90,12 +136,63 @@ const refNameFromChildSchema = (child: any): {ref?: string; refOnItems?: boolean
         }
         return undefined;
     };
-    const own = direct(child);
-    if (own) return {ref: own};
-    const items = direct(child?.items);
-    if (items) return {ref: items, refOnItems: true};
-    return {};
+    const own = refName(child);
+    if (own) meta.ref = own;
+    else {
+        const items = refName(child.items);
+        if (items) {
+            meta.ref = items;
+            meta.refOnItems = true;
+        }
+    }
+
+    const branches = Array.isArray(child.oneOf) ? child.oneOf : Array.isArray(child.anyOf) ? child.anyOf : null;
+    if (branches && branches.length > 1) {
+        const picked = pickCombinatorBranch(branches);
+        meta.branch = {
+            kind: Array.isArray(child.oneOf) ? 'oneOf' : 'anyOf',
+            index: Math.max(0, branches.indexOf(picked)),
+            count: branches.length,
+            names: branches.map(branchLabel),
+        };
+    }
+
+    /* the schema that actually describes the generated value */
+    let facts: any = child;
+    if (child.$ref) {
+        const resolution = resolveReferenceResult(child, spec);
+        if (resolution.status === 'resolved' && resolution.value !== child) facts = resolution.value;
+    } else if (branches && branches.length) {
+        let picked = pickCombinatorBranch(branches);
+        if (picked?.$ref) {
+            const resolution = resolveReferenceResult(picked, spec);
+            if (resolution.status === 'resolved' && resolution.value !== picked) picked = resolution.value;
+        }
+        facts = picked ?? child;
+    }
+    if (child.deprecated === true || facts?.deprecated === true) meta.deprecated = true;
+    if (child.readOnly === true || facts?.readOnly === true) meta.readOnly = true;
+    if (child.writeOnly === true || facts?.writeOnly === true) meta.writeOnly = true;
+    if (facts?.const !== undefined) {
+        meta.enumValues = [facts.const];
+        meta.isConst = true;
+    } else if (Array.isArray(facts?.enum) && facts.enum.length) meta.enumValues = facts.enum;
+    if (typeof facts?.format === 'string' && facts.format) meta.format = facts.format;
+    if (typeof facts?.pattern === 'string' && facts.pattern) meta.pattern = facts.pattern;
+    return meta;
 };
+
+const keyMetaHasFacts = (meta: MockKeyMeta): boolean =>
+    Boolean(
+        meta.ref ||
+        meta.branch ||
+        meta.deprecated ||
+        meta.readOnly ||
+        meta.writeOnly ||
+        meta.enumValues ||
+        meta.format ||
+        meta.pattern,
+    );
 
 const mockFromPattern = (pattern: string): string => {
     if (!pattern) return 'string';
@@ -199,8 +296,8 @@ export function generateMock(
             if (usage === 'request' && child?.readOnly === true) return;
             if (usage === 'response' && child?.writeOnly === true) return;
             object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
-            const meta: MockKeyMeta = refNameFromChildSchema(child);
-            if (meta.ref) keyMeta[key] = meta;
+            const meta = collectKeyMeta(child, spec);
+            if (keyMetaHasFacts(meta)) keyMeta[key] = meta;
         });
         if (Object.keys(keyMeta).length > 0)
             Object.defineProperty(object, MOCK_KEY_META, {value: keyMeta, enumerable: false});
@@ -477,8 +574,16 @@ export const extractMockLineMarkers = (
                 const meta = keys[id];
                 if (meta && !seenKeyIds.has(id)) {
                     seenKeyIds.add(id);
-                    if (meta.ref)
-                        markers.push({line: index + 1, kind: 'ref', ref: meta.ref, refOnItems: meta.refOnItems});
+                    const line = index + 1;
+                    if (meta.ref) markers.push({line, kind: 'ref', ref: meta.ref, refOnItems: meta.refOnItems});
+                    if (meta.branch) markers.push({line, kind: 'branch', branch: meta.branch});
+                    if (meta.deprecated) markers.push({line, kind: 'deprecated'});
+                    if (meta.readOnly) markers.push({line, kind: 'read-only'});
+                    if (meta.writeOnly) markers.push({line, kind: 'write-only'});
+                    if (meta.enumValues)
+                        markers.push({line, kind: 'enum', enumValues: meta.enumValues, isConst: meta.isConst});
+                    if (meta.format) markers.push({line, kind: 'format', format: meta.format});
+                    if (meta.pattern) markers.push({line, kind: 'pattern', pattern: meta.pattern});
                 }
                 text = text.replace(keyMatch[0], '');
                 continue;

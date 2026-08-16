@@ -547,6 +547,7 @@ export default function ModalsStack({
                                             maxHeight="none"
                                             lineMarkers={mockMarkersToLineMarkers(simulation.markers, {
                                                 onOpenSchema: onPushSchema,
+                                                onTestPattern: setPatternToTest,
                                             })}
                                         />
                                     );
@@ -597,6 +598,7 @@ export default function ModalsStack({
                                                     helpTransition.requestClose();
                                                     onPushSchema(schemaName);
                                                 },
+                                                onTestPattern: setPatternToTest,
                                             }),
                                         });
                                     }}
