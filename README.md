@@ -8,7 +8,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.13-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.14-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -17,7 +17,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.13](#version-013)
+- [Version 0.1.14](#version-014)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,25 +87,27 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.13
+## Version 0.1.14
 
-This release redesigns the Active Server control and polishes schema presentation:
+This release redesigns the marketing website, adds line markers to the code viewer, supports every
+request body format an endpoint declares, and polishes the documentation view:
 
-- replaces the inline server-variable editors in the sidebar with a compact **Active Server**
-  row — the server select with a configuration button at its right that opens a dedicated
-  **Server Variables modal** (enum dropdown or free input per variable, live resolved-URL
-  preview, apply/cancel), keeping the sidebar compact;
-- fixes server-variable handling at the root: changing a variable no longer replaces the
-  selected server template with the expanded URL (which silently reset the dropdown to the
-  first server and dropped the editors) — the template stays selected, variable values are
-  kept per server URL, and the resolved URL flows into the Runner, the response-panel URL
-  display, code generation, and the "Copy full endpoint URL" action through the resolver's
-  `selectedVariables` path;
-- shows **patternProperties** keys and **`not` constraints** in the schema property table
-  (locale patterns, "must not be the empty string" style constraints) as descriptive blocks
-  instead of an empty table;
-- labels **mutual TLS credentials** as "Client certificate" in the auth modal instead of
-  "unknown".
+- **redesigns the marketing website** around the product's brand identity — all-sans typography
+  with CSS-variable tokens, a light/dark/system toggle, scroll progress and reveal choreography
+  behind `prefers-reduced-motion`, a landing hero embedding the live demo, a bento capability grid
+  with hand-built miniatures of the real UI, and the Features/Guide/Compatibility/Deploy/
+  Developers/FAQ subpages rebuilt with scroll-spy TOCs;
+- adds **line numbers with annotation icons** to the code viewer — schema-derived gutter markers
+  (oneOf/anyOf branches, deprecated, read-only/write-only, enum/const, format icons, clickable
+  pattern markers opening the Pattern Tester) and runner-response markers (truncation, encoded
+  binary, diff vs the previous run), recursion-safe and tooltip-rich;
+- supports **every request body format an endpoint declares** — JSON, YAML, XML and urlencoded
+  query strings with bracket notation (`a=1&b=4&j[]=1&a[]=5&k[key]=foo`) convert transparently:
+  the form edits a JSON model serialized to the active media type, the media-type dropdown
+  converts the current payload, and unknown textual formats (text/plain, …) convert cleanly too;
+- renders **open object bodies** ("Additional Properties" blocks) and the **request body example**
+  in the documentation view, and fixes parameter presentation — long descriptions use the
+  tooltip, and every example type renders (never `[object Object]`).
 
 ## Quick start
 
