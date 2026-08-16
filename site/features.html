@@ -1,337 +1,203 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="system">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Features — OpenDoc UI</title>
-<meta name="description" content="Every capability of OpenDoc UI, explained in depth: documentation browser, API runner, schema explorer, code generation, local notes, AI assistant, workspace navigation and theming."/>
+<meta name="description" content="Every capability of OpenDoc UI in depth: documentation browser, API runner, schema explorer, code generation, local notes, AI assistant, workspace and themes."/>
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css"/>
+<link rel="stylesheet" href="assets/css/site.css?v=5"/>
+<script>
+(function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
+var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}})();
+</script>
 </head>
 <body>
+<div class="scroll-progress" aria-hidden="true"></div>
 
-<header class="site-header">
-  <div class="container nav">
-    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
-    <nav class="nav-links" id="nav-links">
-      <a href="index.html">Home</a>
-      <a href="features.html">Features</a>
-      <a href="guide.html">Guide</a>
-      <a href="compatibility.html">Compatibility</a>
-      <a href="deploy.html">Deploy</a>
-      <a href="developers.html">Developers</a>
-      <a href="faq.html">FAQ</a>
-    </nav>
-    <div class="nav-actions">
-      <div class="theme-toggle">
-        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
-        <div class="theme-options" id="theme-menu" role="menu">
-          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
-          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
-          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
-        </div>
+<header class="site-header" id="site-header">
+  <div class="container" style="padding:0 16px">
+    <div class="nav">
+      <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b>&nbsp;UI</b></span></a>
+      <nav class="nav-links" id="nav-links">
+        <a href="index.html">Home</a>
+        <a href="features.html" class="active">Features</a>
+        <a href="guide.html">Guide</a>
+        <a href="compatibility.html">Compatibility</a>
+        <a href="deploy.html">Deploy</a>
+        <a href="developers.html">Developers</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <button class="theme-btn" id="theme-btn" aria-label="Change theme"><i class="ph ph-monitor"></i></button>
+        <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a class="btn btn-brand" href="https://omidgfx.github.io/opendoc-ui/demo/">Open the demo <i class="ph-fill ph-arrow-up-right"></i></a>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
       </div>
-      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
-      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
-      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
     </div>
   </div>
 </header>
 
 <section class="page-hero">
-  <div class="aurora" aria-hidden="true"></div>
+  <div class="hero-bg" aria-hidden="true"></div>
   <div class="container">
-    <h1 class="reveal">Features</h1>
-    <p class="reveal d1">Every capability of OpenDoc UI, examined in detail — what it does, why it matters, and how it changes the way you work with APIs.</p>
-  </div>
-  <div class="container subnav-wrap reveal d2">
-    <nav class="subnav" aria-label="Feature sections">
-      <a href="#docs"><i class="ph ph-book-open-text"></i> Documentation</a>
-      <a href="#runner"><i class="ph ph-flask"></i> Runner</a>
-      <a href="#schemas"><i class="ph ph-diamonds-four"></i> Schemas</a>
-      <a href="#codegen"><i class="ph ph-code"></i> Code generation</a>
-      <a href="#notes"><i class="ph ph-note-pencil"></i> Notes</a>
-      <a href="#ai"><i class="ph ph-sparkle"></i> AI assistant</a>
-      <a href="#workspace"><i class="ph ph-browsers"></i> Workspace</a>
-      <a href="#themes"><i class="ph ph-palette"></i> Themes</a>
-    </nav>
+    <span class="eyebrow reveal">Features</span>
+    <h1 class="reveal d1">Every capability,<br/><span class="h-accent">examined in detail</span></h1>
+    <p class="lead reveal d2">What it does, why it matters, and how it changes the way you work with APIs. Each surface below is live in the demo — nothing here is a mockup of a roadmap.</p>
   </div>
 </section>
+<section class="section" style="padding-top:20px">
+  <div class="container">
 
-<section class="section" style="padding-top:40px">
-  <div class="container doc-layout">
-    <aside class="toc-box">
-      <h4>On this page</h4>
-      <a href="#docs"><i class="ph ph-book-open-text"></i> Documentation browser</a>
-      <a href="#runner"><i class="ph ph-flask"></i> API Runner</a>
-      <a href="#schemas"><i class="ph ph-diamonds-four"></i> Schema explorer</a>
-      <a href="#codegen"><i class="ph ph-code"></i> Code &amp; type generation</a>
-      <a href="#notes"><i class="ph ph-note-pencil"></i> Local notes &amp; todos</a>
-      <a href="#ai"><i class="ph ph-sparkle"></i> AI assistant</a>
-      <a href="#workspace"><i class="ph ph-browsers"></i> Workspace &amp; navigation</a>
-      <a href="#themes"><i class="ph ph-palette"></i> Themes</a>
-    </aside>
-    <div class="doc-body">
-
-      <section id="docs">
-        <h2 class="reveal">Documentation browser</h2>
-        <p class="reveal">
-          OpenDoc UI renders any OpenAPI 3.0, 3.1, 3.2 or Swagger 2.0 document into a fully navigable
-          reference. Endpoints are grouped by tag into a sidebar tree that respects your sorting,
-          route-display, protection and deprecation preferences, so a large specification becomes an
-          orderly, searchable index rather than an overwhelming list.
-        </p>
-        <p class="reveal">
-          Every operation opens a documentation view that leaves nothing hidden: parameter tables with
-          types, formats, patterns and examples; request-body context with encoding-type selection and
-          explicit oneOf/anyOf branch chips; and a response matrix with per-status example objects,
-          schema tables, enum values and deep-linkable anchors such as <code>#response-200</code>.
-          Pattern constraints carry a built-in tester, so you can validate candidate values against the
-          exact regular expression before ever sending a request.
-        </p>
-        <p class="reveal">
-          The most demanding specifications — deeply nested objects, recursive trees, mutually
-          referencing schemas, polymorphic discriminators — are handled with cycle-safe rendering.
-          Recursive branches terminate at their boundary and are marked with a loop icon, keeping the
-          matrix readable instead of letting it expand forever.
-        </p>
-        <div class="mockup reveal">
-          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span></div>
-          <img class="show-light" src="assets/opendoc-docs.png" alt="OpenDoc UI endpoint documentation"/>
-          <img class="show-dark" src="assets/opendoc-docs-dark.png" alt="OpenDoc UI endpoint documentation in dark mode"/>
-          <span class="glow"></span>
-        </div>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Tag-grouped endpoint tree with counts, protection and deprecation indicators</li>
-          <li><i class="ph-fill ph-check-circle"></i> Distinct method colors for GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
-          <li><i class="ph-fill ph-check-circle"></i> Parameter, request-body and response surfaces with examples and enums</li>
-          <li><i class="ph-fill ph-check-circle"></i> Built-in regex pattern tester and response-code deep links</li>
-          <li><i class="ph-fill ph-check-circle"></i> Cycle-safe rendering of recursive and composed schemas</li>
+    <div class="feature-row" id="docs">
+      <div>
+        <span class="eyebrow reveal">01 · Read</span>
+        <h2 class="reveal d1">Documentation browser</h2>
+        <p class="reveal d2">Any OpenAPI 3.0/3.1/3.2 or Swagger 2.0 document becomes a fully navigable reference. Endpoints group by tag into a sidebar tree that respects your sorting, route-display, protection and deprecation preferences — a large specification becomes an orderly index rather than an overwhelming list.</p>
+        <ul class="checklist reveal d3">
+          <li><i class="ph-fill ph-check"></i><span>Parameter tables with types, formats, patterns and examples — plus a built-in <b>regex pattern tester</b>.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Request-body context with encoding-type selection and explicit <b>oneOf / anyOf branch chips</b>.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Response matrix with per-status examples and deep-linkable anchors like <code class="inline">#response-200</code>.</span></li>
+          <li><i class="ph-fill ph-check"></i><span><b>Cycle-safe rendering</b> — recursive branches terminate at their boundary, marked with a loop icon.</span></li>
         </ul>
-      </section>
+      </div>
+      <div class="fr-media reveal d2"><img src="assets/opendoc-docs.png" alt="OpenDoc UI documentation view with endpoint tree, method badges and schema tables" loading="lazy"/></div>
+    </div>
 
-      <section id="runner">
-        <h2 class="reveal">Built-in API Runner</h2>
-        <p class="reveal">
-          Documentation is passive; the Runner is active. OpenDoc UI executes genuine requests from the
-          browser against the servers declared in your specification, so the gap between reading an
-          endpoint and calling it disappears. Path, query, header and cookie parameters are rendered as
-          inputs with their documented examples and constraints; request bodies can be composed in a
-          recursive form editor or as raw JSON, including multipart file uploads and
-          application/x-www-form-urlencoded payloads.
-        </p>
-        <p class="reveal">
-          Authentication is first-class: bearer tokens, API keys in headers, queries or cookies, HTTP
-          basic auth, OAuth flows with an authorization-code PKCE helper, and browser-managed cookies.
-          The response panel shows status, headers, body and a persistent history of your last ten
-          outcomes, with cancellation for long-running calls. Keyboard shortcuts — <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
-          to execute, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save inputs — keep the workflow fluid.
-        </p>
-        <p class="reveal">
-          A dedicated Runner Compatibility report analyzes the specification and states plainly what the
-          browser Runner can and cannot do for it, so expectations are set before you press execute.
-        </p>
-        <div class="mockup reveal">
-          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span></div>
-          <img src="assets/opendoc-runner.png" alt="OpenDoc UI API runner with a composed request"/>
-          <span class="glow"></span>
-        </div>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Real fetch-based execution with live response inspection</li>
-          <li><i class="ph-fill ph-check-circle"></i> Recursive form editor, raw JSON, multipart and URL-encoded bodies</li>
-          <li><i class="ph-fill ph-check-circle"></i> Bearer, API-key, basic, OAuth and cookie authentication</li>
-          <li><i class="ph-fill ph-check-circle"></i> Response history, cancellation and saved inputs per endpoint</li>
-          <li><i class="ph-fill ph-check-circle"></i> Runner Compatibility report with honest capability analysis</li>
+    <div class="feature-row rev" id="runner">
+      <div>
+        <span class="eyebrow reveal">02 · Run</span>
+        <h2 class="reveal d1">Built-in API Runner</h2>
+        <p class="reveal d2">Documentation is passive; the Runner is active. Execute genuine requests from the browser against the servers declared in your specification — the gap between reading an endpoint and calling it disappears.</p>
+        <ul class="checklist reveal d3">
+          <li><i class="ph-fill ph-check"></i><span>Path, query, header and cookie parameters rendered as inputs with documented examples and constraints.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Recursive form editor or raw JSON/YAML/XML bodies with format-aware validation, multipart uploads included.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth and cookies.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation and bounded response details.</span></li>
         </ul>
-      </section>
+      </div>
+      <div class="fr-media reveal d2"><img src="assets/opendoc-runner.png" alt="The API Runner composing a POST /pet request with a form-based payload editor" loading="lazy"/></div>
+    </div>
 
-      <section id="schemas">
-        <h2 class="reveal">Schema explorer</h2>
-        <p class="reveal">
-          Every model in <code>components/schemas</code> is one click away. The explorer offers search
-          with letter filters, and each schema opens a modal with a unified property matrix — dotted
-          paths such as <code>customer.address.city</code>, types, formats, patterns, required markers,
-          descriptions and examples — plus a simulated example object generated per media type (JSON,
-          XML, YAML or PHP array).
-        </p>
-        <p class="reveal">
-          Composition is made legible: allOf constraints are presented as conjoined requirements, while
-          oneOf and anyOf alternatives become selectable branches with their referenced names. Referenced
-          schemas support one-click drill-down, and the whole graph remains navigable without losing your
-          place — the modal stack remembers exactly where you came from.
-        </p>
-        <div class="mockup reveal">
-          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span></div>
-          <img src="assets/opendoc-schemas.png" alt="OpenDoc UI schema explorer modal"/>
-          <span class="glow"></span>
-        </div>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Searchable schema index with letter filters</li>
-          <li><i class="ph-fill ph-check-circle"></i> Unified property matrix with dotted paths and required markers</li>
-          <li><i class="ph-fill ph-check-circle"></i> Simulated examples in JSON, XML, YAML and PHP array</li>
-          <li><i class="ph-fill ph-check-circle"></i> Branch-aware allOf / oneOf / anyOf / discriminator rendering</li>
-          <li><i class="ph-fill ph-check-circle"></i> Drill-down modal stack and TypeScript export</li>
+    <div class="feature-row" id="schemas">
+      <div>
+        <span class="eyebrow reveal">03 · Understand</span>
+        <h2 class="reveal d1">Schema explorer</h2>
+        <p class="reveal d2">Inspect every schema in the document to any depth. The hard cases — deeply nested objects, recursive trees, mutually referencing schemas, polymorphic discriminators — render safely, and modern 3.1/3.2 keywords are handled explicitly.</p>
+        <ul class="checklist reveal d3">
+          <li><i class="ph-fill ph-check"></i><span><code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions and webhooks.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Enum values, defaults, constraints and examples surfaced inline.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Every schema modal is deep-linkable and shareable.</span></li>
         </ul>
-      </section>
+      </div>
+      <div class="fr-media reveal d2"><img src="assets/opendoc-schemas.png" alt="Schema explorer showing nested object structures" loading="lazy"/></div>
+    </div>
 
-      <section id="codegen">
-        <h2 class="reveal">Code &amp; type generation</h2>
-        <p class="reveal">
-          From any operation, OpenDoc UI generates a ready-to-run request snippet in the language of
-          your choice — curl, JavaScript fetch and axios, Python, Go, C#, PHP and Angular — with the
-          endpoint's parameters, body and authentication included. Secrets are automatically redacted
-          into placeholders, so generated code is safe to share by design.
-        </p>
-        <p class="reveal">
-          For consumers, the schema set exports as clean TypeScript: interfaces, unions for
-          discriminated models, null handling and generated example constants, delivered as a ZIP or a
-          single file. Your types and your documentation can never drift apart, because both derive from
-          the same source of truth.
-        </p>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Nine codegen targets, from curl to Angular</li>
-          <li><i class="ph-fill ph-check-circle"></i> Automatic secret redaction in generated snippets</li>
-          <li><i class="ph-fill ph-check-circle"></i> Full TypeScript model export with example constants</li>
-          <li><i class="ph-fill ph-check-circle"></i> Single-file or ZIP delivery</li>
+    <div class="feature-row rev" id="notes">
+      <div>
+        <span class="eyebrow reveal">04 · Remember</span>
+        <h2 class="reveal d1">Local notes &amp; todos</h2>
+        <p class="reveal d2">Keep private Markdown notes and todos beside any endpoint — knowledge that belongs to you, not the spec. Fourteen translucent, theme-safe tones keep them readable in every palette.</p>
+        <ul class="checklist reveal d3">
+          <li><i class="ph-fill ph-check"></i><span>Deletion is never final — a trash with orphaned-note detection catches notes whose endpoints vanished.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Export and import everything as JSON.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Optionally hide an endpoint after confirming its last todo — and restore hidden endpoints any time.</span></li>
         </ul>
-      </section>
+      </div>
+      <div class="fr-media reveal d2"><img src="assets/opendoc-notes.png" alt="Local notes pinned beside endpoints in themed tones" loading="lazy"/></div>
+    </div>
 
-      <section id="notes">
-        <h2 class="reveal">Local notes &amp; todos</h2>
-        <p class="reveal">
-          Real API work happens beside the endpoints, not away from them. OpenDoc UI keeps
-          specification-scoped Markdown notes and todos with fourteen theme-safe tones, attachable to
-          any endpoint through a context menu, the endpoint notes sidebar, or the Local Notes page.
-          Todos carry a persistent done state and can offer to hide their endpoint once every open todo
-          is complete — a tidy way to track integration work in place.
-        </p>
-        <p class="reveal">
-          Deletion is never destructive by accident: notes move to a per-specification Trash with
-          restore, permanent delete and empty-trash actions. When an endpoint disappears from the
-          specification — renamed, removed, or never present in an imported export — its notes surface
-          in a dedicated Orphaned list where you can re-assign them to another endpoint or delete them
-          deliberately. Everything exports to a JSON file and imports back with orphaned-note detection
-          and clear cross-specification warnings.
-        </p>
-        <div class="mockup reveal">
-          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><i class="ph ph-lock-simple"></i> omidgfx.github.io/opendoc-ui/demo/</span></div>
-          <img src="assets/opendoc-notes.png" alt="OpenDoc UI local notes page"/>
-          <span class="glow"></span>
-        </div>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Per-endpoint Markdown notes and todos with fourteen tones</li>
-          <li><i class="ph-fill ph-check-circle"></i> Resizable notes sidebar in Documentation and Runner views</li>
-          <li><i class="ph-fill ph-check-circle"></i> Trash with restore, permanent delete and empty</li>
-          <li><i class="ph-fill ph-check-circle"></i> Orphaned-note recovery with endpoint re-assignment</li>
-          <li><i class="ph-fill ph-check-circle"></i> JSON export/import with cross-spec warnings</li>
-        </ul>
-      </section>
+    <div style="height:40px"></div>
 
-      <section id="ai">
-        <h2 class="reveal">Optional AI assistant</h2>
-        <p class="reveal">
-          The assistant answers questions grounded in your actual specification — endpoints, schemas,
-          parameters and responses — with citations you can verify. It can open endpoints, pre-fill the
-          Runner and propose a request through an explicit action bridge, so the AI never invents
-          behavior; it prepares the workspace and you stay in control of execution.
-        </p>
-        <p class="reveal">
-          Deployment is flexible: connect directly to a CORS-enabled provider (OpenAI, Anthropic,
-          Ollama, OpenRouter, or any OpenAI-compatible endpoint), or run the hardened server-side AI
-          gateway included in the repository — token-authenticated, origin-allowlisted, rate-limited and
-          timeout-bounded, with reference implementations for eight backend frameworks.
-        </p>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Grounded answers with citations from your spec</li>
-          <li><i class="ph-fill ph-check-circle"></i> Safe Runner preparation through the action bridge</li>
-          <li><i class="ph-fill ph-check-circle"></i> Direct provider mode or hardened gateway mode</li>
-          <li><i class="ph-fill ph-check-circle"></i> Multiple conversations, model profiles and Markdown export</li>
-        </ul>
-      </section>
+    <div class="section-head" id="more">
+      <span class="eyebrow reveal">And the rest of the workstation</span>
+      <h2 class="reveal d1">Small features, <span class="h-accent">obsessively</span> finished</h2>
+    </div>
+    <div class="card-grid">
+      <div class="info-card reveal" id="codegen">
+        <h3><i class="ph ph-code"></i>Code &amp; type generation</h3>
+        <p>fetch / axios / Angular snippets plus TypeScript models generated from your schemas — secret-redacted and downloadable as a zip.</p>
+        <span class="mono-tag">curl · fetch · axios · types.ts</span>
+      </div>
+      <div class="info-card reveal d1" id="ai">
+        <h3><i class="ph ph-sparkle"></i>AI assistant</h3>
+        <p>Grounded answers from retrieved, redacted endpoint/schema context with clickable source citations. Swagger/REST skill packs, per-spec saved conversations, and Runner handoff.</p>
+        <span class="mono-tag">direct provider · hardened gateway</span>
+      </div>
+      <div class="info-card reveal d2" id="workspace">
+        <h3><i class="ph ph-squares-four"></i>Tabbed workspace</h3>
+        <p>Overview, search, schema explorer, about and assistant open as tabs beside endpoints — preview/pin, close, reorder, middle-click, context menu. Like an IDE, because it is one.</p>
+        <span class="mono-tag">tabs · split view · deep links</span>
+      </div>
+      <div class="info-card reveal">
+        <h3><i class="ph ph-magnifying-glass"></i>Global search</h3>
+        <p><span class="kbd">Ctrl/⌘ + K</span> searches paths, summaries, tags and schema definitions, with method/tag/security filters synced with the sidebar.</p>
+      </div>
+      <div class="info-card reveal d1" id="themes">
+        <h3><i class="ph ph-palette"></i>Theme system</h3>
+        <p>15+ hand-picked palettes with per-spec memory and light / dark / system modes. Notes, badges and code views stay legible in every one.</p>
+      </div>
+      <div class="info-card reveal d2">
+        <h3><i class="ph ph-eye-slash"></i>Hidden endpoints</h3>
+        <p>Move endpoints into a muted folder without touching the OpenAPI source — unhide individually or restore all from navigation settings.</p>
+      </div>
+      <div class="info-card reveal">
+        <h3><i class="ph ph-shield-check"></i>Runner Compatibility report</h3>
+        <p>An honest, per-endpoint matrix of what the browser can and cannot do for a given API — CORS constraints, credentialed requests and cookie behavior, stated before you waste a minute.</p>
+      </div>
+      <div class="info-card reveal d1">
+        <h3><i class="ph ph-arrows-clockwise"></i>Spec caching &amp; refresh</h3>
+        <p>Remote specs cache in IndexedDB and revalidate with <code class="inline">If-None-Match</code> / <code class="inline">If-Modified-Since</code>. One button drops the cache and re-fetches — or re-reads your local file from disk.</p>
+      </div>
+      <div class="info-card reveal d2">
+        <h3><i class="ph ph-clock-counter-clockwise"></i>Local history</h3>
+        <p>Every file you open and every remote URL you load lands in a persistent, browser-local history — reopen yesterday's spec in one click, no re-upload.</p>
+      </div>
+    </div>
 
-      <section id="workspace">
-        <h2 class="reveal">Workspace &amp; navigation</h2>
-        <p class="reveal">
-          Everything in OpenDoc UI is a shareable URL. Endpoint tabs, response codes, schema modals and
-          search states live in the address bar via clean History API routes, so browser back/forward
-          works naturally and a link captures precisely what you are looking at. Tabs support
-          preview-and-pin behavior, split view for documentation and Runner side by side, and full
-          persistence across sessions.
-        </p>
-        <p class="reveal">
-          Specifications themselves are managed with care: local files keep a history, remote URLs load
-          with caching and revalidation, and deployed configurations can present curated spec sets.
-          IndexedDB is the primary persistence layer for specs, history, notes, panel widths and
-          workspace configuration, with a localStorage fallback for constrained environments.
-        </p>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> Deep-linkable tabs, responses, schemas and search</li>
-          <li><i class="ph-fill ph-check-circle"></i> Preview/pin tabs and split Documentation + Runner view</li>
-          <li><i class="ph-fill ph-check-circle"></i> Global search with method, tag and security filters</li>
-          <li><i class="ph-fill ph-check-circle"></i> IndexedDB-first persistence with resilient fallback</li>
-          <li><i class="ph-fill ph-check-circle"></i> Local, remote and configured specification modes</li>
-        </ul>
-      </section>
-
-      <section id="themes">
-        <h2 class="reveal">Themes</h2>
-        <p class="reveal">
-          OpenDoc UI ships with more than fifteen hand-crafted editor themes — Default Slate, Darcula
-          and more, each with light and dark variants — stored per specification and switchable
-          instantly. Note tones are designed to remain readable in every theme, so your workspace looks
-          composed no matter the lighting.
-        </p>
-        <ul class="check-list reveal">
-          <li><i class="ph-fill ph-check-circle"></i> 15+ curated themes with light/dark variants</li>
-          <li><i class="ph-fill ph-check-circle"></i> Per-spec theme preference and instant toggle</li>
-          <li><i class="ph-fill ph-check-circle"></i> Theme-safe note tones throughout</li>
-        </ul>
-      </section>
-
+    <div style="text-align:center;margin-top:64px" class="reveal">
+      <a class="btn btn-brand btn-lg" href="https://omidgfx.github.io/opendoc-ui/demo/"><i class="ph-fill ph-play"></i> See all of it live</a>
     </div>
   </div>
 </section>
 
-<footer class="site-footer">
+<footer class="site-footer on-dark">
   <div class="container">
-    <div class="footer-grid">
-      <div class="footer-col footer-brand">
-        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html" style="color:#fff"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b style="color:var(--brand-bright)">&nbsp;UI</b></span></a>
         <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
       </div>
-      <div class="footer-col">
+      <div>
         <h4>Product</h4>
-        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
-        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
-        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
-        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
-        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+        <a href="features.html">Features</a>
+        <a href="compatibility.html">Compatibility</a>
+        <a href="https://omidgfx.github.io/opendoc-ui/demo/">Live demo</a>
+        <a href="faq.html">FAQ</a>
       </div>
-      <div class="footer-col">
-        <h4>Deploy</h4>
-        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
-        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
-        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
-        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
-        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      <div>
+        <h4>Learn</h4>
+        <a href="guide.html">User guide</a>
+        <a href="deploy.html">Deployment</a>
+        <a href="developers.html">For developers</a>
       </div>
-      <div class="footer-col">
+      <div>
         <h4>Project</h4>
-        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
-        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
-        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
-        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">Changelog</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/LICENSE" target="_blank" rel="noreferrer">MIT License</a>
       </div>
     </div>
-    <div class="footer-bottom">
+    <div class="foot-bottom">
       <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
-      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+      <span>Made with <i class="ph-fill ph-heart heart"></i> in Iran</span>
     </div>
   </div>
 </footer>
 
-<script src="assets/js/site.js"></script>
+<script src="assets/js/site.js?v=5"></script>
 </body>
 </html>
