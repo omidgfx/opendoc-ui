@@ -53,10 +53,49 @@ const refDisplayName = (ref: string): string => {
 };
 
 const createMockStub = (kind: MockStubKind, ref?: string): Record<string, never> =>
-    ({[MOCK_STUB]: {kind, ref}}) as Record<string, never>;
+    /* non-enumerable so object spreads (e.g. the allOf merge) never copy the
+       stub tag onto composed objects; `MOCK_STUB in value` still finds it */
+    Object.defineProperty({}, MOCK_STUB, {value: {kind, ref}}) as Record<string, never>;
 
 const isMockStub = (value: unknown): value is Record<string, never> =>
     typeof value === 'object' && value !== null && MOCK_STUB in value;
+
+/** True for inline branches that can only ever produce null. */
+const isNullBranch = (branch: any): boolean => {
+    if (branch === null || branch === undefined) return true;
+    if (typeof branch !== 'object') return false;
+    if (branch.const === null) return true;
+    if (Array.isArray(branch.enum)) return branch.enum.every((item: unknown) => item === null);
+    const type = branch.type;
+    if (type === 'null') return true;
+    return Array.isArray(type) && type.length > 0 && type.every((item: string) => item === 'null');
+};
+
+/**
+ * Chooses the branch a combinator example should expand. Prefers the first
+ * branch that can hold a real value, so `anyOf: [null, $ref]` patterns show
+ * the referenced structure (and its recursion guards) instead of a bare null.
+ */
+const pickCombinatorBranch = (branches: any[]): any => branches.find(branch => !isNullBranch(branch)) ?? branches[0];
+
+/** Resolves the display name of a reference, looking through combinators. */
+const refNameFromChildSchema = (child: any): {ref?: string; refOnItems?: boolean} => {
+    const direct = (node: any): string | undefined => {
+        if (!node || typeof node !== 'object') return undefined;
+        if (node.$ref) return refDisplayName(String(node.$ref));
+        const branches = Array.isArray(node.oneOf) ? node.oneOf : Array.isArray(node.anyOf) ? node.anyOf : null;
+        if (branches && branches.length) {
+            const picked = pickCombinatorBranch(branches);
+            if (picked?.$ref) return refDisplayName(String(picked.$ref));
+        }
+        return undefined;
+    };
+    const own = direct(child);
+    if (own) return {ref: own};
+    const items = direct(child?.items);
+    if (items) return {ref: items, refOnItems: true};
+    return {};
+};
 
 const mockFromPattern = (pattern: string): string => {
     if (!pattern) return 'string';
@@ -148,9 +187,9 @@ export function generateMock(
         return merged;
     }
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
-        return generateMock(schema.oneOf[0], spec, depth + 1, new Set(visited), usage);
+        return generateMock(pickCombinatorBranch(schema.oneOf), spec, depth + 1, new Set(visited), usage);
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)
-        return generateMock(schema.anyOf[0], spec, depth + 1, new Set(visited), usage);
+        return generateMock(pickCombinatorBranch(schema.anyOf), spec, depth + 1, new Set(visited), usage);
 
     const type = schemaType(schema);
     if (type === 'object' || schema.properties || schema.additionalProperties) {
@@ -160,12 +199,7 @@ export function generateMock(
             if (usage === 'request' && child?.readOnly === true) return;
             if (usage === 'response' && child?.writeOnly === true) return;
             object[key] = generateMock(child, spec, depth + 1, new Set(visited), usage);
-            const meta: MockKeyMeta = {};
-            if (child?.$ref) meta.ref = refDisplayName(String(child.$ref));
-            else if (child?.items?.$ref) {
-                meta.ref = refDisplayName(String(child.items.$ref));
-                meta.refOnItems = true;
-            }
+            const meta: MockKeyMeta = refNameFromChildSchema(child);
             if (meta.ref) keyMeta[key] = meta;
         });
         if (Object.keys(keyMeta).length > 0)
