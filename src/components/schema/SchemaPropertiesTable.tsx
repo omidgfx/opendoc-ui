@@ -17,6 +17,17 @@ interface SchemaPropertiesTableProps {
     inspectName?: string | null;
 }
 
+const formatExampleText = (value: unknown): string => {
+    if (value !== null && typeof value === 'object') {
+        try {
+            const text = JSON.stringify(value);
+            if (text !== undefined) return text.length > 60 ? `${text.slice(0, 60)}\u2026` : text;
+        } catch {}
+    }
+    const text = value === null ? 'null' : String(value);
+    return text.length > 60 ? `${text.slice(0, 60)}\u2026` : text;
+};
+
 export default function SchemaPropertiesTable({
     properties,
     schema,
@@ -346,7 +357,7 @@ export default function SchemaPropertiesTable({
                                                                 {pVal.example !== undefined ? 'ex:' : 'def:'}
                                                             </span>
                                                             <code className="text-[10.5px] px-1 py-0.2 rounded bg-[var(--background)] border text-[var(--method-get)] font-mono">
-                                                                {String(
+                                                                {formatExampleText(
                                                                     pVal.example !== undefined
                                                                         ? pVal.example
                                                                         : pVal.default,

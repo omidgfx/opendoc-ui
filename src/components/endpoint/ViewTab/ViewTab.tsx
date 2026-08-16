@@ -395,6 +395,142 @@ export default function ViewTab({
         humanizeSchemaName,
         getSchemaNamesFromResponse,
     } = createResponseExampleHelpers(spec);
+    /* ---------- Example column rendering (Request Parameters) ---------- */
+    const exampleEntryValue = (entry: any): unknown => {
+        if (entry && typeof entry === 'object') {
+            if ('value' in entry) return entry.value;
+            if ('dataValue' in entry) return entry.dataValue;
+            if ('serializedValue' in entry) return entry.serializedValue;
+            if ('externalValue' in entry) return entry.externalValue;
+            if ('externalDataValue' in entry) return entry.externalDataValue;
+        }
+        return entry;
+    };
+    const safeStringify = (value: unknown, space?: number): string => {
+        try {
+            const text = JSON.stringify(value, null, space);
+            if (text !== undefined) return text;
+        } catch {}
+        return String(value);
+    };
+    /* every place a parameter example can legally live, in priority order:
+       explicit example, named examples, content-based parameters, then the
+       (resolved) schema's example / examples list / default */
+    const collectParameterExamples = (
+        param: any,
+    ): {entries: Array<{label?: string; value: unknown}>; isDefault: boolean} => {
+        const named = (map: Record<string, any>) =>
+            Object.entries(map).map(([key, entry]) => ({
+                label: entry?.summary || key,
+                value: exampleEntryValue(entry),
+            }));
+        if (param.example !== undefined) return {entries: [{value: param.example}], isDefault: false};
+        if (param.examples && typeof param.examples === 'object' && Object.keys(param.examples).length > 0)
+            return {entries: named(param.examples), isDefault: false};
+        const contentObj: any =
+            param.content && typeof param.content === 'object' ? Object.values(param.content)[0] : null;
+        if (contentObj && typeof contentObj === 'object') {
+            if (contentObj.example !== undefined) return {entries: [{value: contentObj.example}], isDefault: false};
+            if (
+                contentObj.examples &&
+                typeof contentObj.examples === 'object' &&
+                Object.keys(contentObj.examples).length > 0
+            )
+                return {entries: named(contentObj.examples), isDefault: false};
+            if (contentObj.schema?.example !== undefined)
+                return {entries: [{value: contentObj.schema.example}], isDefault: false};
+        }
+        const schema = param.schema ? resolveReference(param.schema) || param.schema : null;
+        if (schema?.example !== undefined) return {entries: [{value: schema.example}], isDefault: false};
+        if (Array.isArray(schema?.examples) && schema.examples.length > 0)
+            return {
+                entries: schema.examples.map((value: unknown, index: number) => ({
+                    label: schema.examples.length > 1 ? `Example ${index + 1}` : undefined,
+                    value,
+                })),
+                isDefault: false,
+            };
+        if (schema?.default !== undefined) return {entries: [{value: schema.default}], isDefault: true};
+        return {entries: [], isDefault: false};
+    };
+    const viewExampleButtonClass =
+        'inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] cursor-pointer transition-all select-none w-fit shrink-0';
+    const renderExampleValue = (param: any, value: unknown, muted = false) => {
+        const chipClass = muted
+            ? 'text-[10px] px-1 py-0.5 rounded bg-[var(--background)] border text-[var(--text-muted)] font-mono select-all w-fit break-all'
+            : 'text-[10.5px] px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--method-get)]/30 text-[var(--method-get)] font-mono select-all break-all';
+        const isComplex = value !== null && typeof value === 'object';
+        const text = isComplex ? safeStringify(value) : value === null ? 'null' : String(value);
+        /* short values inline (objects as compact JSON); anything bulky opens
+           the example modal, mirroring the schema table's View Example */
+        if (text.length <= (isComplex ? 60 : 120)) return <code className={chipClass}>{text}</code>;
+        return (
+            <button
+                type="button"
+                onClick={() =>
+                    setExampleModalContent({
+                        title: `${param.name} Example`,
+                        content: isComplex ? safeStringify(value, 4) : text,
+                    })
+                }
+                className={viewExampleButtonClass}
+            >
+                <i className="ph ph-eye text-[9px]"></i> View Example
+            </button>
+        );
+    };
+    const renderParameterExample = (param: any) => {
+        const {entries, isDefault} = collectParameterExamples(param);
+        if (entries.length === 0) return <span className="text-[var(--text-muted)] italic text-[10px]">None</span>;
+        if (isDefault)
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-semibold select-none text-[var(--text-muted)]">Default:</span>
+                    {renderExampleValue(param, entries[0].value, true)}
+                </div>
+            );
+        if (entries.length === 1) return renderExampleValue(param, entries[0].value);
+        const allInline =
+            entries.length <= 3 &&
+            entries.every(entry => {
+                const complex = entry.value !== null && typeof entry.value === 'object';
+                return (complex ? safeStringify(entry.value) : String(entry.value)).length <= 40;
+            });
+        if (allInline)
+            return (
+                <div className="flex flex-col items-start gap-1">
+                    {entries.map((entry, index) => (
+                        <div key={index} className="flex items-center gap-1.5 min-w-0">
+                            {renderExampleValue(param, entry.value)}
+                            {entry.label && (
+                                <span className="text-[9px] select-none text-[var(--text-muted)] truncate max-w-32">
+                                    {entry.label}
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        return (
+            <button
+                type="button"
+                onClick={() =>
+                    setExampleModalContent({
+                        title: `${param.name} Examples`,
+                        content: safeStringify(
+                            Object.fromEntries(
+                                entries.map((entry, index) => [entry.label || `example ${index + 1}`, entry.value]),
+                            ),
+                            4,
+                        ),
+                    })
+                }
+                className={viewExampleButtonClass}
+            >
+                <i className="ph ph-eye text-[9px]"></i> View {entries.length} Examples
+            </button>
+        );
+    };
     const pathItem = spec.paths[path] || {};
     const mergedParameters = getMergedParameters(pathItem, operation, spec);
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
@@ -621,28 +757,7 @@ export default function ViewTab({
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-xs">
-                                                        {param.example !== undefined ? (
-                                                            <code className="text-[10.5px] px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--method-get)]/30 text-[var(--method-get)] font-mono select-all break-all">
-                                                                {String(param.example)}
-                                                            </code>
-                                                        ) : param.schema?.example !== undefined ? (
-                                                            <code className="text-[10.5px] px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--method-get)]/30 text-[var(--method-get)] font-mono select-all break-all">
-                                                                {String(param.schema.example)}
-                                                            </code>
-                                                        ) : param.schema?.default !== undefined ? (
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <span className="text-[9px] font-semibold select-none text-[var(--text-muted)]">
-                                                                    Default:
-                                                                </span>
-                                                                <code className="text-[10px] px-1 py-0.5 rounded bg-[var(--background)] border text-[var(--text-muted)] font-mono select-all w-fit break-all">
-                                                                    {String(param.schema.default)}
-                                                                </code>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-[var(--text-muted)] italic text-[10px]">
-                                                                None
-                                                            </span>
-                                                        )}
+                                                        {renderParameterExample(param)}
                                                     </td>
                                                     <td className="px-4 py-3 text-xs select-none">
                                                         {param.required ? (
