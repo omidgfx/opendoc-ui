@@ -158,7 +158,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
             } else {
                 raw = JSON.stringify(value, null, 4);
             }
-            return extractMockLineMarkers(raw, prepared.stubs);
+            return extractMockLineMarkers(raw, prepared);
         } catch {
             return fallback();
         }
