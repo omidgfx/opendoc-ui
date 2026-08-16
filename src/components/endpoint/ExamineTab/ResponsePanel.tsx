@@ -1,5 +1,7 @@
+import {useMemo} from 'react';
 import CodeViewer from '../../common/CodeViewer';
 import type {ExamineResponse} from '../../../types';
+import {buildResponseLineMarkers} from '../../../utils/lineMarkers';
 import {Tip} from '../../common/Tooltip';
 import {expandServerUrl} from '../../../utils/specification/serverResolver';
 import ResponseHistoryDropdown from './ResponseHistoryDropdown';
@@ -27,6 +29,11 @@ function formatJson(text: string) {
     }
 }
 
+function displayedBody(entry: ExamineResponse): string {
+    if (!entry.body) return '';
+    return entry.isJson ? formatJson(entry.body) : entry.body;
+}
+
 export default function ResponsePanel({
     method,
     selectedServer,
@@ -41,6 +48,18 @@ export default function ResponsePanel({
     onCancel,
     onClear,
 }: ResponsePanelProps) {
+    /* Gutter markers for the payload: truncation notice, encoded-binary
+       hints, and change indicators vs. the previous run of this endpoint. */
+    const payloadMarkers = useMemo(() => {
+        if (!response || !response.body) return [];
+        const currentIndex = responseHistory.indexOf(response);
+        const previous = currentIndex >= 0 ? responseHistory[currentIndex + 1] : undefined;
+        return buildResponseLineMarkers(displayedBody(response), {
+            truncated: response.truncated,
+            previousBody: previous ? displayedBody(previous) : undefined,
+        });
+    }, [response, responseHistory]);
+
     const hasResponse = response && response.status !== null;
     const selectedHistoryIndex = Math.max(
         0,
@@ -192,15 +211,10 @@ export default function ResponsePanel({
                                         Response Payload
                                     </label>
                                     <CodeViewer
-                                        code={
-                                            response!.body
-                                                ? response!.isJson
-                                                    ? formatJson(response!.body)
-                                                    : response!.body
-                                                : 'Empty response body'
-                                        }
+                                        code={response!.body ? displayedBody(response!) : 'Empty response body'}
                                         language={response!.isJson ? 'json' : 'text'}
                                         maxHeight="none"
+                                        lineMarkers={payloadMarkers}
                                     />
                                 </div>
                             </div>

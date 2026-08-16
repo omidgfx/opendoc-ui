@@ -382,6 +382,7 @@ export default function ViewTab({
                                 exampleTransition.requestClose();
                                 onOpenSchemaModal(schemaName);
                             },
+                            onTestPattern: setPatternToTest,
                         }),
                     });
                 }}
@@ -1030,6 +1031,8 @@ export default function ViewTab({
                                                                                             {
                                                                                                 onOpenSchema:
                                                                                                     onOpenSchemaModal,
+                                                                                                onTestPattern:
+                                                                                                    setPatternToTest,
                                                                                             },
                                                                                         )}
                                                                                     />
