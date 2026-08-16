@@ -122,37 +122,75 @@
   }
 
   /* ---------- live-demo iframe: lazy load + anti scroll-jump ----------
-     The embedded SPA can grab focus when it finishes booting, which makes
-     the browser scroll the page down to the iframe (jumping past the hero).
-     1) Only set src once the visitor actually scrolls the stage into view.
-     2) If focus lands in the iframe without any user interaction, blur it
-        and restore the scroll position. */
+     The embedded SPA focuses an element when it finishes booting. Focusing
+     inside an iframe makes the browser scroll the parent page to reveal it,
+     which yanked first-time visitors past the hero.
+     Strategy:
+       - iframe src is only set when the stage nears the viewport
+       - a rolling history of scroll positions lets us restore the position
+         from BEFORE the steal (not after it, which was pointless)
+       - a steal is: focus lands on the iframe while the pointer is not over
+         it and there was no recent user input. An intentional click/tab into
+         the demo disarms the guard permanently. */
   var demoFrame = document.querySelector('.stage-iframe[data-src]');
   if (demoFrame) {
-    var userActed = false;
+    var lastInput = 0, overFrame = false, engaged = false, guardTimer = null;
     ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (ev) {
-      window.addEventListener(ev, function () { userActed = true; }, { passive: true, once: true });
+      window.addEventListener(ev, function () { lastInput = Date.now(); }, { passive: true });
     });
+    demoFrame.addEventListener('pointerenter', function () { overFrame = true; });
+    demoFrame.addEventListener('pointerleave', function () { overFrame = false; });
+
+    var hist = [[Date.now(), window.scrollX, window.scrollY]];
+    var record = function () {
+      hist.push([Date.now(), window.scrollX, window.scrollY]);
+      if (hist.length > 80) hist.shift();
+    };
+    setInterval(record, 100);
+    var posBefore = function (ms) {
+      var cut = Date.now() - ms;
+      for (var i = hist.length - 1; i >= 0; i--) if (hist[i][0] <= cut) return hist[i];
+      return hist[0];
+    };
+
+    var disarm = function () {
+      engaged = true;
+      if (guardTimer) { clearInterval(guardTimer); guardTimer = null; }
+    };
+    var checkSteal = function () {
+      if (engaged || document.activeElement !== demoFrame) return;
+      var intentional = overFrame || (Date.now() - lastInput < 500);
+      if (intentional) { disarm(); return; }
+      /* focus was stolen: blur and restore the pre-steal position, instantly */
+      var p = posBefore(400);
+      try { demoFrame.blur(); } catch (e) {}
+      try { window.focus(); } catch (e) {}
+      var root = document.documentElement;
+      var prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = 'auto';
+      window.scrollTo(p[1], p[2]);
+      requestAnimationFrame(function () {
+        window.scrollTo(p[1], p[2]);
+        root.style.scrollBehavior = prev;
+      });
+    };
+
     var loadDemo = function () {
       if (demoFrame.src) return;
+      var until = Date.now() + 25000;
+      window.addEventListener('blur', function () { setTimeout(checkSteal, 0); });
+      guardTimer = setInterval(function () {
+        if (Date.now() > until) { disarm(); return; }
+        checkSteal();
+      }, 80);
       demoFrame.src = demoFrame.getAttribute('data-src');
-      var guardUntil = Date.now() + 15000;
-      var guard = setInterval(function () {
-        if (Date.now() > guardUntil) { clearInterval(guard); return; }
-        if (!userActed && document.activeElement === demoFrame) {
-          var x = window.scrollX, y = window.scrollY;
-          demoFrame.blur();
-          if (document.activeElement === demoFrame && document.activeElement.blur) document.activeElement.blur();
-          window.scrollTo(x, y);
-        }
-      }, 120);
     };
     if ('IntersectionObserver' in window) {
       var fio = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) { loadDemo(); fio.disconnect(); }
         });
-      }, { rootMargin: '120px 0px' });
+      }, { threshold: 0.15 });
       fio.observe(demoFrame);
     } else {
       loadDemo();
