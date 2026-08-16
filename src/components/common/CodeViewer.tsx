@@ -135,27 +135,43 @@ export default function CodeViewer({code, language, maxHeight, lineMarkers, show
                             const line = index + 1;
                             const markers = markersByLine.get(line);
                             return (
-                                <div key={line} className="flex h-[1.5em] items-center justify-end">
+                                <div key={line} className="flex h-[1.5em] items-center">
                                     {iconSlotWidth > 0 && (
                                         <span
-                                            className="flex items-center justify-end gap-[3px] shrink-0"
+                                            className="flex items-center justify-start gap-[3px] shrink-0"
                                             style={{width: `${iconSlotWidth}px`}}
                                         >
                                             {markers?.map((marker, markerIndex) => (
                                                 <Tip key={markerIndex} content={marker.tip}>
-                                                    <i
-                                                        className={clsx(
-                                                            marker.icon,
-                                                            'text-[11px] leading-none cursor-help',
-                                                            marker.className || 'text-[var(--text-muted)]',
-                                                        )}
-                                                    />
+                                                    {marker.onClick ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={marker.onClick}
+                                                            className="flex items-center justify-center cursor-pointer rounded-[4px] hover:bg-[var(--surface)] transition-colors"
+                                                        >
+                                                            <i
+                                                                className={clsx(
+                                                                    marker.icon,
+                                                                    'text-[11px] leading-none',
+                                                                    marker.className || 'text-[var(--text-muted)]',
+                                                                )}
+                                                            />
+                                                        </button>
+                                                    ) : (
+                                                        <i
+                                                            className={clsx(
+                                                                marker.icon,
+                                                                'text-[11px] leading-none cursor-help',
+                                                                marker.className || 'text-[var(--text-muted)]',
+                                                            )}
+                                                        />
+                                                    )}
                                                 </Tip>
                                             ))}
                                         </span>
                                     )}
                                     <span
-                                        className="inline-block text-right text-[10px] opacity-70 pl-1.5"
+                                        className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
                                         style={{minWidth: `${gutterDigits}ch`}}
                                     >
                                         {line}

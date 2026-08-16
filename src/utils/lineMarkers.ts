@@ -16,11 +16,22 @@ export interface CodeLineMarker {
     tip: string;
     /** Optional extra class for the icon (color / emphasis). */
     className?: string;
+    /** When set, the icon becomes interactive (e.g. open the schema). */
+    onClick?: () => void;
 }
 
 export const DEPTH_LIMIT_ICON = 'ph ph-arrow-line-down';
-export const REQUIRED_LINE_ICON = 'ph-fill ph-asterisk';
 export const REFERENCED_SCHEMA_ICON = 'ph ph-diamonds-four';
+
+export interface MockMarkerOptions {
+    /**
+     * Invoked with the schema display name when a referenced-schema icon is
+     * clicked. Wire it to whatever "open schema" means in the host surface:
+     * the docs view opens the schema modal, the stacked schema modal pushes
+     * the schema onto its breadcrumb stack.
+     */
+    onOpenSchema?: (schemaName: string) => void;
+}
 
 /**
  * Converts the logic-level markers reported by the mock generator into
@@ -28,7 +39,7 @@ export const REFERENCED_SCHEMA_ICON = 'ph ph-diamonds-four';
  * implies the reference, so a plain "ref" marker on the same line is
  * dropped to keep the gutter quiet.
  */
-export const mockMarkersToLineMarkers = (markers: MockLineMarker[]): CodeLineMarker[] => {
+export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: MockMarkerOptions): CodeLineMarker[] => {
     const recursiveLines = new Set(markers.filter(marker => marker.kind === 'recursive').map(marker => marker.line));
     return markers.flatMap(marker => {
         if (marker.kind === 'recursive')
@@ -51,27 +62,23 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[]): CodeLineMar
                     tip: 'Nesting depth limit reached — deeper content is omitted from this example.',
                 },
             ];
-        if (marker.kind === 'required')
-            return [
-                {
-                    line: marker.line,
-                    icon: REQUIRED_LINE_ICON,
-                    className: 'text-[var(--method-delete)]',
-                    tip: 'Required property.',
-                },
-            ];
         /* kind === 'ref' — skip when the same line already shows recursion */
         if (recursiveLines.has(marker.line)) return [];
+        const ref = marker.ref;
+        const openSchema = options?.onOpenSchema;
+        const clickable = Boolean(ref && openSchema);
+        const base = ref
+            ? marker.refOnItems
+                ? `Array items generated from referenced schema ${ref}.`
+                : `Generated from referenced schema ${ref}.`
+            : 'Generated from a referenced schema.';
         return [
             {
                 line: marker.line,
                 icon: REFERENCED_SCHEMA_ICON,
                 className: 'text-[var(--accent)]',
-                tip: marker.ref
-                    ? marker.refOnItems
-                        ? `Array items generated from referenced schema ${marker.ref}.`
-                        : `Generated from referenced schema ${marker.ref}.`
-                    : 'Generated from a referenced schema.',
+                tip: clickable ? `${base} Click to open ${ref}.` : base,
+                onClick: clickable && ref && openSchema ? () => openSchema(ref) : undefined,
             },
         ];
     });
