@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
+import {convertBodyText} from '../../../utils/runner/bodyConverters';
 import {executeRunnerRequest} from '../../../utils/runner/runnerExecution';
 import {parameterStateKey} from '../../../utils/runner/requestPlan';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/ai/bridge';
@@ -77,6 +78,22 @@ export default function ExamineTab({
         ? resolveReference(selectedRequestMedia.schema, spec) || selectedRequestMedia.schema
         : null;
     const requestBodySupportsForm = bodyTypeSupportsForm(requestBodyType, selectedRequestSchema);
+    const rawEditorLabel = (() => {
+        const normalized = requestBodyType.toLowerCase();
+        if (normalized.includes('json')) return 'Raw JSON';
+        if (normalized.includes('xml')) return 'Raw XML';
+        if (normalized.includes('yaml')) return 'Raw YAML';
+        if (normalized === 'application/x-www-form-urlencoded') return 'Raw Form';
+        return 'Raw';
+    })();
+    const changeRequestBodyType = (nextMediaType: string) => {
+        if (nextMediaType === requestBodyType) return;
+        const mediaSchema = resolvedRequestBody.content?.[nextMediaType]?.schema;
+        const nextSchema = mediaSchema ? resolveReference(mediaSchema, spec) || mediaSchema : null;
+        setRequestBodyText(text => convertBodyText(text, requestBodyType, nextMediaType, nextSchema));
+        setRequestBodyType(nextMediaType);
+        setBodyEditorMode(current => bodyEditorModeForMediaType(current, nextMediaType, nextSchema));
+    };
     const canonicalizeInputs = useCallback(
         (incomingParams: Record<string, string | string[]> = {}, incomingHeaders: Record<string, string> = {}) => {
             const pathItem = (spec.paths as any)[path] || {};
@@ -148,13 +165,10 @@ export default function ExamineTab({
         const mediaTypes = Object.keys(content);
         if (mediaTypes.length > 0 && !mediaTypes.includes(requestBodyType)) {
             const nextMediaType = mediaTypes[0];
-            const nextSchema = content[nextMediaType]?.schema
-                ? resolveReference(content[nextMediaType].schema, spec) || content[nextMediaType].schema
-                : null;
-            setRequestBodyType(nextMediaType);
-            setBodyEditorMode(current => bodyEditorModeForMediaType(current, nextMediaType, nextSchema));
+            changeRequestBodyType(nextMediaType);
         }
-    }, [operation.requestBody, requestBodyType, spec]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [operation.requestBody, spec]);
     useEffect(
         () => () => {
             abortControllerRef.current?.abort();
@@ -207,19 +221,29 @@ export default function ExamineTab({
         setHeaders({});
         const resolvedBody = resolveRequestBody(operation.requestBody, spec);
         if (resolvedBody?.content) {
-            const firstType = Object.keys(resolvedBody.content)[0];
-            setRequestBodyType(firstType || 'application/json');
-            const contentObj = resolvedBody.content[firstType];
+            const contentKeys = Object.keys(resolvedBody.content);
+            const seedType = contentKeys.includes(requestBodyType)
+                ? requestBodyType
+                : contentKeys[0] || 'application/json';
+            setRequestBodyType(seedType);
+            const contentObj = resolvedBody.content[seedType];
             if (contentObj) {
                 const firstExample = Object.values(contentObj.examples || {})[0] as any;
                 const example = contentObj.example ?? firstExample?.value ?? firstExample?.dataValue;
-                if (example !== undefined)
-                    setRequestBodyText(typeof example === 'string' ? example : JSON.stringify(example, null, 2));
-                else if (contentObj.schema) {
-                    const schema = resolveReference(contentObj.schema, spec) || contentObj.schema;
+                const resolvedSchema = contentObj.schema
+                    ? resolveReference(contentObj.schema, spec) || contentObj.schema
+                    : null;
+                if (example !== undefined) {
+                    const raw = typeof example === 'string' ? example : JSON.stringify(example, null, 2);
                     setRequestBodyText(
-                        schemaDeclaresBinary(schema) ? '' : getMockSnippet(contentObj.schema, spec, 'request'),
+                        typeof example === 'string'
+                            ? raw
+                            : convertBodyText(raw, 'application/json', seedType, resolvedSchema),
                     );
+                } else if (contentObj.schema) {
+                    const schema = resolveReference(contentObj.schema, spec) || contentObj.schema;
+                    const mock = schemaDeclaresBinary(schema) ? '' : getMockSnippet(contentObj.schema, spec, 'request');
+                    setRequestBodyText(mock ? convertBodyText(mock, 'application/json', seedType, schema) : '');
                 } else setRequestBodyText('{\n \n}');
             }
         } else {
@@ -531,22 +555,13 @@ export default function ExamineTab({
                                                         : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
                                                 )}
                                             >
-                                                {requestBodyType.toLowerCase().includes('json') ? 'Raw JSON' : 'Raw'}
+                                                {rawEditorLabel}
                                             </button>
                                         </div>
                                     )}
                                     <CustomDropdown
                                         value={requestBodyType}
-                                        onChange={val => {
-                                            const mediaSchema = resolvedRequestBody.content?.[val]?.schema;
-                                            const nextSchema = mediaSchema
-                                                ? resolveReference(mediaSchema, spec) || mediaSchema
-                                                : null;
-                                            setRequestBodyType(val);
-                                            setBodyEditorMode(current =>
-                                                bodyEditorModeForMediaType(current, val, nextSchema),
-                                            );
-                                        }}
+                                        onChange={changeRequestBodyType}
                                         options={Object.keys(resolvedRequestBody.content || {}).map(mime => ({
                                             value: mime,
                                             label: mime,

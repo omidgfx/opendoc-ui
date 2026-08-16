@@ -1276,24 +1276,30 @@ test('selects raw-body formats without applying JSON validation to YAML or XML',
     assert.equal(getBodyEditorLanguage('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded'), 'json');
     assert.equal(getBodyEditorLanguage('name=OpenDoc', 'application/x-www-form-urlencoded'), 'plaintext');
     assert.equal(validateBodyText('{"broken":', 'application/x-www-form-urlencoded') !== null, true);
-    assert.match(formatBodyText('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded').text, /"name": "OpenDoc"/);
+    assert.equal(formatBodyText('{"name":"OpenDoc"}', 'application/x-www-form-urlencoded').text, 'name=OpenDoc');
     assert.equal(bodyTypeSupportsForm('application/json; charset=utf-8'), true);
     assert.equal(bodyTypeSupportsForm('image/png', {type: 'string', format: 'binary'}), true);
     assert.equal(bodyEditorModeForMediaType('form', 'image/png', {type: 'string', format: 'binary'}), 'form');
     assert.equal(bodyEditorModeForMediaType('raw', 'application/json'), 'raw');
     assert.equal(bodyEditorModeForMediaType('raw', 'application/x-www-form-urlencoded'), 'raw');
-    assert.equal(bodyEditorModeForMediaType('form', 'application/xml'), 'raw');
+    assert.equal(bodyEditorModeForMediaType('form', 'application/xml'), 'form');
     assert.equal(validateBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml'), null);
     assert.equal(validateBodyText('<root><item /></root>', 'application/xml'), null);
     assert.equal(validateBodyText('{"broken":', 'application/json') !== null, true);
     assert.match(formatBodyText('name: OpenDoc\nitems:\n  - id: 1', 'application/yaml').text, /name:/);
     const encoded = serializeUrlEncodedBody({name: 'OpenDoc', tags: ['one', 'two'], nested: {enabled: true}});
     assert.match(encoded, /name=OpenDoc/);
-    assert.match(encoded, /tags=one/);
-    assert.match(encoded, /tags=two/);
-    assert.match(encoded, /nested=%7B%22enabled%22%3Atrue%7D/);
+    assert.match(encoded, /tags\[\]=one/);
+    assert.match(encoded, /tags\[\]=two/);
+    assert.match(encoded, /nested\[enabled\]=true/);
     assert.deepEqual(parseStructuredBody('tags=one&tags=two', 'application/x-www-form-urlencoded'), {
         tags: ['one', 'two'],
+    });
+    assert.deepEqual(parseStructuredBody('a=1&b=4&j[]=1&a[]=5&k[key]=foo', 'application/x-www-form-urlencoded'), {
+        a: ['1', '5'],
+        b: '4',
+        j: ['1'],
+        k: {key: 'foo'},
     });
 });
 test('materializes top-level binary uploads for their declared media type', () => {
