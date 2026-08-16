@@ -15,6 +15,8 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
+import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
+import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
 import {useSchemaViewer} from '@/src/hooks/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
@@ -80,16 +82,11 @@ export default function ViewTab({
 }: ViewTabProps) {
     const [copiedPath, setCopiedPath] = useState(false);
     const [copiedFullUrl, setCopiedFullUrl] = useState(false);
-    const [helpModalContent, setHelpModalContent] = useState<{
-        title: string;
-        content: string;
-    } | null>(null);
     const [exampleModalContent, setExampleModalContent] = useState<{
         title: string;
         content: string;
         lineMarkers?: CodeLineMarker[];
     } | null>(null);
-    const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
     const exampleTransition = useModalTransition(!!exampleModalContent, () => setExampleModalContent(null));
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
     const [shareModal, setShareModal] = useState<{
@@ -327,7 +324,6 @@ export default function ViewTab({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [isActive, operation.responses, activeResponseCode, onSelectResponseCode]);
-    useEscClose(!!helpModalContent, helpTransition.requestClose, !!helpModalContent);
     useEscClose(!!exampleModalContent, exampleTransition.requestClose, !!exampleModalContent);
     useEscClose(!!patternToTest, () => setPatternToTest(null), !!patternToTest);
     useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
@@ -398,7 +394,6 @@ export default function ViewTab({
         getResponseExampleSnippetWithMarkers,
         humanizeSchemaName,
         getSchemaNamesFromResponse,
-        truncateText,
     } = createResponseExampleHelpers(spec);
     const pathItem = spec.paths[path] || {};
     const mergedParameters = getMergedParameters(pathItem, operation, spec);
@@ -593,28 +588,20 @@ export default function ViewTab({
                                                             <span className="font-mono font-bold text-[var(--text-heading)]">
                                                                 {param.name}
                                                             </span>
-                                                            {param.description && param.description.length > 80 && (
-                                                                <Tip content={param.description}>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            setHelpModalContent({
-                                                                                title: param.name,
-                                                                                content: param.description || '',
-                                                                            })
-                                                                        }
-                                                                        className="inline-flex items-center gap-1 text-[10px] text-[var(--primary)] hover:text-[var(--primary-hover)] font-bold bg-[var(--primary)]/5 px-1.5 py-0.5 rounded border border-[var(--primary)]/20 hover:bg-[var(--primary)]/10 cursor-pointer transition-all select-none"
-                                                                    >
-                                                                        <i className="ph ph-question text-[10px]"></i>{' '}
-                                                                        Info
-                                                                    </button>
-                                                                </Tip>
-                                                            )}
+                                                            {param.description &&
+                                                                usesDescriptionTooltip(param.description) && (
+                                                                    <DescriptionTip
+                                                                        fieldLabel={param.name}
+                                                                        documents={[{text: param.description}]}
+                                                                    />
+                                                                )}
                                                         </div>
-                                                        {param.description && (
-                                                            <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
-                                                                {truncateText(param.description, 80)}
-                                                            </p>
-                                                        )}
+                                                        {param.description &&
+                                                            !usesDescriptionTooltip(param.description) && (
+                                                                <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
+                                                                    {param.description}
+                                                                </p>
+                                                            )}
                                                     </td>
                                                     <td className="px-4 py-3 text-xs select-none">
                                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
@@ -1128,18 +1115,6 @@ export default function ViewTab({
                     </div>
                 </div>
             </div>
-
-            <EndpointInfoModal
-                visible={helpTransition.shouldRender && !!helpModalContent}
-                backdropClassName={helpTransition.backdropClassName}
-                title={helpModalContent?.title || ''}
-                icon="ph ph-info"
-                closeLabel="Close Help"
-                onClose={helpTransition.requestClose}
-                zIndex="z-[2000]"
-            >
-                <div className="text-xs leading-relaxed opacity-95">{helpModalContent?.content}</div>
-            </EndpointInfoModal>
 
             <EndpointInfoModal
                 visible={exampleTransition.shouldRender && !!exampleModalContent}
