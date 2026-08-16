@@ -21,7 +21,12 @@ Multi-format request bodies and body format conversions.
 - seeds the body from the **currently selected media type's own example** (or a converted mock)
   when resetting or reopening, so the XML example renders as XML, not JSON;
 - sends urlencoded bodies with bracket-notation nesting on the wire and keeps the Content-Type
-  header matched to the selected media type.
+  header matched to the selected media type;
+- converts **out of unknown textual formats** (text/plain, text/html, application/javascript, …)
+  instead of passing stale text into a foreign editor: JSON-shaped text converts for real, and
+  any other payload is treated as a plain string that serializes into the target format (XML
+  wraps it in the schema root element, YAML emits a scalar, query strings use a `value` key), so
+  a spec with only XML and plain-text bodies converts cleanly in both directions.
 
 Documentation-view request body polish.
 

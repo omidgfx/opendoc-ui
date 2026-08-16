@@ -290,7 +290,7 @@ export const jsonToQueryString = (value: unknown): string => {
             entries.forEach(([key, part]) => walk(part, prefix ? `${prefix}[${key}]` : key));
             return;
         }
-        pairs.push(`${prefix}=${encodeURIComponent(String(item))}`);
+        pairs.push(`${prefix || 'value'}=${encodeURIComponent(String(item))}`);
     };
     walk(value, '');
     return pairs.join('&');
@@ -453,7 +453,15 @@ export const parseBodyToJson = (text: string, mediaType: string): unknown => {
             }
         }
     }
-    return undefined;
+    // Unknown textual formats (text/plain, text/html, application/javascript, ...):
+    // try JSON first so JSON-shaped text converts properly, then treat the whole
+    // payload as a plain string scalar so it still converts into XML, YAML or a
+    // query string instead of being passed through unchanged into a foreign editor.
+    try {
+        return JSON.parse(text);
+    } catch {
+        return text;
+    }
 };
 
 export const serializeBodyFromJson = (value: unknown, mediaType: string, schema?: any): string => {
