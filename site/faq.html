@@ -1,152 +1,130 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="system">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>FAQ — OpenDoc UI</title>
-<meta name="description" content="Frequently asked questions about OpenDoc UI: privacy, backend requirements, browser support, AI providers, deployment, and where the demo and website live."/>
+<meta name="description" content="Straight answers about OpenDoc UI: privacy, architecture, the AI assistant, the Runner, offline use and where everything lives."/>
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css"/>
+<link rel="stylesheet" href="assets/css/site.css?v=5"/>
+<script>
+(function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
+var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}})();
+</script>
 </head>
 <body>
+<div class="scroll-progress" aria-hidden="true"></div>
 
-<header class="site-header">
-  <div class="container nav">
-    <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
-    <nav class="nav-links" id="nav-links">
-      <a href="index.html">Home</a>
-      <a href="features.html">Features</a>
-      <a href="guide.html">Guide</a>
-      <a href="compatibility.html">Compatibility</a>
-      <a href="deploy.html">Deploy</a>
-      <a href="developers.html">Developers</a>
-      <a href="faq.html">FAQ</a>
-    </nav>
-    <div class="nav-actions">
-      <div class="theme-toggle">
-        <button id="theme-toggle" aria-label="Choose theme" title="Theme"><i class="ph ph-circle-half"></i></button>
-        <div class="theme-options" id="theme-menu" role="menu">
-          <button data-theme-choice="light" role="menuitem"><i class="ph ph-sun"></i> Light</button>
-          <button data-theme-choice="dark" role="menuitem"><i class="ph ph-moon"></i> Dark</button>
-          <button data-theme-choice="system" role="menuitem"><i class="ph ph-monitor"></i> System</button>
-        </div>
+<header class="site-header" id="site-header">
+  <div class="container" style="padding:0 16px">
+    <div class="nav">
+      <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b>&nbsp;UI</b></span></a>
+      <nav class="nav-links" id="nav-links">
+        <a href="index.html">Home</a>
+        <a href="features.html">Features</a>
+        <a href="guide.html">Guide</a>
+        <a href="compatibility.html">Compatibility</a>
+        <a href="deploy.html">Deploy</a>
+        <a href="developers.html">Developers</a>
+        <a href="faq.html" class="active">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <button class="theme-btn" id="theme-btn" aria-label="Change theme"><i class="ph ph-monitor"></i></button>
+        <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
+        <a class="btn btn-brand" href="https://omidgfx.github.io/opendoc-ui/demo/">Open the demo <i class="ph-fill ph-arrow-up-right"></i></a>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
       </div>
-      <a class="btn btn-ghost" href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
-      <a class="btn btn-primary" href="demo/"><i class="ph ph-play"></i> Open the demo</a>
-      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list"></i></button>
     </div>
   </div>
 </header>
 
 <section class="page-hero">
-  <div class="aurora" aria-hidden="true"></div>
+  <div class="hero-bg" aria-hidden="true"></div>
   <div class="container">
-    <h1 class="reveal">Frequently asked questions</h1>
-    <p class="reveal d1">Straight answers to the questions that come up most — about privacy, architecture, the AI assistant, and where everything lives.</p>
+    <span class="eyebrow reveal">FAQ</span>
+    <h1 class="reveal d1">Straight answers,<br/><span class="h-em">no hedging</span></h1>
+    <p class="lead reveal d2">The questions that come up most — about privacy, architecture, the AI assistant, and where everything lives.</p>
+  </div>
+</section>
+<section class="section" style="padding-top:10px">
+  <div class="container">
+    <div class="faq reveal">
+      <details open>
+        <summary>Does OpenDoc UI require a backend server? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks) — both are opt-in.</div>
+      </details>
+      <details>
+        <summary>Are my specifications uploaded anywhere? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">Never. Local files are parsed in the browser and stored only in your browser's local history. Nothing is uploaded, and the original document is never modified. When you load a remote URL, the browser fetches it directly (or through a proxy you configured) — no third party is involved.</div>
+      </details>
+      <details>
+        <summary>Which OpenAPI versions are supported? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, webhooks — are rendered and handled explicitly. Multi-file reference graphs resolve in memory.</div>
+      </details>
+      <details>
+        <summary>Does the Runner send requests from my browser? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">Yes — that is the point. Requests are composed from the specification and executed with the browser's fetch API against the server you select, so you can test real authentication, parameters and bodies without leaving the documentation. The same CORS rules that apply to any web application apply here, and the Runner Compatibility report states what the browser can and cannot do for a given API.</div>
+      </details>
+      <details>
+        <summary>How does the AI assistant work, and where do my keys go? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">The assistant receives redacted endpoint and schema context from your open specification and answers with citations. In direct mode, your browser talks to the provider you configure (OpenAI, Anthropic, Ollama, OpenRouter or any compatible endpoint). In gateway mode, a hardened server gateway owns the provider credentials and enforces token authentication, origin allowlists, rate limits and timeouts — the browser never sees the provider key.</div>
+      </details>
+      <details>
+        <summary>Can I run it on an internal network without internet access? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">Yes. The application is fully static — copy <code class="inline">dist/</code> to an internal nginx or Apache host, or use the Docker image, and it works offline. Configured specifications can be baked in through <code class="inline">config.json</code> or <code class="inline">window.INITIAL_CONFIG</code>, and local files always work. The only components that need the internet are the optional AI providers and remote URL loading.</div>
+      </details>
+      <details>
+        <summary>Where are my notes and history stored? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">In your browser — IndexedDB first, with a localStorage fallback. Notes, response history, opened-file history, themes and workspace state never leave your machine. Notes export/import as JSON if you want to move or back them up.</div>
+      </details>
+      <details>
+        <summary>Is it really free? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">Yes — MIT licensed, no tiers, no telemetry, no account. <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">The source is on GitHub</a>; stars are the only currency accepted.</div>
+      </details>
+    </div>
+    <div style="text-align:center;margin-top:56px" class="reveal">
+      <a class="btn btn-brand btn-lg" href="https://omidgfx.github.io/opendoc-ui/demo/"><i class="ph-fill ph-play"></i> Enough reading — open the demo</a>
+    </div>
   </div>
 </section>
 
-<section class="section" style="padding-top:20px">
-  <div class="container" style="max-width:820px">
-
-    <details class="acc" open>
-      <summary>Does OpenDoc UI require a backend server?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks) — both are opt-in.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Are my specifications uploaded anywhere?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Never. Local files are parsed in the browser and stored only in your browser's local history. Nothing is uploaded, and the original document is never modified. When you load a remote URL, the browser fetches it directly (or through a proxy you configured) — no third party is involved.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Which OpenAPI versions are supported?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — const, prefixItems, unevaluatedProperties, if/then/else, type unions, webhooks — are rendered and handled explicitly. Multi-file reference graphs resolve in memory.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Does the Runner send requests from my browser?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Yes — that is the point. Requests are composed from the specification and executed with the browser's fetch API against the server you select, so you can test real authentication, parameters and bodies without leaving the documentation. The same CORS rules that apply to any web application apply here, and the Runner Compatibility report states what the browser can and cannot do for a given API.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>How does the AI assistant work, and where do my keys go?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>The assistant receives redacted endpoint and schema context from your open specification and answers with citations. In direct mode, your browser talks to the provider you configure (OpenAI, Anthropic, Ollama, OpenRouter or any compatible endpoint). In gateway mode, a hardened server gateway owns the provider credentials and enforces token authentication, origin allowlists, rate limits and timeouts — the browser never sees the provider key.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Can I run it on an internal network without internet access?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Yes. The application is fully static — copy <code>dist/</code> to an internal nginx or Apache host, or use the Docker image, and it works offline. Configured specifications can be baked in through <code>config.json</code> or <code>window.INITIAL_CONFIG</code>, and local files always work. The only components that need the internet are the optional AI provider and remote-spec downloads.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>What happens to my notes if an endpoint is renamed or removed?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Notes follow the endpoint through the specification's lifecycle. When an endpoint disappears, its notes move to the Orphaned list, where you can re-assign them to another endpoint or delete them deliberately. Deleting a note always goes to the Trash first — restore, permanent delete and empty-trash are available, so nothing is lost by accident.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Can I share what I am looking at?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Everything is deep-linkable: endpoint tabs, response codes, schema modals and search states are encoded in the URL. Send a link and the recipient lands on exactly the same view. This also means browser back and forward work naturally across the whole workspace.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Where is the live demo, and where is this website hosted?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>The live application runs at <a href="demo/"><code>/demo/</code></a> on this site and is deployed to GitHub Pages from the repository's <code>master</code> branch on every push — it is always the latest build. This website lives at the site root of the same deployment, and the source of both is the <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">opendoc-ui repository</a>.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>How do I deploy my own instance?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Three comfortable paths: copy <code>dist/</code> to any static host; use <code>docker compose up --build -d</code>; or run <code>npm run make</code> and let the guided builder ask about your deployment preferences, produce a verified build, and offer to start it. The <a href="deploy.html">deployment guide</a> walks through all of them.</p></div>
-    </details>
-
-    <details class="acc">
-      <summary>Is OpenDoc UI free?<i class="ph ph-caret-right chev"></i></summary>
-      <div class="acc-body"><p>Yes — it is open source under the MIT License. Use it, modify it, embed it, and ship it commercially. Attribution is appreciated, and the project lives on <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">GitHub</a>, where issues and contributions are welcome.</p></div>
-    </details>
-
-  </div>
-</section>
-
-<footer class="site-footer">
+<footer class="site-footer on-dark">
   <div class="container">
-    <div class="footer-grid">
-      <div class="footer-col footer-brand">
-        <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo"/><span>OpenDoc<b>UI</b></span></a>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html" style="color:#fff"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b style="color:var(--brand-bright)">&nbsp;UI</b></span></a>
         <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
       </div>
-      <div class="footer-col">
+      <div>
         <h4>Product</h4>
-        <a href="features.html"><i class="ph ph-squares-four"></i> Features</a>
-        <a href="guide.html"><i class="ph ph-book-open-text"></i> Guide</a>
-        <a href="compatibility.html"><i class="ph ph-shield-check"></i> Compatibility</a>
-        <a href="faq.html"><i class="ph ph-question"></i> FAQ</a>
-        <a href="demo/"><i class="ph ph-play"></i> Live demo</a>
+        <a href="features.html">Features</a>
+        <a href="compatibility.html">Compatibility</a>
+        <a href="https://omidgfx.github.io/opendoc-ui/demo/">Live demo</a>
+        <a href="faq.html">FAQ</a>
       </div>
-      <div class="footer-col">
-        <h4>Deploy</h4>
-        <a href="deploy.html"><i class="ph ph-browser"></i> Static hosting</a>
-        <a href="deploy.html#docker"><i class="ph ph-cube"></i> Docker</a>
-        <a href="deploy.html#make"><i class="ph ph-terminal-window"></i> npm run make</a>
-        <a href="deploy.html#ai"><i class="ph ph-plugs-connected"></i> AI gateway</a>
-        <a href="deploy.html#downloader"><i class="ph ph-cloud-arrow-down"></i> Downloader proxy</a>
+      <div>
+        <h4>Learn</h4>
+        <a href="guide.html">User guide</a>
+        <a href="deploy.html">Deployment</a>
+        <a href="developers.html">For developers</a>
       </div>
-      <div class="footer-col">
+      <div>
         <h4>Project</h4>
-        <a href="developers.html"><i class="ph ph-code"></i> Developers</a>
-        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer"><i class="ph-fill ph-github-logo"></i> GitHub</a>
-        <a href="https://github.com/omidgfx/opendoc-ui/releases" target="_blank" rel="noreferrer"><i class="ph ph-tag"></i> Releases</a>
-        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer"><i class="ph ph-clock-counter-clockwise"></i> Changelog</a>
+        <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">Changelog</a>
+        <a href="https://github.com/omidgfx/opendoc-ui/blob/master/LICENSE" target="_blank" rel="noreferrer">MIT License</a>
       </div>
     </div>
-    <div class="footer-bottom">
+    <div class="foot-bottom">
       <span>© <span id="year">2026</span> OpenDoc UI · Released under the MIT License</span>
-      <span class="tiny">Made with <i class="ph-fill ph-heart"></i> in Iran</span>
+      <span>Made with <i class="ph-fill ph-heart heart"></i> in Iran</span>
     </div>
   </div>
 </footer>
 
-<script src="assets/js/site.js"></script>
+<script src="assets/js/site.js?v=5"></script>
 </body>
 </html>

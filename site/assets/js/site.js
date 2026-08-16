@@ -1,112 +1,127 @@
-/* OpenDoc UI site — theme, navigation, active links, scroll reveal, footer year */
+/* OpenDoc UI marketing site — shared behavior */
 (function () {
-    'use strict';
+  'use strict';
 
-    var THEME_KEY = 'opendoc-site-theme';
-    var root = document.documentElement;
+  /* ---------- theme (light / dark / system) ---------- */
+  var THEME_KEY = 'opendoc-site-theme';
+  var mql = window.matchMedia('(prefers-color-scheme: dark)');
+  var themeBtn = document.getElementById('theme-btn');
 
-    function systemDark() {
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  function stored() {
+    try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; }
+  }
+  function apply(choice) {
+    var dark = choice === 'dark' || (choice === 'system' && mql.matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    if (themeBtn) {
+      var icon = choice === 'light' ? 'ph-sun' : choice === 'dark' ? 'ph-moon' : 'ph-monitor';
+      themeBtn.innerHTML = '<i class="ph ' + icon + '"></i>';
+      themeBtn.setAttribute('title', 'Theme: ' + choice + ' (click to change)');
+      themeBtn.setAttribute('aria-label', 'Theme: ' + choice + '. Click to change.');
     }
-
-    function applyTheme(theme) {
-        var resolved = theme === 'system' ? (systemDark() ? 'dark' : 'light') : theme;
-        root.setAttribute('data-theme', resolved);
-        var buttons = document.querySelectorAll('[data-theme-choice]');
-        Array.prototype.forEach.call(buttons, function (btn) {
-            var active = btn.getAttribute('data-theme-choice') === theme;
-            btn.classList.toggle('active', active);
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
-    }
-
-    function initTheme() {
-        var stored = null;
-        try { stored = localStorage.getItem(THEME_KEY); } catch (e) { /* private mode */ }
-        var theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
-        applyTheme(theme);
-
-        var toggle = document.getElementById('theme-toggle');
-        var menu = document.getElementById('theme-menu');
-        if (toggle && menu) {
-            toggle.addEventListener('click', function (event) {
-                event.stopPropagation();
-                menu.classList.toggle('open');
-            });
-            Array.prototype.forEach.call(menu.querySelectorAll('[data-theme-choice]'), function (btn) {
-                btn.addEventListener('click', function () {
-                    var choice = btn.getAttribute('data-theme-choice');
-                    try { localStorage.setItem(THEME_KEY, choice); } catch (e) { /* ignore */ }
-                    applyTheme(choice);
-                    menu.classList.remove('open');
-                });
-            });
-            document.addEventListener('click', function (event) {
-                if (!menu.contains(event.target) && event.target !== toggle && !toggle.contains(event.target)) {
-                    menu.classList.remove('open');
-                }
-            });
-        }
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-                var current = null;
-                try { current = localStorage.getItem(THEME_KEY); } catch (e) { /* ignore */ }
-                if (current === 'system' || !current) applyTheme('system');
-            });
-        }
-    }
-
-    function initNav() {
-        var toggle = document.getElementById('nav-toggle');
-        var links = document.getElementById('nav-links');
-        if (!toggle || !links) return;
-        toggle.addEventListener('click', function () {
-            links.classList.toggle('open');
-            toggle.setAttribute('aria-expanded', links.classList.contains('open') ? 'true' : 'false');
-        });
-        Array.prototype.forEach.call(links.querySelectorAll('a'), function (link) {
-            link.addEventListener('click', function () { links.classList.remove('open'); });
-        });
-    }
-
-    function initActiveNav() {
-        var here = location.pathname.replace(/\/+$/, '') + '/';
-        Array.prototype.forEach.call(document.querySelectorAll('.nav-links a, .subnav a'), function (a) {
-            var href = a.getAttribute('href') || '';
-            if (!href.startsWith('/') && !href.startsWith('http')) href = '/' + href;
-            var target = href.split('#')[0].replace(/\/+$/, '') + '/';
-            if (target === here || (target !== '/' && here.startsWith(target))) a.classList.add('active');
-        });
-    }
-
-    function initReveal() {
-        var els = document.querySelectorAll('.reveal');
-        if (!els.length) return;
-        if (!('IntersectionObserver' in window)) {
-            Array.prototype.forEach.call(els, function (el) { el.classList.add('in'); });
-            return;
-        }
-        var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('in');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, {threshold: 0.12, rootMargin: '0px 0px -40px 0px'});
-        Array.prototype.forEach.call(els, function (el) { observer.observe(el); });
-    }
-
-    function initYear() {
-        var el = document.getElementById('year');
-        if (el) el.textContent = String(new Date().getFullYear());
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        initTheme();
-        initNav();
-        initActiveNav();
-        initReveal();
-        initYear();
+  }
+  apply(stored());
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var order = ['light', 'dark', 'system'];
+      var next = order[(order.indexOf(stored()) + 1) % order.length];
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      apply(next);
     });
+  }
+  if (mql.addEventListener) mql.addEventListener('change', function () { apply(stored()); });
+
+  /* ---------- sticky header + scroll progress ---------- */
+  var header = document.getElementById('site-header');
+  var progress = document.querySelector('.scroll-progress');
+  var onScroll = function () {
+    if (header) header.classList.toggle('scrolled', window.scrollY > 8);
+    if (progress) {
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + '%';
+    }
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ---------- mobile nav ---------- */
+  var toggle = document.getElementById('nav-toggle');
+  var links = document.getElementById('nav-links');
+  if (toggle && links) {
+    toggle.addEventListener('click', function () {
+      var open = links.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.firstElementChild.className = open ? 'ph ph-x' : 'ph ph-list';
+    });
+    document.addEventListener('click', function (e) {
+      if (!links.contains(e.target) && !toggle.contains(e.target) && links.classList.contains('open')) {
+        links.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.firstElementChild.className = 'ph ph-list';
+      }
+    });
+  }
+
+  /* ---------- scroll reveal ---------- */
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && revealEls.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('in'); });
+  }
+
+  /* ---------- stat count-up ---------- */
+  var counters = document.querySelectorAll('[data-count]');
+  if ('IntersectionObserver' in window && counters.length) {
+    var cio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        cio.unobserve(entry.target);
+        var el = entry.target;
+        var target = parseInt(el.getAttribute('data-count'), 10);
+        var start = null, dur = 1100;
+        function tick(ts) {
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = String(Math.round(eased * target));
+          if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }, { threshold: 0.6 });
+    counters.forEach(function (el) { cio.observe(el); });
+  }
+
+  /* ---------- sticky TOC highlight (subpages) ---------- */
+  var tocLinks = document.querySelectorAll('.doc-toc a[href^="#"]');
+  if (tocLinks.length && 'IntersectionObserver' in window) {
+    var map = {}, sections = [];
+    tocLinks.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var sec = document.getElementById(id);
+      if (sec) { map[id] = a; sections.push(sec); }
+    });
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          tocLinks.forEach(function (a) { a.classList.remove('on'); });
+          if (map[entry.target.id]) map[entry.target.id].classList.add('on');
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(function (s) { spy.observe(s); });
+  }
+
+  /* ---------- current year ---------- */
+  var year = document.getElementById('year');
+  if (year) year.textContent = String(new Date().getFullYear());
 })();
