@@ -5,6 +5,24 @@ this file preserves the complete history.
 
 ## [Unreleased]
 
+Multi-format request bodies and body format conversions.
+
+- supports **every request body format an endpoint declares** in the Runner: JSON, YAML, XML,
+  and `application/x-www-form-urlencoded` query strings with bracket notation
+  (`a=1&b=4&j[]=1&a[]=5&k[key]=foo`), alongside the existing text, HTML, JavaScript, binary and
+  multipart bodies;
+- converts between formats transparently — the form always edits a JSON model, so a form change
+  is serialized to the active media type (JSON, YAML, XML with OpenAPI `xml` hints — element
+  names, attributes, wrapped arrays, namespaces and prefixes — or a bracket-notation query
+  string), and the raw editor parses any of those back into the form when it opens;
+- switches the body text with the media type dropdown: moving an endpoint from JSON to XML or
+  YAML converts the current payload instead of showing JSON text in an XML editor, and the raw
+  editor label reflects the format (Raw XML, Raw YAML, Raw Form);
+- seeds the body from the **currently selected media type's own example** (or a converted mock)
+  when resetting or reopening, so the XML example renders as XML, not JSON;
+- sends urlencoded bodies with bracket-notation nesting on the wire and keeps the Content-Type
+  header matched to the selected media type.
+
 Documentation-view request body polish.
 
 - renders **open object bodies** in the schema property table: schemas with no declared

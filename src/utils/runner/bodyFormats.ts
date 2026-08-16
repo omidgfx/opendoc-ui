@@ -1,5 +1,6 @@
 import * as jsYaml from 'js-yaml';
 import {schemaDeclaresBinary} from './runnerResponse';
+import {jsonToQueryString, jsonToXml, queryStringToJson, xmlToJson} from './bodyConverters';
 
 export type BodyLanguage = 'json' | 'yaml' | 'xml' | 'plaintext' | 'javascript' | 'html';
 
@@ -9,6 +10,7 @@ export interface BodyFormat {
     isJson: boolean;
     isYaml: boolean;
     isXml: boolean;
+    isQuery: boolean;
     supportsSchema: boolean;
 }
 
@@ -19,6 +21,7 @@ export const bodyTypeSupportsForm = (mediaType: string, schema?: any): boolean =
         schemaDeclaresBinary(schema) ||
         normalized.includes('json') ||
         normalized.includes('yaml') ||
+        normalized.includes('xml') ||
         normalized === 'application/x-www-form-urlencoded' ||
         normalized === 'multipart/form-data' ||
         normalized === 'application/octet-stream'
@@ -31,6 +34,7 @@ export const getBodyFormat = (mediaType: string): BodyFormat => {
     const isJson = normalized === 'application/json' || normalized.endsWith('+json') || normalized === 'text/json';
     const isYaml = normalized.includes('yaml') || normalized === 'application/x-yaml';
     const isXml = normalized === 'application/xml' || normalized.endsWith('+xml') || normalized === 'text/xml';
+    const isQuery = normalized === 'application/x-www-form-urlencoded';
     const language: BodyLanguage = isJson
         ? 'json'
         : isYaml
@@ -42,7 +46,15 @@ export const getBodyFormat = (mediaType: string): BodyFormat => {
               : normalized.includes('html')
                 ? 'html'
                 : 'plaintext';
-    return {mediaType: normalized || 'text/plain', language, isJson, isYaml, isXml, supportsSchema: isJson};
+    return {
+        mediaType: normalized || 'text/plain',
+        language,
+        isJson,
+        isYaml,
+        isXml,
+        isQuery,
+        supportsSchema: isJson,
+    };
 };
 export const getBodyEditorLanguage = (text: string, mediaType: string): BodyLanguage => {
     const format = getBodyFormat(mediaType);
@@ -85,12 +97,18 @@ export const formatBodyText = (
 } => {
     const format = getBodyFormat(mediaType);
     try {
-        if (format.isJson || (isFormLikeMediaType(mediaType) && looksLikeJsonBody(text)))
-            return {text: JSON.stringify(JSON.parse(text), null, 2)};
+        if (format.isJson) return {text: JSON.stringify(JSON.parse(text), null, 2)};
         if (format.isYaml) return {text: jsYaml.dump(jsYaml.load(text), {noRefs: true, lineWidth: 120})};
         if (format.isXml) {
+            const trimmed = text.trim();
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) return {text: jsonToXml(JSON.parse(trimmed))};
             const compact = text.replace(/>\s+</g, '><').trim();
             return {text: compact};
+        }
+        if (format.isQuery || isFormLikeMediaType(mediaType)) {
+            const trimmed = text.trim();
+            if (looksLikeJsonBody(trimmed)) return {text: jsonToQueryString(JSON.parse(trimmed))};
+            return {text: jsonToQueryString(queryStringToJson(text))};
         }
         return {text};
     } catch (error) {
@@ -101,18 +119,13 @@ export const parseStructuredBody = (text: string, mediaType: string): unknown =>
     const format = getBodyFormat(mediaType);
     if (format.isJson) return JSON.parse(text);
     if (format.isYaml) return jsYaml.load(text);
+    if (format.isXml) return xmlToJson(text);
     const normalized = mediaType.split(';', 1)[0].trim().toLowerCase();
     if (normalized === 'application/x-www-form-urlencoded' || normalized === 'multipart/form-data') {
         try {
             return JSON.parse(text);
         } catch {
-            const parsed: Record<string, string | string[]> = {};
-            new URLSearchParams(text).forEach((item, key) => {
-                const previous = parsed[key];
-                parsed[key] =
-                    previous === undefined ? item : Array.isArray(previous) ? [...previous, item] : [previous, item];
-            });
-            return parsed;
+            return queryStringToJson(text);
         }
     }
     return undefined;
@@ -130,13 +143,9 @@ const formScalar = (value: unknown): string => {
     return String(value);
 };
 export const serializeUrlEncodedBody = (value: unknown): string => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return formScalar(value);
-    const encoded = new URLSearchParams();
-    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
-        if (Array.isArray(item)) item.forEach(part => encoded.append(key, formScalar(part)));
-        else encoded.append(key, formScalar(item));
-    });
-    return encoded.toString();
+    if (value === null || value === undefined) return '';
+    if (typeof value !== 'object') return String(value);
+    return jsonToQueryString(value);
 };
 export const appendMultipartBody = (
     form: FormData,

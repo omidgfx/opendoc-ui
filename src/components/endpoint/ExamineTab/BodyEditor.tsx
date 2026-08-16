@@ -1,7 +1,8 @@
 import {lazy, Suspense, useEffect, useState} from 'react';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
-import {formatBodyText, parseStructuredBody} from '../../../utils/runner/bodyFormats';
+import {parseStructuredBody} from '../../../utils/runner/bodyFormats';
+import {convertBodyText} from '../../../utils/runner/bodyConverters';
 import {schemaDeclaresBinary} from '../../../utils/runner/runnerResponse';
 import RecursiveBodyForm, {type BodyValue, defaultBodyValue} from './RecursiveBodyForm';
 import RunnerFieldFrame from './RunnerFieldFrame';
@@ -37,10 +38,8 @@ const topLevelFields = (value: BodyValue): Record<string, string> => {
         Object.entries(value).map(([key, item]) => [key, typeof item === 'string' ? item : JSON.stringify(item)]),
     );
 };
-const getBodyFormatForForm = (jsonText: string, mediaType: string): string => {
-    const formatted = formatBodyText(jsonText, mediaType);
-    return formatted.error ? jsonText : formatted.text;
-};
+const getBodyFormatForForm = (jsonText: string, mediaType: string, schema: any): string =>
+    convertBodyText(jsonText, 'application/json', mediaType, schema);
 export default function BodyEditor(props: BodyEditorProps) {
     const {
         spec,
@@ -88,7 +87,7 @@ export default function BodyEditor(props: BodyEditorProps) {
         setFormValue(value);
         setBodyFields(topLevelFields(value));
         const jsonText = JSON.stringify(value, null, 2);
-        setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType));
+        setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType, resolvedSchema));
     };
     const isTopLevelBinary = schemaDeclaresBinary(resolvedSchema);
     if (bodyEditorMode === 'form' && resolvedSchema === null) {

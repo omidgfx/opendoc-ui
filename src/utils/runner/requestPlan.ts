@@ -519,10 +519,33 @@ const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
             pairs.push({name, value: JSON.stringify(value)});
             return;
         }
-        if (Array.isArray(value)) value.forEach(item => pairs.push({name, value: multipartScalar(item)}));
-        else pairs.push({name, value: multipartScalar(value)});
+        if (value && typeof value === 'object') {
+            pairs.push(...bracketPairs(name, value));
+            return;
+        }
+        pairs.push({name, value: multipartScalar(value)});
     });
     return queryStringFromPairs(pairs).slice(1);
+};
+
+/** Serialize nested arrays and objects with bracket notation (`j[]=1&k[key]=foo`)
+ *  so urlencoded bodies round-trip through the query-string raw editor. */
+const bracketPairs = (name: string, value: unknown): SerializedPair[] => {
+    const pairs: SerializedPair[] = [];
+    const walk = (item: unknown, prefix: string) => {
+        if (item === null || item === undefined) return;
+        if (Array.isArray(item)) {
+            item.forEach(part => walk(part, `${prefix}[]`));
+            return;
+        }
+        if (typeof item === 'object') {
+            Object.entries(item as Record<string, unknown>).forEach(([key, part]) => walk(part, `${prefix}[${key}]`));
+            return;
+        }
+        pairs.push({name: prefix, value: String(item)});
+    };
+    walk(value, name);
+    return pairs;
 };
 
 const FORBIDDEN_BROWSER_HEADERS = new Set([
