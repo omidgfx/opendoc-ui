@@ -274,7 +274,7 @@ export default function Topbar({
 
                     <BrandLogo
                         type={null}
-                        hideLogoInMobile
+                        logoFrame={false}
                         logoClassName="size-8 sm:size-9 p-1"
                         wordmarkClassName="text-sm text-[var(--text-heading)]"
                         className="select-none shrink-0"

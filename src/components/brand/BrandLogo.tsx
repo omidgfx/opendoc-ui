@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import Mark from '@/src/assets/opendoc-logo.svg?react';
+import OpenDocMark from './OpenDocMark';
 
 export type BrandLogoType = 'logo' | 'wordmark' | null;
 export type BrandLogoLayout = 'row' | 'stack';
@@ -94,12 +94,12 @@ export default function BrandLogo({
                         hideInDesktop: hideLogoInDesktop,
                     })}
                 >
-                    <Mark className="size-full" aria-hidden="true" />
+                    <OpenDocMark className="size-full" />
                 </span>
             )}
             {showWordmark && (
                 <BrandWordmark
-                    className={clsx('min-w-0 shrink', wordmarkClassName)}
+                    className={clsx('min-w-0 shrink-0', wordmarkClassName)}
                     ariaLabel={ariaLabel}
                     hideInMobile={hideWordmarkInMobile}
                     hideInTablet={hideWordmarkInTablet}

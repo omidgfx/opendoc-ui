@@ -132,7 +132,7 @@ export default function AboutView() {
                                     type={null}
                                     logoFrame={false}
                                     logoClassName="brand-about-logo"
-                                    wordmarkClassName="text-4xl sm:text-6xl md:text-7xl"
+                                    wordmarkClassName="text-4xl sm:text-5xl md:text-6xl"
                                     className="brand-about-lockup relative z-10 max-w-full justify-center"
                                 />
                                 <span className="brand-about-hero-subtitle relative z-10 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] sm:text-[11px]">
