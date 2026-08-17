@@ -541,10 +541,6 @@ export default function AboutView() {
                                         Pejman Chatrrouz
                                     </a>
                                 </span>
-                                <span>
-                                    Logo by{' '}
-                                    <span className="font-semibold text-[var(--text-heading)]">Hossein Dehghan</span>
-                                </span>
                                 <a
                                     href={OPEN_DOC_WEBSITE_URL}
                                     target="_blank"
