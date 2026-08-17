@@ -45,7 +45,7 @@ export default function WelcomeView({
         <div className="flex-1 h-full overflow-y-auto scrollbar-thin relative">
             <div className="min-h-full flex flex-col items-center justify-center px-6 py-12 select-none">
                 <div className="flex flex-col items-center w-full max-w-xl text-center">
-                    <span className="brand-mark-shell size-16 sm:size-20 p-2.5 mb-5">
+                    <span className="mb-5 size-16 sm:size-20">
                         <Logo className="size-full" aria-hidden="true" />
                     </span>
                     <div className="flex flex-col items-center gap-1.5">
