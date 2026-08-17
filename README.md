@@ -8,7 +8,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.14-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.15-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -17,7 +17,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.14](#version-014)
+- [Version 0.1.15](#version-015)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,27 +87,22 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.14
+## Version 0.1.15
 
-This release redesigns the marketing website, adds line markers to the code viewer, supports every
-request body format an endpoint declares, and polishes the documentation view:
+This release fixes Docker builds from Git Bash on Windows and makes the API key control
+visible for custom OpenAI-compatible AI profiles:
 
-- **redesigns the marketing website** around the product's brand identity — all-sans typography
-  with CSS-variable tokens, a light/dark/system toggle, scroll progress and reveal choreography
-  behind `prefers-reduced-motion`, a landing hero embedding the live demo, a bento capability grid
-  with hand-built miniatures of the real UI, and the Features/Guide/Compatibility/Deploy/
-  Developers/FAQ subpages rebuilt with scroll-spy TOCs;
-- adds **line numbers with annotation icons** to the code viewer — schema-derived gutter markers
-  (oneOf/anyOf branches, deprecated, read-only/write-only, enum/const, format icons, clickable
-  pattern markers opening the Pattern Tester) and runner-response markers (truncation, encoded
-  binary, diff vs the previous run), recursion-safe and tooltip-rich;
-- supports **every request body format an endpoint declares** — JSON, YAML, XML and urlencoded
-  query strings with bracket notation (`a=1&b=4&j[]=1&a[]=5&k[key]=foo`) convert transparently:
-  the form edits a JSON model serialized to the active media type, the media-type dropdown
-  converts the current payload, and unknown textual formats (text/plain, …) convert cleanly too;
-- renders **open object bodies** ("Additional Properties" blocks) and the **request body example**
-  in the documentation view, and fixes parameter presentation — long descriptions use the
-  tooltip, and every example type renders (never `[object Object]`).
+- **Docker builds on Git Bash/Windows** no longer rewrite `VITE_BASE_PATH=/` into a
+  Windows filesystem path before it reaches `docker.exe`; Dockerfile and build-context
+  path conversion remains intact;
+- **Custom OpenAI-compatible** profiles now show an API key field when Direct transport
+  is selected. The previous preset metadata incorrectly set `requiresApiKey` to `false`,
+  even though the request adapter already supported a Bearer token;
+- configured keys are sent as `Authorization: Bearer <key>`, while Ollama remains suitable
+  for keyless local use;
+- the package and lockfile versions are bumped to `0.1.15`.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
 ## Quick start
 
