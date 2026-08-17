@@ -5,6 +5,19 @@ SCRIPT_DIR=$(CDPATH='' cd "$(dirname "$0")" && pwd)
 PROJECT_ROOT=$(CDPATH='' cd "$SCRIPT_DIR/.." && pwd)
 cd "$PROJECT_ROOT"
 
+# On Windows, Git Bash (MSYS2) auto-rewrites POSIX-looking absolute-path
+# arguments (e.g. "/") before handing them to native .exe tools like
+# docker.exe -- silently turning --build-arg VITE_BASE_PATH=/ into
+# VITE_BASE_PATH=C:/Program Files/Git, which then gets baked into the
+# built index.html and breaks every absolute asset URL.
+#
+# A blanket MSYS_NO_PATHCONV=1 "fixes" that but breaks the --file/context
+# arguments below instead: those DO need to be converted to real Windows
+# paths for docker.exe to find them. So exclude only the build-arg that
+# actually gets misread as a path, via MSYS2_ARG_CONV_EXCL. This is a
+# no-op on Linux/macOS.
+export MSYS2_ARG_CONV_EXCL="VITE_BASE_PATH="
+
 if ! command -v docker >/dev/null 2>&1; then
     echo "Docker CLI was not found. Install Docker Desktop or Docker Engine first." >&2
     exit 1
