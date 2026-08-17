@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @import 'tailwindcss';
 
@@ -606,6 +606,106 @@ body {
 
 .app-topbar {
     padding-top: env(safe-area-inset-top, 0px);
+}
+
+.brand-mark-shell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 0.9rem;
+    background:
+        linear-gradient(
+                145deg,
+                color-mix(in srgb, var(--surface) 82%, var(--primary)),
+                color-mix(in srgb, var(--surface) 84%, var(--method-get))
+            )
+            padding-box,
+        linear-gradient(135deg, var(--primary), var(--method-get)) border-box;
+    box-shadow:
+        0 12px 30px -16px color-mix(in srgb, var(--primary) 72%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--text-heading) 12%, transparent);
+}
+
+.brand-wordmark {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0.95;
+    font-family: var(--font-sans);
+    font-weight: 900;
+    letter-spacing: -0.065em;
+    white-space: nowrap;
+}
+
+.brand-wordmark-doc {
+    background: linear-gradient(110deg, var(--primary), var(--method-get));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.brand-wordmark-ui {
+    display: inline-flex;
+    align-items: center;
+    margin-inline-start: 0.2em;
+    padding: 0.1em 0.28em 0.08em;
+    border: 1.5px solid color-mix(in srgb, var(--primary) 72%, var(--method-get));
+    border-radius: 0.38em;
+    letter-spacing: -0.025em;
+    background: color-mix(in srgb, var(--surface) 74%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-heading) 4%, transparent);
+}
+
+.brand-about-hero {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    width: 100%;
+    min-height: 13rem;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1rem, 4vw, 2.5rem);
+    overflow: hidden;
+    padding: clamp(1.75rem, 5vw, 3.5rem);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    background:
+        radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 42%),
+        radial-gradient(circle at 82% 90%, color-mix(in srgb, var(--method-get) 18%, transparent), transparent 45%),
+        linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--background) 88%, var(--primary)));
+    box-shadow: 0 22px 56px -38px color-mix(in srgb, var(--primary) 65%, transparent);
+}
+
+.brand-about-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.14;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--primary) 22%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--primary) 22%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 18%, black 82%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 18%, black 82%, transparent);
+}
+
+.brand-about-logo {
+    position: relative;
+    z-index: 1;
+    width: clamp(4.75rem, 10vw, 7rem);
+    height: clamp(4.75rem, 10vw, 7rem);
+    flex: none;
+    filter: drop-shadow(0 14px 22px color-mix(in srgb, var(--primary) 25%, transparent));
+}
+
+@media (max-width: 639px) {
+    .brand-about-hero {
+        flex-direction: column;
+        min-height: 0;
+    }
 }
 
 .modal-backdrop {

@@ -19,10 +19,10 @@ def shell(fname, title, desc, body):
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>{title}</title>
 <meta name="description" content="{desc}"/>
-<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
+<link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=9"/>
+<link rel="stylesheet" href="assets/css/site.css?v=10"/>
 <script>
 (function(){{try{{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -35,7 +35,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}}catch(e){
 <header class="site-header" id="site-header">
   <div class="container" style="padding:0 16px">
     <div class="nav">
-      <a class="brand" href="index.html"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b>&nbsp;UI</b></span></a>
+      <a class="brand" href="index.html"><img src="assets/opendoc-logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b>&nbsp;UI</b></span></a>
       <nav class="nav-links" id="nav-links">
 {nav}
       </nav>
@@ -55,7 +55,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}}catch(e){
   <div class="container">
     <div class="foot-grid">
       <div class="foot-brand">
-        <a class="brand" href="index.html" style="color:#fff"><img src="assets/logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b style="color:var(--brand-bright)">&nbsp;UI</b></span></a>
+        <a class="brand" href="index.html" style="color:#fff"><img src="assets/opendoc-logo.svg" alt="OpenDoc UI logo" width="30" height="30"/><span>OpenDoc<b style="color:var(--brand-bright)">&nbsp;UI</b></span></a>
         <p>A client-side OpenAPI/Swagger documentation browser and API runner with theming, code generation, local notes, and local file support. Crafted by <a href="https://github.com/omidgfx" target="_blank" rel="noreferrer">Pejman Chatrrouz</a>.</p>
       </div>
       <div>

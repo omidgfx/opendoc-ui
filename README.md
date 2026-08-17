@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/opendoc-logo.svg" alt="OpenDoc UI logo" width="112" />
+</p>
+
 # [OpenDoc UI](https://omidgfx.github.io/opendoc-ui/)
 
 A static-first documentation browser, API runner, and optional AI assistant for **Swagger 2.x** and
@@ -8,16 +12,18 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.1.15-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.1.16-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
+
+**Logo design:** Hossein Dehghan.
 
 ---
 
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.1.15](#version-015)
+- [Version 0.1.16](#version-0116)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -87,20 +93,18 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.1.15
+## Version 0.1.16
 
-This release fixes Docker builds from Git Bash on Windows and makes the API key control
-visible for custom OpenAI-compatible AI profiles:
+This release refreshes OpenDoc UI's visual identity around the new logo designed by **Hossein Dehghan**:
 
-- **Docker builds on Git Bash/Windows** no longer rewrite `VITE_BASE_PATH=/` into a
-  Windows filesystem path before it reaches `docker.exe`; Dockerfile and build-context
-  path conversion remains intact;
-- **Custom OpenAI-compatible** profiles now show an API key field when Direct transport
-  is selected. The previous preset metadata incorrectly set `requiresApiKey` to `false`,
-  even though the request adapter already supported a Bearer token;
-- configured keys are sent as `Authorization: Bearer <key>`, while Ollama remains suitable
-  for keyless local use;
-- the package and lockfile versions are bumped to `0.1.15`.
+- the app navbar and welcome/search landing now use the new mark in a rounded, shadowed,
+  theme-aware gradient shell;
+- the welcome/search heading now presents **OpenDoc UI** and the active specification title on
+  separate lines, with the specification title intentionally smaller;
+- the About page gains a full-width branded hero that uses the mark directly, without the square shell;
+- the app favicon and the marketing website use the new mark, while website header/footer marks receive
+  their own theme-aware square treatment;
+- the package and lockfile versions are bumped to `0.1.16`.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
