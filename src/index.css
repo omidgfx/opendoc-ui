@@ -614,19 +614,12 @@ body {
     justify-content: center;
     flex: none;
     overflow: hidden;
-    border: 1px solid transparent;
-    border-radius: 0.9rem;
+    border-radius: 22%;
     background:
-        linear-gradient(
-                145deg,
-                color-mix(in srgb, var(--surface) 82%, var(--primary)),
-                color-mix(in srgb, var(--surface) 84%, var(--method-get))
-            )
-            padding-box,
-        linear-gradient(135deg, var(--primary), var(--method-get)) border-box;
+        linear-gradient(to top, color-mix(in srgb, var(--border) 50%, transparent), transparent 72%), var(--surface);
     box-shadow:
-        0 12px 30px -16px color-mix(in srgb, var(--primary) 72%, transparent),
-        inset 0 1px 0 color-mix(in srgb, var(--text-heading) 12%, transparent);
+        0 6px 12px -8px color-mix(in srgb, var(--primary) 46%, transparent),
+        0 2px 5px -3px rgb(0 0 0 / 24%);
 }
 
 .brand-wordmark {

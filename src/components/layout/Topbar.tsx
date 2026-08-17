@@ -273,12 +273,12 @@ export default function Topbar({
                     </Tip>
 
                     <div className="flex items-center gap-2 select-none shrink-0">
-                        <span className="brand-mark-shell size-8 sm:size-9 p-1">
+                        <span className="brand-mark-shell hidden size-8 sm:inline-flex sm:size-9 sm:p-1">
                             <Logo className="size-full" aria-hidden="true" />
                         </span>
                         <span
                             aria-label="OpenDoc UI"
-                            className="brand-wordmark text-sm hidden sm:inline text-[var(--text-heading)]"
+                            className="brand-wordmark inline text-sm text-[var(--text-heading)]"
                         >
                             <span>Open</span>
                             <span className="brand-wordmark-doc">Doc</span>
