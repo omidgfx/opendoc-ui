@@ -102,6 +102,9 @@ This release refreshes OpenDoc UI's visual identity around the new logo:
 - the About page gains a full-width branded hero that uses the mark directly, without the square shell;
 - the app favicon and the marketing website use the new mark, while website header/footer marks receive
   their own theme-aware square treatment;
+- the mark is theme-aware — its artwork palette maps to `--primary`, `--accent`, and the HTTP-method
+  tokens, so it re-tints with the active theme and light/dark mode;
+- the mark no longer renders blank on mobile viewports where the topbar copy is hidden;
 - the package and lockfile versions are bumped to `0.1.16`.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
