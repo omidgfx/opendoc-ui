@@ -108,7 +108,7 @@ export const AI_PROVIDER_PRESETS: AIProviderPreset[] = [
         label: 'Custom OpenAI-compatible',
         description: 'Any CORS-enabled OpenAI-compatible endpoint or local gateway.',
         defaultBaseUrl: 'http://localhost:1234/v1',
-        requiresApiKey: false,
+        requiresApiKey: true,
         native: false,
         models: [],
     },

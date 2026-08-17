@@ -3,6 +3,20 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.1.15] — 2026-08-17
+
+Docker build portability and AI profile credential visibility.
+
+- fixes Git Bash/MSYS2 path conversion rewriting `VITE_BASE_PATH=/` before it reaches
+  `docker.exe`, while preserving normal conversion for Docker's file and context paths;
+- fixes the **Custom OpenAI-compatible** AI provider preset, which was incorrectly marked
+  as not requiring an API key, so the AI Settings modal now renders its masked API key
+  field in Direct transport;
+- keeps the request behavior aligned with the UI: when a key is supplied, the existing
+  OpenAI-compatible adapter sends it as `Authorization: Bearer <key>`;
+- keeps Ollama keyless for local development and bumps the package and lockfile metadata
+  to `0.1.15`.
+
 ## [0.1.14] — 2026-08-17
 
 Website redesign, code-viewer line markers, multi-format request bodies, and documentation-view polish.
