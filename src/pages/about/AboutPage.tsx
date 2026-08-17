@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {motion} from 'motion/react';
 import pkg from '@/package.json';
-import Logo from '@/src/assets/opendoc-logo.svg?react';
+import BrandLogo from '@/src/components/brand/BrandLogo';
 import {
     fadeUp,
     FEATURES,
@@ -128,20 +128,16 @@ export default function AboutView() {
                                 transition={{duration: 0.6, ease: 'easeOut'}}
                                 className="brand-about-hero"
                             >
-                                <Logo className="brand-about-logo" aria-hidden="true" />
-                                <div className="relative z-10 flex min-w-0 flex-col items-center gap-2 text-center">
-                                    <div
-                                        aria-label="OpenDoc UI"
-                                        className="brand-wordmark text-4xl sm:text-6xl md:text-7xl text-[var(--text-heading)]"
-                                    >
-                                        <span>Open</span>
-                                        <span className="brand-wordmark-doc">Doc</span>
-                                        <span className="brand-wordmark-ui">UI</span>
-                                    </div>
-                                    <div className="text-[10px] sm:text-[11px] font-black tracking-[0.2em] uppercase text-[var(--text-muted)]">
-                                        OpenAPI Documentation Interface
-                                    </div>
-                                </div>
+                                <BrandLogo
+                                    type={null}
+                                    logoFrame={false}
+                                    logoClassName="brand-about-logo"
+                                    wordmarkClassName="text-4xl sm:text-6xl md:text-7xl"
+                                    className="brand-about-lockup relative z-10 max-w-full justify-center"
+                                />
+                                <span className="brand-about-hero-subtitle relative z-10 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] sm:text-[11px]">
+                                    OpenAPI Documentation Interface
+                                </span>
                             </motion.div>
                             <div className="text-center max-w-2xl">
                                 <motion.p

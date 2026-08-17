@@ -608,8 +608,29 @@ body {
     padding-top: env(safe-area-inset-top, 0px);
 }
 
-.brand-mark-shell {
+.brand-logo-part {
     display: inline-flex;
+}
+
+@media (max-width: 639px) {
+    .brand-logo-part[data-hide-mobile='true'] {
+        display: none !important;
+    }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .brand-logo-part[data-hide-tablet='true'] {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .brand-logo-part[data-hide-desktop='true'] {
+        display: none !important;
+    }
+}
+
+.brand-mark-shell {
     align-items: center;
     justify-content: center;
     flex: none;
@@ -623,7 +644,6 @@ body {
 }
 
 .brand-wordmark {
-    display: inline-flex;
     align-items: center;
     line-height: 0.95;
     font-family: var(--font-sans);
@@ -644,11 +664,13 @@ body {
     align-items: center;
     margin-inline-start: 0.2em;
     padding: 0.1em 0.28em 0.08em;
-    border: 1.5px solid color-mix(in srgb, var(--primary) 72%, var(--method-get));
+    border: 0.1em solid transparent;
     border-radius: 0.38em;
     letter-spacing: -0.025em;
-    background: color-mix(in srgb, var(--surface) 74%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-heading) 4%, transparent);
+    background:
+        linear-gradient(var(--surface), var(--surface)) padding-box,
+        linear-gradient(135deg, var(--primary), var(--method-get)) border-box;
+    box-shadow: inset 0 0 0 0.04em color-mix(in srgb, var(--text-heading) 6%, transparent);
 }
 
 .brand-about-hero {
@@ -659,6 +681,7 @@ body {
     min-height: 13rem;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: clamp(1rem, 4vw, 2.5rem);
     overflow: hidden;
     padding: clamp(1.75rem, 5vw, 3.5rem);
@@ -669,6 +692,24 @@ body {
         radial-gradient(circle at 82% 90%, color-mix(in srgb, var(--method-get) 18%, transparent), transparent 45%),
         linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--background) 88%, var(--primary)));
     box-shadow: 0 22px 56px -38px color-mix(in srgb, var(--primary) 65%, transparent);
+}
+
+.brand-about-lockup {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+}
+
+.brand-about-hero-subtitle {
+    flex: 1 1 100%;
+    text-align: center;
+}
+
+@media (max-width: 1023px) {
+    .brand-about-lockup {
+        flex-direction: column;
+    }
 }
 
 .brand-about-hero::after {

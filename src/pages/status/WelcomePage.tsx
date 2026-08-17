@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import SearchHistoryDropdown from '@/src/components/common/SearchHistoryDropdown';
-import Logo from '@/src/assets/opendoc-logo.svg?react';
+import BrandLogo from '@/src/components/brand/BrandLogo';
 
 type WelcomeViewProps = {
     specTitle: string;
@@ -45,22 +45,17 @@ export default function WelcomeView({
         <div className="flex-1 h-full overflow-y-auto scrollbar-thin relative">
             <div className="min-h-full flex flex-col items-center justify-center px-6 py-12 select-none">
                 <div className="flex flex-col items-center w-full max-w-xl text-center">
-                    <span className="mb-5 size-16 sm:size-20">
-                        <Logo className="size-full" aria-hidden="true" />
-                    </span>
-                    <div className="flex flex-col items-center gap-1.5">
-                        <h1
-                            aria-label="OpenDoc UI"
-                            className="brand-wordmark text-2xl sm:text-3xl text-[var(--text-heading)]"
-                        >
-                            <span>Open</span>
-                            <span className="brand-wordmark-doc">Doc</span>
-                            <span className="brand-wordmark-ui">UI</span>
-                        </h1>
-                        <p className="max-w-lg break-words text-sm sm:text-base font-bold text-[var(--text-muted)]">
-                            {specTitle}
-                        </p>
-                    </div>
+                    <BrandLogo
+                        type={null}
+                        layout="stack"
+                        logoFrame={false}
+                        logoClassName="size-16 sm:size-20"
+                        wordmarkClassName="text-2xl sm:text-3xl text-[var(--text-heading)]"
+                        className="mb-5"
+                    />
+                    <p className="max-w-lg break-words text-sm font-bold text-[var(--text-muted)] sm:text-base">
+                        {specTitle}
+                    </p>
                     <p className="mt-1.5 text-xs text-[var(--text-muted)] max-w-md leading-relaxed">
                         Search the specification, or open an endpoint from the sidebar. Everything you open lands in the
                         tabs above.
