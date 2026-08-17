@@ -8,7 +8,7 @@ import type {LocalHistoryEntry} from '../../utils/storage/localHistory';
 import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
 import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
 import {specStorage} from '../../utils/storage/index';
-import Logo from '@/src/assets/logo.svg?react';
+import Logo from '@/src/assets/opendoc-logo.svg?react';
 
 interface TopbarProps {
     parsables: ParsableConfig;
@@ -273,11 +273,16 @@ export default function Topbar({
                     </Tip>
 
                     <div className="flex items-center gap-2 select-none shrink-0">
-                        <span className="size-8 sm:size-9 overflow-hidden">
-                            <Logo className="size-full" />
+                        <span className="brand-mark-shell size-8 sm:size-9 p-1">
+                            <Logo className="size-full" aria-hidden="true" />
                         </span>
-                        <span className="font-extrabold text-sm tracking-tight hidden sm:inline text-[var(--text-heading)]">
-                            OpenDoc UI
+                        <span
+                            aria-label="OpenDoc UI"
+                            className="brand-wordmark text-sm hidden sm:inline text-[var(--text-heading)]"
+                        >
+                            <span>Open</span>
+                            <span className="brand-wordmark-doc">Doc</span>
+                            <span className="brand-wordmark-ui">UI</span>
                         </span>
                     </div>
 

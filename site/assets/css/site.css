@@ -203,8 +203,16 @@ html[data-theme="dark"] .btn-ink{ background:var(--paper); color:var(--ink); box
   transition:box-shadow .3s, background .35s, border-color .35s;
 }
 .site-header.scrolled .nav{ box-shadow:0 8px 32px -10px rgba(17,24,39,.25); }
-.brand{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:17px; letter-spacing:-.02em; }
-.brand img, .brand svg{ width:30px; height:30px; }
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:17px; letter-spacing:-.045em; }
+.brand img, .brand svg{
+  width:34px; height:34px; padding:4px; flex:none;
+  border:1px solid transparent; border-radius:11px;
+  background:linear-gradient(145deg, var(--brand-faint), var(--paper)) padding-box, var(--grad) border-box;
+  box-shadow:var(--shadow-brand);
+}
+.on-dark .brand img, .on-dark .brand svg{
+  background:linear-gradient(145deg, var(--navy-3), var(--navy)) padding-box, var(--grad) border-box;
+}
 .brand b{ color:var(--brand); }
 html[data-theme="dark"] .brand b{ color:var(--brand-bright); }
 .nav-links{ display:flex; gap:2px; margin-left:auto; }

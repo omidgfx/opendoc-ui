@@ -3,6 +3,20 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.1.16] — 2026-08-17
+
+Brand identity refresh and logo rollout.
+
+- replaces the active app, website, and favicon branding with the new OpenDoc UI mark designed by
+  **Hossein Dehghan**;
+- adds rounded, shadowed, theme-aware gradient logo shells to the app topbar and welcome/search landing;
+- redesigns the welcome/search heading as two lines: the OpenDoc UI wordmark first, then the active
+  specification title at a smaller size;
+- adds a full-width About-page brand hero that uses the logo without a square shell and follows the
+  current theme palette;
+- updates marketing-site header/footer branding, favicon references, and static-site generation;
+- bumps package, lockfile, README, and release metadata to `0.1.16`.
+
 ## [0.1.15] — 2026-08-17
 
 Docker build portability and AI profile credential visibility.
