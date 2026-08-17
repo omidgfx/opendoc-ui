@@ -15,6 +15,12 @@ Brand identity refresh and logo rollout.
 - adds a full-width About-page brand hero that uses the logo without a square shell and follows the
   current theme palette;
 - updates marketing-site header/footer branding, favicon references, and static-site generation;
+- renders the mark as a theme-aware component whose artwork palette maps to `--primary`, `--accent`,
+  and the HTTP-method tokens, so it re-tints with the active theme and light/dark mode;
+- fixes the mark rendering blank on mobile by scoping each instance's SVG gradients, filters, and
+  clip paths to per-instance ids instead of resolving against the hidden topbar copy;
+- moves contributor credits into a README Contributors section and drops the inline logo credit from
+  the About page footer;
 - bumps package, lockfile, README, and release metadata to `0.1.16`.
 
 ## [0.1.15] — 2026-08-17
