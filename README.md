@@ -16,8 +16,6 @@ CORS-enabled providers directly or an optional gateway.
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
-**Logo design:** Hossein Dehghan.
-
 ---
 
 ## Table of contents
@@ -29,18 +27,18 @@ CORS-enabled providers directly or an optional gateway.
 - [Docker](#docker)
 - [Builder CLI — `npm run make`](#builder-cli--npm-run-make)
 - [Configuration](#configuration)
-  - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
-  - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
-  - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
-  - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
+    - [Mode 1 — `public/config.json` (pre-defined specs)](#mode-1--publicconfigjson-pre-defined-specs)
+    - [Mode 2 — `window.INITIAL_CONFIG` (pre-defined specs)](#mode-2--windowinitial_config-pre-defined-specs)
+    - [Hybrid option — configured and local specs](#hybrid-option--configured-and-local-specs)
+    - [Mode 3 — No configuration (local mode)](#mode-3--no-configuration-local-mode)
 - [Remote URL loading and downloader proxies](#remote-url-loading-and-downloader-proxies)
-  - [Build-time settings](#build-time-settings)
-  - [Downloader services](#downloader-services)
+    - [Build-time settings](#build-time-settings)
+    - [Downloader services](#downloader-services)
 - [Spec loading, caching and the refresh button](#spec-loading-caching-and-the-refresh-button)
 - [Local endpoint notes and hidden endpoints](#local-endpoint-notes-and-hidden-endpoints)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
-  - [Framework AI gateway examples](#framework-ai-gateway-examples)
+    - [Framework AI gateway examples](#framework-ai-gateway-examples)
 - [Local history](#local-history)
 - [Theme system](#theme-system)
 - [The "no specification" state](#the-no-specification-state)
@@ -49,7 +47,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Browser persistence](#browser-persistence)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
-  - [GitHub Pages demo](#github-pages-demo)
+    - [GitHub Pages demo](#github-pages-demo)
 - [FAQ](#faq)
 - [License](#license)
 
@@ -95,7 +93,7 @@ CORS-enabled providers directly or an optional gateway.
 
 ## Version 0.1.16
 
-This release refreshes OpenDoc UI's visual identity around the new logo designed by **Hossein Dehghan**:
+This release refreshes OpenDoc UI's visual identity around the new logo:
 
 - the app navbar and welcome/search landing now use the new mark in a rounded, shadowed,
   theme-aware gradient shell;
@@ -1245,6 +1243,14 @@ Yes. Files are normalized to OpenAPI 3 internally; both `swagger: "2.0"` and
 Local files never leave the device. Configured/URL specifications are requested from their source
 or configured downloader, and optional AI requests go only to the selected provider/gateway. There
 is no analytics or telemetry code in the app.
+
+---
+
+## Contributors
+
+- **[Pejman Chatrrouz](https://github.com/omidgfx)** — Creator and maintainer.
+- **Hossein Dehghan** — Logo design.
+- **[Pedro J. Molina](https://github.com/pjmolina)** — Docker infrastructure and Bash-on-Windows build fixes.
 
 ---
 
