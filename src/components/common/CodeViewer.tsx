@@ -272,76 +272,78 @@ export default function CodeViewer({
                 onKeyDown={handleKeyDown}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                className="relative flex items-stretch overflow-auto scrollbar-thin outline-none"
+                className="relative overflow-auto scrollbar-thin outline-none"
                 style={{
                     maxHeight: maxHeight || '450px',
                     ...stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)'),
                 }}
             >
-                <div
-                    ref={codeBarRef}
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-0 z-0 opacity-0 transition-opacity duration-75"
-                    style={{
-                        height: `${LINE_HEIGHT_PX}px`,
-                        top: `${PAD_TOP_PX}px`,
-                        backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
-                    }}
-                />
-                {showLineNumbers && (
+                <div className="flex min-h-full min-w-full w-max items-stretch">
                     <div
+                        ref={codeBarRef}
                         aria-hidden="true"
-                        className="select-none sticky left-0 z-[1] shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
-                        style={stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)')}
-                    >
+                        className="pointer-events-none absolute left-0 z-0 opacity-0 transition-opacity duration-75"
+                        style={{
+                            height: `${LINE_HEIGHT_PX}px`,
+                            top: `${PAD_TOP_PX}px`,
+                            backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
+                        }}
+                    />
+                    {showLineNumbers && (
                         <div
-                            ref={gutterBarRef}
                             aria-hidden="true"
-                            className="pointer-events-none absolute inset-x-0 z-0 opacity-0 transition-opacity duration-75"
-                            style={{
-                                height: `${LINE_HEIGHT_PX}px`,
-                                top: `${PAD_TOP_PX}px`,
-                                backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
-                            }}
-                        />
-                        {Array.from({length: lineCount}, (_, index) => {
-                            const line = index + 1;
-                            const bucket = markersByLine.get(line);
-                            const icons = bucket?.filter(marker => !marker.dot);
-                            const dot = bucket?.find(marker => marker.dot);
-                            return (
-                                <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
-                                    {iconSlotWidth > 0 && (
+                            className="select-none sticky left-0 z-[1] shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
+                            style={stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)')}
+                        >
+                            <div
+                                ref={gutterBarRef}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute inset-x-0 z-0 opacity-0 transition-opacity duration-75"
+                                style={{
+                                    height: `${LINE_HEIGHT_PX}px`,
+                                    top: `${PAD_TOP_PX}px`,
+                                    backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
+                                }}
+                            />
+                            {Array.from({length: lineCount}, (_, index) => {
+                                const line = index + 1;
+                                const bucket = markersByLine.get(line);
+                                const icons = bucket?.filter(marker => !marker.dot);
+                                const dot = bucket?.find(marker => marker.dot);
+                                return (
+                                    <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
+                                        {iconSlotWidth > 0 && (
+                                            <span
+                                                className="flex items-center justify-start gap-[3px] shrink-0"
+                                                style={{width: `${iconSlotWidth}px`}}
+                                            >
+                                                {icons?.map((marker, markerIndex) => (
+                                                    <MarkerIcon key={markerIndex} marker={marker} />
+                                                ))}
+                                            </span>
+                                        )}
                                         <span
-                                            className="flex items-center justify-start gap-[3px] shrink-0"
-                                            style={{width: `${iconSlotWidth}px`}}
+                                            className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
+                                            style={{minWidth: `${gutterDigits}ch`}}
                                         >
-                                            {icons?.map((marker, markerIndex) => (
-                                                <MarkerIcon key={markerIndex} marker={marker} />
-                                            ))}
+                                            {line}
                                         </span>
-                                    )}
-                                    <span
-                                        className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
-                                        style={{minWidth: `${gutterDigits}ch`}}
-                                    >
-                                        {line}
-                                    </span>
-                                    {dot ? (
-                                        <Tip content={dot.tip}>
-                                            <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-[var(--text)] cursor-help" />
-                                        </Tip>
-                                    ) : (
-                                        <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-transparent" />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-                <pre className="relative z-[1] p-4 flex-1">
-                    <code ref={codeRef} dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
-                </pre>
+                                        {dot ? (
+                                            <Tip content={dot.tip}>
+                                                <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-[var(--text)] cursor-help" />
+                                            </Tip>
+                                        ) : (
+                                            <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-transparent" />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <pre className="relative z-[1] p-4 flex-1">
+                        <code ref={codeRef} dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
+                    </pre>
+                </div>
             </div>
         </div>
     );
