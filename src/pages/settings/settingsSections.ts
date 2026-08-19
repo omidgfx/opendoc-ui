@@ -1,6 +1,6 @@
 /** Sections are declared here as they land, so the rail, the deep link and the
  *  page body can never drift apart. */
-export type SettingsSectionId = 'general' | 'appearance';
+export type SettingsSectionId = 'general' | 'appearance' | 'ai';
 
 export interface SettingsSectionMeta {
     id: SettingsSectionId;
@@ -22,6 +22,12 @@ export const SETTINGS_SECTIONS: SettingsSectionMeta[] = [
         label: 'Appearance',
         description: 'Themes and color mode',
         icon: 'ph-fill ph-palette',
+    },
+    {
+        id: 'ai',
+        label: 'AI assistant',
+        description: 'Profiles, providers, models and skills',
+        icon: 'ph-fill ph-sparkle',
     },
 ];
 

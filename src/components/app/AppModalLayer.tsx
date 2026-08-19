@@ -6,7 +6,6 @@ import CodeGeneratorModal from '../modals/CodeGeneratorModal';
 import ServerVariablesModal from '../modals/ServerVariablesModal';
 import AuthModal from '../modals/AuthModal';
 import ShareModal from '../modals/ShareModal';
-import AISettingsModal from '../ai/AISettingsModal';
 import TabSwitcherOverlay from './TabSwitcherOverlay';
 import {getOperation} from '../../utils/openapi';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
@@ -52,8 +51,6 @@ interface AppModalLayerProps {
     onSelectSwitcherTab: (id: string) => void;
     shareTarget: ShareTarget | null;
     setShareTarget: Dispatch<SetStateAction<ShareTarget | null>>;
-    aiSettingsOpen: boolean;
-    setAISettingsOpen: Dispatch<SetStateAction<boolean>>;
     aiSettings: AISettings;
     onSaveAISettings: (settings: AISettings) => void;
 }
@@ -85,8 +82,6 @@ export default function AppModalLayer({
     onSelectSwitcherTab,
     shareTarget,
     setShareTarget,
-    aiSettingsOpen,
-    setAISettingsOpen,
     aiSettings,
     onSaveAISettings,
 }: AppModalLayerProps) {
@@ -163,12 +158,6 @@ export default function AppModalLayer({
                     description={shareTarget.description}
                 />
             )}
-            <AISettingsModal
-                isOpen={aiSettingsOpen}
-                settings={aiSettings}
-                onSave={onSaveAISettings}
-                onClose={() => setAISettingsOpen(false)}
-            />
         </>
     );
 }
