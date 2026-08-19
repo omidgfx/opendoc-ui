@@ -1,6 +1,7 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '@/src/types';
 import {getRefName} from '@/src/utils/openapi';
+import {formatXml} from '@/src/utils/endpoint/exampleFormatting';
 import {
     extractMockLineMarkers,
     generateValidatedMock,
@@ -90,7 +91,10 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
                     return JSON.stringify(value, null, 4);
                 }
             }
-            if (c.includes('xml') || c.includes('html') || c.includes('text') || c.includes('plain')) return value;
+            // Authors often store XML examples as one long line; print the
+            // document the way a reader can actually follow it.
+            if (c.includes('xml') || c.includes('html')) return formatXml(value);
+            if (c.includes('text') || c.includes('plain')) return value;
             if (c.includes('yaml') || c.includes('yml'))
                 return trimmed.startsWith('{') || trimmed.startsWith('[') ? jsYaml.dump(JSON.parse(value)) : value;
             return value;
