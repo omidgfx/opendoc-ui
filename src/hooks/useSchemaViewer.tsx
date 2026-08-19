@@ -1,6 +1,9 @@
 import type React from 'react';
 import {useState} from 'react';
 import type {OpenApiSpec} from '@/src/types';
+import AdaptiveTabStrip from '@/src/components/common/AdaptiveTabStrip';
+import CombinatorLabel from '@/src/components/common/CombinatorLabel';
+import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
 import {Tip} from '@/src/components/common/Tooltip';
 
@@ -250,79 +253,25 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                 </span>
             );
         }
-        if (prop.oneOf && Array.isArray(prop.oneOf)) {
+        const combinator = detectSchemaCombinator(prop);
+        if (combinator) {
             const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
-            return (
-                <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">
-                        One Of:
-                    </span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.oneOf.map((sub: any, sIdx: number) => {
-                            const isActive = isSchemaActive(sub, code, viewerSchema);
-                            return (
-                                <button
-                                    key={sIdx}
-                                    aria-pressed={isActive}
-                                    onClick={() => pickViewerSchema(code, sub, fallbackName)}
-                                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                >
-                                    {getSubLabel(sub, sIdx)}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+            const activeIndex = Math.max(
+                0,
+                combinator.branches.findIndex(branch => isSchemaActive(branch, code, viewerSchema)),
             );
-        }
-        if (prop.anyOf && Array.isArray(prop.anyOf)) {
-            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             return (
-                <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">
-                        Any Of:
-                    </span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.anyOf.map((sub: any, sIdx: number) => {
-                            const isActive = isSchemaActive(sub, code, viewerSchema);
-                            return (
-                                <button
-                                    key={sIdx}
-                                    aria-pressed={isActive}
-                                    onClick={() => pickViewerSchema(code, sub, fallbackName)}
-                                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                >
-                                    {getSubLabel(sub, sIdx)}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-        if (prop.allOf && Array.isArray(prop.allOf)) {
-            const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
-            return (
-                <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">
-                        All Of · every constraint applies:
-                    </span>
-                    <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
-                        {prop.allOf.map((sub: any, sIdx: number) => {
-                            const isActive = isSchemaActive(sub, code, viewerSchema);
-                            return (
-                                <button
-                                    key={sIdx}
-                                    aria-pressed={isActive}
-                                    onClick={() => pickViewerSchema(code, sub, fallbackName)}
-                                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${isActive ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                >
-                                    {getSubLabel(sub, sIdx)}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <AdaptiveTabStrip
+                    ariaLabel={`${combinator.meta.label} branches`}
+                    labelNode={<CombinatorLabel meta={combinator.meta} variant="inline" />}
+                    activeId={String(activeIndex)}
+                    onSelect={id => pickViewerSchema(code, combinator.branches[Number(id)], fallbackName)}
+                    items={combinator.branches.map((branch: any, index: number) => ({
+                        id: String(index),
+                        label: getSubLabel(branch, index),
+                        description: (resolveReference(branch) || branch)?.description,
+                    }))}
+                />
             );
         }
         if (prop.type === 'array' && prop.items) {

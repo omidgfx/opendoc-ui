@@ -1,8 +1,9 @@
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
 import {readPortalThemeVariables} from '../../utils/theme/themeCss';
+import {useHorizontalWheelScroll} from '../../hooks/useHorizontalWheelScroll';
 
 export interface AdaptiveTabItem {
     id: string;
@@ -17,6 +18,8 @@ interface AdaptiveTabStripProps {
     onSelect: (id: string) => void;
     /** Caption rendered above the row, e.g. "One of". */
     label?: string;
+    /** Caption node, for callers that colour their own label. */
+    labelNode?: ReactNode;
     ariaLabel: string;
 }
 
@@ -31,7 +34,14 @@ const VISIBLE_RATIO = 0.7;
  * (oneOf / anyOf), which could otherwise throw an unbounded number of buttons
  * onto the page.
  */
-export default function AdaptiveTabStrip({items, activeId, onSelect, label, ariaLabel}: AdaptiveTabStripProps) {
+export default function AdaptiveTabStrip({
+    items,
+    activeId,
+    onSelect,
+    label,
+    labelNode,
+    ariaLabel,
+}: AdaptiveTabStripProps) {
     const railRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef(new Map<string, HTMLButtonElement>());
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +49,7 @@ export default function AdaptiveTabStrip({items, activeId, onSelect, label, aria
     const [hiddenIds, setHiddenIds] = useState<string[]>([]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [menuPosition, setMenuPosition] = useState({top: 0, left: 0, width: 240, openAbove: false, maxHeight: 288});
+    useHorizontalWheelScroll(railRef);
     const measureHidden = useCallback(() => {
         const rail = railRef.current;
         if (!rail) return;
@@ -70,25 +81,6 @@ export default function AdaptiveTabStrip({items, activeId, onSelect, label, aria
         tabRefs.current.get(activeId)?.scrollIntoView({block: 'nearest', inline: 'nearest'});
         measureHidden();
     }, [activeId, measureHidden]);
-    useEffect(() => {
-        const rail = railRef.current;
-        if (!rail) return;
-        // React registers wheel listeners passively, so preventDefault would be
-        // ignored there and the page would scroll along with the rail.
-        const onWheel = (event: WheelEvent) => {
-            if (rail.scrollWidth <= rail.clientWidth) return;
-            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-            if (!delta) return;
-            const atStart = rail.scrollLeft <= 0;
-            const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
-            // Hand the gesture back to the page once the rail cannot move further.
-            if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
-            event.preventDefault();
-            rail.scrollLeft += delta;
-        };
-        rail.addEventListener('wheel', onWheel, {passive: false});
-        return () => rail.removeEventListener('wheel', onWheel);
-    }, []);
     const updateMenuPosition = useCallback((optionCount: number) => {
         const rect = buttonRef.current?.getBoundingClientRect();
         if (!rect || typeof window === 'undefined') return;
@@ -141,11 +133,12 @@ export default function AdaptiveTabStrip({items, activeId, onSelect, label, aria
     };
     return (
         <div className="min-w-0 space-y-1.5">
-            {label && (
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    {label}
-                </span>
-            )}
+            {labelNode ||
+                (label && (
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        {label}
+                    </span>
+                ))}
             <div className="flex min-w-0 items-center gap-1.5">
                 <div
                     ref={railRef}

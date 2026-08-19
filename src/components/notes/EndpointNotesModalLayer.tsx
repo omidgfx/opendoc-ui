@@ -18,6 +18,7 @@ import ConfirmModal from '../common/ConfirmModal';
 import {Tip} from '../common/Tooltip';
 import NoteEndpointPicker from './NoteEndpointPicker';
 import NoteViewerModal from './NoteViewerModal';
+import ScrollableRow from '../common/ScrollableRow';
 
 function NotesDialog({
     title,
@@ -250,7 +251,9 @@ function EndpointNotesList({
             >
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2">
                     <MethodBadge method={method} size="xs" />
-                    <code className="min-w-0 flex-1 truncate text-[10px] text-[var(--text-heading)]">{path}</code>
+                    <ScrollableRow className="flex-1 font-mono text-[10px] text-[var(--text-heading)]">
+                        {path}
+                    </ScrollableRow>
                     <span className="rounded-full bg-[var(--primary)]/10 px-2 py-1 text-[9px] font-bold text-[var(--primary)]">
                         {notes.length} note{notes.length === 1 ? '' : 's'}
                     </span>

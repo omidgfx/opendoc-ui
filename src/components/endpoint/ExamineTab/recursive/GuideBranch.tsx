@@ -16,7 +16,7 @@ export default function GuideBranch({children, focusedPath}: {children: ReactNod
         return path ? isPathPrefix(path, focusedPath || null) : false;
     });
     return (
-        <div className="relative ms-2 min-w-0 ps-4">
+        <div className="relative ms-0 min-w-0 ps-2.5 sm:ms-2 sm:ps-4">
             {rows.map((child, index) => {
                 const isLast = index === rows.length - 1;
                 const elbowY = childPath(child) ? 22 : 18;
@@ -29,27 +29,27 @@ export default function GuideBranch({children, focusedPath}: {children: ReactNod
                     >
                         <span
                             aria-hidden="true"
-                            className="pointer-events-none absolute -start-4 top-0 w-px bg-[var(--text)]/25"
+                            className="pointer-events-none absolute -start-2.5 top-0 w-px bg-[var(--text)]/25 sm:-start-4"
                             style={isLast ? {height: elbowY + 1} : {bottom: 0}}
                         />
                         {active && (
                             <span
                                 aria-hidden="true"
                                 data-runner-guide-active="true"
-                                className="pointer-events-none absolute -start-4 top-0 w-px bg-[var(--primary)]"
+                                className="pointer-events-none absolute -start-2.5 top-0 w-px bg-[var(--primary)] sm:-start-4"
                                 style={activeThroughRow ? {bottom: 0} : {height: elbowY + 1}}
                             />
                         )}
                         <span
                             aria-hidden="true"
-                            className="pointer-events-none absolute -start-4 h-px w-3 bg-[var(--text)]/25"
+                            className="pointer-events-none absolute -start-2.5 h-px w-2 bg-[var(--text)]/25 sm:-start-4 sm:w-3"
                             style={{top: elbowY}}
                         />
                         {index === activeRowIndex && (
                             <span
                                 aria-hidden="true"
                                 data-runner-guide-active="true"
-                                className="pointer-events-none absolute -start-4 h-px w-3 bg-[var(--primary)]"
+                                className="pointer-events-none absolute -start-2.5 h-px w-2 bg-[var(--primary)] sm:-start-4 sm:w-3"
                                 style={{top: elbowY}}
                             />
                         )}

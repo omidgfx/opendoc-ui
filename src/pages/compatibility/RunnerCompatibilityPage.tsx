@@ -8,6 +8,7 @@ import {collectReferenceIssues, createBundledOpenApiDocument, missingReferenceDo
 import {analyzeRunnerCompatibility, type RunnerCompatibilityRating} from '../../utils/runner/runnerCompatibility';
 import {getRawSpecDocument} from '../../utils/specification/specSource';
 import {createLlmsText} from '../../utils/export/llmsExport';
+import ScrollableRow from '../../components/common/ScrollableRow';
 
 interface RunnerCompatibilityPageProps {
     spec: OpenApiSpec;
@@ -414,7 +415,7 @@ export default function RunnerCompatibilityPage({
                                                 className="flex max-w-[310px] items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
                                             >
                                                 <MethodBadge method={endpoint.method} size="xs" className="shrink-0" />
-                                                <span className="truncate font-mono">{endpoint.path}</span>
+                                                <ScrollableRow className="font-mono">{endpoint.path}</ScrollableRow>
                                             </button>
                                         </td>
                                         <TooltipCell value={endpoint.summary} className="max-w-56 px-2 py-1.5" />

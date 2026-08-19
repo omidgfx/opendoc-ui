@@ -28,6 +28,8 @@ import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
 import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import {usePreferences} from '../../../contexts/PreferencesContext';
 import {modalRepresentationOf} from '../../../utils/storage/preferences';
+import CombinatorLabel from '../../common/CombinatorLabel';
+import {COMBINATOR_META} from '../../../utils/schema/combinators';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -183,9 +185,7 @@ export default function ModalsStack({
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             return (
                 <div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">
-                        One Of:
-                    </span>
+                    <CombinatorLabel meta={COMBINATOR_META.oneOf} variant="inline" />
                     <div className="flex flex-wrap gap-1.5 items-center">
                         {prop.oneOf.map((sub: any, sIdx: number) => (
                             <React.Fragment key={sIdx}>
@@ -202,9 +202,7 @@ export default function ModalsStack({
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
             return (
                 <div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">
-                        Any Of:
-                    </span>
+                    <CombinatorLabel meta={COMBINATOR_META.anyOf} variant="inline" />
                     <div className="flex flex-wrap gap-1.5 items-center">
                         {prop.anyOf.map((sub: any, sIdx: number) => (
                             <React.Fragment key={sIdx}>
@@ -221,9 +219,7 @@ export default function ModalsStack({
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (
                 <div className="flex flex-col gap-1 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">
-                        All Of · every constraint applies:
-                    </span>
+                    <CombinatorLabel meta={COMBINATOR_META.allOf} variant="inline" />
                     <div className="flex flex-wrap gap-1.5 items-center">
                         {prop.allOf.map((sub: any, sIdx: number) => (
                             <React.Fragment key={sIdx}>
@@ -382,6 +378,11 @@ export default function ModalsStack({
               : activeExampleEncoding === 'application/x-php-array'
                 ? 'php'
                 : 'json';
+    useEffect(() => {
+        // Same rule as the documentation: the enum view is a one-off peek and
+        // never survives a schema change or a preference change.
+        setActiveTabs({});
+    }, [activeSchemaObj.schemaName, modalRepresentation]);
     const setTab = (tab: 'table' | 'example' | 'enum') => {
         if (tab === 'enum') {
             setActiveTabs(prev => ({...prev, [activeModalIndex]: tab}));
