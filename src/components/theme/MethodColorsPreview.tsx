@@ -1,4 +1,4 @@
-import type {ThemeItem} from '../../../types';
+import type {ThemeItem} from '../../types';
 import {alpha, METHOD_ITEMS} from '@/src/utils/theme/selector';
 
 export default function MethodColorsPreview({palette, roomy = false}: {palette: ThemeItem; roomy?: boolean}) {

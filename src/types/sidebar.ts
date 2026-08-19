@@ -72,8 +72,7 @@ export interface SidebarProps {
     themeMode: ThemeMode;
     resolvedThemeMode: 'light' | 'dark';
     onToggleThemeMode: () => void;
-    selectedThemeName: string;
-    onOpenThemeModal: () => void;
+    onOpenAppearanceSettings: () => void;
     onOpenAuthModal: () => void;
     activeAuth: any;
     onDownloadSpec: () => void;

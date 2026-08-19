@@ -1,4 +1,4 @@
-import type {ThemeItem} from '../../../types';
+import type {ThemeItem} from '../../types';
 import {alpha} from '@/src/utils/theme/selector';
 
 export default function MiniPagePreview({

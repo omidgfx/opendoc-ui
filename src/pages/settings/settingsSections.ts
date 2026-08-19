@@ -1,6 +1,6 @@
 /** Sections are declared here as they land, so the rail, the deep link and the
  *  page body can never drift apart. */
-export type SettingsSectionId = 'general';
+export type SettingsSectionId = 'general' | 'appearance';
 
 export interface SettingsSectionMeta {
     id: SettingsSectionId;
@@ -16,6 +16,12 @@ export const SETTINGS_SECTIONS: SettingsSectionMeta[] = [
         label: 'General',
         description: 'Defaults the whole application follows',
         icon: 'ph-fill ph-sliders-horizontal',
+    },
+    {
+        id: 'appearance',
+        label: 'Appearance',
+        description: 'Themes and color mode',
+        icon: 'ph-fill ph-palette',
     },
 ];
 

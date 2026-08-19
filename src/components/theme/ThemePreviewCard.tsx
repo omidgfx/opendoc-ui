@@ -1,4 +1,4 @@
-import type {AppTheme} from '../../../types';
+import type {AppTheme} from '../../types';
 import MiniPagePreview from './MiniPagePreview';
 import MethodColorsPreview from './MethodColorsPreview';
 import ThemeNamePreview from './ThemeNamePreview';

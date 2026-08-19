@@ -179,7 +179,6 @@ export default function App() {
         });
     }, []);
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [showThemeModal, setShowThemeModal] = useState(false);
     const [showServerVariablesModal, setShowServerVariablesModal] = useState(false);
     const [examineResponses, setExamineResponses] = useState<Record<EndpointKey, ExamineResponse[]>>({});
     const {
@@ -1114,6 +1113,13 @@ export default function App() {
             showSettings={showSettings}
             settingsSection={settingsSection}
             onSelectSettingsSection={setSettingsSection}
+            appearanceSettings={{
+                selectedThemeName,
+                themeMode: currentThemeMode,
+                resolvedThemeMode,
+                onSelectTheme: setSelectedThemeName,
+                onSetThemeMode: setCurrentThemeMode,
+            }}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
@@ -1178,9 +1184,9 @@ export default function App() {
                             onToggleCollapse={onToggleCollapse}
                             onOpenMobileSidebar={() => setMobileOpen(true)}
                             onOpenAssistant={handleOpenAssistant}
-                            selectedThemeName={selectedThemeName}
-                            onSelectTheme={setSelectedThemeName}
-                            onOpenThemeModal={() => setShowThemeModal(true)}
+                            themeMode={currentThemeMode}
+                            resolvedThemeMode={resolvedThemeMode}
+                            onSetThemeMode={setCurrentThemeMode}
                             onOpenSettings={() => handleOpenSettings()}
                             isLocalMode={isLocalMode}
                             canOpenLocal={canOpenLocal}
@@ -1276,8 +1282,7 @@ export default function App() {
                                         themeMode={currentThemeMode}
                                         resolvedThemeMode={resolvedThemeMode}
                                         onToggleThemeMode={toggleThemeMode}
-                                        selectedThemeName={selectedThemeName}
-                                        onOpenThemeModal={() => setShowThemeModal(true)}
+                                        onOpenAppearanceSettings={() => handleOpenSettings('appearance')}
                                         onOpenAuthModal={() => setShowAuthModal(true)}
                                         activeAuth={activeAuth}
                                         onDownloadSpec={handleDownload}
@@ -1419,14 +1424,6 @@ export default function App() {
                             }}
                             shareTarget={shareTarget}
                             setShareTarget={setShareTarget}
-                            themeOpen={showThemeModal}
-                            setThemeOpen={setShowThemeModal}
-                            selectedThemeName={selectedThemeName}
-                            setSelectedThemeName={setSelectedThemeName}
-                            currentThemeMode={currentThemeMode}
-                            setCurrentThemeMode={setCurrentThemeMode}
-                            resolvedThemeMode={resolvedThemeMode}
-                            toggleThemeMode={toggleThemeMode}
                             aiSettingsOpen={showAISettings}
                             setAISettingsOpen={setShowAISettings}
                             aiSettings={aiSettings}
