@@ -21,7 +21,8 @@ import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
-import {groupParameters} from '@/src/utils/endpoint/parameterGroups';
+import {groupParameters, parameterGroupMetaOf} from '@/src/utils/endpoint/parameterGroups';
+import ParameterLocationTag from '../../common/ParameterLocationTag';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -562,9 +563,16 @@ export default function ViewTab({
             ? buildFormSkeleton(requestBodyMatrixSchema, spec, selectedRequestBodyContent?.encoding)
             : [];
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
-    const renderParameterTable = (title: string, params: any[], showLocation: boolean) => (
+    const renderParameterTable = (
+        title: string,
+        params: any[],
+        showLocation: boolean,
+        group?: ReturnType<typeof parameterGroupMetaOf>,
+    ) => (
         <div key={title} className="space-y-3 min-w-0">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">{title}</h2>
+            <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
+            </h2>
             <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
                 <div className="overflow-x-auto scrollbar-thin">
                     <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
@@ -617,9 +625,16 @@ export default function ViewTab({
                                         </td>
                                         {showLocation && (
                                             <td className="px-4 py-3 text-xs select-none">
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
-                                                    {param.in}
-                                                </span>
+                                                {(() => {
+                                                    const paramGroup = parameterGroupMetaOf(param);
+                                                    return paramGroup ? (
+                                                        <ParameterLocationTag group={paramGroup} />
+                                                    ) : (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
+                                                            {param.in}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                         )}
                                         <td className="px-4 py-3 text-xs">
@@ -654,7 +669,7 @@ export default function ViewTab({
         </div>
     );
     const parameterTables = separatedParameterTables
-        ? parameterGroups.map(group => renderParameterTable(group.title, group.parameters, false))
+        ? parameterGroups.map(group => renderParameterTable(group.title, group.parameters, false, group))
         : mergedParameters.length > 0
           ? renderParameterTable('Request Parameters', mergedParameters, true)
           : null;
