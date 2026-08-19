@@ -11,6 +11,8 @@ interface ResponsePanelProps {
     selectedServer: string;
     serverVariables?: Record<string, string>;
     path: string;
+    /** The URL the compiler would send right now, with values applied. */
+    finalRequestUrl?: string;
     isRunning: boolean;
     response: ExamineResponse | null;
     responseHistory: ExamineResponse[];
@@ -39,6 +41,7 @@ export default function ResponsePanel({
     selectedServer,
     serverVariables,
     path,
+    finalRequestUrl,
     isRunning,
     response,
     responseHistory,
@@ -70,6 +73,8 @@ export default function ResponsePanel({
         ),
     );
     const requestUrl = response?.requestUrl || `${expandServerUrl(selectedServer, serverVariables)}${path}`;
+    // Only worth its own line when it says something the route above does not.
+    const liveUrl = finalRequestUrl && finalRequestUrl !== requestUrl ? finalRequestUrl : '';
     return (
         <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
@@ -129,6 +134,19 @@ export default function ResponsePanel({
                         )}
                     </div>
                 </div>
+                {liveUrl && (
+                    <div className="mt-1.5 flex items-start gap-1.5 rounded-xl border px-2 py-1.5 font-mono text-[11px] border-[var(--accent)]/25 bg-[var(--accent)]/5 text-[var(--text)]">
+                        <Tip content="The exact URL this run will send, with path values, serialization and the query string applied">
+                            <span className="mt-[1px] inline-flex shrink-0 cursor-help items-center gap-1 text-[9px] font-sans font-bold uppercase tracking-widest text-[var(--accent)]">
+                                <i className="ph ph-arrow-elbow-down-right text-[12px]" />
+                                Will send
+                            </span>
+                        </Tip>
+                        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap scrollbar-none select-all">
+                            {liveUrl}
+                        </span>
+                    </div>
+                )}
             </div>
             <div className="space-y-3">
                 <div className="border rounded-xl overflow-hidden flex flex-col min-h-[200px] bg-[var(--surface)] border-[var(--border)]">
