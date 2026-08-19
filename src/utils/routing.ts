@@ -56,6 +56,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         showHome: true,
         showAbout: false,
         showAssistant: false,
+        showSettings: false,
+        settingsSection: null,
         endpoint: null,
         tab: 'view',
         schemas: [],
@@ -78,6 +80,12 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     if (responseMatch) {
         responseCode = responseMatch[1];
         raw = raw.replace(/#response-([a-zA-Z0-9_-]+)/, '');
+    }
+    let settingsSection: string | null = null;
+    const settingsSectionMatch = raw.match(/\/settings#([a-zA-Z0-9_-]+)/);
+    if (settingsSectionMatch) {
+        settingsSection = settingsSectionMatch[1].toLowerCase();
+        raw = raw.replace(/#([a-zA-Z0-9_-]+)$/, '');
     }
     let tab: 'view' | 'examine' | 'both' = 'view';
     let schemas: string[] = [];
@@ -146,11 +154,15 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
     if (parts[0] === 'assistant') {
         return {...empty, showAssistant: true, showHome: false, responseCode, searchQuery};
     }
+    if (parts[0] === 'settings') {
+        return {...empty, showSettings: true, showHome: false, settingsSection, searchQuery};
+    }
     let parsableKey = '';
     let showSchemaExplorer = false;
     let showNotes = false;
     let showCompatibility = false;
     let showAssistant = false;
+    let showSettings = false;
     let showHome = false;
     let endpoint: EndpointRef | null = null;
     if (parts[0] === 'parsable' && parts[1]) {
@@ -163,6 +175,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
             showCompatibility = true;
         } else if (parts[2] === 'assistant') {
             showAssistant = true;
+        } else if (parts[2] === 'settings') {
+            showSettings = true;
         } else if (parts[2] === 'api' && parts[3]) {
             return {
                 parsableKey,
@@ -172,6 +186,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 showHome: false,
                 showAbout: false,
                 showAssistant: false,
+                showSettings: false,
+                settingsSection: null,
                 endpoint: null,
                 tab,
                 schemas,
@@ -191,6 +207,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
                 showHome: false,
                 showAbout: true,
                 showAssistant: false,
+                showSettings: false,
+                settingsSection: null,
                 endpoint: null,
                 tab,
                 schemas,
@@ -215,6 +233,8 @@ export const parseSmartRoute = (hash: string): ParsedRoute => {
         showHome,
         showAbout: false,
         showAssistant,
+        showSettings,
+        settingsSection,
         endpoint,
         tab,
         schemas,
@@ -235,6 +255,8 @@ interface BuildRouteOpts {
     showSchemaExplorer: boolean;
     showNotes?: boolean;
     showCompatibility?: boolean;
+    showSettings?: boolean;
+    settingsSection?: string | null;
     endpoint: EndpointRef | null;
     tab: string;
     schemaModals: Array<{
@@ -258,6 +280,8 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         showSchemaExplorer,
         showNotes = false,
         showCompatibility = false,
+        showSettings = false,
+        settingsSection = null,
         endpoint,
         tab,
         schemaModals,
@@ -278,6 +302,8 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
         route += `/notes`;
     } else if (showCompatibility) {
         route += `/compatibility`;
+    } else if (showSettings) {
+        route += `/settings`;
     } else if (endpoint) {
         let endpointId = '';
         if (activeSpec) {
@@ -299,5 +325,6 @@ export const generateSmartRoute = (state: BuildRouteOpts): string => {
     const qs = qp.toString();
     if (qs) route += `?${qs}`;
     if (responseCode) route += `#response-${responseCode}`;
+    else if (showSettings && settingsSection) route += `#${settingsSection}`;
     return toCleanRouteHref(route);
 };

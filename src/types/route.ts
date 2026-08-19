@@ -11,6 +11,8 @@ export interface ParsedRoute {
     showHome: boolean;
     showAbout: boolean;
     showAssistant: boolean;
+    showSettings: boolean;
+    settingsSection: string | null;
     endpoint: EndpointRef | null;
     tab: 'view' | 'examine' | 'both';
     schemas: string[];

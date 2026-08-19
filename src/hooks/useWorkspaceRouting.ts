@@ -48,6 +48,10 @@ interface UseWorkspaceRoutingOptions {
     setShowAbout: Dispatch<SetStateAction<boolean>>;
     showAssistant: boolean;
     setShowAssistant: Dispatch<SetStateAction<boolean>>;
+    showSettings: boolean;
+    setShowSettings: Dispatch<SetStateAction<boolean>>;
+    settingsSection: string | null;
+    setSettingsSection: Dispatch<SetStateAction<string | null>>;
     showSchemaExplorer: boolean;
     setShowSchemaExplorer: Dispatch<SetStateAction<boolean>>;
     showNotes: boolean;
@@ -123,6 +127,10 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowAbout,
         showAssistant,
         setShowAssistant,
+        showSettings,
+        setShowSettings,
+        settingsSection,
+        setSettingsSection,
         showSchemaExplorer,
         setShowSchemaExplorer,
         showNotes,
@@ -174,6 +182,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
+                setShowSettings(false);
+                setSettingsSection(null);
                 setAssistantContextEndpoints([]);
                 setSearchQuery('');
                 setResultsQuery('');
@@ -211,6 +221,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowCompatibility(parsed.showCompatibility);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
+        setShowSettings(parsed.showSettings);
+        if (parsed.showSettings) setSettingsSection(parsed.settingsSection);
         if (parsed.legacyOperationId && spec) {
             const resolved = resolveEndpointFromId(parsed.legacyOperationId, spec);
             if (resolved) {
@@ -221,6 +233,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
+                setShowSettings(false);
             } else setSelectedEndpoint(null);
         } else if (parsed.endpoint) {
             openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
@@ -243,6 +256,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 showCompatibility: parsed.showCompatibility,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
+                showSettings: parsed.showSettings,
                 showHome: parsed.showHome,
                 searchMethods: parsed.searchMethods || [],
                 searchTags: parsed.searchTags || [],
@@ -266,6 +280,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowCompatibility,
         setShowAbout,
         setShowAssistant,
+        setShowSettings,
+        setSettingsSection,
         setAssistantContextEndpoints,
         setSearchQuery,
         setResultsQuery,
@@ -306,6 +322,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
             showSchemaExplorer,
             showNotes,
             showCompatibility,
+            showSettings,
+            settingsSection,
             endpoint: selectedEndpoint,
             tab: selectedViewMode,
             schemaModals: modalStack.map(name => ({schemaName: name, schema: spec.components?.schemas?.[name] || {}})),
@@ -350,6 +368,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showSchemaExplorer,
         showNotes,
         showCompatibility,
+        showSettings,
+        settingsSection,
         selectedEndpoint,
         selectedViewMode,
         modalStack,
@@ -384,6 +404,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowCompatibility(parsed.showCompatibility);
         setShowAbout(parsed.showAbout);
         setShowAssistant(parsed.showAssistant);
+        setShowSettings(parsed.showSettings);
+        if (parsed.showSettings) setSettingsSection(parsed.settingsSection);
         setShowWelcome(false);
         setActiveResponseCode(parsed.responseCode);
         if (parsed.legacyOperationId) {
@@ -396,6 +418,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
+                setShowSettings(false);
             } else setSelectedEndpoint(null);
         } else if (parsed.endpoint) {
             openEndpointPermanent(parsed.endpoint.path, parsed.endpoint.method);
@@ -414,6 +437,7 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
                 showCompatibility: parsed.showCompatibility,
                 showAbout: parsed.showAbout,
                 showAssistant: parsed.showAssistant,
+                showSettings: parsed.showSettings,
                 showHome: parsed.showHome,
                 searchMethods: parsed.searchMethods || [],
                 searchTags: parsed.searchTags || [],
@@ -438,6 +462,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         setShowCompatibility,
         setShowAbout,
         setShowAssistant,
+        setShowSettings,
+        setSettingsSection,
         setShowWelcome,
         setActiveResponseCode,
         openEndpointPermanent,
@@ -473,6 +499,8 @@ export function useWorkspaceRouting(options: UseWorkspaceRoutingOptions): void {
         showSchemaExplorer,
         showNotes,
         showCompatibility,
+        showSettings,
+        settingsSection,
         selectedEndpoint,
         selectedViewMode,
         modalStack,

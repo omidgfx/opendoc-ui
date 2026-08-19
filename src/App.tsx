@@ -41,6 +41,7 @@ import {useWorkspaceTabs} from './hooks/useWorkspaceTabs';
 import {useSpecificationActions} from './hooks/useSpecificationActions';
 import {consumeOAuthResult} from './utils/runner/oauthFlow';
 import {EndpointNotesProvider} from './contexts/EndpointNotesContext';
+import {DEFAULT_SETTINGS_SECTION, type SettingsSectionId} from './pages/settings/settingsSections';
 import EndpointNotesModalLayer from './components/notes/EndpointNotesModalLayer';
 
 declare global {
@@ -84,6 +85,8 @@ export default function App() {
     const [showCompatibility, setShowCompatibility] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showAssistant, setShowAssistant] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<string | null>(null);
     const [assistantContextEndpoints, setAssistantContextEndpoints] = useState<
         Array<{
             path: string;
@@ -246,6 +249,8 @@ export default function App() {
         setShowAbout,
         showAssistant,
         setShowAssistant,
+        showSettings,
+        setShowSettings,
         setActiveResponseCode,
         setModalStack: setModalsStack,
         modalCount: modalsStack.length,
@@ -457,6 +462,10 @@ export default function App() {
         setShowAbout,
         showAssistant,
         setShowAssistant,
+        showSettings,
+        setShowSettings,
+        settingsSection,
+        setSettingsSection,
         showSchemaExplorer,
         setShowSchemaExplorer,
         showNotes,
@@ -862,6 +871,12 @@ export default function App() {
         openViewTab('compatibility');
         closeMobileIfNeeded();
     };
+    const handleOpenSettings = (section: SettingsSectionId = DEFAULT_SETTINGS_SECTION) => {
+        setSettingsSection(section);
+        setScrollIntent({type: 'view', id: 'view:settings'});
+        openViewTab('settings');
+        closeMobileIfNeeded();
+    };
     const handleOpenAssistant = () => {
         setAssistantUnread(false);
         openViewTab('assistant');
@@ -1096,6 +1111,9 @@ export default function App() {
             showSchemaExplorer={showSchemaExplorer}
             showNotes={showNotes}
             showCompatibility={showCompatibility}
+            showSettings={showSettings}
+            settingsSection={settingsSection}
+            onSelectSettingsSection={setSettingsSection}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
@@ -1115,6 +1133,7 @@ export default function App() {
                 setShowCompatibility(false);
                 setShowAbout(false);
                 setShowAssistant(false);
+                setShowSettings(false);
             }}
         />
     );
@@ -1162,6 +1181,7 @@ export default function App() {
                             selectedThemeName={selectedThemeName}
                             onSelectTheme={setSelectedThemeName}
                             onOpenThemeModal={() => setShowThemeModal(true)}
+                            onOpenSettings={() => handleOpenSettings()}
                             isLocalMode={isLocalMode}
                             canOpenLocal={canOpenLocal}
                             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}

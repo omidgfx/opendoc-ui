@@ -9,6 +9,7 @@ const VALID_VIEW_TAB_KINDS: ViewTabKind[] = [
     'compatibility',
     'about',
     'assistant',
+    'settings',
 ];
 const VALID_TAB_VIEW_MODES = ['docs', 'examine', 'both'] as const;
 export type StoredTabViewMode = (typeof VALID_TAB_VIEW_MODES)[number];
@@ -60,6 +61,7 @@ export const hasExplicitSpecRoute = (route: ParsedRoute, hash: string): boolean 
         route.showCompatibility ||
         route.showAbout ||
         route.showAssistant ||
+        route.showSettings ||
         route.searchQuery ||
         route.searchMethods.length ||
         route.searchTags.length ||

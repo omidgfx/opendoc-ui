@@ -25,6 +25,7 @@ type NavigationSnapshot = {
     showCompatibility: boolean;
     showAbout: boolean;
     showAssistant: boolean;
+    showSettings: boolean;
     showHome: boolean;
     showWelcome: boolean;
     selectedMethodsLength: number;
@@ -60,6 +61,8 @@ interface UseWorkspaceTabsOptions {
     setShowAbout: Dispatch<SetStateAction<boolean>>;
     showAssistant: boolean;
     setShowAssistant: Dispatch<SetStateAction<boolean>>;
+    showSettings: boolean;
+    setShowSettings: Dispatch<SetStateAction<boolean>>;
     setActiveResponseCode: Dispatch<SetStateAction<string | null>>;
     setModalStack: Dispatch<SetStateAction<string[]>>;
     modalCount: number;
@@ -94,6 +97,8 @@ export function useWorkspaceTabs({
     setShowAbout,
     showAssistant,
     setShowAssistant,
+    showSettings,
+    setShowSettings,
     setActiveResponseCode,
     setModalStack,
     modalCount,
@@ -117,8 +122,17 @@ export function useWorkspaceTabs({
             setShowCompatibility(view === 'compatibility');
             setShowAbout(view === 'about');
             setShowAssistant(view === 'assistant');
+            setShowSettings(view === 'settings');
         },
-        [setShowHome, setShowSchemaExplorer, setShowNotes, setShowCompatibility, setShowAbout, setShowAssistant],
+        [
+            setShowHome,
+            setShowSchemaExplorer,
+            setShowNotes,
+            setShowCompatibility,
+            setShowAbout,
+            setShowAssistant,
+            setShowSettings,
+        ],
     );
     const withPreviewLast = useCallback((list: TabItem[]): TabItem[] => {
         const previewIdx = list.findIndex(t => t.isPreview);
@@ -398,18 +412,19 @@ export function useWorkspaceTabs({
         },
         [setViewVisibility],
     );
-    const navStateRef = useRef({
+    const navStateRef = useRef<NavigationSnapshot>({
         searchQuery: '',
         showSchemaExplorer: false,
         showNotes: false,
         showCompatibility: false,
         showAbout: false,
         showAssistant: false,
+        showSettings: false,
         showHome: true,
         showWelcome: false,
         selectedMethodsLength: 0,
         selectedTagsLength: 0,
-        onlyProtected: null as boolean | null,
+        onlyProtected: null,
     });
     navStateRef.current = {
         searchQuery,
@@ -418,6 +433,7 @@ export function useWorkspaceTabs({
         showCompatibility,
         showAbout,
         showAssistant,
+        showSettings,
         showHome,
         showWelcome,
         selectedMethodsLength: selectedMethods.length,
@@ -432,6 +448,7 @@ export function useWorkspaceTabs({
             showCompatibility?: boolean;
             showAbout?: boolean;
             showAssistant?: boolean;
+            showSettings?: boolean;
             showHome?: boolean;
             searchMethods?: string[];
             searchTags?: string[];
@@ -452,9 +469,11 @@ export function useWorkspaceTabs({
                           ? 'compatibility'
                           : s.showAssistant
                             ? 'assistant'
-                            : s.showAbout
-                              ? 'about'
-                              : null;
+                            : s.showSettings
+                              ? 'settings'
+                              : s.showAbout
+                                ? 'about'
+                                : null;
             if (s.showWelcome && !expected) return;
             if (!expected) return;
             if (expected === 'assistant') setAssistantUnread(false);
