@@ -21,12 +21,10 @@ import {
     buildTagTree,
     endpointMatchesSidebarFilter,
     filterTagTree,
-    normalizeSidebarConfig,
-    readSidebarConfig,
-    type SidebarConfig,
     type SidebarFolderBehavior,
     type TreeNode,
 } from '@/src/utils/sidebar/tree';
+import {useSidebarConfig} from '@/src/hooks/useSidebarConfig';
 
 export default function Sidebar(props: SidebarProps) {
     const {
@@ -200,15 +198,12 @@ export default function Sidebar(props: SidebarProps) {
     const [settingsMenuPosition, setSettingsMenuPosition] = useState({top: 0, left: 0});
     const [sortMenuPosition, setSortMenuPosition] = useState({top: 0, left: 0});
     const [folderBehaviorMenuPosition, setFolderBehaviorMenuPosition] = useState({top: 0, left: 0});
-    const [sidebarConfig, setSidebarConfig] = useState<SidebarConfig>(() =>
-        readSidebarConfig(selectedParsableKey || ''),
-    );
+    const {config: sidebarConfig, updateConfig: updateSidebarConfig} = useSidebarConfig(selectedParsableKey || '');
     useEffect(() => {
         if (sortCloseTimerRef.current) {
             clearTimeout(sortCloseTimerRef.current);
             sortCloseTimerRef.current = null;
         }
-        setSidebarConfig(readSidebarConfig(selectedParsableKey || ''));
         setSettingsMenuOpen(false);
         setSortMenuOpen(false);
         setFolderBehaviorMenuOpen(false);
@@ -230,13 +225,6 @@ export default function Sidebar(props: SidebarProps) {
     useEffect(() => {
         if (selectedParsableKey) onDisplayRoutesChange?.(sidebarConfig.displayRoutes);
     }, [sidebarConfig.displayRoutes, selectedParsableKey, onDisplayRoutesChange]);
-    const updateSidebarConfig = (patch: Partial<SidebarConfig>) => {
-        setSidebarConfig(current => {
-            const next = normalizeSidebarConfig({...current, ...patch});
-            if (selectedParsableKey) specStorage.setJSON(selectedParsableKey, 'sidebar_config', next);
-            return next;
-        });
-    };
     const clearSortCloseTimer = () => {
         if (sortCloseTimerRef.current) {
             clearTimeout(sortCloseTimerRef.current);
