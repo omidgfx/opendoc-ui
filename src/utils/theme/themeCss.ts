@@ -35,3 +35,34 @@ export const applyThemeCssVariables = (theme: ThemeItem, root: HTMLElement = doc
     const variables = createThemeCssVariables(theme) as Record<string, string>;
     Object.entries(variables).forEach(([name, value]) => root.style.setProperty(name, value));
 };
+
+const PORTAL_THEME_VARIABLES = [
+    '--background',
+    '--surface',
+    '--surface-hover',
+    '--border',
+    '--text',
+    '--text-heading',
+    '--text-muted',
+    '--primary',
+    '--primary-contrast',
+    '--accent',
+];
+
+/**
+ * Theme variables copied onto a portalled surface. Menus rendered into
+ * document.body sit outside the themed subtree, so they have to carry the
+ * palette of the element that opened them.
+ */
+export const readPortalThemeVariables = (anchor: HTMLElement | null): React.CSSProperties => {
+    if (!anchor || typeof window === 'undefined') return {};
+    const themedElement =
+        anchor.closest('[style*="--background"]') || anchor.closest('body') || document.documentElement;
+    const styles = getComputedStyle(themedElement);
+    const variables: Record<string, string> = {};
+    PORTAL_THEME_VARIABLES.forEach(name => {
+        const property = styles.getPropertyValue(name);
+        if (property) variables[name] = property;
+    });
+    return variables as React.CSSProperties;
+};

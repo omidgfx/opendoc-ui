@@ -1,6 +1,7 @@
 import React, {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import type {CustomDropdownOption} from '../../types/ui';
+import {readPortalThemeVariables} from '../../utils/theme/themeCss';
 
 interface CustomDropdownProps {
     value: string;
@@ -133,30 +134,6 @@ export default function CustomDropdown({
             ?.scrollIntoView({block: 'nearest'});
     }, [isOpen, activeIndex]);
 
-    const getThemeVars = (): React.CSSProperties => {
-        if (!triggerRef.current) return {};
-        const themedElement =
-            triggerRef.current.closest('[style*="--background"]') ||
-            triggerRef.current.closest('body') ||
-            document.documentElement;
-        const styles = getComputedStyle(themedElement);
-        const variables: Record<string, string> = {};
-        [
-            '--background',
-            '--surface',
-            '--surface-hover',
-            '--border',
-            '--text',
-            '--text-heading',
-            '--text-muted',
-            '--primary',
-        ].forEach(name => {
-            const property = styles.getPropertyValue(name);
-            if (property) variables[name] = property;
-        });
-        return variables;
-    };
-
     const hasDescriptions = options.some(option => !!option.description?.trim());
     const menuWidth =
         typeof window === 'undefined'
@@ -179,7 +156,7 @@ export default function CustomDropdown({
                 width: menuWidth,
                 maxHeight: position.maxHeight,
                 transform: position.openAbove ? 'translateY(-100%)' : undefined,
-                ...getThemeVars(),
+                ...readPortalThemeVariables(triggerRef.current),
             }}
         >
             {options.map((option, index) => (
