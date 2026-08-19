@@ -19,6 +19,7 @@ import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import {NullTypeBadge} from '../../common/TypeBadge';
+import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
@@ -554,6 +555,12 @@ export default function ViewTab({
         ? requestBodySource.activeSchema
         : requestBodySource.schema;
     const requestBodyExample = requestBodySource.example;
+    const requestBodyShape = describeRequestBody(selectedRequestBodyContentType, requestBodyMatrixSchema);
+    const requestBodyFormFields =
+        requestBodyShape.kind === 'form' || requestBodyShape.kind === 'multipart'
+            ? buildFormSkeleton(requestBodyMatrixSchema, spec, selectedRequestBodyContent?.encoding)
+            : [];
+    const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     const fullEndpointUrl = selectedServer
@@ -803,14 +810,22 @@ export default function ViewTab({
                                 </p>
                             )}
                             <div key={selectedRequestBodyContentType} className="space-y-4 animate-fade-in">
-                                <p className="text-xs font-mono select-none">
-                                    <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">
-                                        Encoding TYPE:
-                                    </span>
-                                    <span className="rounded bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] break-all">
-                                        {selectedRequestBodyContentType}
-                                    </span>
-                                </p>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                    <p className="text-xs font-mono select-none">
+                                        <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">
+                                            Encoding TYPE:
+                                        </span>
+                                        <span className="rounded bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] break-all">
+                                            {selectedRequestBodyContentType}
+                                        </span>
+                                    </p>
+                                    <Tip content={requestBodyShape.hint}>
+                                        <span className="inline-flex cursor-help items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]">
+                                            <i className={`${requestBodyShape.icon} text-[12px]`} />
+                                            {requestBodyShape.label}
+                                        </span>
+                                    </Tip>
+                                </div>
                                 {requestBodyVariantSchemas && (
                                     <AdaptiveTabStrip
                                         label={requestBodyVariantSchemas.kind === 'oneOf' ? 'One of' : 'Any of'}
@@ -841,6 +856,22 @@ export default function ViewTab({
                                         )
                                     )}
                                 </div>
+                                {requestBodyFormSnippet && (
+                                    <div className="border-t border-[var(--border)] pt-2">
+                                        <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            <i className={`${requestBodyShape.icon} text-[12px]`} />
+                                            Submitted shape
+                                        </h4>
+                                        <p className="mb-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                            {requestBodyShape.hint}
+                                        </p>
+                                        <CodeViewer
+                                            code={requestBodyFormSnippet}
+                                            language={requestBodyShape.kind === 'form' ? 'plaintext' : 'http'}
+                                            maxHeight="260px"
+                                        />
+                                    </div>
+                                )}
                                 {requestBodyExample !== undefined && (
                                     <div className="border-t border-[var(--border)] pt-2">
                                         <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
