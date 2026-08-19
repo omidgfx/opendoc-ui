@@ -70,18 +70,24 @@ export default function AdaptiveTabStrip({items, activeId, onSelect, label, aria
         tabRefs.current.get(activeId)?.scrollIntoView({block: 'nearest', inline: 'nearest'});
         measureHidden();
     }, [activeId, measureHidden]);
-    const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    useEffect(() => {
         const rail = railRef.current;
-        if (!rail || rail.scrollWidth <= rail.clientWidth) return;
-        const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-        if (!delta) return;
-        // A vertical wheel over the rail scrolls it sideways, but the page keeps
-        // scrolling once the rail reaches an end.
-        const atStart = rail.scrollLeft <= 0;
-        const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
-        if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
-        event.preventDefault();
-        rail.scrollLeft += delta;
+        if (!rail) return;
+        // React registers wheel listeners passively, so preventDefault would be
+        // ignored there and the page would scroll along with the rail.
+        const onWheel = (event: WheelEvent) => {
+            if (rail.scrollWidth <= rail.clientWidth) return;
+            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            if (!delta) return;
+            const atStart = rail.scrollLeft <= 0;
+            const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
+            // Hand the gesture back to the page once the rail cannot move further.
+            if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
+            event.preventDefault();
+            rail.scrollLeft += delta;
+        };
+        rail.addEventListener('wheel', onWheel, {passive: false});
+        return () => rail.removeEventListener('wheel', onWheel);
     }, []);
     const updateMenuPosition = useCallback((optionCount: number) => {
         const rect = buttonRef.current?.getBoundingClientRect();
@@ -145,7 +151,6 @@ export default function AdaptiveTabStrip({items, activeId, onSelect, label, aria
                     ref={railRef}
                     role="tablist"
                     aria-label={ariaLabel}
-                    onWheel={handleWheel}
                     onScroll={measureHidden}
                     className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none scroll-smooth"
                 >
