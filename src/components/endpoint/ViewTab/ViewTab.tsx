@@ -19,6 +19,7 @@ import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import ScrollableRow from '../../common/ScrollableRow';
+import OverflowActionsMenu from '../../common/OverflowActionsMenu';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
@@ -376,7 +377,7 @@ export default function ViewTab({
         renderSchemaTypeExample,
         getDefaultViewerSchema,
         resetViewerSchema,
-    } = useSchemaViewer(spec, isMobile, onOpenSchemaModal);
+    } = useSchemaViewer(spec, onOpenSchemaModal);
     const resolveProperties = (schema: any): Record<string, any> => flattenSchemaProperties(schema, resolveReference);
     const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null) => {
         if (schema === undefined || schema === null) return null;
@@ -557,6 +558,7 @@ export default function ViewTab({
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
     const parameterGroups = groupParameters(mergedParameters);
     const separatedParameterTables = preferences.parameterTableLayout === 'separated';
+    const cardParameterTables = preferences.narrowTableLayout === 'cards';
     const requestBodySource = resolveRequestBodySource(operation, spec, requestBodyContentType, requestBodyVariant);
     const requestBodyContentEntries = requestBodySource.mediaTypes.map(
         contentType => [contentType, resolvedRequestBody?.content?.[contentType]] as [string, any],
@@ -581,18 +583,65 @@ export default function ViewTab({
             ? buildFormSkeleton(requestBodyMatrixSchema, spec, selectedRequestBodyContent?.encoding)
             : [];
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
+    const renderParameterCard = (param: any, index: number, showLocation: boolean) => {
+        const pattern = getPatternFromParam(param, spec);
+        const paramGroup = parameterGroupMetaOf(param);
+        return (
+            <div key={index} className="space-y-2 border-b p-3 last:border-b-0 border-[var(--border)]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">{param.name}</span>
+                    {param.required ? (
+                        <span className="text-[10px] font-bold text-[var(--method-delete)]">required</span>
+                    ) : (
+                        <span className="text-[10px] text-[var(--text-muted)]">optional</span>
+                    )}
+                    {showLocation && paramGroup && <ParameterLocationTag group={paramGroup} />}
+                </div>
+                {param.description && (
+                    <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{param.description}</p>
+                )}
+                <dl className="space-y-1.5 text-xs">
+                    <div className="flex flex-wrap items-start gap-2">
+                        <dt className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            Schema
+                        </dt>
+                        <dd className="flex min-w-0 flex-col items-start gap-1">
+                            {renderSchemaButton(param.schema)}
+                            <SerializationTag
+                                descriptor={describeParameterSerialization(param)}
+                                onOpenPlayground={() => setSerializerParameter(param)}
+                            />
+                            {pattern && (
+                                <PatternPreview pattern={pattern} showLabel onTest={() => setPatternToTest(pattern)} />
+                            )}
+                        </dd>
+                    </div>
+                    <div className="flex flex-wrap items-start gap-2">
+                        <dt className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            Example
+                        </dt>
+                        <dd className="min-w-0">{renderParameterExample(param)}</dd>
+                    </div>
+                </dl>
+            </div>
+        );
+    };
     const renderParameterTable = (
         title: string,
         params: any[],
         showLocation: boolean,
         group?: ReturnType<typeof parameterGroupMetaOf>,
     ) => (
-        <div key={title} className="space-y-3 min-w-0">
+        <div key={title} className="@container space-y-3 min-w-0">
             <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
             </h2>
             <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
-                <div className="overflow-x-auto scrollbar-thin">
+                {/* A table needs room; below that the same rows read as cards. */}
+                <div className={clsx('@2xl:hidden', !cardParameterTables && 'hidden')}>
+                    {params.map((param, index) => renderParameterCard(param, index, showLocation))}
+                </div>
+                <div className={clsx('overflow-x-auto scrollbar-thin', cardParameterTables && 'hidden @2xl:block')}>
                     <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
                         <thead>
                             <tr>
@@ -707,7 +756,7 @@ export default function ViewTab({
             className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
             style={{maxWidth: '100%'}}
         >
-            <div className="p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
+            <div className="@container p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
                         <MethodBadge method={method} size="md" className="rounded-full px-3 py-1 shrink-0 w-16" />
@@ -715,6 +764,34 @@ export default function ViewTab({
                             <ScrollableRow className="font-mono text-sm font-bold tracking-tight text-[var(--text-heading)]">
                                 {path}
                             </ScrollableRow>
+                            {/* Narrow panes fold the route actions into one menu
+                                instead of crowding the route itself. */}
+                            <OverflowActionsMenu
+                                className="@xl:hidden"
+                                ariaLabel="Endpoint actions"
+                                actions={[
+                                    {
+                                        id: 'copy-path',
+                                        label: 'Copy endpoint path',
+                                        doneLabel: 'Copied',
+                                        icon: 'ph ph-copy',
+                                        onSelect: () => navigator.clipboard.writeText(path),
+                                    },
+                                    {
+                                        id: 'copy-url',
+                                        label: 'Copy full URL',
+                                        doneLabel: 'Copied',
+                                        icon: 'ph ph-link-simple',
+                                        onSelect: () => navigator.clipboard.writeText(fullEndpointUrl),
+                                    },
+                                    {
+                                        id: 'share',
+                                        label: 'Share this endpoint',
+                                        icon: 'ph ph-share-network',
+                                        onSelect: handleShareEndpoint,
+                                    },
+                                ]}
+                            />
                             <Tip content="Copy endpoint path">
                                 <button
                                     aria-label="Copy endpoint path"
@@ -724,7 +801,7 @@ export default function ViewTab({
                                         setTimeout(() => setCopiedPath(false), 2000);
                                     }}
                                     className={clsx(
-                                        'w-7 h-7 rounded flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
+                                        'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
                                         copiedPath ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
                                     )}
                                 >
@@ -744,7 +821,7 @@ export default function ViewTab({
                                         setTimeout(() => setCopiedFullUrl(false), 2000);
                                     }}
                                     className={clsx(
-                                        'w-7 h-7 rounded flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
+                                        'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
                                         copiedFullUrl ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
                                     )}
                                 >
@@ -782,7 +859,7 @@ export default function ViewTab({
                             <button
                                 onClick={handleShareEndpoint}
                                 aria-label="Share this endpoint"
-                                className="w-7 h-7 rounded flex items-center justify-center text-xs transition-colors cursor-pointer select-none text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
+                                className="w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
                             >
                                 <i className="ph ph-share-network text-[13px]"></i>
                             </button>
@@ -822,12 +899,14 @@ export default function ViewTab({
 
                 {selectedRequestBodyContent && (
                     <div className="space-y-3 font-sans min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        <div className="flex flex-nowrap items-center justify-between gap-3">
+                            <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                 Request Body Context
                             </h2>
-                            <div className="flex min-w-0 items-center justify-end gap-2 flex-wrap">
-                                <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                            {/* Fixed slot: a long media type used to widen the
+                                control until it wrapped onto its own line. */}
+                            <div className="flex w-[168px] shrink-0 items-center justify-end gap-2 sm:w-[220px]">
+                                <span className="hidden shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] sm:inline">
                                     Encoding type
                                 </span>
                                 <CustomDropdown
@@ -841,7 +920,7 @@ export default function ViewTab({
                                         label: contentType,
                                     }))}
                                     icon="ph ph-code-block text-[13px]"
-                                    className="min-w-[180px]"
+                                    className="w-full min-w-0"
                                 />
                             </div>
                         </div>
@@ -993,9 +1072,18 @@ export default function ViewTab({
                                             >
                                                 {code}
                                             </span>
-                                            <span className="text-xs font-semibold leading-none text-[var(--text-heading)] truncate min-w-0 flex-1">
-                                                {resp.description || 'Response details'}
-                                            </span>
+                                            <Tip content={resp.description || 'Response details'} fullWidth>
+                                                <span
+                                                    className={clsx(
+                                                        'min-w-0 flex-1 text-xs font-semibold text-[var(--text-heading)]',
+                                                        // Collapsed rows keep one line; an opened
+                                                        // response shows its summary in full.
+                                                        isCollapsed ? 'truncate leading-none' : 'leading-relaxed',
+                                                    )}
+                                                >
+                                                    {resp.description || 'Response details'}
+                                                </span>
+                                            </Tip>
 
                                             {!isMobile && schemaNames.length > 0 && (
                                                 <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] min-w-0 flex-wrap">

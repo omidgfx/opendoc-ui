@@ -235,7 +235,7 @@ export default function SchemaPropertiesTable({
                                                     className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]"
                                                 >
                                                     <i className="ph ph-diamonds-four text-[11px]"></i>
-                                                    <span className="hidden sm:inline">Inspect Schema</span>
+                                                    <span className="whitespace-nowrap">Inspect Schema</span>
                                                 </button>
                                             </Tip>
                                         )}

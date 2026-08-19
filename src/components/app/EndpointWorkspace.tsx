@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useRef,
     useState,
     type Dispatch,
     type KeyboardEvent,
@@ -19,6 +20,7 @@ import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import EndpointNotesSidebar from '../notes/EndpointNotesSidebar';
 import ScrollableRow from '../common/ScrollableRow';
+import {useElementWidth} from '../../hooks/useElementWidth';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -91,6 +93,14 @@ export default function EndpointWorkspace({
 }: EndpointWorkspaceProps) {
     const {noteCountForEndpoint, openEndpointNotes} = useEndpointNotes();
     const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
+    const workspaceRef = useRef<HTMLDivElement>(null);
+    const workspaceWidth = useElementWidth(workspaceRef);
+    // Side by side needs real room. The decision follows the pane, not the
+    // viewport, so a narrowed split or an open notes sidebar counts too.
+    const canSplit = workspaceWidth === 0 || workspaceWidth >= 720;
+    useEffect(() => {
+        if (!canSplit && selectedTab === 'both') setSelectedTab(activeSplitPane === 'examine' ? 'examine' : 'docs');
+    }, [canSplit, selectedTab, activeSplitPane, setSelectedTab]);
     useEffect(() => {
         if (selectedTab === 'both') setNotesSidebarOpen(false);
     }, [selectedTab]);
@@ -148,32 +158,10 @@ export default function EndpointWorkspace({
         </ViewErrorBoundary>
     );
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+        <div ref={workspaceRef} className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
             <div className="@container shrink-0 border-b bg-[var(--surface)] border-[var(--border)]">
                 <div className="h-auto min-h-[3.5rem] px-3 sm:px-6 py-2 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-2 select-none">
                     <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-[10.5px]">
-                        <Tip
-                            content={
-                                selectedTab === 'both'
-                                    ? 'Open endpoint notes in a modal'
-                                    : notesSidebarOpen
-                                      ? 'Close endpoint notes sidebar'
-                                      : 'Open endpoint notes sidebar'
-                            }
-                        >
-                            <button
-                                type="button"
-                                data-endpoint-notes-button
-                                onClick={handleOpenEndpointNotes}
-                                aria-label={`Open endpoint notes (${endpointNoteCount})`}
-                                aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
-                                aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
-                                className="group inline-flex h-8.5 w-[60px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
-                            >
-                                <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
-                                <span data-endpoint-note-count>{endpointNoteCount}</span>
-                            </button>
-                        </Tip>
                         <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden @4xl:inline">
                             Endpoint:
                         </span>
@@ -214,24 +202,48 @@ export default function EndpointWorkspace({
                                     <span className="@4xl:hidden">Run</span>
                                 </button>
                             </Tip>
-                            <Tip content="Split View (Side-by-Side)">
-                                <button
-                                    onClick={() => setSelectedTab('both')}
-                                    aria-pressed={selectedTab === 'both'}
-                                    className={clsx(
-                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                        selectedTab === 'both'
-                                            ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]'
-                                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                                    )}
-                                >
-                                    <i className="ph ph-split-horizontal text-[16px]" />
-                                    <span className="hidden @4xl:inline">Split View</span>
-                                    <span className="@4xl:hidden">Split</span>
-                                </button>
-                            </Tip>
+                            {canSplit && (
+                                <Tip content="Split View (Side-by-Side)">
+                                    <button
+                                        onClick={() => setSelectedTab('both')}
+                                        aria-pressed={selectedTab === 'both'}
+                                        className={clsx(
+                                            'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                            selectedTab === 'both'
+                                                ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]'
+                                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                                        )}
+                                    >
+                                        <i className="ph ph-split-horizontal text-[16px]" />
+                                        <span className="hidden @4xl:inline">Split View</span>
+                                        <span className="@4xl:hidden">Split</span>
+                                    </button>
+                                </Tip>
+                            )}
                         </div>
                         <div className="h-5 w-px bg-[var(--border)] hidden @2xl:block" />
+                        <Tip
+                            content={
+                                selectedTab === 'both'
+                                    ? 'Open endpoint notes in a modal'
+                                    : notesSidebarOpen
+                                      ? 'Close endpoint notes sidebar'
+                                      : 'Open endpoint notes sidebar'
+                            }
+                        >
+                            <button
+                                type="button"
+                                data-endpoint-notes-button
+                                onClick={handleOpenEndpointNotes}
+                                aria-label={`Open endpoint notes (${endpointNoteCount})`}
+                                aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
+                                aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
+                                className="group inline-flex h-8.5 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                            >
+                                <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
+                                <span data-endpoint-note-count>{endpointNoteCount}</span>
+                            </button>
+                        </Tip>
                         <Tip content="Generate Fetch/Axios snippets and TypeScript models">
                             <button
                                 onClick={onGenerateCode}
@@ -334,7 +346,9 @@ export default function EndpointWorkspace({
                                 specKey={parsableKey}
                                 path={endpoint.path}
                                 method={endpoint.method}
-                                overlay={isMobile}
+                                // A narrow pane cannot spare room for a docked
+                                // panel either, split view included.
+                                overlay={isMobile || !canSplit}
                                 onClose={() => setNotesSidebarOpen(false)}
                             />
                         )}

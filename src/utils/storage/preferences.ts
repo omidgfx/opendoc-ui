@@ -14,6 +14,9 @@ export type ModalRepresentationScope = 'schema' | 'global';
  *  location. The request body always keeps its own section either way. */
 export type ParameterTableLayout = 'separated' | 'unified';
 
+/** What a parameter table turns into when its pane is too narrow for columns. */
+export type NarrowTableLayout = 'cards' | 'table';
+
 /** Gutter indicator families the code viewer can annotate lines with. */
 export const INDICATOR_ICON_KINDS = [
     'recursive',
@@ -47,6 +50,8 @@ export interface AppPreferences {
     modalRepresentations: Record<string, RepresentationMode>;
     /** Path, query, header and cookie parameters in their own tables, or merged. */
     parameterTableLayout: ParameterTableLayout;
+    /** Cards per row on narrow panes, or a horizontally scrolling table. */
+    narrowTableLayout: NarrowTableLayout;
     /** Single-click tabs open in preview (italic) mode when enabled. */
     previewTabsEnabled: boolean;
     /** Line numbers column of the code viewer. */
@@ -65,6 +70,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
     modalRepresentation: 'example',
     modalRepresentations: {},
     parameterTableLayout: 'separated',
+    narrowTableLayout: 'cards',
     previewTabsEnabled: true,
     codeGutterEnabled: true,
     indicatorIconsEnabled: true,
@@ -111,6 +117,10 @@ export const normalizeAppPreferences = (value: any): AppPreferences => {
             value.parameterTableLayout === 'unified' || value.parameterTableLayout === 'separated'
                 ? value.parameterTableLayout
                 : DEFAULT_APP_PREFERENCES.parameterTableLayout,
+        narrowTableLayout:
+            value.narrowTableLayout === 'cards' || value.narrowTableLayout === 'table'
+                ? value.narrowTableLayout
+                : DEFAULT_APP_PREFERENCES.narrowTableLayout,
         previewTabsEnabled:
             typeof value.previewTabsEnabled === 'boolean'
                 ? value.previewTabsEnabled

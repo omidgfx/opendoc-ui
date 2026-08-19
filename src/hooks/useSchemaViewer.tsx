@@ -7,7 +7,7 @@ import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
 import {Tip} from '@/src/components/common/Tooltip';
 
-export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSchemaModal: (name: string) => void) {
+export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: string) => void) {
     const [viewerExampleSchemas, setViewerExampleSchemas] = useState<Record<string, any>>({});
     const [viewerExampleNames, setViewerExampleNames] = useState<Record<string, string>>({});
     const mapValueLabel = (additionalProperties: any): string => {
@@ -53,7 +53,9 @@ export function useSchemaViewer(spec: OpenApiSpec, isMobile: boolean, onOpenSche
                         className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer"
                     >
                         <i className="ph ph-diamonds-four text-[12px]"></i>
-                        {isMobile ? '' : ` ${refName}`}
+                        {/* The name is the caption of this button: without it a
+                            phone shows a bare icon with nothing to read. */}
+                        <span className="max-w-[42vw] truncate sm:max-w-none">{refName}</span>
                     </button>
                 </Tip>
             );
