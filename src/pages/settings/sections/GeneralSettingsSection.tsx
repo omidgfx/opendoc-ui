@@ -1,5 +1,9 @@
 import {usePreferences} from '@/src/contexts/PreferencesContext';
-import type {EndpointRepresentationScope, ModalRepresentationScope} from '@/src/utils/storage/preferences';
+import type {
+    EndpointRepresentationScope,
+    ModalRepresentationScope,
+    ParameterTableLayout,
+} from '@/src/utils/storage/preferences';
 import SettingsGroup from '../controls/SettingsGroup';
 import SettingRow from '../controls/SettingRow';
 import SettingChoice from '../controls/SettingChoice';
@@ -7,6 +11,10 @@ import SettingChoice from '../controls/SettingChoice';
 const ENDPOINT_SCOPE_OPTIONS: {value: EndpointRepresentationScope; label: string; icon: string}[] = [
     {value: 'endpoint', label: 'Per endpoint', icon: 'ph ph-plugs-connected'},
     {value: 'global', label: 'Globally', icon: 'ph ph-globe-simple'},
+];
+const PARAMETER_TABLE_OPTIONS: {value: ParameterTableLayout; label: string; icon: string}[] = [
+    {value: 'separated', label: 'Separated', icon: 'ph ph-rows'},
+    {value: 'unified', label: 'Unified', icon: 'ph ph-table'},
 ];
 const MODAL_SCOPE_OPTIONS: {value: ModalRepresentationScope; label: string; icon: string}[] = [
     {value: 'schema', label: 'Per schema', icon: 'ph ph-diamonds-four'},
@@ -47,6 +55,26 @@ export default function GeneralSettingsSection() {
                             options={MODAL_SCOPE_OPTIONS}
                             onChange={value => setPreference('modalRepresentationScope', value)}
                             ariaLabel="Where the schema modal remembers the schema or example choice"
+                        />
+                    }
+                />
+            </SettingsGroup>
+
+            <SettingsGroup
+                title="Request matrix"
+                description="How the documentation lays out the parameters of an endpoint."
+                icon="ph-fill ph-table"
+            >
+                <SettingRow
+                    label="Parameter tables"
+                    description="Separated gives path, query, header and cookie parameters a table each, matching the Runner. Unified keeps one matrix with a location column. The request body always keeps its own section."
+                    icon="ph ph-rows"
+                    control={
+                        <SettingChoice
+                            value={preferences.parameterTableLayout}
+                            options={PARAMETER_TABLE_OPTIONS}
+                            onChange={value => setPreference('parameterTableLayout', value)}
+                            ariaLabel="Parameter table layout"
                         />
                     }
                 />

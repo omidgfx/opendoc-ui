@@ -1,7 +1,8 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {Fragment, useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
+import {groupParameters} from '../../../utils/endpoint/parameterGroups';
 import {getRequestBodyExample, resolveRequestBodyMediaType} from '../../../utils/endpoint/requestBodySource';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
 import {convertBodyText} from '../../../utils/runner/bodyConverters';
@@ -348,10 +349,7 @@ export default function ExamineTab({
     }, [isRunning, isActive]);
     const pathItemObj = (spec.paths as any)[path] || {};
     const mergedParams = getMergedParameters(pathItemObj, operation, spec);
-    const pathParams = mergedParams.filter((p: any) => p.in === 'path');
-    const queryParams = mergedParams.filter((p: any) => p.in === 'query' || p.in === 'querystring');
-    const headerParams = mergedParams.filter((p: any) => p.in === 'header');
-    const cookieParams = mergedParams.filter((p: any) => p.in === 'cookie');
+    const parameterGroups = groupParameters(mergedParams);
     const usesCookieAuthentication = operationUsesCookieAuthentication(spec, operation);
     const parameterTypeLabel = (param: any) => {
         const value = param.schema?.type ?? param.type ?? 'string';
@@ -488,10 +486,9 @@ export default function ExamineTab({
             )}
 
             <div className="space-y-6 w-full">
-                {renderParamBlock('Path Parameters', pathParams)}
-                {renderParamBlock('Query Parameters', queryParams)}
-                {renderParamBlock('Header Parameters', headerParams)}
-                {renderParamBlock('Cookie Parameters', cookieParams)}
+                {parameterGroups.map(group => (
+                    <Fragment key={group.location}>{renderParamBlock(group.title, group.parameters)}</Fragment>
+                ))}
                 {Object.keys(headers).length > 0 && (
                     <div className="space-y-2">
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
