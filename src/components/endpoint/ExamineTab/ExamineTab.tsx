@@ -2,7 +2,8 @@ import {Fragment, useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
-import {groupParameters} from '../../../utils/endpoint/parameterGroups';
+import {groupParameters, type ParameterGroupMeta} from '../../../utils/endpoint/parameterGroups';
+import ParameterLocationTag from '../../common/ParameterLocationTag';
 import {getRequestBodyExample, resolveRequestBodyMediaType} from '../../../utils/endpoint/requestBodySource';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
 import {convertBodyText} from '../../../utils/runner/bodyConverters';
@@ -355,12 +356,12 @@ export default function ExamineTab({
         const value = param.schema?.type ?? param.type ?? 'string';
         return Array.isArray(value) ? value.join(' | ') : String(value);
     };
-    const renderParamBlock = (title: string, list: any[]) => {
+    const renderParamBlock = (title: string, list: any[], group?: ParameterGroupMeta) => {
         if (list.length === 0) return null;
         return (
             <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    {title}
+                <label className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
                 </label>
                 <div className="space-y-3 p-4 border rounded-xl bg-[var(--surface)] border-[var(--border)]">
                     {list.map((param: any) => {
@@ -487,7 +488,7 @@ export default function ExamineTab({
 
             <div className="space-y-6 w-full">
                 {parameterGroups.map(group => (
-                    <Fragment key={group.location}>{renderParamBlock(group.title, group.parameters)}</Fragment>
+                    <Fragment key={group.location}>{renderParamBlock(group.title, group.parameters, group)}</Fragment>
                 ))}
                 {Object.keys(headers).length > 0 && (
                     <div className="space-y-2">
