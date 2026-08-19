@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
+import {getRequestBodyExample, resolveRequestBodyMediaType} from '../../../utils/endpoint/requestBodySource';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
 import {convertBodyText} from '../../../utils/runner/bodyConverters';
 import {executeRunnerRequest} from '../../../utils/runner/runnerExecution';
@@ -59,7 +60,7 @@ export default function ExamineTab({
     const [params, setParams] = useState<Record<string, string | string[]>>({});
     const [headers, setHeaders] = useState<Record<string, string>>({});
     const [requestBodyText, setRequestBodyText] = useState('');
-    const [requestBodyType, setRequestBodyType] = useState('application/json');
+    const [requestBodyType, setRequestBodyType] = useState('');
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
@@ -73,13 +74,17 @@ export default function ExamineTab({
     const [response, setResponse] = useState<ExamineResponse | null>(responseHistory[0] || null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
-    const selectedRequestMedia = resolvedRequestBody?.content?.[requestBodyType];
+    // Documentation, Runner and generators resolve the media type with one
+    // shared rule, so the schema, the example and the sent body never diverge.
+    const effectiveRequestBodyType =
+        resolveRequestBodyMediaType(resolvedRequestBody, requestBodyType) || requestBodyType || 'application/json';
+    const selectedRequestMedia = resolvedRequestBody?.content?.[effectiveRequestBodyType];
     const selectedRequestSchema = selectedRequestMedia?.schema
         ? resolveReference(selectedRequestMedia.schema, spec) || selectedRequestMedia.schema
         : null;
-    const requestBodySupportsForm = bodyTypeSupportsForm(requestBodyType, selectedRequestSchema);
+    const requestBodySupportsForm = bodyTypeSupportsForm(effectiveRequestBodyType, selectedRequestSchema);
     const rawEditorLabel = (() => {
-        const normalized = requestBodyType.toLowerCase();
+        const normalized = effectiveRequestBodyType.toLowerCase();
         if (normalized.includes('json')) return 'Raw JSON';
         if (normalized.includes('xml')) return 'Raw XML';
         if (normalized.includes('yaml')) return 'Raw YAML';
@@ -87,10 +92,10 @@ export default function ExamineTab({
         return 'Raw';
     })();
     const changeRequestBodyType = (nextMediaType: string) => {
-        if (nextMediaType === requestBodyType) return;
-        const mediaSchema = resolvedRequestBody.content?.[nextMediaType]?.schema;
+        if (nextMediaType === effectiveRequestBodyType) return;
+        const mediaSchema = resolvedRequestBody?.content?.[nextMediaType]?.schema;
         const nextSchema = mediaSchema ? resolveReference(mediaSchema, spec) || mediaSchema : null;
-        setRequestBodyText(text => convertBodyText(text, requestBodyType, nextMediaType, nextSchema));
+        setRequestBodyText(text => convertBodyText(text, effectiveRequestBodyType, nextMediaType, nextSchema));
         setRequestBodyType(nextMediaType);
         setBodyEditorMode(current => bodyEditorModeForMediaType(current, nextMediaType, nextSchema));
     };
@@ -137,7 +142,7 @@ export default function ExamineTab({
             setParams(migrated.values);
             setHeaders(migrated.customHeaders);
             setRequestBodyText(parsed.bodyText || '');
-            setRequestBodyType(parsed.bodyType || 'application/json');
+            setRequestBodyType(parsed.bodyType || '');
             if (parsed.bodyEditorMode === 'raw' || parsed.bodyEditorMode === 'form')
                 setBodyEditorMode(parsed.bodyEditorMode);
             if (parsed.bodyText) {
@@ -161,12 +166,9 @@ export default function ExamineTab({
         if (!requestBodySupportsForm) setBodyEditorMode('raw');
     }, [requestBodySupportsForm, setBodyEditorMode]);
     useEffect(() => {
-        const content = resolveRequestBody(operation.requestBody, spec)?.content || {};
-        const mediaTypes = Object.keys(content);
-        if (mediaTypes.length > 0 && !mediaTypes.includes(requestBodyType)) {
-            const nextMediaType = mediaTypes[0];
-            changeRequestBodyType(nextMediaType);
-        }
+        const resolved = resolveRequestBody(operation.requestBody, spec);
+        const nextMediaType = resolveRequestBodyMediaType(resolved, requestBodyType);
+        if (nextMediaType && nextMediaType !== requestBodyType) changeRequestBodyType(nextMediaType);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [operation.requestBody, spec]);
     useEffect(
@@ -176,7 +178,13 @@ export default function ExamineTab({
         [],
     );
     const handleSave = () => {
-        const payload = {params, headers, bodyText: requestBodyText, bodyType: requestBodyType, bodyEditorMode};
+        const payload = {
+            params,
+            headers,
+            bodyText: requestBodyText,
+            bodyType: effectiveRequestBodyType,
+            bodyEditorMode,
+        };
         specStorage.setJSON(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`, payload);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 1500);
@@ -221,15 +229,11 @@ export default function ExamineTab({
         setHeaders({});
         const resolvedBody = resolveRequestBody(operation.requestBody, spec);
         if (resolvedBody?.content) {
-            const contentKeys = Object.keys(resolvedBody.content);
-            const seedType = contentKeys.includes(requestBodyType)
-                ? requestBodyType
-                : contentKeys[0] || 'application/json';
+            const seedType = resolveRequestBodyMediaType(resolvedBody, requestBodyType) || 'application/json';
             setRequestBodyType(seedType);
             const contentObj = resolvedBody.content[seedType];
             if (contentObj) {
-                const firstExample = Object.values(contentObj.examples || {})[0] as any;
-                const example = contentObj.example ?? firstExample?.value ?? firstExample?.dataValue;
+                const example = getRequestBodyExample(contentObj);
                 const resolvedSchema = contentObj.schema
                     ? resolveReference(contentObj.schema, spec) || contentObj.schema
                     : null;
@@ -276,7 +280,7 @@ export default function ExamineTab({
                 parameterValues: params,
                 headers,
                 body: requestBodyText,
-                bodyType: requestBodyType,
+                bodyType: effectiveRequestBodyType,
                 selectedFile,
                 selectedFiles,
                 signal: controller.signal,
@@ -560,7 +564,7 @@ export default function ExamineTab({
                                         </div>
                                     )}
                                     <CustomDropdown
-                                        value={requestBodyType}
+                                        value={effectiveRequestBodyType}
                                         onChange={changeRequestBodyType}
                                         options={Object.keys(resolvedRequestBody.content || {}).map(mime => ({
                                             value: mime,
@@ -575,7 +579,7 @@ export default function ExamineTab({
                                 method={method}
                                 path={path}
                                 operation={operation}
-                                requestBodyType={requestBodyType}
+                                requestBodyType={effectiveRequestBodyType}
                                 setRequestBodyType={setRequestBodyType}
                                 bodyEditorMode={bodyEditorMode}
                                 setBodyEditorMode={setBodyEditorMode}
