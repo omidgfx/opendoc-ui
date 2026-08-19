@@ -1,6 +1,9 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
+import clsx from 'clsx';
 import type {OpenApiSpec} from '../../../types';
 import CustomDropdown from '../../common/CustomDropdown';
+import StructuredValueEditor from './StructuredValueEditor';
+import {Tip} from '../../common/Tooltip';
 import {enumDropdownOptions, enumValueDescriptions, enumValueText} from '../../../utils/enumOptions';
 import {resolved} from '../../../utils/runner/recursiveBody';
 
@@ -35,6 +38,54 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
                 : null
         : null;
     const stringValue = value === undefined || value === null ? '' : String(value);
+    const pattern = String(schema.pattern || param.pattern || '');
+    // Live pattern feedback: the field says whether the value would be accepted
+    // before the request is ever sent.
+    const patternState = useMemo((): {status: 'idle' | 'match' | 'mismatch' | 'broken'; message: string} => {
+        if (!pattern) return {status: 'idle', message: ''};
+        if (!stringValue) return {status: 'idle', message: `Must match ${pattern}`};
+        try {
+            return new RegExp(pattern).test(stringValue)
+                ? {status: 'match', message: `Matches ${pattern}`}
+                : {status: 'mismatch', message: `Does not match ${pattern}`};
+        } catch {
+            return {status: 'broken', message: `The pattern ${pattern} is not a valid regular expression.`};
+        }
+    }, [pattern, stringValue]);
+    const patternInputClassName = clsx(
+        'w-full rounded-lg border bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors',
+        pattern && 'pe-8',
+        patternState.status === 'mismatch'
+            ? 'border-[var(--method-delete)]/60 focus:border-[var(--method-delete)]'
+            : patternState.status === 'match'
+              ? 'border-[var(--method-get)]/50 focus:border-[var(--method-get)]'
+              : 'border-[var(--border)] focus:border-[var(--primary)]',
+    );
+    const patternIndicator =
+        patternState.status === 'idle' || !pattern ? null : (
+            <Tip content={patternState.message}>
+                <span
+                    className={clsx(
+                        'pointer-events-auto absolute end-2 top-1/2 -translate-y-1/2 cursor-help text-[13px]',
+                        patternState.status === 'match'
+                            ? 'text-[var(--method-get)]'
+                            : patternState.status === 'mismatch'
+                              ? 'text-[var(--method-delete)]'
+                              : 'text-[var(--method-put)]',
+                    )}
+                >
+                    <i
+                        className={
+                            patternState.status === 'match'
+                                ? 'ph-fill ph-check-circle'
+                                : patternState.status === 'mismatch'
+                                  ? 'ph-fill ph-warning-circle'
+                                  : 'ph-fill ph-warning'
+                        }
+                    />
+                </span>
+            </Tip>
+        );
     const documentedIndex = enumValues?.findIndex((item: any) => enumValueText(item) === stringValue) ?? -1;
     const customValueActive = manualMode || (stringValue !== '' && documentedIndex < 0 && !!enumValues);
     const selectedValues: string[] = Array.isArray(value)
@@ -256,15 +307,19 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
                     className="w-full"
                 />
                 {customValueActive && (
-                    <input
-                        ref={customInputRef}
-                        type="text"
-                        aria-label={`${param.name} custom value`}
-                        value={stringValue}
-                        onChange={event => onChange(event.target.value)}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]"
-                        placeholder="Enter any value for a permissive test"
-                    />
+                    <div className="relative">
+                        <input
+                            ref={customInputRef}
+                            type="text"
+                            aria-label={`${param.name} custom value`}
+                            aria-invalid={patternState.status === 'mismatch'}
+                            value={stringValue}
+                            onChange={event => onChange(event.target.value)}
+                            className={patternInputClassName}
+                            placeholder="Enter any value for a permissive test"
+                        />
+                        {patternIndicator}
+                    </div>
                 )}
             </div>
         );
@@ -279,23 +334,35 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
         schema.example ??
         schema.default;
     const inputMode = type === 'integer' ? 'numeric' : type === 'number' ? 'decimal' : undefined;
+    if (type === 'object') {
+        return (
+            <StructuredValueEditor
+                value={stringValue}
+                onChange={onChange}
+                ariaLabel={`${param.name} value`}
+                placeholder={example !== undefined ? enumValueText(example) : '{ "key": "value" }'}
+            />
+        );
+    }
     return (
-        <input
-            type="text"
-            inputMode={inputMode}
-            aria-label={`${param.name} value`}
-            value={stringValue}
-            onChange={event => onChange(event.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors focus:border-[var(--primary)]"
-            placeholder={
-                example !== undefined
-                    ? enumValueText(example)
-                    : type === 'object'
-                      ? 'JSON value'
-                      : schema.format
-                        ? `${schema.format} value`
-                        : param.description || 'value'
-            }
-        />
+        <div className="relative">
+            <input
+                type="text"
+                inputMode={inputMode}
+                aria-label={`${param.name} value`}
+                aria-invalid={patternState.status === 'mismatch'}
+                value={stringValue}
+                onChange={event => onChange(event.target.value)}
+                className={patternInputClassName}
+                placeholder={
+                    example !== undefined
+                        ? enumValueText(example)
+                        : schema.format
+                          ? `${schema.format} value`
+                          : param.description || 'value'
+                }
+            />
+            {patternIndicator}
+        </div>
     );
 }
