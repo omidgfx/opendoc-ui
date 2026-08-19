@@ -17,6 +17,7 @@ import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
+import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
@@ -810,34 +811,19 @@ export default function ViewTab({
                                     </span>
                                 </p>
                                 {requestBodyVariantSchemas && (
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                            {requestBodyVariantSchemas.kind === 'oneOf' ? 'One of' : 'Any of'}
-                                        </span>
-                                        {requestBodyVariantSchemas.variants.map((sub, index) => {
-                                            const isSelected =
-                                                index ===
-                                                Math.min(
-                                                    requestBodyVariant,
-                                                    requestBodyVariantSchemas.variants.length - 1,
-                                                );
-                                            return (
-                                                <button
-                                                    key={index}
-                                                    type="button"
-                                                    onClick={() => setRequestBodyVariant(index)}
-                                                    aria-pressed={isSelected}
-                                                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer select-none transition-all duration-150 ${
-                                                        isSelected
-                                                            ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
-                                                            : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15'
-                                                    }`}
-                                                >
-                                                    {schemaVariantLabel(sub, resolveReference, getRefName, index)}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <AdaptiveTabStrip
+                                        label={requestBodyVariantSchemas.kind === 'oneOf' ? 'One of' : 'Any of'}
+                                        ariaLabel="Request body variants"
+                                        activeId={String(
+                                            Math.min(requestBodyVariant, requestBodyVariantSchemas.variants.length - 1),
+                                        )}
+                                        onSelect={id => setRequestBodyVariant(Number(id))}
+                                        items={requestBodyVariantSchemas.variants.map((sub, index) => ({
+                                            id: String(index),
+                                            label: schemaVariantLabel(sub, resolveReference, getRefName, index),
+                                            description: (resolveReference(sub) || sub)?.description,
+                                        }))}
+                                    />
                                 )}
                                 <div className="pt-1 min-w-0">
                                     {renderSchemaPropertiesTable(
