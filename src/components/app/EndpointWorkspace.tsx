@@ -148,107 +148,109 @@ export default function EndpointWorkspace({
     );
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-            <div className="h-auto min-h-[3.5rem] border-b px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 select-none bg-[var(--surface)] border-[var(--border)]">
-                <div className="flex items-center gap-1.5 text-[10.5px] min-w-0 overflow-hidden">
-                    <Tip
-                        content={
-                            selectedTab === 'both'
-                                ? 'Open endpoint notes in a modal'
-                                : notesSidebarOpen
-                                  ? 'Close endpoint notes sidebar'
-                                  : 'Open endpoint notes sidebar'
-                        }
-                    >
-                        <button
-                            type="button"
-                            data-endpoint-notes-button
-                            onClick={handleOpenEndpointNotes}
-                            aria-label={`Open endpoint notes (${endpointNoteCount})`}
-                            aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
-                            aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
-                            className="group inline-flex h-8.5 w-[60px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+            <div className="@container shrink-0 border-b bg-[var(--surface)] border-[var(--border)]">
+                <div className="h-auto min-h-[3.5rem] px-3 sm:px-6 py-2 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-2 select-none">
+                    <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-[10.5px]">
+                        <Tip
+                            content={
+                                selectedTab === 'both'
+                                    ? 'Open endpoint notes in a modal'
+                                    : notesSidebarOpen
+                                      ? 'Close endpoint notes sidebar'
+                                      : 'Open endpoint notes sidebar'
+                            }
                         >
-                            <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
-                            <span data-endpoint-note-count>{endpointNoteCount}</span>
-                        </button>
-                    </Tip>
-                    <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden sm:inline">
-                        Endpoint:
-                    </span>
-                    <MethodBadge method={endpoint.method} size="xs" className="rounded-full shrink-0 w-9" />
-                    <span className="font-mono font-bold select-all truncate">{endpoint.path}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">
-                        <Tip content="View Documentation">
                             <button
-                                onClick={() => setSelectedTab('docs')}
-                                aria-pressed={selectedTab === 'docs'}
-                                className={clsx(
-                                    'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                    selectedTab === 'docs'
-                                        ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]'
-                                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                                )}
+                                type="button"
+                                data-endpoint-notes-button
+                                onClick={handleOpenEndpointNotes}
+                                aria-label={`Open endpoint notes (${endpointNoteCount})`}
+                                aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
+                                aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
+                                className="group inline-flex h-8.5 w-[60px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
                             >
-                                <i className="ph ph-book-open-text text-[16px]" />
-                                <span className="hidden sm:inline">View Documentation</span>
-                                <span className="sm:hidden">Docs</span>
+                                <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
+                                <span data-endpoint-note-count>{endpointNoteCount}</span>
                             </button>
                         </Tip>
-                        <Tip content="API Runner">
+                        <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden @4xl:inline">
+                            Endpoint:
+                        </span>
+                        <MethodBadge method={endpoint.method} size="xs" className="rounded-full shrink-0 w-9" />
+                        <span className="font-mono font-bold select-all truncate">{endpoint.path}</span>
+                    </div>
+                    <div className="flex shrink-0 flex-nowrap items-center gap-2">
+                        <div className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">
+                            <Tip content="View Documentation">
+                                <button
+                                    onClick={() => setSelectedTab('docs')}
+                                    aria-pressed={selectedTab === 'docs'}
+                                    className={clsx(
+                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                        selectedTab === 'docs'
+                                            ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                                    )}
+                                >
+                                    <i className="ph ph-book-open-text text-[16px]" />
+                                    <span className="hidden @4xl:inline">View Documentation</span>
+                                    <span className="@4xl:hidden">Docs</span>
+                                </button>
+                            </Tip>
+                            <Tip content="API Runner">
+                                <button
+                                    onClick={() => setSelectedTab('examine')}
+                                    aria-pressed={selectedTab === 'examine'}
+                                    className={clsx(
+                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                        selectedTab === 'examine'
+                                            ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                                    )}
+                                >
+                                    <i className="ph ph-flask text-[16px]" />
+                                    <span className="hidden @4xl:inline">API Runner</span>
+                                    <span className="@4xl:hidden">Run</span>
+                                </button>
+                            </Tip>
+                            <Tip content="Split View (Side-by-Side)">
+                                <button
+                                    onClick={() => setSelectedTab('both')}
+                                    aria-pressed={selectedTab === 'both'}
+                                    className={clsx(
+                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                        selectedTab === 'both'
+                                            ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                                    )}
+                                >
+                                    <i className="ph ph-split-horizontal text-[16px]" />
+                                    <span className="hidden @4xl:inline">Split View</span>
+                                    <span className="@4xl:hidden">Split</span>
+                                </button>
+                            </Tip>
+                        </div>
+                        <div className="h-5 w-px bg-[var(--border)] hidden @2xl:block" />
+                        <Tip content="Generate Fetch/Axios snippets and TypeScript models">
                             <button
-                                onClick={() => setSelectedTab('examine')}
-                                aria-pressed={selectedTab === 'examine'}
-                                className={clsx(
-                                    'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                    selectedTab === 'examine'
-                                        ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]'
-                                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                                )}
+                                onClick={onGenerateCode}
+                                aria-label="Generate request code"
+                                className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0"
                             >
-                                <i className="ph ph-flask text-[16px]" />
-                                <span className="hidden sm:inline">API Runner</span>
-                                <span className="sm:hidden">Run</span>
+                                <i className="ph ph-code text-[16px]" />
                             </button>
                         </Tip>
-                        <Tip content="Split View (Side-by-Side)">
+                        <Tip content="Ask AI about this endpoint in a new conversation">
                             <button
-                                onClick={() => setSelectedTab('both')}
-                                aria-pressed={selectedTab === 'both'}
-                                className={clsx(
-                                    'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
-                                    selectedTab === 'both'
-                                        ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]'
-                                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                                )}
+                                type="button"
+                                onClick={onAskAINewConversation}
+                                aria-label="Ask AI in a new conversation"
+                                className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] shrink-0"
                             >
-                                <i className="ph ph-split-horizontal text-[16px]" />
-                                <span className="hidden sm:inline">Split View</span>
-                                <span className="sm:hidden">Split</span>
+                                <i className="ph-fill ph-sparkle text-[15px]" />
                             </button>
                         </Tip>
                     </div>
-                    <div className="h-5 w-px bg-[var(--border)] hidden sm:block" />
-                    <Tip content="Generate Fetch/Axios snippets and TypeScript models">
-                        <button
-                            onClick={onGenerateCode}
-                            aria-label="Generate request code"
-                            className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0"
-                        >
-                            <i className="ph ph-code text-[16px]" />
-                        </button>
-                    </Tip>
-                    <Tip content="Ask AI about this endpoint in a new conversation">
-                        <button
-                            type="button"
-                            onClick={onAskAINewConversation}
-                            aria-label="Ask AI in a new conversation"
-                            className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] shrink-0"
-                        >
-                            <i className="ph-fill ph-sparkle text-[15px]" />
-                        </button>
-                    </Tip>
                 </div>
             </div>
             <div className="flex-1 overflow-hidden h-full min-h-0">
