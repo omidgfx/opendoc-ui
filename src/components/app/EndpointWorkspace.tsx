@@ -18,6 +18,7 @@ import {getOperation} from '../../utils/openapi';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import EndpointNotesSidebar from '../notes/EndpointNotesSidebar';
+import ScrollableRow from '../common/ScrollableRow';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -177,7 +178,7 @@ export default function EndpointWorkspace({
                             Endpoint:
                         </span>
                         <MethodBadge method={endpoint.method} size="xs" className="rounded-full shrink-0 w-9" />
-                        <span className="font-mono font-bold select-all truncate">{endpoint.path}</span>
+                        <ScrollableRow className="font-mono font-bold select-all">{endpoint.path}</ScrollableRow>
                     </div>
                     <div className="flex shrink-0 flex-nowrap items-center gap-2">
                         <div className="flex p-0.5 gap-1 rounded-lg border text-xs border-[var(--border)] bg-[var(--background)]">

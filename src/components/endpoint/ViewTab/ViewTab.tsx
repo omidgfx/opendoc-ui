@@ -18,6 +18,9 @@ import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExample
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
+import ScrollableRow from '../../common/ScrollableRow';
+import CombinatorLabel from '../../common/CombinatorLabel';
+import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
@@ -112,6 +115,11 @@ export default function ViewTab({
     const [responseActiveTab, setResponseActiveTab] = useState<{
         [code: string]: 'example' | 'schema' | 'enum';
     }>({});
+    // Enum is a peek at the values, not a representation the reader chose to
+    // keep: it lasts for this visit only and never touches the preference.
+    useEffect(() => {
+        setResponseActiveTab({});
+    }, [representationKey, endpointRepresentation]);
     const [responseContentTypes, setResponseContentTypes] = useState<{
         [code: string]: string;
     }>({});
@@ -555,10 +563,16 @@ export default function ViewTab({
     );
     const selectedRequestBodyContentType = requestBodySource.mediaType;
     const selectedRequestBodyContent = requestBodySource.content;
-    const requestBodyVariantSchemas =
-        requestBodySource.variants && requestBodySource.variants.kind !== 'allOf' ? requestBodySource.variants : null;
-    const requestBodyMatrixSchema = requestBodyVariantSchemas
-        ? requestBodySource.activeSchema
+    // Every polymorphism keyword gets the same rail, including allOf, whose
+    // branches are constraints the reader still wants to inspect one by one.
+    const requestBodyCombinator = detectSchemaCombinator(
+        requestBodySource.schema ? resolveReference(requestBodySource.schema) || requestBodySource.schema : null,
+    );
+    const requestBodyBranchIndex = requestBodyCombinator
+        ? Math.min(requestBodyVariant, requestBodyCombinator.branches.length - 1)
+        : 0;
+    const requestBodyMatrixSchema = requestBodyCombinator
+        ? requestBodyCombinator.branches[requestBodyBranchIndex]
         : requestBodySource.schema;
     const requestBodyExample = requestBodySource.example;
     const requestBodyShape = describeRequestBody(selectedRequestBodyContentType, requestBodyMatrixSchema);
@@ -698,9 +712,9 @@ export default function ViewTab({
                     <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
                         <MethodBadge method={method} size="md" className="rounded-full px-3 py-1 shrink-0 w-16" />
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="font-mono text-sm font-bold truncate tracking-tight break-all text-[var(--text-heading)]">
+                            <ScrollableRow className="font-mono text-sm font-bold tracking-tight text-[var(--text-heading)]">
                                 {path}
-                            </span>
+                            </ScrollableRow>
                             <Tip content="Copy endpoint path">
                                 <button
                                     aria-label="Copy endpoint path"
@@ -854,15 +868,13 @@ export default function ViewTab({
                                         </span>
                                     </Tip>
                                 </div>
-                                {requestBodyVariantSchemas && (
+                                {requestBodyCombinator && (
                                     <AdaptiveTabStrip
-                                        label={requestBodyVariantSchemas.kind === 'oneOf' ? 'One of' : 'Any of'}
+                                        labelNode={<CombinatorLabel meta={requestBodyCombinator.meta} />}
                                         ariaLabel="Request body variants"
-                                        activeId={String(
-                                            Math.min(requestBodyVariant, requestBodyVariantSchemas.variants.length - 1),
-                                        )}
+                                        activeId={String(requestBodyBranchIndex)}
                                         onSelect={id => setRequestBodyVariant(Number(id))}
-                                        items={requestBodyVariantSchemas.variants.map((sub, index) => ({
+                                        items={requestBodyCombinator.branches.map((sub, index) => ({
                                             id: String(index),
                                             label: schemaVariantLabel(sub, resolveReference, getRefName, index),
                                             description: (resolveReference(sub) || sub)?.description,

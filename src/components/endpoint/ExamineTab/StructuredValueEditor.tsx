@@ -78,13 +78,18 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
         if (parseError) return;
         setDraft(fromJsonText(json, language));
     };
+    const state = isEmpty ? 'idle' : error ? 'invalid' : 'valid';
     return (
         <div
             className={clsx(
                 'rounded-lg border transition-colors bg-[var(--background)]',
-                error
-                    ? 'border-[var(--method-delete)]/60'
-                    : 'border-[var(--border)] focus-within:border-[var(--primary)]',
+                // The border keeps saying what the indicator says, so focus
+                // never contradicts the validation state.
+                state === 'invalid'
+                    ? 'border-[var(--method-delete)]/60 focus-within:border-[var(--method-delete)]'
+                    : state === 'valid'
+                      ? 'border-[var(--method-get)]/50 focus-within:border-[var(--method-get)]'
+                      : 'border-[var(--border)] focus-within:border-[var(--primary)]',
             )}
         >
             <div className="flex items-center gap-1.5 border-b px-1.5 py-1 border-[var(--border)]">
@@ -106,30 +111,35 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
                         <i className="ph ph-magic-wand text-[13px]" />
                     </button>
                 </Tip>
-                <span
-                    className={clsx(
-                        'ms-auto inline-flex items-center gap-1 pe-1 text-[10px] font-bold',
-                        error ? 'text-[var(--method-delete)]' : 'text-[var(--method-get)]',
-                    )}
-                >
-                    {isEmpty ? null : (
-                        <>
-                            <i className={clsx('text-[12px]', error ? 'ph ph-warning-circle' : 'ph ph-check-circle')} />
-                            {error ? 'Invalid' : 'Valid'}
-                        </>
-                    )}
-                </span>
             </div>
-            <textarea
-                aria-label={ariaLabel}
-                aria-invalid={!!error}
-                value={draft}
-                spellCheck={false}
-                rows={Math.min(10, Math.max(3, draft.split('\n').length))}
-                placeholder={placeholder}
-                onChange={event => applyDraft(event.target.value)}
-                className="w-full resize-y bg-transparent px-3 py-2 font-mono text-xs text-[var(--text-heading)] outline-none"
-            />
+            <div className="relative">
+                <textarea
+                    aria-label={ariaLabel}
+                    aria-invalid={!!error}
+                    value={draft}
+                    spellCheck={false}
+                    rows={Math.min(10, Math.max(3, draft.split('\n').length))}
+                    placeholder={placeholder}
+                    onChange={event => applyDraft(event.target.value)}
+                    className="w-full resize-y bg-transparent py-2 ps-3 pe-8 font-mono text-xs text-[var(--text-heading)] outline-none"
+                />
+                {state !== 'idle' && (
+                    <Tip content={error || 'The value parses cleanly'}>
+                        <span
+                            className={clsx(
+                                'absolute end-2 top-2 cursor-help text-[13px]',
+                                state === 'invalid' ? 'text-[var(--method-delete)]' : 'text-[var(--method-get)]',
+                            )}
+                        >
+                            <i
+                                className={
+                                    state === 'invalid' ? 'ph-fill ph-warning-circle' : 'ph-fill ph-check-circle'
+                                }
+                            />
+                        </span>
+                    </Tip>
+                )}
+            </div>
             {error && <p className="px-3 pb-2 text-[10px] text-[var(--method-delete)]">{error}</p>}
         </div>
     );

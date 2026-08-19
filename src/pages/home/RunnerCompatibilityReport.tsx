@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import type {OpenApiSpec} from '@/src/types';
 import {Tip} from '@/src/components/common/Tooltip';
+import ScrollableRow from '../../components/common/ScrollableRow';
 import {
     analyzeRunnerCompatibility,
     type RunnerCompatibilityCategory,
@@ -79,7 +80,7 @@ const Finding = ({
                                     className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-left font-mono text-[9px] text-[var(--text-heading)] transition-colors hover:border-[var(--primary)]/40 hover:bg-[var(--surface-hover)] cursor-pointer"
                                 >
                                     <span className={`shrink-0 font-black ${tone.text}`}>{endpoint.method}</span>
-                                    <span className="max-w-[260px] truncate">{endpoint.path}</span>
+                                    <ScrollableRow className="max-w-[260px]">{endpoint.path}</ScrollableRow>
                                 </button>
                             </Tip>
                         ))}

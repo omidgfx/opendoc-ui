@@ -5,6 +5,7 @@ import {buildResponseLineMarkers} from '../../../utils/lineMarkers';
 import {Tip} from '../../common/Tooltip';
 import {expandServerUrl} from '../../../utils/specification/serverResolver';
 import ResponseHistoryDropdown from './ResponseHistoryDropdown';
+import ScrollableRow from '../../common/ScrollableRow';
 
 interface ResponsePanelProps {
     method: string;
@@ -87,9 +88,7 @@ export default function ResponsePanel({
                         <span className="uppercase font-bold opacity-60 hidden sm:inline text-[9px] tracking-widest shrink-0">
                             URL
                         </span>
-                        <Tip content={requestUrl} wrapperClassName="min-w-0 flex-1">
-                            <span className="block truncate text-[11px] opacity-85 select-all">{requestUrl}</span>
-                        </Tip>
+                        <ScrollableRow className="flex-1 text-[11px] opacity-85 select-all">{requestUrl}</ScrollableRow>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 select-none">
                         <span
@@ -142,9 +141,7 @@ export default function ResponsePanel({
                                 Will send
                             </span>
                         </Tip>
-                        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap scrollbar-none select-all">
-                            {liveUrl}
-                        </span>
+                        <ScrollableRow className="flex-1 select-all">{liveUrl}</ScrollableRow>
                     </div>
                 )}
             </div>

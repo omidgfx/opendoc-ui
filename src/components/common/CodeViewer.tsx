@@ -292,7 +292,7 @@ export default function CodeViewer({
                     {showLineNumbers && (
                         <div
                             aria-hidden="true"
-                            className="select-none sticky left-0 z-[1] shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
+                            className="select-none sticky left-0 z-20 shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
                             style={stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)')}
                         >
                             <div
@@ -340,7 +340,7 @@ export default function CodeViewer({
                             })}
                         </div>
                     )}
-                    <pre className="relative z-[1] p-4 flex-1">
+                    <pre className="relative z-0 p-4 flex-1">
                         <code ref={codeRef} dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
                     </pre>
                 </div>

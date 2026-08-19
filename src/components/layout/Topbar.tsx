@@ -315,7 +315,7 @@ export default function Topbar({
                 )}
 
                 {hasSpec && !showSchemaExplorer && !isMobile && !hideSearch && (
-                    <div className="hidden md:flex flex-1 items-center relative max-w-md min-w-0 select-none">
+                    <div className="flex flex-1 items-center relative max-w-md min-w-0 select-none">
                         <input
                             ref={searchInputRef}
                             type="text"
@@ -484,7 +484,7 @@ export default function Topbar({
             </div>
 
             {showMobileSearch && !showSchemaExplorer && isMobile && (
-                <div className="sm:hidden border-b px-3 py-2 flex items-center gap-2 bg-[var(--navbar)] border-[var(--border)]">
+                <div className="border-b px-3 py-2 flex items-center gap-2 bg-[var(--navbar)] border-[var(--border)]">
                     <div className="relative flex-1 min-w-0">
                         <input
                             ref={searchInputRef}
