@@ -17,6 +17,7 @@ import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
+import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -82,7 +83,9 @@ export default function ViewTab({
     parsableKey = '',
     isActive = true,
 }: ViewTabProps) {
-    const {preferences, setPreference} = usePreferences();
+    const {preferences, setEndpointRepresentation} = usePreferences();
+    const representationKey = `${method.toLowerCase()}:${path}`;
+    const endpointRepresentation = endpointRepresentationOf(preferences, representationKey);
     const [copiedPath, setCopiedPath] = useState(false);
     const [copiedFullUrl, setCopiedFullUrl] = useState(false);
     const [exampleModalContent, setExampleModalContent] = useState<{
@@ -885,7 +888,7 @@ export default function ViewTab({
                         {Object.entries(operation.responses).map(([code, resp]) => {
                             const isCollapsed = collapsedResponses[code] ?? true;
                             const isSuccess = code === 'default' || code.startsWith('2');
-                            const activeResponseTab = responseActiveTab[code] || preferences.endpointRepresentation;
+                            const activeResponseTab = responseActiveTab[code] || endpointRepresentation;
                             const responseContentEntries = resp.content
                                 ? (Object.entries(resp.content) as [string, any][])
                                 : [];
@@ -901,10 +904,11 @@ export default function ViewTab({
                                     return;
                                 }
                                 // Schema and example are constant views, so the
-                                // choice belongs to the preferences and follows
-                                // the reader to every other endpoint.
+                                // choice is a preference. Its scope decides
+                                // whether it stays on this endpoint or follows
+                                // the reader to every other one.
                                 setResponseActiveTab({});
-                                setPreference('endpointRepresentation', tab);
+                                setEndpointRepresentation(representationKey, tab);
                             };
                             const schemaNames = getSchemaNamesFromResponse(resp);
                             return (

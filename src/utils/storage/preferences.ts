@@ -1,8 +1,14 @@
 import {uiStorage} from './index';
 
-/** Which representation a schema/example switch shows. The choice is a
- *  preference, not per-endpoint state: it never changes with the endpoint. */
+/** Which representation a schema/example switch currently shows. */
 export type RepresentationMode = 'example' | 'schema';
+
+/** How long the documentation remembers that choice: for the endpoint the
+ *  reader made it on, or for every endpoint at once. */
+export type EndpointRepresentationScope = 'endpoint' | 'global';
+
+/** The same question for the schema modal: per schema, or for every schema. */
+export type ModalRepresentationScope = 'schema' | 'global';
 
 /** Gutter indicator families the code viewer can annotate lines with. */
 export const INDICATOR_ICON_KINDS = [
@@ -23,10 +29,18 @@ export const INDICATOR_ICON_KINDS = [
 export type IndicatorIconKind = (typeof INDICATOR_ICON_KINDS)[number];
 
 export interface AppPreferences {
-    /** Representation shared by every endpoint documentation view. */
+    /** Where the documentation keeps its schema/example choice. */
+    endpointRepresentationScope: EndpointRepresentationScope;
+    /** Choice shared by every endpoint, used when the scope is global. */
     endpointRepresentation: RepresentationMode;
-    /** Representation used by the schema modal, kept apart from the endpoints. */
+    /** Choice per endpoint key, used when the scope is per endpoint. */
+    endpointRepresentations: Record<string, RepresentationMode>;
+    /** Where the schema modal keeps its schema/example choice. */
+    modalRepresentationScope: ModalRepresentationScope;
+    /** Choice shared by every schema, used when the scope is global. */
     modalRepresentation: RepresentationMode;
+    /** Choice per schema name, used when the scope is per schema. */
+    modalRepresentations: Record<string, RepresentationMode>;
     /** Single-click tabs open in preview (italic) mode when enabled. */
     previewTabsEnabled: boolean;
     /** Line numbers column of the code viewer. */
@@ -38,8 +52,12 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
+    endpointRepresentationScope: 'global',
     endpointRepresentation: 'example',
+    endpointRepresentations: {},
+    modalRepresentationScope: 'global',
     modalRepresentation: 'example',
+    modalRepresentations: {},
     previewTabsEnabled: true,
     codeGutterEnabled: true,
     indicatorIconsEnabled: true,
@@ -52,18 +70,36 @@ const PREFERENCES_NAME = 'preferences';
 export const APP_PREFERENCES_EVENT = 'opendoc:preferences-changed';
 
 const isRepresentation = (value: unknown): value is RepresentationMode => value === 'example' || value === 'schema';
+const representationMap = (value: unknown): Record<string, RepresentationMode> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).filter((entry): entry is [string, RepresentationMode] =>
+            isRepresentation(entry[1]),
+        ),
+    );
+};
 const isIndicatorIconKind = (value: unknown): value is IndicatorIconKind =>
     INDICATOR_ICON_KINDS.includes(value as IndicatorIconKind);
 
 export const normalizeAppPreferences = (value: any): AppPreferences => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {...DEFAULT_APP_PREFERENCES};
     return {
+        endpointRepresentationScope:
+            value.endpointRepresentationScope === 'endpoint' || value.endpointRepresentationScope === 'global'
+                ? value.endpointRepresentationScope
+                : DEFAULT_APP_PREFERENCES.endpointRepresentationScope,
         endpointRepresentation: isRepresentation(value.endpointRepresentation)
             ? value.endpointRepresentation
             : DEFAULT_APP_PREFERENCES.endpointRepresentation,
+        endpointRepresentations: representationMap(value.endpointRepresentations),
+        modalRepresentationScope:
+            value.modalRepresentationScope === 'schema' || value.modalRepresentationScope === 'global'
+                ? value.modalRepresentationScope
+                : DEFAULT_APP_PREFERENCES.modalRepresentationScope,
         modalRepresentation: isRepresentation(value.modalRepresentation)
             ? value.modalRepresentation
             : DEFAULT_APP_PREFERENCES.modalRepresentation,
+        modalRepresentations: representationMap(value.modalRepresentations),
         previewTabsEnabled:
             typeof value.previewTabsEnabled === 'boolean'
                 ? value.previewTabsEnabled
@@ -97,6 +133,38 @@ export const resetAppPreferences = (): AppPreferences => {
     writeAppPreferences(defaults);
     return defaults;
 };
+
+/** The representation a documentation switch must show for one endpoint. */
+export const endpointRepresentationOf = (preferences: AppPreferences, endpointKey: string): RepresentationMode =>
+    preferences.endpointRepresentationScope === 'endpoint'
+        ? (preferences.endpointRepresentations[endpointKey] ?? preferences.endpointRepresentation)
+        : preferences.endpointRepresentation;
+
+/** The representation the schema modal must show for one schema. */
+export const modalRepresentationOf = (preferences: AppPreferences, schemaName: string): RepresentationMode =>
+    preferences.modalRepresentationScope === 'schema'
+        ? (preferences.modalRepresentations[schemaName] ?? preferences.modalRepresentation)
+        : preferences.modalRepresentation;
+
+/** Records a documentation choice in whichever place the scope points at. */
+export const withEndpointRepresentation = (
+    preferences: AppPreferences,
+    endpointKey: string,
+    mode: RepresentationMode,
+): AppPreferences =>
+    preferences.endpointRepresentationScope === 'endpoint'
+        ? {...preferences, endpointRepresentations: {...preferences.endpointRepresentations, [endpointKey]: mode}}
+        : {...preferences, endpointRepresentation: mode};
+
+/** Records a schema modal choice in whichever place the scope points at. */
+export const withModalRepresentation = (
+    preferences: AppPreferences,
+    schemaName: string,
+    mode: RepresentationMode,
+): AppPreferences =>
+    preferences.modalRepresentationScope === 'schema'
+        ? {...preferences, modalRepresentations: {...preferences.modalRepresentations, [schemaName]: mode}}
+        : {...preferences, modalRepresentation: mode};
 
 export const isIndicatorIconEnabled = (preferences: AppPreferences, kind: IndicatorIconKind): boolean =>
     preferences.codeGutterEnabled &&
