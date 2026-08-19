@@ -1,4 +1,4 @@
-import {Fragment, useCallback, useEffect, useRef, useState} from 'react';
+import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
@@ -11,7 +11,7 @@ import {getRequestBodyExample, resolveRequestBodyMediaType} from '../../../utils
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
 import {convertBodyText} from '../../../utils/runner/bodyConverters';
 import {executeRunnerRequest} from '../../../utils/runner/runnerExecution';
-import {parameterStateKey} from '../../../utils/runner/requestPlan';
+import {compileBrowserRequest, parameterStateKey} from '../../../utils/runner/requestPlan';
 import {dispatchOpenDocUIRunnerResult, OPENDOC_UI_ACTION_EVENT, type OpenDocUIAction} from '../../../utils/ai/bridge';
 import {getMockSnippet} from '../../../utils/runner/mockGenerator';
 import CustomDropdown from '../../common/CustomDropdown';
@@ -356,6 +356,43 @@ export default function ExamineTab({
     const mergedParams = getMergedParameters(pathItemObj, operation, spec);
     const parameterGroups = groupParameters(mergedParams);
     const usesCookieAuthentication = operationUsesCookieAuthentication(spec, operation);
+    // The address bar of the Runner: the very URL the compiler will send, so a
+    // truncated route or a serialized query is never a surprise.
+    const finalRequestUrl = useMemo(() => {
+        try {
+            return compileBrowserRequest({
+                spec,
+                path,
+                method,
+                operation,
+                selectedServer,
+                serverVariables,
+                activeAuth,
+                parameterValues: params,
+                headers,
+                body: requestBodyText,
+                bodyType: effectiveRequestBodyType,
+                selectedFile,
+                selectedFiles,
+            }).url;
+        } catch {
+            return '';
+        }
+    }, [
+        spec,
+        path,
+        method,
+        operation,
+        selectedServer,
+        serverVariables,
+        activeAuth,
+        params,
+        headers,
+        requestBodyText,
+        effectiveRequestBodyType,
+        selectedFile,
+        selectedFiles,
+    ]);
     const parameterTypeLabel = (param: any) => {
         const value = param.schema?.type ?? param.type ?? 'string';
         return Array.isArray(value) ? value.join(' | ') : String(value);
@@ -619,6 +656,7 @@ export default function ExamineTab({
                 selectedServer={selectedServer}
                 serverVariables={serverVariables}
                 path={path}
+                finalRequestUrl={finalRequestUrl}
                 isRunning={isRunning}
                 response={response}
                 responseHistory={responseHistory}
