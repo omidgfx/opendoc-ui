@@ -16,6 +16,7 @@ import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
+import {usePreferences} from '@/src/contexts/PreferencesContext';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -81,6 +82,7 @@ export default function ViewTab({
     parsableKey = '',
     isActive = true,
 }: ViewTabProps) {
+    const {preferences, setPreference} = usePreferences();
     const [copiedPath, setCopiedPath] = useState(false);
     const [copiedFullUrl, setCopiedFullUrl] = useState(false);
     const [exampleModalContent, setExampleModalContent] = useState<{
@@ -883,7 +885,7 @@ export default function ViewTab({
                         {Object.entries(operation.responses).map(([code, resp]) => {
                             const isCollapsed = collapsedResponses[code] ?? true;
                             const isSuccess = code === 'default' || code.startsWith('2');
-                            const activeResponseTab = responseActiveTab[code] || 'example';
+                            const activeResponseTab = responseActiveTab[code] || preferences.endpointRepresentation;
                             const responseContentEntries = resp.content
                                 ? (Object.entries(resp.content) as [string, any][])
                                 : [];
@@ -893,11 +895,17 @@ export default function ViewTab({
                                     : responseContentEntries[0]?.[0] || '';
                             const selectedContentObj =
                                 selectedContentType && resp.content ? (resp.content as any)[selectedContentType] : null;
-                            const setResponseTab = (tab: 'example' | 'schema' | 'enum') =>
-                                setResponseActiveTab(prev => ({
-                                    ...prev,
-                                    [code]: tab,
-                                }));
+                            const setResponseTab = (tab: 'example' | 'schema' | 'enum') => {
+                                if (tab === 'enum') {
+                                    setResponseActiveTab(prev => ({...prev, [code]: tab}));
+                                    return;
+                                }
+                                // Schema and example are constant views, so the
+                                // choice belongs to the preferences and follows
+                                // the reader to every other endpoint.
+                                setResponseActiveTab({});
+                                setPreference('endpointRepresentation', tab);
+                            };
                             const schemaNames = getSchemaNamesFromResponse(resp);
                             return (
                                 <div

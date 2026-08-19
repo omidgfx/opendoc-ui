@@ -34,6 +34,7 @@ interface TopbarProps {
     onOpenMobileSidebar: () => void;
     onOpenAssistant: () => void;
     onOpenThemeModal: () => void;
+    onOpenSettings: () => void;
     isLocalMode: boolean;
     canOpenLocal: boolean;
     onOpenLocalFile: () => void;
@@ -82,6 +83,7 @@ export default function Topbar({
     onOpenAssistant,
     onOpenAuthModal,
     onOpenThemeModal,
+    onOpenSettings,
     isLocalMode,
     canOpenLocal,
     onOpenLocalFile,
@@ -431,6 +433,19 @@ export default function Topbar({
                                 </button>
                             </Tip>
                         </>
+                    )}
+
+                    {hasSpec && (
+                        <Tip content="Open settings">
+                            <button
+                                type="button"
+                                onClick={onOpenSettings}
+                                aria-label="Open settings"
+                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                            >
+                                <i className="ph-fill ph-gear-six text-[14px] text-[var(--primary)]"></i>
+                            </button>
+                        </Tip>
                     )}
 
                     {hasSpec && (

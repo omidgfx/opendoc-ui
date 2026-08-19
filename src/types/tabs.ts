@@ -1,4 +1,5 @@
-export type ViewTabKind = 'home' | 'search' | 'schemas' | 'notes' | 'compatibility' | 'about' | 'assistant';
+export type ViewTabKind =
+    'home' | 'search' | 'schemas' | 'notes' | 'compatibility' | 'about' | 'assistant' | 'settings';
 
 export interface TabItem {
     id: string;
@@ -29,6 +30,7 @@ export const VIEW_TAB_META: Record<
     compatibility: {icon: 'ph-fill ph-shield-check', label: 'Runner Compatibility'},
     about: {icon: 'ph-fill ph-info', label: 'About'},
     assistant: {icon: 'ph-fill ph-sparkle', label: 'AI Assistant'},
+    settings: {icon: 'ph-fill ph-gear-six', label: 'Settings'},
 };
 export const isViewTab = (tab: TabItem): boolean =>
     tab.kind === 'home' ||
@@ -37,4 +39,5 @@ export const isViewTab = (tab: TabItem): boolean =>
     tab.kind === 'notes' ||
     tab.kind === 'compatibility' ||
     tab.kind === 'about' ||
-    tab.kind === 'assistant';
+    tab.kind === 'assistant' ||
+    tab.kind === 'settings';
