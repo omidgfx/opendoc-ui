@@ -98,6 +98,19 @@ export function normalizeSidebarConfig(value: Partial<SidebarConfig> | null | un
     };
 }
 
+/** Broadcast so the sidebar menu and the settings page always show the same
+ *  navigation configuration, whichever one the reader edited. */
+export const SIDEBAR_CONFIG_EVENT = 'opendoc:sidebar-config-changed';
+
+export function writeSidebarConfig(specKey: string, config: Partial<SidebarConfig>): SidebarConfig {
+    const next = normalizeSidebarConfig(config);
+    if (specKey) specStorage.setJSON(specKey, 'sidebar_config', next);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(SIDEBAR_CONFIG_EVENT, {detail: {specKey, config: next}}));
+    }
+    return next;
+}
+
 export function readSidebarConfig(specKey: string): SidebarConfig {
     if (!specKey) return DEFAULT_SIDEBAR_CONFIG;
     const stored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);

@@ -161,6 +161,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                         section={settingsSection}
                         onSelectSection={onSelectSettingsSection}
                         appearance={appearanceSettings}
+                        navigation={{specKey}}
                         ai={aiSettingsSection}
                     />
                 </ViewErrorBoundary>
@@ -176,6 +177,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     section={settingsSection}
                     onSelectSection={onSelectSettingsSection}
                     appearance={appearanceSettings}
+                    navigation={{specKey}}
                     ai={aiSettingsSection}
                 />
             </ViewErrorBoundary>
