@@ -170,19 +170,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         if (showAbout) return <AboutView />;
         return <NoSpecView canOpenLocal={canOpenLocal} onOpenLocalFile={onOpenLocalFile} onOpenAbout={onOpenAbout} />;
     }
-    if (showSettings) {
-        return (
-            <ViewErrorBoundary resetKey={`settings:${specKey}`} title="Settings could not be rendered">
-                <SettingsPage
-                    section={settingsSection}
-                    onSelectSection={onSelectSettingsSection}
-                    appearance={appearanceSettings}
-                    navigation={{specKey}}
-                    ai={aiSettingsSection}
-                />
-            </ViewErrorBoundary>
-        );
-    }
     if (showWelcome && !assistantActive) {
         return (
             <WelcomeView
@@ -312,6 +299,19 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     specKey={specKey}
                     onSelectEndpoint={onOpenEndpointPermanent}
                     onAddReferencedFiles={onAddReferencedFiles}
+                />
+            </ViewErrorBoundary>
+        );
+    }
+    if (showSettings) {
+        return (
+            <ViewErrorBoundary resetKey={`settings:${specKey}`} title="Settings could not be rendered">
+                <SettingsPage
+                    section={settingsSection}
+                    onSelectSection={onSelectSettingsSection}
+                    appearance={appearanceSettings}
+                    navigation={{specKey}}
+                    ai={aiSettingsSection}
                 />
             </ViewErrorBoundary>
         );

@@ -708,6 +708,7 @@ export default function App() {
         setShowCompatibility(false);
         setShowAbout(false);
         setShowAssistant(false);
+        setShowSettings(false);
         setActiveResponseCode(null);
         setSearchQuery('');
         setSelectedMethods([]);
@@ -883,6 +884,7 @@ export default function App() {
         setShowCompatibility(false);
         setShowAbout(false);
         setShowAssistant(false);
+        setShowSettings(false);
     };
     const handleAssistantResponseFinished = useCallback(() => {
         if (!(showAssistantRef.current && activeTabIdForAssistantRef.current === 'view:assistant')) {
