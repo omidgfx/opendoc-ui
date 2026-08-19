@@ -5,15 +5,33 @@ import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface PatternTesterModalProps {
     pattern: string;
+    /** Seed value, so the tester opens on what the field already holds. */
+    initialValue?: string;
+    /**
+     * Sends the tested value back to the field it came from. Only the Runner
+     * passes this — reading the documentation there is nothing to fill in — and
+     * it stays disabled until the value actually matches the pattern.
+     */
+    onUseValue?: (value: string) => void;
     onClose: () => void;
 }
 
-export default function PatternTesterModal({pattern, onClose}: PatternTesterModalProps) {
-    const [testValue, setTestValue] = useState('');
+export default function PatternTesterModal({pattern, initialValue = '', onUseValue, onClose}: PatternTesterModalProps) {
+    const [testValue, setTestValue] = useState(initialValue);
     const [isValid, setIsValid] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
     const {requestClose, backdropClassName} = useModalTransition(true, onClose);
-    useModalShortcuts({isOpen: true, onClose: requestClose});
+    const canUseValue = !!onUseValue && isValid === true && !error;
+    useModalShortcuts({
+        isOpen: true,
+        onClose: requestClose,
+        onSubmit: () => {
+            if (!onUseValue) return;
+            onUseValue(testValue);
+            requestClose();
+        },
+        canSubmit: canUseValue,
+    });
     useEffect(() => {
         if (!pattern) {
             setError('No pattern provided');
@@ -108,7 +126,29 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
                     </div>
                 </div>
 
-                <div className="px-5 py-3 border-t flex justify-end border-[var(--border)] bg-[var(--background)]">
+                <div className="px-5 py-3 border-t flex justify-end gap-2 border-[var(--border)] bg-[var(--background)]">
+                    {onUseValue && (
+                        <Tip
+                            content={
+                                canUseValue
+                                    ? 'Put this value into the field'
+                                    : 'Only a value that matches the pattern can be used'
+                            }
+                        >
+                            <button
+                                type="button"
+                                disabled={!canUseValue}
+                                onClick={() => {
+                                    onUseValue(testValue);
+                                    requestClose();
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-1.5 text-xs font-semibold transition-all border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                            >
+                                <i className="ph ph-arrow-line-down text-[13px]" />
+                                Use
+                            </button>
+                        </Tip>
+                    )}
                     <button
                         type="button"
                         onClick={requestClose}

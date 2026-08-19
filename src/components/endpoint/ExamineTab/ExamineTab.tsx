@@ -4,6 +4,9 @@ import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../..
 import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {groupParameters, type ParameterGroupMeta} from '../../../utils/endpoint/parameterGroups';
 import ParameterLocationTag from '../../common/ParameterLocationTag';
+import SerializationTag from '../../common/SerializationTag';
+import SerializerPlaygroundModal from '../../modals/SerializerPlaygroundModal';
+import {describeParameterSerialization} from '../../../utils/endpoint/parameterSerialization';
 import {getRequestBodyExample, resolveRequestBodyMediaType} from '../../../utils/endpoint/requestBodySource';
 import {bodyEditorModeForMediaType, bodyTypeSupportsForm} from '../../../utils/runner/bodyFormats';
 import {convertBodyText} from '../../../utils/runner/bodyConverters';
@@ -63,7 +66,8 @@ export default function ExamineTab({
     const [headers, setHeaders] = useState<Record<string, string>>({});
     const [requestBodyText, setRequestBodyText] = useState('');
     const [requestBodyType, setRequestBodyType] = useState('');
-    const [patternToTest, setPatternToTest] = useState<string | null>(null);
+    const [patternToTest, setPatternToTest] = useState<{pattern: string; parameterKey: string} | null>(null);
+    const [serializerParameter, setSerializerParameter] = useState<any | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
     const [bodyFields, setBodyFields] = useState<Record<string, string>>({});
@@ -408,11 +412,20 @@ export default function ExamineTab({
                                                 </span>
                                             </span>
                                         )}
+                                        <SerializationTag
+                                            descriptor={describeParameterSerialization(param)}
+                                            onOpenPlayground={() => setSerializerParameter(param)}
+                                        />
                                     </div>
                                     {(param.pattern || param.schema?.pattern) && (
                                         <PatternPreview
                                             pattern={param.pattern || param.schema.pattern}
-                                            onTest={() => setPatternToTest(param.pattern || param.schema.pattern)}
+                                            onTest={() =>
+                                                setPatternToTest({
+                                                    pattern: param.pattern || param.schema.pattern,
+                                                    parameterKey: parameterStateKey(param.in, param.name),
+                                                })
+                                            }
                                             className="px-1"
                                         />
                                     )}
@@ -589,7 +602,9 @@ export default function ExamineTab({
                                 setSelectedFile={setSelectedFile}
                                 selectedFiles={selectedFiles}
                                 setSelectedFiles={setSelectedFiles}
-                                setPatternToTest={setPatternToTest}
+                                setPatternToTest={pattern =>
+                                    setPatternToTest(pattern ? {pattern, parameterKey: ''} : null)
+                                }
                                 themeMode={themeMode}
                                 onExecute={executeRequest}
                                 onOpenSchema={onOpenSchema}
@@ -623,7 +638,35 @@ export default function ExamineTab({
                 }}
             />
 
-            {patternToTest && <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)} />}
+            {patternToTest && (
+                <PatternTesterModal
+                    pattern={patternToTest.pattern}
+                    initialValue={
+                        patternToTest.parameterKey ? String(params[patternToTest.parameterKey] ?? '') : undefined
+                    }
+                    onUseValue={
+                        patternToTest.parameterKey
+                            ? value => setParams(previous => ({...previous, [patternToTest.parameterKey]: value}))
+                            : undefined
+                    }
+                    onClose={() => setPatternToTest(null)}
+                />
+            )}
+            {serializerParameter && (
+                <SerializerPlaygroundModal
+                    parameter={serializerParameter}
+                    initialValue={String(
+                        params[parameterStateKey(serializerParameter.in, serializerParameter.name)] ?? '',
+                    )}
+                    onUseValue={value =>
+                        setParams(previous => ({
+                            ...previous,
+                            [parameterStateKey(serializerParameter.in, serializerParameter.name)]: value,
+                        }))
+                    }
+                    onClose={() => setSerializerParameter(null)}
+                />
+            )}
         </form>
     );
 }

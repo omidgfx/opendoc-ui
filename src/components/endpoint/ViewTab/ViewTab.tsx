@@ -23,6 +23,9 @@ import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFor
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import {groupParameters, parameterGroupMetaOf} from '@/src/utils/endpoint/parameterGroups';
 import ParameterLocationTag from '../../common/ParameterLocationTag';
+import SerializationTag from '../../common/SerializationTag';
+import SerializerPlaygroundModal from '../../modals/SerializerPlaygroundModal';
+import {describeParameterSerialization} from '@/src/utils/endpoint/parameterSerialization';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -100,6 +103,7 @@ export default function ViewTab({
     } | null>(null);
     const exampleTransition = useModalTransition(!!exampleModalContent, () => setExampleModalContent(null));
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
+    const [serializerParameter, setSerializerParameter] = useState<any | null>(null);
     const [shareModal, setShareModal] = useState<{
         url: string;
         title: string;
@@ -638,8 +642,12 @@ export default function ViewTab({
                                             </td>
                                         )}
                                         <td className="px-4 py-3 text-xs">
-                                            <div className="flex flex-col gap-1">
+                                            <div className="flex flex-col items-start gap-1">
                                                 <div>{renderSchemaButton(param.schema)}</div>
+                                                <SerializationTag
+                                                    descriptor={describeParameterSerialization(param)}
+                                                    onOpenPlayground={() => setSerializerParameter(param)}
+                                                />
                                                 {pattern && (
                                                     <PatternPreview
                                                         pattern={pattern}
@@ -1295,6 +1303,12 @@ export default function ViewTab({
             </EndpointInfoModal>
 
             {patternToTest && <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)} />}
+            {serializerParameter && (
+                <SerializerPlaygroundModal
+                    parameter={serializerParameter}
+                    onClose={() => setSerializerParameter(null)}
+                />
+            )}
 
             {shareModal && (
                 <ShareModal
