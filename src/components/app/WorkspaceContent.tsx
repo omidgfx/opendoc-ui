@@ -10,6 +10,7 @@ import RunnerCompatibilityPage from '@/src/pages/compatibility/RunnerCompatibili
 import SettingsPage from '@/src/pages/settings/SettingsPage';
 import type {SettingsSectionId} from '@/src/pages/settings/settingsSections';
 import type {AppearanceSettingsProps} from '@/src/pages/settings/sections/AppearanceSettingsSection';
+import type {AISettingsSectionProps} from '@/src/components/ai/settings/AISettingsSection';
 import EndpointNotesPage from '@/src/pages/notes/EndpointNotesPage';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
@@ -72,6 +73,7 @@ interface WorkspaceContentProps {
     settingsSection: string | null;
     onSelectSettingsSection: (section: SettingsSectionId) => void;
     appearanceSettings: AppearanceSettingsProps;
+    aiSettingsSection: AISettingsSectionProps;
     showHome: boolean;
     onOpenAbout: () => void;
     onOpenHome: () => void;
@@ -136,6 +138,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         settingsSection,
         onSelectSettingsSection,
         appearanceSettings,
+        aiSettingsSection,
         showHome,
         onOpenAbout,
         onOpenHome,
@@ -158,6 +161,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                         section={settingsSection}
                         onSelectSection={onSelectSettingsSection}
                         appearance={appearanceSettings}
+                        ai={aiSettingsSection}
                     />
                 </ViewErrorBoundary>
             );
@@ -172,6 +176,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     section={settingsSection}
                     onSelectSection={onSelectSettingsSection}
                     appearance={appearanceSettings}
+                    ai={aiSettingsSection}
                 />
             </ViewErrorBoundary>
         );

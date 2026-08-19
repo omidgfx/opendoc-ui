@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import {Tip} from '@/src/components/common/Tooltip';
 import GeneralSettingsSection from './sections/GeneralSettingsSection';
 import AppearanceSettingsSection, {type AppearanceSettingsProps} from './sections/AppearanceSettingsSection';
+import AISettingsSection, {type AISettingsSectionProps} from '@/src/components/ai/settings/AISettingsSection';
 import {
     resolveSettingsSection,
     SETTINGS_SECTIONS,
@@ -15,9 +16,10 @@ interface SettingsPageProps {
     section: string | null;
     onSelectSection: (section: SettingsSectionId) => void;
     appearance: AppearanceSettingsProps;
+    ai: AISettingsSectionProps;
 }
 
-export default function SettingsPage({section, onSelectSection, appearance}: SettingsPageProps) {
+export default function SettingsPage({section, onSelectSection, appearance, ai}: SettingsPageProps) {
     const activeSection = resolveSettingsSection(section);
     const scrollRef = useRef<HTMLDivElement>(null);
     const sections = useMemo<SettingsSectionMeta[]>(() => SETTINGS_SECTIONS, []);
@@ -74,6 +76,7 @@ export default function SettingsPage({section, onSelectSection, appearance}: Set
                         <h3 className="sr-only">{activeMeta.label}</h3>
                         {activeSection === 'general' && <GeneralSettingsSection />}
                         {activeSection === 'appearance' && <AppearanceSettingsSection {...appearance} />}
+                        {activeSection === 'ai' && <AISettingsSection {...ai} />}
                     </div>
                 </div>
             </div>

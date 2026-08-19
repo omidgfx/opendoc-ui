@@ -6,7 +6,6 @@ export function useAISettingsController() {
     const [aiSettings, setAISettings] = useState<AISettings>(() => readAISettings());
     const [hasAIProfile, setHasAIProfile] = useState(() => readAIProfiles().length > 0);
     const [aiSettingsReady, setAISettingsReady] = useState(false);
-    const [showAISettings, setShowAISettings] = useState(false);
     useEffect(() => {
         if (aiSettingsReady) writeAISettings(aiSettings);
     }, [aiSettings, aiSettingsReady]);
@@ -20,8 +19,6 @@ export function useAISettingsController() {
         aiSettingsReady,
         setAISettingsReady,
         hasAIProfile,
-        showAISettings,
-        setShowAISettings,
         handleAISettingsSave,
     };
 }

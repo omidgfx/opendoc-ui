@@ -1,8 +1,8 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../types';
-import type {GatewayModelPolicyInfo} from '../../utils/ai/providers';
-import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../utils/ai/providers';
+import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../../types';
+import type {GatewayModelPolicyInfo} from '../../../utils/ai/providers';
+import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../../utils/ai/providers';
 import {
     DEFAULT_AI_SETTINGS,
     newAIProfile,
@@ -14,21 +14,19 @@ import {
     writeAIGatewayModelCatalog,
     writeAIModelCatalog,
     writeAIProfiles,
-} from '../../utils/ai/storage';
-import {Tip} from '../common/Tooltip';
-import {useEscClose} from '../../hooks/useEscClose';
-import {useModalTransition} from '../../hooks/useModalTransition';
-import TemperatureSlider from './settings/TemperatureSlider';
-import ProfileNameModal from './settings/ProfileNameModal';
-import SettingsConfirmModal from './settings/SettingsConfirmModal';
-import ModelPickerModal from './settings/ModelPickerModal';
-import CustomDropdown from '../common/CustomDropdown';
+} from '../../../utils/ai/storage';
+import {Tip} from '../../common/Tooltip';
+import {useEscClose} from '../../../hooks/useEscClose';
+import {useModalTransition} from '../../../hooks/useModalTransition';
+import TemperatureSlider from './TemperatureSlider';
+import ProfileNameModal from './ProfileNameModal';
+import SettingsConfirmModal from './SettingsConfirmModal';
+import ModelPickerModal from './ModelPickerModal';
+import CustomDropdown from '../../common/CustomDropdown';
 
-interface AISettingsModalProps {
-    isOpen: boolean;
+export interface AISettingsSectionProps {
     settings: AISettings;
     onSave: (settings: AISettings) => void;
-    onClose: () => void;
 }
 
 type ConfirmAction =
@@ -67,8 +65,7 @@ const cachedModelsForSettings = (settings: AISettings): AIModelOption[] =>
     settings.transport === 'gateway'
         ? readAIGatewayModelCatalog(settings.gatewayUrl, settings.provider)
         : readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models;
-export default function AISettingsModal({isOpen, settings, onSave, onClose}: AISettingsModalProps) {
-    const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
+export default function AISettingsSection({settings, onSave}: AISettingsSectionProps) {
     const [profiles, setProfiles] = useState<AIProfile[]>([]);
     const [activeProfileId, setActiveProfileId] = useState('');
     const [draft, setDraft] = useState(settings);
@@ -90,7 +87,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
     const newProfileTransition = useModalTransition(newProfileDialogOpen, () => setNewProfileDialogOpen(false));
     const profileMenuRef = useRef<HTMLDivElement | null>(null);
     const profileButtonRef = useRef<HTMLButtonElement | null>(null);
-    useEscClose(isOpen, requestClose, !confirmAction && !modelPickerOpen && !newProfileDialogOpen);
     useEscClose(modelPickerOpen, modelPickerTransition.requestClose, modelPickerOpen);
     useEscClose(!!confirmAction, confirmTransition.requestClose, !!confirmAction);
     useEscClose(newProfileDialogOpen, newProfileTransition.requestClose, newProfileDialogOpen);
@@ -108,7 +104,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         });
     }, [availableModels, modelSearch, modelTierFilter]);
     useEffect(() => {
-        if (!isOpen) return;
         const loadedProfiles = readAIProfiles();
         const savedActiveId = readActiveAIProfileId();
         const selected = loadedProfiles.find(profile => profile.id === savedActiveId) || loadedProfiles[0] || null;
@@ -124,7 +119,8 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setModelPickerOpen(false);
         setModelSearch('');
         setModelTierFilter('all');
-    }, [isOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     useEffect(() => {
         if (!profileMenuOpen) return;
         const closeOutside = (event: MouseEvent) => {
@@ -275,7 +271,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
             setProfiles(next);
             onSave(draft);
             confirmTransition.requestClose();
-            requestClose();
             return;
         }
         const remaining = profiles.filter(profile => profile.id !== confirmAction.profileId);
@@ -298,19 +293,11 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
         setProfileMenuOpen(false);
         confirmTransition.requestClose();
     };
-    if (!shouldRender) return null;
     return (
-        <div
-            className={`${backdropClassName} fixed inset-0 z-[5000] bg-black/60 backdrop-blur-[2px]`}
-            onMouseDown={event => {
-                if (event.target === event.currentTarget && !confirmAction) requestClose();
-            }}
-        >
+        <div className="space-y-4">
             <section
-                role="dialog"
-                aria-modal="true"
                 aria-labelledby="ai-settings-title"
-                className="modal-surface modal-surface-stable flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-2xl"
+                className="flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-sm"
             >
                 <header className="flex flex-col items-stretch gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
@@ -325,14 +312,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                 Global profiles, provider keys, models, and skills.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={requestClose}
-                            className="ms-auto flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] sm:hidden"
-                            aria-label="Close AI settings"
-                        >
-                            <i className="ph ph-x" />
-                        </button>
                     </div>
                     <div className="flex w-full items-center gap-1.5 sm:w-auto">
                         {hasProfiles && (
@@ -427,14 +406,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                 <i className="ph ph-plus text-[14px]" />
                             </button>
                         </Tip>
-                        <button
-                            type="button"
-                            onClick={requestClose}
-                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] sm:flex hover:bg-[var(--surface-hover)] cursor-pointer"
-                            aria-label="Close AI settings"
-                        >
-                            <i className="ph ph-x" />
-                        </button>
                     </div>
                 </header>
 
@@ -787,13 +758,6 @@ export default function AISettingsModal({isOpen, settings, onSave, onClose}: AIS
                                 Changes are saved to the selected profile only after confirmation.
                             </span>
                             <div className="flex shrink-0 justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={requestClose}
-                                    className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text-heading)] hover:bg-[var(--surface-hover)] cursor-pointer"
-                                >
-                                    Close
-                                </button>
                                 <button
                                     type="button"
                                     onClick={requestSave}

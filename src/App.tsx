@@ -100,15 +100,8 @@ export default function App() {
     } | null>(null);
     const showAssistantRef = useRef(showAssistant);
     showAssistantRef.current = showAssistant;
-    const {
-        aiSettings,
-        setAISettings,
-        setAISettingsReady,
-        hasAIProfile,
-        showAISettings,
-        setShowAISettings,
-        handleAISettingsSave,
-    } = useAISettingsController();
+    const {aiSettings, setAISettings, setAISettingsReady, hasAIProfile, handleAISettingsSave} =
+        useAISettingsController();
     const assistantRunnerAbortRef = useRef<AbortController | null>(null);
     const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -1120,6 +1113,7 @@ export default function App() {
                 onSelectTheme: setSelectedThemeName,
                 onSetThemeMode: setCurrentThemeMode,
             }}
+            aiSettingsSection={{settings: aiSettings, onSave: handleAISettingsSave}}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
@@ -1363,7 +1357,7 @@ export default function App() {
                                                             current?.id === id ? null : current,
                                                         )
                                                     }
-                                                    onOpenSettings={() => setShowAISettings(true)}
+                                                    onOpenSettings={() => handleOpenSettings('ai')}
                                                     onClearEndpointContext={() => setAssistantContextEndpoints([])}
                                                     onRemoveEndpointContext={(path, method) =>
                                                         setAssistantContextEndpoints(current =>
@@ -1424,8 +1418,6 @@ export default function App() {
                             }}
                             shareTarget={shareTarget}
                             setShareTarget={setShareTarget}
-                            aiSettingsOpen={showAISettings}
-                            setAISettingsOpen={setShowAISettings}
                             aiSettings={aiSettings}
                             onSaveAISettings={handleAISettingsSave}
                         />
