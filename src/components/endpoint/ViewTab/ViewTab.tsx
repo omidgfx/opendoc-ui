@@ -19,6 +19,7 @@ import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
+import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import {groupParameters} from '@/src/utils/endpoint/parameterGroups';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
@@ -874,9 +875,17 @@ export default function ViewTab({
                                         <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                             Example
                                         </h4>
-                                        <pre className="overflow-auto rounded-lg bg-[var(--background)] border border-[var(--border)] p-2.5 text-[10px] leading-relaxed font-mono text-[var(--text)]">
-                                            {JSON.stringify(requestBodyExample, null, 2)}
-                                        </pre>
+                                        <CodeViewer
+                                            code={formatExample(
+                                                requestBodyExample,
+                                                selectedRequestBodyContentType,
+                                                requestBodyMatrixSchema?.$ref
+                                                    ? getRefName(requestBodyMatrixSchema.$ref)
+                                                    : requestBodyMatrixSchema?.title || 'request',
+                                            )}
+                                            language={exampleLanguageFor(selectedRequestBodyContentType)}
+                                            maxHeight="320px"
+                                        />
                                     </div>
                                 )}
                                 <div className="border-t border-[var(--border)] pt-2">
