@@ -1,4 +1,4 @@
-import type {AppTheme} from '../../../types';
+import type {AppTheme} from '../../types';
 import {alpha} from '@/src/utils/theme/selector';
 
 export default function ThemeNamePreview({theme, mode}: {theme: AppTheme; mode: 'light' | 'dark'}) {

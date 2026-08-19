@@ -1,12 +1,11 @@
 import type {Dispatch, SetStateAction} from 'react';
-import type {ActiveAuth, AISettings, OpenApiSpec, Operation, ThemeMode} from '../../types';
+import type {ActiveAuth, AISettings, OpenApiSpec, Operation} from '../../types';
 import type {TabItem} from '../endpoint/EndpointTabs';
 import ModalsStack from '../modals/ModalsStack/ModalsStack';
 import CodeGeneratorModal from '../modals/CodeGeneratorModal';
 import ServerVariablesModal from '../modals/ServerVariablesModal';
 import AuthModal from '../modals/AuthModal';
 import ShareModal from '../modals/ShareModal';
-import ThemeSelectorModal from '../modals/ThemeSelectorModal';
 import AISettingsModal from '../ai/AISettingsModal';
 import TabSwitcherOverlay from './TabSwitcherOverlay';
 import {getOperation} from '../../utils/openapi';
@@ -53,14 +52,6 @@ interface AppModalLayerProps {
     onSelectSwitcherTab: (id: string) => void;
     shareTarget: ShareTarget | null;
     setShareTarget: Dispatch<SetStateAction<ShareTarget | null>>;
-    themeOpen: boolean;
-    setThemeOpen: Dispatch<SetStateAction<boolean>>;
-    selectedThemeName: string;
-    setSelectedThemeName: Dispatch<SetStateAction<string>>;
-    currentThemeMode: ThemeMode;
-    setCurrentThemeMode: Dispatch<SetStateAction<ThemeMode>>;
-    resolvedThemeMode: 'light' | 'dark';
-    toggleThemeMode: () => void;
     aiSettingsOpen: boolean;
     setAISettingsOpen: Dispatch<SetStateAction<boolean>>;
     aiSettings: AISettings;
@@ -94,14 +85,6 @@ export default function AppModalLayer({
     onSelectSwitcherTab,
     shareTarget,
     setShareTarget,
-    themeOpen,
-    setThemeOpen,
-    selectedThemeName,
-    setSelectedThemeName,
-    currentThemeMode,
-    setCurrentThemeMode,
-    resolvedThemeMode,
-    toggleThemeMode,
     aiSettingsOpen,
     setAISettingsOpen,
     aiSettings,
@@ -180,16 +163,6 @@ export default function AppModalLayer({
                     description={shareTarget.description}
                 />
             )}
-            <ThemeSelectorModal
-                isOpen={themeOpen}
-                selectedThemeName={selectedThemeName}
-                currentThemeMode={currentThemeMode}
-                resolvedThemeMode={resolvedThemeMode}
-                onSelectTheme={setSelectedThemeName}
-                onToggleThemeMode={toggleThemeMode}
-                onSetThemeMode={setCurrentThemeMode}
-                onClose={() => setThemeOpen(false)}
-            />
             <AISettingsModal
                 isOpen={aiSettingsOpen}
                 settings={aiSettings}

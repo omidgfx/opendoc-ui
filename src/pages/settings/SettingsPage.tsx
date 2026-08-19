@@ -1,7 +1,8 @@
-import {useEffect, useMemo, useRef, type ComponentType} from 'react';
+import {useEffect, useMemo, useRef} from 'react';
 import clsx from 'clsx';
 import {Tip} from '@/src/components/common/Tooltip';
 import GeneralSettingsSection from './sections/GeneralSettingsSection';
+import AppearanceSettingsSection, {type AppearanceSettingsProps} from './sections/AppearanceSettingsSection';
 import {
     resolveSettingsSection,
     SETTINGS_SECTIONS,
@@ -13,20 +14,16 @@ interface SettingsPageProps {
     /** Section addressed by the deep link, e.g. /#/parsable/<spec>/settings#ai. */
     section: string | null;
     onSelectSection: (section: SettingsSectionId) => void;
+    appearance: AppearanceSettingsProps;
 }
 
-const SECTION_CONTENT: Record<SettingsSectionId, ComponentType> = {
-    general: GeneralSettingsSection,
-};
-
-export default function SettingsPage({section, onSelectSection}: SettingsPageProps) {
+export default function SettingsPage({section, onSelectSection, appearance}: SettingsPageProps) {
     const activeSection = resolveSettingsSection(section);
     const scrollRef = useRef<HTMLDivElement>(null);
     const sections = useMemo<SettingsSectionMeta[]>(() => SETTINGS_SECTIONS, []);
     useEffect(() => {
         scrollRef.current?.scrollTo({top: 0});
     }, [activeSection]);
-    const ActiveContent = SECTION_CONTENT[activeSection];
     const activeMeta = sections.find(item => item.id === activeSection) || sections[0];
     return (
         <div className="flex h-full w-full min-w-0 flex-col overflow-hidden animate-in fade-in duration-200 select-text font-sans">
@@ -75,7 +72,8 @@ export default function SettingsPage({section, onSelectSection}: SettingsPagePro
                     </nav>
                     <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto scrollbar-thin pb-6">
                         <h3 className="sr-only">{activeMeta.label}</h3>
-                        <ActiveContent />
+                        {activeSection === 'general' && <GeneralSettingsSection />}
+                        {activeSection === 'appearance' && <AppearanceSettingsSection {...appearance} />}
                     </div>
                 </div>
             </div>

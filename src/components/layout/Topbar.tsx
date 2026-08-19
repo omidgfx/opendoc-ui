@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type {ActiveAuth, OpenApiSpec, ParsableConfig} from '../../types';
+import type {ActiveAuth, OpenApiSpec, ParsableConfig, ThemeMode} from '../../types';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
 import {Tip} from '../common/Tooltip';
@@ -33,7 +33,9 @@ interface TopbarProps {
     onToggleCollapse: () => void;
     onOpenMobileSidebar: () => void;
     onOpenAssistant: () => void;
-    onOpenThemeModal: () => void;
+    themeMode: ThemeMode;
+    resolvedThemeMode: 'light' | 'dark';
+    onSetThemeMode: (mode: ThemeMode) => void;
     onOpenSettings: () => void;
     isLocalMode: boolean;
     canOpenLocal: boolean;
@@ -75,14 +77,14 @@ export default function Topbar({
     showSchemaExplorer,
     spec,
     specFreshness,
-    selectedThemeName,
-    onSelectTheme,
     isCollapsed,
     onToggleCollapse,
     onOpenMobileSidebar,
     onOpenAssistant,
     onOpenAuthModal,
-    onOpenThemeModal,
+    themeMode,
+    resolvedThemeMode,
+    onSetThemeMode,
     onOpenSettings,
     isLocalMode,
     canOpenLocal,
@@ -110,10 +112,7 @@ export default function Topbar({
     onClearRemoteHistory,
     onSearchHasResults,
     hideSearch,
-}: TopbarProps & {
-    selectedThemeName: string;
-    onSelectTheme: (n: string) => void;
-}) {
+}: TopbarProps) {
     const [showSpecificationModal, setShowSpecificationModal] = useState(false);
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
@@ -449,19 +448,37 @@ export default function Topbar({
                     )}
 
                     {hasSpec && (
-                        <Tip content="Choose theme">
-                            <button
-                                type="button"
-                                onClick={onOpenThemeModal}
-                                className="flex size-8 xl:w-40 items-center gap-2 rounded-lg border px-2 xl:px-3 text-left transition-all cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
-                            >
-                                <i className="ph-fill ph-palette shrink-0 text-[14px] text-[var(--primary)]"></i>
-                                <span className="hidden xl:block min-w-0 flex-1 truncate text-xs font-semibold">
-                                    {selectedThemeName}
-                                </span>
-                                <i className="hidden xl:block ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]"></i>
-                            </button>
-                        </Tip>
+                        <div
+                            role="radiogroup"
+                            aria-label="Color mode"
+                            className="flex gap-0.5 rounded-lg border p-0.5 border-[var(--border)] bg-[var(--background)]"
+                        >
+                            {(
+                                [
+                                    ['system', 'ph ph-monitor', `Follow system (${resolvedThemeMode})`],
+                                    ['light', 'ph-fill ph-sun', 'Light mode'],
+                                    ['dark', 'ph-fill ph-moon', 'Dark mode'],
+                                ] as [ThemeMode, string, string][]
+                            ).map(([mode, icon, tip]) => (
+                                <Tip key={mode} content={tip}>
+                                    <button
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={themeMode === mode}
+                                        aria-label={tip}
+                                        onClick={() => onSetThemeMode(mode)}
+                                        className={clsx(
+                                            'size-7 rounded-[7px] flex items-center justify-center transition-all cursor-pointer',
+                                            themeMode === mode
+                                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
+                                        )}
+                                    >
+                                        <i className={clsx(icon, 'text-[13px]')} />
+                                    </button>
+                                </Tip>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>

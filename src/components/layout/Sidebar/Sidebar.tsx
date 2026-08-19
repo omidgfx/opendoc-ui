@@ -65,7 +65,7 @@ export default function Sidebar(props: SidebarProps) {
         themeMode,
         resolvedThemeMode,
         onToggleThemeMode,
-        onOpenThemeModal,
+        onOpenAppearanceSettings,
         onOpenAuthModal,
         activeAuth,
         showAssistant,
@@ -718,7 +718,7 @@ export default function Sidebar(props: SidebarProps) {
                     </Tip>
                     <Tip content="Theme gallery">
                         <button
-                            onClick={navTo(onOpenThemeModal)}
+                            onClick={navTo(onOpenAppearanceSettings)}
                             className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph-fill ph-palette text-[15px]" />

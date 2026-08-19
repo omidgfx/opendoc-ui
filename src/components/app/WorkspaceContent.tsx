@@ -9,6 +9,7 @@ import SchemaExplorer from '@/src/pages/schema/SchemaExplorerPage';
 import RunnerCompatibilityPage from '@/src/pages/compatibility/RunnerCompatibilityPage';
 import SettingsPage from '@/src/pages/settings/SettingsPage';
 import type {SettingsSectionId} from '@/src/pages/settings/settingsSections';
+import type {AppearanceSettingsProps} from '@/src/pages/settings/sections/AppearanceSettingsSection';
 import EndpointNotesPage from '@/src/pages/notes/EndpointNotesPage';
 import ViewErrorBoundary from '../common/ViewErrorBoundary';
 import EmptySearchState from './EmptySearchState';
@@ -70,6 +71,7 @@ interface WorkspaceContentProps {
     showSettings: boolean;
     settingsSection: string | null;
     onSelectSettingsSection: (section: SettingsSectionId) => void;
+    appearanceSettings: AppearanceSettingsProps;
     showHome: boolean;
     onOpenAbout: () => void;
     onOpenHome: () => void;
@@ -133,6 +135,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         showSettings,
         settingsSection,
         onSelectSettingsSection,
+        appearanceSettings,
         showHome,
         onOpenAbout,
         onOpenHome,
@@ -151,7 +154,11 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         if (showSettings) {
             return (
                 <ViewErrorBoundary resetKey={`settings:${specKey}`} title="Settings could not be rendered">
-                    <SettingsPage section={settingsSection} onSelectSection={onSelectSettingsSection} />
+                    <SettingsPage
+                        section={settingsSection}
+                        onSelectSection={onSelectSettingsSection}
+                        appearance={appearanceSettings}
+                    />
                 </ViewErrorBoundary>
             );
         }
@@ -161,7 +168,11 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     if (showSettings) {
         return (
             <ViewErrorBoundary resetKey={`settings:${specKey}`} title="Settings could not be rendered">
-                <SettingsPage section={settingsSection} onSelectSection={onSelectSettingsSection} />
+                <SettingsPage
+                    section={settingsSection}
+                    onSelectSection={onSelectSettingsSection}
+                    appearance={appearanceSettings}
+                />
             </ViewErrorBoundary>
         );
     }
