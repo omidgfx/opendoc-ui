@@ -9,6 +9,7 @@ import RunnerFieldFrame from '../RunnerFieldFrame';
 import {enumDropdownOptions} from '@/src/utils/enumOptions';
 import {getRefName, resolveReference} from '@/src/utils/openapi';
 import {isNullOnlySchema, RECURSIVE_SCHEMA_ICON, schemaVariantLabel} from '@/src/utils/schemaProperties';
+import {NullTypeBadge} from '@/src/components/common/TypeBadge';
 import type {FieldProps} from '@/src/types/recursiveBody';
 import {
     defaultBodyValue,
@@ -159,8 +160,8 @@ export default function Field({
                     className="mt-1 w-full"
                 />
                 {selectedVariantIsNull ? (
-                    <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2 font-mono text-[10px] text-[var(--text-muted)]">
-                        null
+                    <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
+                        <NullTypeBadge />
                     </p>
                 ) : (
                     <GuideBranch focusedPath={focusedPath}>

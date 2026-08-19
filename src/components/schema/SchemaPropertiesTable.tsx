@@ -1,4 +1,5 @@
 import React from 'react';
+import {NullTypeBadge} from '../common/TypeBadge';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
 import {describeNotConstraint, RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
@@ -69,11 +70,19 @@ export default function SchemaPropertiesTable({
         if (!prop) {
             return <span className="text-xs font-mono opacity-50">any</span>;
         }
-        const renderTypeName = (tValue: any, format?: string) => {
-            if (Array.isArray(tValue)) {
-                return tValue.map(t => `${t}${format ? ` (${format})` : ''}`).join(' | ');
-            }
-            return `${tValue || 'any'}${format ? ` (${format})` : ''}`;
+        const renderTypeName = (tValue: any, format?: string): React.ReactNode => {
+            const suffix = format ? ` (${format})` : '';
+            const types = (Array.isArray(tValue) ? tValue : [tValue || 'any']).map(type => String(type));
+            // `null` is a fact of its own, so it reads as a badge instead of
+            // disappearing into a "string | null" string.
+            if (!types.includes('null')) return types.map(type => `${type}${suffix}`).join(' | ');
+            const others = types.filter(type => type !== 'null');
+            return (
+                <span className="inline-flex flex-wrap items-center gap-1">
+                    {others.length > 0 && <span>{others.map(type => `${type}${suffix}`).join(' | ')}</span>}
+                    <NullTypeBadge />
+                </span>
+            );
         };
         if (prop.$ref) {
             const refName = getRefName(prop.$ref);

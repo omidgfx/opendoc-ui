@@ -18,6 +18,7 @@ import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExample
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
+import {NullTypeBadge} from '../../common/TypeBadge';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
@@ -33,7 +34,7 @@ import {
     resolveRequestBody,
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/runner/auth';
-import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
+import {flattenSchemaProperties, isNullOnlySchema, schemaVariantLabel} from '../../../utils/schemaProperties';
 
 interface ViewTabProps {
     key: any;
@@ -826,11 +827,18 @@ export default function ViewTab({
                                     />
                                 )}
                                 <div className="pt-1 min-w-0">
-                                    {renderSchemaPropertiesTable(
-                                        requestBodyMatrixSchema,
-                                        requestBodyMatrixSchema?.$ref
-                                            ? getRefName(requestBodyMatrixSchema.$ref)
-                                            : requestBodyMatrixSchema?.title || null,
+                                    {isNullOnlySchema(requestBodyMatrixSchema, resolveReference) ? (
+                                        <p className="flex items-center gap-2 rounded-lg border p-2.5 text-[11px] border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
+                                            <NullTypeBadge />
+                                            This branch carries no properties: send the JSON value null.
+                                        </p>
+                                    ) : (
+                                        renderSchemaPropertiesTable(
+                                            requestBodyMatrixSchema,
+                                            requestBodyMatrixSchema?.$ref
+                                                ? getRefName(requestBodyMatrixSchema.$ref)
+                                                : requestBodyMatrixSchema?.title || null,
+                                        )
                                     )}
                                 </div>
                                 {requestBodyExample !== undefined && (
