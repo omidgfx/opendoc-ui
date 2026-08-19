@@ -208,8 +208,9 @@ export function useWorkspaceTabs({
             });
             setActiveTabId(id);
             setSelectedEndpoint({path, method: method.toLowerCase()});
+            setViewVisibility(null);
         },
-        [getEndpointLabel, withPreviewLast, previewTabsEnabled],
+        [getEndpointLabel, withPreviewLast, previewTabsEnabled, setViewVisibility],
     );
     const openEndpointPermanent = useCallback(
         (path: string, method: string) => {
