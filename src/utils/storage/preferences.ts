@@ -10,6 +10,10 @@ export type EndpointRepresentationScope = 'endpoint' | 'global';
 /** The same question for the schema modal: per schema, or for every schema. */
 export type ModalRepresentationScope = 'schema' | 'global';
 
+/** Whether the documentation prints one parameter matrix or one table per
+ *  location. The request body always keeps its own section either way. */
+export type ParameterTableLayout = 'separated' | 'unified';
+
 /** Gutter indicator families the code viewer can annotate lines with. */
 export const INDICATOR_ICON_KINDS = [
     'recursive',
@@ -41,6 +45,8 @@ export interface AppPreferences {
     modalRepresentation: RepresentationMode;
     /** Choice per schema name, used when the scope is per schema. */
     modalRepresentations: Record<string, RepresentationMode>;
+    /** Path, query, header and cookie parameters in their own tables, or merged. */
+    parameterTableLayout: ParameterTableLayout;
     /** Single-click tabs open in preview (italic) mode when enabled. */
     previewTabsEnabled: boolean;
     /** Line numbers column of the code viewer. */
@@ -58,6 +64,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
     modalRepresentationScope: 'global',
     modalRepresentation: 'example',
     modalRepresentations: {},
+    parameterTableLayout: 'separated',
     previewTabsEnabled: true,
     codeGutterEnabled: true,
     indicatorIconsEnabled: true,
@@ -100,6 +107,10 @@ export const normalizeAppPreferences = (value: any): AppPreferences => {
             ? value.modalRepresentation
             : DEFAULT_APP_PREFERENCES.modalRepresentation,
         modalRepresentations: representationMap(value.modalRepresentations),
+        parameterTableLayout:
+            value.parameterTableLayout === 'unified' || value.parameterTableLayout === 'separated'
+                ? value.parameterTableLayout
+                : DEFAULT_APP_PREFERENCES.parameterTableLayout,
         previewTabsEnabled:
             typeof value.previewTabsEnabled === 'boolean'
                 ? value.previewTabsEnabled

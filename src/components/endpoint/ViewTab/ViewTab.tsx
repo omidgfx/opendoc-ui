@@ -20,6 +20,7 @@ import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
+import {groupParameters} from '@/src/utils/endpoint/parameterGroups';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -540,8 +541,8 @@ export default function ViewTab({
     const pathItem = spec.paths[path] || {};
     const mergedParameters = getMergedParameters(pathItem, operation, spec);
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
-    const pathParams = mergedParameters.filter(p => p.in === 'path');
-    const otherParams = mergedParameters.filter(p => p.in !== 'path');
+    const parameterGroups = groupParameters(mergedParameters);
+    const separatedParameterTables = preferences.parameterTableLayout === 'separated';
     const requestBodySource = resolveRequestBodySource(operation, spec, requestBodyContentType, requestBodyVariant);
     const requestBodyContentEntries = requestBodySource.mediaTypes.map(
         contentType => [contentType, resolvedRequestBody?.content?.[contentType]] as [string, any],
@@ -560,6 +561,102 @@ export default function ViewTab({
             ? buildFormSkeleton(requestBodyMatrixSchema, spec, selectedRequestBodyContent?.encoding)
             : [];
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
+    const renderParameterTable = (title: string, params: any[], showLocation: boolean) => (
+        <div key={title} className="space-y-3 min-w-0">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">{title}</h2>
+            <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
+                <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
+                        <thead>
+                            <tr>
+                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                    Parameter Name
+                                </th>
+                                {showLocation && (
+                                    <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                        Location
+                                    </th>
+                                )}
+                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                    Schema / Pattern
+                                </th>
+                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                    Example
+                                </th>
+                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                    Required
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {params.map((param, idx) => {
+                                const pattern = getPatternFromParam(param, spec);
+                                return (
+                                    <tr
+                                        key={idx}
+                                        className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
+                                    >
+                                        <td className="px-4 py-3 text-xs align-top">
+                                            <div className="flex items-start flex-wrap gap-1">
+                                                <span className="font-mono font-bold text-[var(--text-heading)]">
+                                                    {param.name}
+                                                </span>
+                                                {param.description && usesDescriptionTooltip(param.description) && (
+                                                    <DescriptionTip
+                                                        fieldLabel={param.name}
+                                                        documents={[{text: param.description}]}
+                                                    />
+                                                )}
+                                            </div>
+                                            {param.description && !usesDescriptionTooltip(param.description) && (
+                                                <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
+                                                    {param.description}
+                                                </p>
+                                            )}
+                                        </td>
+                                        {showLocation && (
+                                            <td className="px-4 py-3 text-xs select-none">
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
+                                                    {param.in}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className="px-4 py-3 text-xs">
+                                            <div className="flex flex-col gap-1">
+                                                <div>{renderSchemaButton(param.schema)}</div>
+                                                {pattern && (
+                                                    <PatternPreview
+                                                        pattern={pattern}
+                                                        showLabel
+                                                        onTest={() => setPatternToTest(pattern)}
+                                                    />
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">{renderParameterExample(param)}</td>
+                                        <td className="px-4 py-3 text-xs select-none">
+                                            {param.required ? (
+                                                <span className="text-[var(--method-delete)] font-bold text-xs">
+                                                    Yes
+                                                </span>
+                                            ) : (
+                                                <span>No</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+    const parameterTables = separatedParameterTables
+        ? parameterGroups.map(group => renderParameterTable(group.title, group.parameters, false))
+        : mergedParameters.length > 0
+          ? renderParameterTable('Request Parameters', mergedParameters, true)
+          : null;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     const fullEndpointUrl = selectedServer
@@ -683,99 +780,7 @@ export default function ViewTab({
             </div>
 
             <div className="w-full space-y-8 mx-auto min-w-0">
-                {mergedParameters.length > 0 && (
-                    <div className="space-y-3 min-w-0">
-                        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            Request Parameters
-                        </h2>
-                        <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
-                            <div className="overflow-x-auto scrollbar-thin">
-                                <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
-                                    <thead>
-                                        <tr>
-                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Parameter Name
-                                            </th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Location
-                                            </th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Schema / Pattern
-                                            </th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Example
-                                            </th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Required
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {mergedParameters.map((param, idx) => {
-                                            const pattern = getPatternFromParam(param, spec);
-                                            return (
-                                                <tr
-                                                    key={idx}
-                                                    className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
-                                                >
-                                                    <td className="px-4 py-3 text-xs align-top">
-                                                        <div className="flex items-start flex-wrap gap-1">
-                                                            <span className="font-mono font-bold text-[var(--text-heading)]">
-                                                                {param.name}
-                                                            </span>
-                                                            {param.description &&
-                                                                usesDescriptionTooltip(param.description) && (
-                                                                    <DescriptionTip
-                                                                        fieldLabel={param.name}
-                                                                        documents={[{text: param.description}]}
-                                                                    />
-                                                                )}
-                                                        </div>
-                                                        {param.description &&
-                                                            !usesDescriptionTooltip(param.description) && (
-                                                                <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
-                                                                    {param.description}
-                                                                </p>
-                                                            )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-xs select-none">
-                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
-                                                            {param.in}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-xs">
-                                                        <div className="flex flex-col gap-1">
-                                                            <div>{renderSchemaButton(param.schema)}</div>
-                                                            {pattern && (
-                                                                <PatternPreview
-                                                                    pattern={pattern}
-                                                                    showLabel
-                                                                    onTest={() => setPatternToTest(pattern)}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-xs">
-                                                        {renderParameterExample(param)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-xs select-none">
-                                                        {param.required ? (
-                                                            <span className="text-[var(--method-delete)] font-bold text-xs">
-                                                                Yes
-                                                            </span>
-                                                        ) : (
-                                                            <span>No</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {parameterTables}
 
                 {selectedRequestBodyContent && (
                     <div className="space-y-3 font-sans min-w-0">
