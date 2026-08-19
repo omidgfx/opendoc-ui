@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {Tip} from '../common/Tooltip';
 import clsx from 'clsx';
@@ -33,7 +33,7 @@ export default function ShareModal({isOpen, onClose, url, title, description}: S
         }, 80);
         return () => clearTimeout(t);
     }, [isOpen, originUrl]);
-    useEscClose(isOpen, requestClose, isOpen);
+    useModalShortcuts({isOpen, onClose: requestClose});
     const shareText = title || 'Check out this API documentation';
     const shareDesc = description || shareText;
     const encodedUrl = encodeURIComponent(originUrl);

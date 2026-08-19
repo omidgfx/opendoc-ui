@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Tip} from '../common/Tooltip';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface PatternTesterModalProps {
@@ -13,7 +13,7 @@ export default function PatternTesterModal({pattern, onClose}: PatternTesterModa
     const [isValid, setIsValid] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
     const {requestClose, backdropClassName} = useModalTransition(true, onClose);
-    useEscClose(true, requestClose);
+    useModalShortcuts({isOpen: true, onClose: requestClose});
     useEffect(() => {
         if (!pattern) {
             setError('No pattern provided');

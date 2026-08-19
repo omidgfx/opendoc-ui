@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {normalizeRemoteSpecUrl} from '../../utils/specification/remoteSpec';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 
 interface RemoteSpecificationModalProps {
     isOpen: boolean;
@@ -32,14 +33,13 @@ export default function RemoteSpecificationModal({
         setSubmitted(false);
         setShowCorsHelp(!downloaderConfigured);
     }, [isOpen, downloaderConfigured]);
-    useEffect(() => {
-        if (!isOpen) return;
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && !isLoading) transition.requestClose();
-        };
-        document.addEventListener('keydown', onKeyDown);
-        return () => document.removeEventListener('keydown', onKeyDown);
-    }, [isOpen, isLoading, transition.requestClose]);
+    useModalShortcuts({
+        isOpen,
+        onClose: transition.requestClose,
+        onSubmit: () => void load(),
+        canSubmit: !isLoading && !!url.trim(),
+        enabled: !isLoading,
+    });
     const load = async () => {
         setError(null);
         setSubmitted(true);

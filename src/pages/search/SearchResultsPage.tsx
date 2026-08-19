@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
 import ShareModal from '@/src/components/modals/ShareModal';
-import {useEscClose} from '@/src/hooks/useEscClose';
 import {ActiveAuth, OpenApiSpec, Operation} from '@/src/types';
 import Markdown from '@/src/components/common/Markdown';
 import MethodBadge from '@/src/components/common/MethodBadge';
@@ -53,7 +52,6 @@ export default function SearchResultsView({
     } | null>(null);
     const [filtersModalOpen, setFiltersModalOpen] = useState(false);
     const filterTransition = useModalTransition(filtersModalOpen, () => setFiltersModalOpen(false));
-    useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
     const getCurrentSearchUrl = () => (typeof window !== 'undefined' ? window.location.href : '');

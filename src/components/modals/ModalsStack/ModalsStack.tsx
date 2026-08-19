@@ -9,7 +9,8 @@ import ShareModal from '../ShareModal';
 import * as jsYaml from 'js-yaml';
 import clsx from 'clsx';
 import {useModalTransition} from '../../../hooks/useModalTransition';
-import {useEscClose} from '../../../hooks/useEscClose';
+import {useEscStack} from '../../../hooks/useEscClose';
+import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
 import {
@@ -73,7 +74,9 @@ export default function ModalsStack({
     } | null>(null);
     const {requestClose, backdropClassName} = useModalTransition(true, onCloseAll);
     const helpTransition = useModalTransition(!!helpModalContent, () => setHelpModalContent(null));
-    useEscClose(!!helpModalContent, helpTransition.requestClose, !!helpModalContent);
+    // The schema stack itself owns browser history, so only the help dialog
+    // takes the shared back-navigation contract.
+    useModalShortcuts({isOpen: !!helpModalContent, onClose: helpTransition.requestClose});
     useEffect(() => {
         if (modals.length === 0) return;
         const handler = (e: KeyboardEvent) => {

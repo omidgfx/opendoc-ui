@@ -2,7 +2,7 @@ import {useState, type ReactNode} from 'react';
 import type {EndpointNote} from '../../types';
 import {endpointNoteColor, endpointNoteTitle} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import ConfirmModal from '../common/ConfirmModal';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
@@ -25,7 +25,11 @@ export default function TrashNotesModal({
     const {pendingTodoCompletionId} = useEndpointNotes();
     const [confirmEmpty, setConfirmEmpty] = useState(false);
     const [confirmTarget, setConfirmTarget] = useState<{kind: 'restore' | 'delete'; note: EndpointNote} | null>(null);
-    useEscClose(true, onClose, !pendingTodoCompletionId && !confirmEmpty && !confirmTarget);
+    useModalShortcuts({
+        isOpen: true,
+        onClose,
+        enabled: !pendingTodoCompletionId && !confirmEmpty && !confirmTarget,
+    });
     const body: ReactNode =
         notes.length > 0 ? (
             <div className="space-y-2">

@@ -4,7 +4,7 @@ import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
 import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/export/codeGeneration';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface CodeGeneratorModalProps {
@@ -32,7 +32,7 @@ export default function CodeGeneratorModal({
 }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState('curl');
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
-    useEscClose(isOpen, requestClose);
+    useModalShortcuts({isOpen, onClose: requestClose});
     if (!shouldRender) return null;
     const codegenRequest = buildCodegenRequest({
         spec,

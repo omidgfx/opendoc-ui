@@ -2,7 +2,6 @@ import {useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '@/src/types';
 import Markdown from '@/src/components/common/Markdown';
 import ShareModal from '@/src/components/modals/ShareModal';
-import {useEscClose} from '@/src/hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
 import {getDocumentOperations, getPathItemOperations} from '@/src/utils/openapi';
 import MethodBadge from '@/src/components/common/MethodBadge';
@@ -40,7 +39,6 @@ export default function HomeView({
         title: string;
         description?: string;
     } | null>(null);
-    useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
     const handleShareSpec = () => {
         const url = typeof window !== 'undefined' ? window.location.href.split('?')[0].split('#response-')[0] : '';
         setShareModal({
