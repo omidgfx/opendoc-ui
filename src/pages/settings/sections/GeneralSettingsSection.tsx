@@ -2,6 +2,7 @@ import {usePreferences} from '@/src/contexts/PreferencesContext';
 import type {
     EndpointRepresentationScope,
     ModalRepresentationScope,
+    NarrowTableLayout,
     ParameterTableLayout,
 } from '@/src/utils/storage/preferences';
 import SettingsGroup from '../controls/SettingsGroup';
@@ -15,6 +16,10 @@ const ENDPOINT_SCOPE_OPTIONS: {value: EndpointRepresentationScope; label: string
 const PARAMETER_TABLE_OPTIONS: {value: ParameterTableLayout; label: string; icon: string}[] = [
     {value: 'separated', label: 'Separated', icon: 'ph ph-rows'},
     {value: 'unified', label: 'Unified', icon: 'ph ph-table'},
+];
+const NARROW_TABLE_OPTIONS: {value: NarrowTableLayout; label: string; icon: string}[] = [
+    {value: 'cards', label: 'Cards', icon: 'ph ph-cards'},
+    {value: 'table', label: 'Table', icon: 'ph ph-table'},
 ];
 const MODAL_SCOPE_OPTIONS: {value: ModalRepresentationScope; label: string; icon: string}[] = [
     {value: 'schema', label: 'Per schema', icon: 'ph ph-diamonds-four'},
@@ -75,6 +80,19 @@ export default function GeneralSettingsSection() {
                             options={PARAMETER_TABLE_OPTIONS}
                             onChange={value => setPreference('parameterTableLayout', value)}
                             ariaLabel="Parameter table layout"
+                        />
+                    }
+                />
+                <SettingRow
+                    label="Narrow panes"
+                    description="On a phone, or in a narrowed split pane, a parameter table can become one card per row instead of a table that scrolls sideways."
+                    icon="ph ph-device-mobile"
+                    control={
+                        <SettingChoice
+                            value={preferences.narrowTableLayout}
+                            options={NARROW_TABLE_OPTIONS}
+                            onChange={value => setPreference('narrowTableLayout', value)}
+                            ariaLabel="Narrow pane table layout"
                         />
                     }
                 />

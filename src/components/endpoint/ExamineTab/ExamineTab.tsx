@@ -426,9 +426,9 @@ export default function ExamineTab({
                             <RunnerFieldFrame
                                 key={`${param.in}:${param.name}`}
                                 ariaLabel={`${param.name} parameter field`}
-                                className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-4 sm:items-center sm:gap-4"
+                                className="grid grid-cols-1 gap-2 p-2 @2xl:grid-cols-4 @2xl:items-center @2xl:gap-4"
                             >
-                                <div className="min-w-0 sm:col-span-1">
+                                <div className="min-w-0 @2xl:col-span-1">
                                     <FieldHeader
                                         label={param.name}
                                         required={param.required}
@@ -439,7 +439,7 @@ export default function ExamineTab({
                                         onOpenSchema={onOpenSchema}
                                     />
                                 </div>
-                                <div className="space-y-1 sm:col-span-3">
+                                <div className="space-y-1 @2xl:col-span-3">
                                     <ParameterInput
                                         param={param}
                                         spec={spec}
@@ -497,7 +497,7 @@ export default function ExamineTab({
         <form
             onSubmit={handleFormSubmit}
             noValidate
-            className="flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
+            className="@container flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
         >
             <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
 
@@ -564,7 +564,7 @@ export default function ExamineTab({
                                 <RunnerFieldFrame
                                     key={name}
                                     ariaLabel={`${name} additional header field`}
-                                    className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-4 sm:items-center sm:gap-4"
+                                    className="grid grid-cols-1 gap-2 p-2 @2xl:grid-cols-4 @2xl:items-center @2xl:gap-4"
                                 >
                                     <span className="font-mono text-xs font-semibold text-[var(--text-heading)]">
                                         {name}
@@ -576,7 +576,7 @@ export default function ExamineTab({
                                         onChange={event =>
                                             setHeaders(current => ({...current, [name]: event.target.value}))
                                         }
-                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)] sm:col-span-3"
+                                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none focus:border-[var(--primary)] @2xl:col-span-3"
                                     />
                                 </RunnerFieldFrame>
                             ))}
