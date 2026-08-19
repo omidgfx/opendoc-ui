@@ -3,6 +3,7 @@ import Prism from 'prismjs';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
+import {usePreferences} from '../../contexts/PreferencesContext';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-bash';
@@ -30,7 +31,8 @@ interface CodeViewerProps {
      * no JSON re-formatting — so the caller's line numbers stay correct.
      */
     lineMarkers?: CodeLineMarker[];
-    /** Line numbers render by default; pass false for chrome-less output. */
+    /** Line numbers render by default; pass false for chrome-less output.
+     *  The reader can still switch the gutter off globally in the settings. */
     showLineNumbers?: boolean;
 }
 
@@ -133,7 +135,21 @@ function MarkerIcon({marker}: {marker: CodeLineMarker}) {
     );
 }
 
-export default function CodeViewer({code, language, maxHeight, lineMarkers, showLineNumbers = true}: CodeViewerProps) {
+export default function CodeViewer({
+    code,
+    language,
+    maxHeight,
+    lineMarkers,
+    showLineNumbers: showLineNumbersProp = true,
+}: CodeViewerProps) {
+    const {preferences} = usePreferences();
+    const showLineNumbers = showLineNumbersProp && preferences.codeGutterEnabled;
+    const visibleMarkers = useMemo(() => {
+        if (!lineMarkers?.length) return lineMarkers;
+        if (!preferences.indicatorIconsEnabled) return [];
+        if (!preferences.disabledIndicatorIcons.length) return lineMarkers;
+        return lineMarkers.filter(marker => !marker.kind || !preferences.disabledIndicatorIcons.includes(marker.kind));
+    }, [lineMarkers, preferences.indicatorIconsEnabled, preferences.disabledIndicatorIcons]);
     const [copied, setCopied] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLElement>(null);
@@ -155,14 +171,14 @@ export default function CodeViewer({code, language, maxHeight, lineMarkers, show
     const lineCount = useMemo(() => Math.max(1, finalCode.split('\n').length), [finalCode]);
     const markersByLine = useMemo(() => {
         const map = new Map<number, CodeLineMarker[]>();
-        (lineMarkers || []).forEach(marker => {
+        (visibleMarkers || []).forEach(marker => {
             if (!Number.isInteger(marker.line) || marker.line < 1 || marker.line > lineCount) return;
             const bucket = map.get(marker.line);
             if (bucket) bucket.push(marker);
             else map.set(marker.line, [marker]);
         });
         return map;
-    }, [lineMarkers, lineCount]);
+    }, [visibleMarkers, lineCount]);
     /* The icon holder is a fixed-width slot sized for the busiest line, so
        numbers stay aligned no matter how many indicators a line carries.
        Dot markers render after the number and do not occupy the slot. */

@@ -12,6 +12,7 @@ import {type TabItem, VIEW_TAB_META, type ViewTabKind} from '../components/endpo
 import {useTabPersistence} from './useTabPersistence';
 import {useTabSwitcher} from './useTabSwitcher';
 import {getOperation} from '../utils/openapi';
+import {usePreferences} from '../contexts/PreferencesContext';
 
 export type WorkspaceEndpoint = {
     path: string;
@@ -104,6 +105,8 @@ export function useWorkspaceTabs({
     modalCount,
     onUserNavigate,
 }: UseWorkspaceTabsOptions) {
+    const {preferences} = usePreferences();
+    const previewTabsEnabled = preferences.previewTabsEnabled;
     const [selectedEndpoint, setSelectedEndpoint] = useState<WorkspaceEndpoint | null>(null);
     const [assistantUnread, setAssistantUnread] = useState(false);
     const [selectedTab, setSelectedTab] = useState<WorkspaceViewMode>('docs');
@@ -185,7 +188,7 @@ export function useWorkspaceTabs({
                     id,
                     path,
                     method: method.toLowerCase(),
-                    isPreview: true,
+                    isPreview: previewTabsEnabled,
                     label: getEndpointLabel(path, method),
                 };
                 const previewIdx = prev.findIndex(t => t.isPreview);
@@ -206,7 +209,7 @@ export function useWorkspaceTabs({
             setActiveTabId(id);
             setSelectedEndpoint({path, method: method.toLowerCase()});
         },
-        [getEndpointLabel, withPreviewLast],
+        [getEndpointLabel, withPreviewLast, previewTabsEnabled],
     );
     const openEndpointPermanent = useCallback(
         (path: string, method: string) => {
@@ -322,7 +325,7 @@ export function useWorkspaceTabs({
                     id,
                     path: '',
                     method: '',
-                    isPreview: view === 'assistant' ? false : true,
+                    isPreview: view === 'assistant' ? false : previewTabsEnabled,
                     label,
                     kind: view,
                     query: view === 'search' ? query : undefined,
@@ -341,7 +344,7 @@ export function useWorkspaceTabs({
             setActiveResponseCode(null);
             setModalStack([]);
         },
-        [setViewVisibility, onUserNavigate],
+        [setViewVisibility, onUserNavigate, previewTabsEnabled],
     );
     const openViewTabPermanent = useCallback(
         (view: ViewTabKind, query = '') => {

@@ -6,12 +6,16 @@ export type RepresentationMode = 'example' | 'schema';
 
 /** Gutter indicator families the code viewer can annotate lines with. */
 export const INDICATOR_ICON_KINDS = [
-    'combinator',
+    'recursive',
+    'depth',
+    'reference',
+    'branch',
     'deprecated',
     'access',
     'enum',
     'format',
     'pattern',
+    'required',
     'truncation',
     'binary',
     'diff',

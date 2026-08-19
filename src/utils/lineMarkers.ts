@@ -1,5 +1,6 @@
 import {RECURSIVE_SCHEMA_ICON} from './schemaProperties';
 import type {MockLineMarker} from './runner/mockGenerator';
+import type {IndicatorIconKind} from './storage/preferences';
 
 /**
  * A gutter annotation for CodeViewer: an icon rendered beside a specific
@@ -24,6 +25,8 @@ export interface CodeLineMarkerDetails {
 export interface CodeLineMarker {
     /** 1-based line number the icon belongs to. */
     line: number;
+    /** Indicator family, so readers can switch it off in the settings. */
+    kind?: IndicatorIconKind;
     /** Phosphor icon class, e.g. "ph ph-arrow-clockwise". Empty for dots. */
     icon?: string;
     /** Tooltip shown when hovering the icon. */
@@ -113,6 +116,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'recursive',
                         icon: RECURSIVE_SCHEMA_ICON,
                         className: 'text-[var(--primary)]',
                         tip: marker.ref
@@ -124,6 +128,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'depth',
                         icon: DEPTH_LIMIT_ICON,
                         className: 'text-[var(--text-muted)]',
                         tip: 'Nesting depth limit reached — deeper content is omitted from this example.',
@@ -142,6 +147,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'reference',
                         icon: REFERENCED_SCHEMA_ICON,
                         className: 'text-[var(--accent)]',
                         tip: clickable ? `${base} Click to open ${ref}.` : base,
@@ -155,6 +161,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'branch',
                         icon: BRANCH_ICON,
                         className: 'text-[var(--method-post)]',
                         tip: `${branch.kind}: example expands branch ${branch.index + 1} of ${branch.count}.`,
@@ -174,6 +181,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'deprecated',
                         icon: DEPRECATED_ICON,
                         className: 'text-[var(--method-put)]',
                         tip: 'Deprecated property — avoid using it in new integrations.',
@@ -183,6 +191,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'access',
                         icon: READ_ONLY_ICON,
                         className: 'text-[var(--text-muted)]',
                         tip: 'Read-only — appears in responses, ignored in requests.',
@@ -192,6 +201,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'access',
                         icon: WRITE_ONLY_ICON,
                         className: 'text-[var(--text-muted)]',
                         tip: 'Write-only — accepted in requests, never returned in responses.',
@@ -202,6 +212,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'enum',
                         icon: ENUM_ICON,
                         className: 'text-[var(--accent)]',
                         tip: marker.isConst
@@ -218,6 +229,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'format',
                         icon: formatIcon(marker.format || ''),
                         className: 'text-[var(--text-muted)]',
                         tip: `Format: ${marker.format}.`,
@@ -230,6 +242,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'pattern',
                         icon: PATTERN_ICON,
                         className: 'text-[var(--method-put)]',
                         tip: clickable
@@ -243,6 +256,7 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                 return [
                     {
                         line,
+                        kind: 'required',
                         dot: true,
                         tip: 'Required property.',
                     },
@@ -297,6 +311,7 @@ export const buildResponseLineMarkers = (
         if (BASE64_LINE.test(lineText))
             markers.push({
                 line: index + 1,
+                kind: 'binary',
                 icon: BINARY_ICON,
                 className: 'text-[var(--text-muted)]',
                 tip: 'Looks like an encoded binary payload.',
@@ -306,6 +321,7 @@ export const buildResponseLineMarkers = (
         changedLines(lines, options.previousBody).forEach(line =>
             markers.push({
                 line,
+                kind: 'diff',
                 icon: DIFF_ICON,
                 className: 'text-[var(--method-post)]',
                 tip: 'Changed since the previous response.',
@@ -315,6 +331,7 @@ export const buildResponseLineMarkers = (
     if (options.truncated)
         markers.push({
             line: lines.length,
+            kind: 'truncation',
             icon: TRUNCATED_ICON,
             className: 'text-[var(--method-put)]',
             tip: 'Response truncated at the size bound — the remainder was not downloaded.',

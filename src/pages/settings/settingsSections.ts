@@ -1,6 +1,6 @@
 /** Sections are declared here as they land, so the rail, the deep link and the
  *  page body can never drift apart. */
-export type SettingsSectionId = 'general' | 'appearance' | 'navigation' | 'ai';
+export type SettingsSectionId = 'general' | 'appearance' | 'navigation' | 'editor' | 'ai';
 
 export interface SettingsSectionMeta {
     id: SettingsSectionId;
@@ -28,6 +28,12 @@ export const SETTINGS_SECTIONS: SettingsSectionMeta[] = [
         label: 'Navigation',
         description: 'The API navigation tree, mirrored from the sidebar',
         icon: 'ph-fill ph-tree-structure',
+    },
+    {
+        id: 'editor',
+        label: 'Code viewer',
+        description: 'Gutter, indicator icons and tab behavior',
+        icon: 'ph-fill ph-code',
     },
     {
         id: 'ai',

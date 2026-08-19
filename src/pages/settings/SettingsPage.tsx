@@ -5,6 +5,7 @@ import GeneralSettingsSection from './sections/GeneralSettingsSection';
 import AppearanceSettingsSection, {type AppearanceSettingsProps} from './sections/AppearanceSettingsSection';
 import AISettingsSection, {type AISettingsSectionProps} from '@/src/components/ai/settings/AISettingsSection';
 import NavigationSettingsSection, {type NavigationSettingsProps} from './sections/NavigationSettingsSection';
+import EditorSettingsSection from './sections/EditorSettingsSection';
 import {
     resolveSettingsSection,
     SETTINGS_SECTIONS,
@@ -79,6 +80,7 @@ export default function SettingsPage({section, onSelectSection, appearance, navi
                         {activeSection === 'general' && <GeneralSettingsSection />}
                         {activeSection === 'appearance' && <AppearanceSettingsSection {...appearance} />}
                         {activeSection === 'navigation' && <NavigationSettingsSection {...navigation} />}
+                        {activeSection === 'editor' && <EditorSettingsSection />}
                         {activeSection === 'ai' && <AISettingsSection {...ai} />}
                     </div>
                 </div>
