@@ -2,7 +2,6 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {generateAndDownloadZip, generateSingleSchemaFile} from '../../utils/export/schemaExport';
 import ShareModal from '@/src/components/modals/ShareModal';
-import {useEscClose} from '../../hooks/useEscClose';
 import {Tip} from '@/src/components/common/Tooltip';
 import {absoluteRouteHref, toCleanRouteHref} from '@/src/utils/routing';
 import SearchHighlightedText from '@/src/components/layout/Sidebar/SearchHighlightedText';
@@ -47,7 +46,6 @@ export default function SchemaExplorer({schemas = {}, onSelectSchema, parsableKe
         description?: string;
     } | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
-    useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
     const getSchemaShareUrl = (schemaName: string) => {
         if (typeof window === 'undefined') return '';
         const encodedKey = encodeURIComponent(parsableKey);

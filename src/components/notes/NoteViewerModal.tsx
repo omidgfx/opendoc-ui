@@ -1,6 +1,6 @@
 import type {EndpointNote} from '../../types';
 import {endpointNoteColor, endpointNoteTitle} from '../../utils/notes/index';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
@@ -29,7 +29,7 @@ export default function NoteViewerModal({
     const color = endpointNoteColor(note.color);
     const title = endpointNoteTitle(note);
     const hasContent = !!note.content.trim();
-    useEscClose(true, onClose, escEnabled);
+    useModalShortcuts({isOpen: true, onClose, enabled: escEnabled});
     return (
         <div
             className="modal-backdrop fixed inset-0 z-[4000] bg-black/55 backdrop-blur-[2px]"

@@ -16,7 +16,7 @@ import {
     writeAIProfiles,
 } from '../../../utils/ai/storage';
 import {Tip} from '../../common/Tooltip';
-import {useEscClose} from '../../../hooks/useEscClose';
+import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../../hooks/useModalTransition';
 import TemperatureSlider from './TemperatureSlider';
 import ProfileNameModal from './ProfileNameModal';
@@ -87,9 +87,18 @@ export default function AISettingsSection({settings, onSave}: AISettingsSectionP
     const newProfileTransition = useModalTransition(newProfileDialogOpen, () => setNewProfileDialogOpen(false));
     const profileMenuRef = useRef<HTMLDivElement | null>(null);
     const profileButtonRef = useRef<HTMLButtonElement | null>(null);
-    useEscClose(modelPickerOpen, modelPickerTransition.requestClose, modelPickerOpen);
-    useEscClose(!!confirmAction, confirmTransition.requestClose, !!confirmAction);
-    useEscClose(newProfileDialogOpen, newProfileTransition.requestClose, newProfileDialogOpen);
+    useModalShortcuts({isOpen: modelPickerOpen, onClose: modelPickerTransition.requestClose});
+    useModalShortcuts({
+        isOpen: !!confirmAction,
+        onClose: confirmTransition.requestClose,
+        onSubmit: () => confirmChanges(),
+    });
+    useModalShortcuts({
+        isOpen: newProfileDialogOpen,
+        onClose: newProfileTransition.requestClose,
+        onSubmit: () => createProfile(),
+        canSubmit: !!newProfileName.trim(),
+    });
     const preset = useMemo(() => getProviderPreset(draft.provider), [draft.provider]);
     const hasProfiles = profiles.length > 0;
     const activeProfile = profiles.find(profile => profile.id === activeProfileId) || null;

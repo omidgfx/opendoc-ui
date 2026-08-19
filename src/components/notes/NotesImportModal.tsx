@@ -2,7 +2,7 @@ import {useState, type ReactNode} from 'react';
 import type {EndpointNote} from '../../types';
 import {endpointNoteKey, type EndpointNotesExportFile} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {Tip} from '../common/Tooltip';
 
 const ORPHAN_PREVIEW_LIMIT = 6;
@@ -30,7 +30,12 @@ export default function NotesImportModal({
 }: NotesImportModalProps) {
     const {pendingTodoCompletionId} = useEndpointNotes();
     const [result, setResult] = useState<{imported: number; skipped: number} | null>(null);
-    useEscClose(true, onClose, !pendingTodoCompletionId);
+    useModalShortcuts({
+        isOpen: true,
+        onClose,
+        onSubmit: () => (result ? onClose() : setResult(onImport(matching.length ? matching : file.notes))),
+        enabled: !pendingTodoCompletionId,
+    });
     const title = file.source.specTitle || 'Notes export file';
     const foreignSpec = !!file.source.specKey && file.source.specKey !== currentSpecKey;
     const footer = (

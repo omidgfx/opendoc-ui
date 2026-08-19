@@ -2,7 +2,7 @@ import {useState, type ReactNode} from 'react';
 import type {EndpointNote, OpenApiSpec} from '../../types';
 import {endpointNoteColor, endpointNoteTitle} from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import ConfirmModal from '../common/ConfirmModal';
 import MethodBadge from '../common/MethodBadge';
 import ReassignEndpointPicker from './ReassignEndpointPicker';
@@ -26,7 +26,7 @@ export default function OrphanedNotesModal({
     const {pendingTodoCompletionId} = useEndpointNotes();
     const [reassigningId, setReassigningId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-    useEscClose(true, onClose, !pendingTodoCompletionId && !confirmDeleteId);
+    useModalShortcuts({isOpen: true, onClose, enabled: !pendingTodoCompletionId && !confirmDeleteId});
     const body: ReactNode =
         notes.length > 0 ? (
             <div className="space-y-2">

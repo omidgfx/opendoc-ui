@@ -2,6 +2,7 @@ import {useEffect, useMemo, useState} from 'react';
 import type {ServerDefinition} from '../../types';
 import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 
 interface ServerVariablesModalProps {
     server: ServerDefinition;
@@ -46,6 +47,7 @@ export default function ServerVariablesModal({server, initialValues, onApply, on
         onClose();
     };
 
+    useModalShortcuts({isOpen: true, onClose, onSubmit: apply, canSubmit: entries.length > 0});
     return (
         <div
             className="modal-backdrop fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4"

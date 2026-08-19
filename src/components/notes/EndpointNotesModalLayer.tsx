@@ -11,7 +11,7 @@ import {
     noteCharacterCount,
 } from '../../utils/notes/index';
 import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
 import ConfirmModal from '../common/ConfirmModal';
@@ -30,6 +30,8 @@ function NotesDialog({
     surfaceClassName = '',
     contentClassName = '',
     escEnabled = true,
+    onSubmit,
+    canSubmit = true,
 }: {
     title: string;
     subtitle?: string;
@@ -41,9 +43,18 @@ function NotesDialog({
     surfaceClassName?: string;
     contentClassName?: string;
     escEnabled?: boolean;
+    /** Primary action, reachable with Ctrl/⌘ + Enter. */
+    onSubmit?: () => void;
+    canSubmit?: boolean;
 }) {
     const {pendingTodoCompletionId} = useEndpointNotes();
-    useEscClose(true, onClose, escEnabled && !pendingTodoCompletionId);
+    useModalShortcuts({
+        isOpen: true,
+        onClose,
+        onSubmit,
+        canSubmit,
+        enabled: escEnabled && !pendingTodoCompletionId,
+    });
     return (
         <div
             className="modal-backdrop fixed inset-0 z-[4000] bg-black/55 backdrop-blur-[2px]"
@@ -575,6 +586,8 @@ function NoteEditor({
                 }
                 icon={type === 'todo' ? 'ph-fill ph-check-square' : 'ph-fill ph-note text-[#f59e0b]'}
                 onClose={onClose}
+                onSubmit={save}
+                canSubmit={!invalid}
                 maxWidth={showEndpointPicker ? 'max-w-6xl' : 'max-w-4xl'}
                 surfaceClassName={showEndpointPicker ? 'h-[92vh] sm:h-[86vh]' : ''}
                 contentClassName={showEndpointPicker ? 'min-h-0 flex-1 overflow-hidden' : ''}
@@ -665,7 +678,7 @@ function TodoCompletionConfirm() {
     useEffect(() => {
         if (pendingTodoCompletionId) setHideEndpoint(true);
     }, [pendingTodoCompletionId]);
-    useEscClose(!!pendingTodoCompletionId, cancelTodoCompletion);
+    useModalShortcuts({isOpen: !!pendingTodoCompletionId, onClose: cancelTodoCompletion});
     if (!note || !pendingTodoCompletionId) return null;
     return (
         <div

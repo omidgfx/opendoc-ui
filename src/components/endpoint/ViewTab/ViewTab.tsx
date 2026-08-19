@@ -10,7 +10,7 @@ import {expandServerUrl} from '../../../utils/specification/serverResolver';
 import CustomDropdown from '../../common/CustomDropdown';
 import clsx from 'clsx';
 import ShareModal from '../../modals/ShareModal';
-import {useEscClose} from '../../../hooks/useEscClose';
+import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
@@ -330,9 +330,7 @@ export default function ViewTab({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [isActive, operation.responses, activeResponseCode, onSelectResponseCode]);
-    useEscClose(!!exampleModalContent, exampleTransition.requestClose, !!exampleModalContent);
-    useEscClose(!!patternToTest, () => setPatternToTest(null), !!patternToTest);
-    useEscClose(!!shareModal, () => setShareModal(null), !!shareModal);
+    useModalShortcuts({isOpen: !!exampleModalContent, onClose: exampleTransition.requestClose});
     const getBaseUrlWithoutResponse = () =>
         typeof window === 'undefined' ? '' : window.location.href.split('#response-')[0];
     const getEndpointShareUrl = () => getBaseUrlWithoutResponse();

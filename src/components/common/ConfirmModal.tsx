@@ -1,6 +1,6 @@
 import {createPortal} from 'react-dom';
 import {useId, useState} from 'react';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 
 interface ConfirmModalProps {
@@ -27,7 +27,26 @@ export default function ConfirmModal({
     const transition = useModalTransition(isOpen, onClose);
     const titleId = useId();
     const [confirming, setConfirming] = useState(false);
-    useEscClose(isOpen && !confirming, transition.requestClose);
+    const confirm = () => {
+        setConfirming(true);
+        void (async () => {
+            try {
+                await onConfirm();
+            } catch (error) {
+                console.error('Confirmation action failed', error);
+            } finally {
+                setConfirming(false);
+                transition.requestClose();
+            }
+        })();
+    };
+    useModalShortcuts({
+        isOpen,
+        onClose: transition.requestClose,
+        onSubmit: confirm,
+        canSubmit: !confirming,
+        enabled: !confirming,
+    });
     if (!transition.shouldRender || typeof document === 'undefined') return null;
     return createPortal(
         <div
@@ -61,19 +80,7 @@ export default function ConfirmModal({
                     <button
                         type="button"
                         disabled={confirming}
-                        onClick={() => {
-                            setConfirming(true);
-                            void (async () => {
-                                try {
-                                    await onConfirm();
-                                } catch (error) {
-                                    console.error('Confirmation action failed', error);
-                                } finally {
-                                    setConfirming(false);
-                                    transition.requestClose();
-                                }
-                            })();
-                        }}
+                        onClick={confirm}
                         className={`rounded-lg px-4 py-2 text-xs font-bold disabled:cursor-wait disabled:opacity-60 cursor-pointer ${
                             destructive
                                 ? 'bg-[var(--method-delete)] text-[var(--method-delete-contrast)] hover:brightness-110'

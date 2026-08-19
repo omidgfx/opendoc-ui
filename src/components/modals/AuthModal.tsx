@@ -3,7 +3,7 @@ import type {ActiveAuth, AuthCredential, OpenApiSpec, Operation} from '../../typ
 import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
-import {useEscClose} from '../../hooks/useEscClose';
+import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {beginOAuthAuthorization, oauthAuthorizationFlow} from '../../utils/runner/oauthFlow';
 import {
     createEmptyAuth,
@@ -41,7 +41,7 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
     const [oauthError, setOauthError] = useState<string | null>(null);
     const credentialsRef = useRef<Record<string, AuthCredential>>({});
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
-    useEscClose(isOpen, requestClose);
+    useModalShortcuts({isOpen, onClose: requestClose, onSubmit: () => save()});
     const currentOption = options.find(option => option.id === selectedRequirement) || options[0] || legacyOptions[0];
     const schemeIds = currentOption.schemeIds;
     const schemes = spec?.components?.securitySchemes || {};
