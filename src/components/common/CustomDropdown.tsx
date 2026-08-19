@@ -70,9 +70,15 @@ export default function CustomDropdown({
     };
     const selectIndex = (index: number) => {
         const option = options[index];
-        if (!option) return;
+        if (!option || option.disabled) return;
         onChange(option.value);
         close(true);
+    };
+    const nextEnabledIndex = (from: number, step: number): number => {
+        for (let index = from; index >= 0 && index < options.length; index += step) {
+            if (!options[index]?.disabled) return index;
+        }
+        return activeIndex;
     };
 
     useEffect(() => {
@@ -87,16 +93,16 @@ export default function CustomDropdown({
                 close(true);
             } else if (event.key === 'ArrowDown') {
                 event.preventDefault();
-                setActiveIndex(index => Math.min(options.length - 1, index + 1));
+                setActiveIndex(index => nextEnabledIndex(Math.min(options.length - 1, index + 1), 1));
             } else if (event.key === 'ArrowUp') {
                 event.preventDefault();
-                setActiveIndex(index => Math.max(0, index - 1));
+                setActiveIndex(index => nextEnabledIndex(Math.max(0, index - 1), -1));
             } else if (event.key === 'Home') {
                 event.preventDefault();
-                setActiveIndex(0);
+                setActiveIndex(nextEnabledIndex(0, 1));
             } else if (event.key === 'End') {
                 event.preventDefault();
-                setActiveIndex(Math.max(0, options.length - 1));
+                setActiveIndex(nextEnabledIndex(Math.max(0, options.length - 1), -1));
             } else if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 selectIndex(activeIndex);
@@ -182,14 +188,17 @@ export default function CustomDropdown({
                     id={`${listboxId}-option-${index}`}
                     role="option"
                     aria-selected={option.value === value}
+                    aria-disabled={option.disabled || undefined}
                     data-option-index={index}
-                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseEnter={() => {
+                        if (!option.disabled) setActiveIndex(index);
+                    }}
                     onMouseDown={event => event.preventDefault()}
                     onClick={event => {
                         event.stopPropagation();
                         selectIndex(index);
                     }}
-                    className={`px-3 py-2 cursor-pointer flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
+                    className={`px-3 py-2 flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${option.disabled ? 'cursor-not-allowed opacity-45 bg-transparent text-[var(--text-muted)]' : 'cursor-pointer'} ${!option.disabled && index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
                 >
                     <span
                         className={`size-2 shrink-0 rounded-full ${index === activeIndex ? 'bg-[var(--primary)]' : option.value === value ? 'bg-[var(--method-get)]' : 'bg-transparent'}`}

@@ -143,14 +143,21 @@ export default function NavigationSettingsSection({specKey}: NavigationSettingsP
                 />
                 <SettingRow
                     label="Sort by"
-                    description="Ordering applied inside every tag folder."
+                    description={
+                        config.displayRoutes
+                            ? 'Ordering applied inside every tag folder.'
+                            : 'Ordering applied inside every tag folder. Route is unavailable while endpoint routes are hidden.'
+                    }
                     icon="ph ph-sort-ascending"
                     control={
                         <div className="flex items-center gap-2">
                             <CustomDropdown
                                 value={config.sortBy}
                                 onChange={value => updateConfig({sortBy: value as SidebarSortBy})}
-                                options={SORT_BY_OPTIONS}
+                                options={SORT_BY_OPTIONS.map(option => ({
+                                    ...option,
+                                    disabled: option.value === 'route' && !config.displayRoutes,
+                                }))}
                                 className="min-w-[130px]"
                                 ariaLabel="Sort API navigation"
                             />
