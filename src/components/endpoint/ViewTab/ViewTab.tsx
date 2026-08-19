@@ -15,6 +15,7 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
+import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
@@ -536,31 +537,18 @@ export default function ViewTab({
     const resolvedRequestBody = resolveRequestBody(operation.requestBody, spec);
     const pathParams = mergedParameters.filter(p => p.in === 'path');
     const otherParams = mergedParameters.filter(p => p.in !== 'path');
-    const requestBodyContentEntries = Object.entries(resolvedRequestBody?.content || {}) as [string, any][];
-    const selectedRequestBodyContentType =
-        requestBodyContentType && resolvedRequestBody?.content?.[requestBodyContentType]
-            ? requestBodyContentType
-            : requestBodyContentEntries[0]?.[0] || '';
-    const selectedRequestBodyContent = selectedRequestBodyContentType
-        ? resolvedRequestBody?.content?.[selectedRequestBodyContentType]
-        : null;
-    const requestBodyVariantSchemas = (() => {
-        const schema = selectedRequestBodyContent?.schema;
-        const resolvedSchema = schema ? resolveReference(schema) || schema : null;
-        if (resolvedSchema?.oneOf?.length) return {kind: 'oneOf' as const, variants: resolvedSchema.oneOf};
-        if (resolvedSchema?.anyOf?.length) return {kind: 'anyOf' as const, variants: resolvedSchema.anyOf};
-        return null;
-    })();
-    const activeRequestBodyVariant = requestBodyVariantSchemas
-        ? requestBodyVariantSchemas.variants[
-              Math.min(requestBodyVariant, requestBodyVariantSchemas.variants.length - 1)
-          ]
-        : null;
-    const requestBodyMatrixSchema = activeRequestBodyVariant ?? selectedRequestBodyContent?.schema;
-    const requestBodyExample =
-        selectedRequestBodyContent?.example !== undefined
-            ? selectedRequestBodyContent.example
-            : selectedRequestBodyContent?.schema?.example;
+    const requestBodySource = resolveRequestBodySource(operation, spec, requestBodyContentType, requestBodyVariant);
+    const requestBodyContentEntries = requestBodySource.mediaTypes.map(
+        contentType => [contentType, resolvedRequestBody?.content?.[contentType]] as [string, any],
+    );
+    const selectedRequestBodyContentType = requestBodySource.mediaType;
+    const selectedRequestBodyContent = requestBodySource.content;
+    const requestBodyVariantSchemas =
+        requestBodySource.variants && requestBodySource.variants.kind !== 'allOf' ? requestBodySource.variants : null;
+    const requestBodyMatrixSchema = requestBodyVariantSchemas
+        ? requestBodySource.activeSchema
+        : requestBodySource.schema;
+    const requestBodyExample = requestBodySource.example;
     const isProtected = isOperationProtected(spec, operation);
     const isAuthorized = isOperationAuthenticated(spec, activeAuth, operation);
     const fullEndpointUrl = selectedServer
