@@ -26,6 +26,7 @@ import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';
 import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
 import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import {usePreferences} from '../../../contexts/PreferencesContext';
+import {modalRepresentationOf} from '../../../utils/storage/preferences';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -59,7 +60,7 @@ export default function ModalsStack({
         isJson?: boolean;
         lineMarkers?: CodeLineMarker[];
     } | null>(null);
-    const {preferences, setPreference} = usePreferences();
+    const {preferences, setModalRepresentation} = usePreferences();
     const [activeTabs, setActiveTabs] = useState<{
         [index: number]: 'table' | 'example' | 'enum';
     }>({});
@@ -367,8 +368,8 @@ export default function ModalsStack({
     const activeResolution = resolveReferenceResult(activeSchemaObj.schema, spec);
     const resolvedSchema = activeResolution.value || activeSchemaObj.schema;
     const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
-    const activeTab =
-        activeTabs[activeModalIndex] || (preferences.modalRepresentation === 'schema' ? 'table' : 'example');
+    const modalRepresentation = modalRepresentationOf(preferences, activeSchemaObj.schemaName);
+    const activeTab = activeTabs[activeModalIndex] || (modalRepresentation === 'schema' ? 'table' : 'example');
     const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
     const simulationLanguage =
         activeExampleEncoding === 'application/xml'
@@ -384,9 +385,10 @@ export default function ModalsStack({
             return;
         }
         // The modal keeps its own representation preference, apart from the
-        // endpoints, but shares it across every stacked schema.
+        // endpoints; its scope decides whether it belongs to this schema or to
+        // every schema.
         setActiveTabs({});
-        setPreference('modalRepresentation', tab === 'table' ? 'schema' : 'example');
+        setModalRepresentation(activeSchemaObj.schemaName, tab === 'table' ? 'schema' : 'example');
     };
     const properties = traverseSchemaProperties(activeSchemaObj.schema);
     const schemaIsRecursiveView = schemaIsRecursive(activeSchemaObj.schema, resolveReference);

@@ -5,14 +5,21 @@ import {
     readAppPreferences,
     resetAppPreferences,
     writeAppPreferences,
+    withEndpointRepresentation,
+    withModalRepresentation,
     type AppPreferences,
     type IndicatorIconKind,
+    type RepresentationMode,
 } from '../utils/storage/preferences';
 
 interface PreferencesContextValue {
     preferences: AppPreferences;
     setPreference: <Key extends keyof AppPreferences>(key: Key, value: AppPreferences[Key]) => void;
     toggleIndicatorIcon: (kind: IndicatorIconKind, enabled: boolean) => void;
+    /** Records a documentation schema/example choice under the active scope. */
+    setEndpointRepresentation: (endpointKey: string, mode: RepresentationMode) => void;
+    /** Records a schema modal schema/example choice under the active scope. */
+    setModalRepresentation: (schemaName: string, mode: RepresentationMode) => void;
     resetPreferences: () => void;
 }
 
@@ -20,6 +27,8 @@ const PreferencesContext = createContext<PreferencesContextValue>({
     preferences: DEFAULT_APP_PREFERENCES,
     setPreference: () => {},
     toggleIndicatorIcon: () => {},
+    setEndpointRepresentation: () => {},
+    setModalRepresentation: () => {},
     resetPreferences: () => {},
 });
 
@@ -54,12 +63,40 @@ export function PreferencesProvider({children}: {children: ReactNode}) {
             return next;
         });
     }, []);
+    const setEndpointRepresentation = useCallback((endpointKey: string, mode: RepresentationMode) => {
+        setPreferences(current => {
+            const next = withEndpointRepresentation(current, endpointKey, mode);
+            writeAppPreferences(next);
+            return next;
+        });
+    }, []);
+    const setModalRepresentation = useCallback((schemaName: string, mode: RepresentationMode) => {
+        setPreferences(current => {
+            const next = withModalRepresentation(current, schemaName, mode);
+            writeAppPreferences(next);
+            return next;
+        });
+    }, []);
     const resetPreferences = useCallback(() => {
         setPreferences(resetAppPreferences());
     }, []);
     const value = useMemo(
-        () => ({preferences, setPreference, toggleIndicatorIcon, resetPreferences}),
-        [preferences, setPreference, toggleIndicatorIcon, resetPreferences],
+        () => ({
+            preferences,
+            setPreference,
+            toggleIndicatorIcon,
+            setEndpointRepresentation,
+            setModalRepresentation,
+            resetPreferences,
+        }),
+        [
+            preferences,
+            setPreference,
+            toggleIndicatorIcon,
+            setEndpointRepresentation,
+            setModalRepresentation,
+            resetPreferences,
+        ],
     );
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 }
