@@ -79,18 +79,17 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
         setDraft(fromJsonText(json, language));
     };
     const state = isEmpty ? 'idle' : error ? 'invalid' : 'valid';
+    // A value that does not parse is a warning: the Runner still sends it.
+    const stateColor =
+        state === 'valid' ? 'var(--method-get)' : state === 'invalid' ? 'var(--method-put)' : 'var(--border)';
     return (
         <div
             className={clsx(
                 'rounded-lg border transition-colors bg-[var(--background)]',
-                // The border keeps saying what the indicator says, so focus
-                // never contradicts the validation state.
-                state === 'invalid'
-                    ? 'border-[var(--method-delete)]/60 focus-within:border-[var(--method-delete)]'
-                    : state === 'valid'
-                      ? 'border-[var(--method-get)]/50 focus-within:border-[var(--method-get)]'
-                      : 'border-[var(--border)] focus-within:border-[var(--primary)]',
+                state === 'idle' && 'focus-within:border-[var(--primary)]',
             )}
+            // Inline, so focus can never contradict what the indicator says.
+            style={state === 'idle' ? undefined : {borderColor: stateColor}}
         >
             <div className="flex items-center gap-1.5 border-b px-1.5 py-1 border-[var(--border)]">
                 <CustomDropdown
@@ -124,13 +123,14 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
                     className="w-full resize-y bg-transparent py-2 ps-3 pe-8 font-mono text-xs text-[var(--text-heading)] outline-none"
                 />
                 {state !== 'idle' && (
-                    <Tip content={error || 'The value parses cleanly'}>
-                        <span
-                            className={clsx(
-                                'absolute end-2 top-2 cursor-help text-[13px]',
-                                state === 'invalid' ? 'text-[var(--method-delete)]' : 'text-[var(--method-get)]',
-                            )}
-                        >
+                    <Tip
+                        content={error || 'The value parses cleanly'}
+                        // Inline, because the tooltip wrapper carries its own
+                        // `relative` class and class order would decide the winner.
+                        wrapperStyle={{position: 'absolute', insetInlineEnd: 4, top: 4}}
+                        wrapperClassName="z-[1] cursor-help p-1 leading-none"
+                    >
+                        <span className="text-[13px] leading-none" style={{color: stateColor}}>
                             <i
                                 className={
                                     state === 'invalid' ? 'ph-fill ph-warning-circle' : 'ph-fill ph-check-circle'
@@ -140,7 +140,7 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
                     </Tip>
                 )}
             </div>
-            {error && <p className="px-3 pb-2 text-[10px] text-[var(--method-delete)]">{error}</p>}
+            {error && <p className="px-3 pb-2 text-[10px] text-[var(--method-put)]">{error}</p>}
         </div>
     );
 }

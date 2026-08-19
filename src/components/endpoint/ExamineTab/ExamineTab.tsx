@@ -210,11 +210,7 @@ export default function ExamineTab({
         merged.forEach((param: any) => {
             const schema = param.schema ?? param;
             const isArray = schema?.type === 'array' || param.type === 'array';
-            if (isArray && (schema.items?.enum || param.items?.enum)) {
-                const values = schema.items?.enum || param.items?.enum;
-                defaultParams[parameterStateKey(param.in, param.name)] = [String(values[0] ?? '')];
-                return;
-            }
+            const itemEnum = schema.items?.enum || param.items?.enum;
             const firstNamedExample = Object.values(param.examples || {})[0] as any;
             const example =
                 param.example ??
@@ -223,12 +219,30 @@ export default function ExamineTab({
                 firstNamedExample?.serializedValue ??
                 schema?.example ??
                 schema?.default;
+            const key = parameterStateKey(param.in, param.name);
+            if (isArray) {
+                // Array parameters hold a list of items, never a JSON string:
+                // seeding them with JSON text made the editor split the text on
+                // its commas and send it back as one mangled value.
+                const seed =
+                    example === undefined
+                        ? itemEnum
+                            ? [itemEnum[0]]
+                            : []
+                        : Array.isArray(example)
+                          ? example
+                          : [example];
+                defaultParams[key] = seed.map((item: unknown) =>
+                    item !== null && typeof item === 'object' ? JSON.stringify(item) : String(item ?? ''),
+                );
+                return;
+            }
             if (example === undefined) {
-                defaultParams[parameterStateKey(param.in, param.name)] = '';
+                defaultParams[key] = '';
             } else if (typeof example === 'object') {
-                defaultParams[parameterStateKey(param.in, param.name)] = JSON.stringify(example);
+                defaultParams[key] = JSON.stringify(example);
             } else {
-                defaultParams[parameterStateKey(param.in, param.name)] = String(example);
+                defaultParams[key] = String(example);
             }
         });
         setParams(defaultParams);

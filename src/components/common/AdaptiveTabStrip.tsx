@@ -76,11 +76,25 @@ export default function AdaptiveTabStrip({
         Array.from(rail.children).forEach(child => observer.observe(child));
         return () => observer.disconnect();
     }, [measureHidden]);
+    const scrollTabIntoRail = useCallback((id: string, behavior: ScrollBehavior = 'auto') => {
+        const rail = railRef.current;
+        const tab = rail ? tabRefs.current.get(id) : null;
+        if (!rail || !tab) return;
+        // Scroll the rail itself. scrollIntoView would walk up and scroll the
+        // page and the endpoint pane along with it.
+        const left = tab.offsetLeft;
+        const right = left + tab.offsetWidth;
+        const viewStart = rail.scrollLeft;
+        const viewEnd = viewStart + rail.clientWidth;
+        if (left >= viewStart && right <= viewEnd) return;
+        const target = left < viewStart ? left - 8 : right - rail.clientWidth + 8;
+        rail.scrollTo({left: Math.max(0, target), behavior});
+    }, []);
     useEffect(() => {
         // Keep the selected branch reachable without hunting for it.
-        tabRefs.current.get(activeId)?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+        scrollTabIntoRail(activeId);
         measureHidden();
-    }, [activeId, measureHidden]);
+    }, [activeId, measureHidden, scrollTabIntoRail]);
     const updateMenuPosition = useCallback((optionCount: number) => {
         const rect = buttonRef.current?.getBoundingClientRect();
         if (!rect || typeof window === 'undefined') return;
@@ -128,8 +142,7 @@ export default function AdaptiveTabStrip({
     const reveal = (id: string) => {
         onSelect(id);
         setMenuOpen(false);
-        const tab = tabRefs.current.get(id);
-        tab?.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+        scrollTabIntoRail(id, 'smooth');
     };
     return (
         <div className="min-w-0 space-y-1.5">

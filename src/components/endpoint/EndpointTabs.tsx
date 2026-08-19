@@ -86,11 +86,19 @@ export default function EndpointTabs({
         [onCloseTab],
     );
     const scrollToActive = useCallback(() => {
-        if (!scrollRef.current || !activeTabId) return;
-        const activeEl = scrollRef.current.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement;
-        if (activeEl) {
-            activeEl.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
-        }
+        const strip = scrollRef.current;
+        if (!strip || !activeTabId) return;
+        const activeEl = strip.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement | null;
+        if (!activeEl) return;
+        // Scroll the tab strip itself: scrollIntoView would walk up and drag
+        // the workspace and the page along with it.
+        const left = activeEl.offsetLeft;
+        const right = left + activeEl.offsetWidth;
+        const viewStart = strip.scrollLeft;
+        const viewEnd = viewStart + strip.clientWidth;
+        if (left >= viewStart && right <= viewEnd) return;
+        const target = left < viewStart ? left - 8 : right - strip.clientWidth + 8;
+        strip.scrollTo({left: Math.max(0, target), behavior: 'smooth'});
     }, [activeTabId]);
     useEffect(() => {
         scrollToActive();

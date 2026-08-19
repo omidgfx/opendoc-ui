@@ -52,35 +52,35 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
             return {status: 'broken', message: `The pattern ${pattern} is not a valid regular expression.`};
         }
     }, [pattern, stringValue]);
+    // A value that does not match a pattern is a warning, not an error: the
+    // Runner still lets it through for negative testing.
+    const patternColor =
+        patternState.status === 'match'
+            ? 'var(--method-get)'
+            : patternState.status === 'idle'
+              ? 'var(--border)'
+              : 'var(--method-put)';
     const patternInputClassName = clsx(
-        'w-full rounded-lg border bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-heading)] outline-none transition-colors',
-        pattern && 'pe-8',
-        patternState.status === 'mismatch'
-            ? 'border-[var(--method-delete)]/60 focus:border-[var(--method-delete)]'
-            : patternState.status === 'match'
-              ? 'border-[var(--method-get)]/50 focus:border-[var(--method-get)]'
-              : 'border-[var(--border)] focus:border-[var(--primary)]',
+        'w-full rounded-lg border bg-[var(--background)] py-2 ps-3 text-xs text-[var(--text-heading)] outline-none transition-colors',
+        pattern ? 'pe-9' : 'pe-3',
+        patternState.status === 'idle' && 'focus:border-[var(--primary)]',
     );
+    // Inline, so the focus colour of the base class can never win over the
+    // state the indicator is showing.
+    const patternInputStyle = patternState.status === 'idle' ? undefined : {borderColor: patternColor};
     const patternIndicator =
         patternState.status === 'idle' || !pattern ? null : (
-            <Tip content={patternState.message}>
-                <span
-                    className={clsx(
-                        'pointer-events-auto absolute end-2 top-1/2 -translate-y-1/2 cursor-help text-[13px]',
-                        patternState.status === 'match'
-                            ? 'text-[var(--method-get)]'
-                            : patternState.status === 'mismatch'
-                              ? 'text-[var(--method-delete)]'
-                              : 'text-[var(--method-put)]',
-                    )}
-                >
+            <Tip
+                content={patternState.message}
+                // Inline, because the tooltip wrapper carries its own
+                // `relative` class and class order would decide the winner.
+                wrapperStyle={{position: 'absolute', insetInlineEnd: 4, top: '50%', transform: 'translateY(-50%)'}}
+                wrapperClassName="z-[1] cursor-help p-1 leading-none"
+            >
+                <span className="text-[13px] leading-none" style={{color: patternColor}}>
                     <i
                         className={
-                            patternState.status === 'match'
-                                ? 'ph-fill ph-check-circle'
-                                : patternState.status === 'mismatch'
-                                  ? 'ph-fill ph-warning-circle'
-                                  : 'ph-fill ph-warning'
+                            patternState.status === 'match' ? 'ph-fill ph-check-circle' : 'ph-fill ph-warning-circle'
                         }
                     />
                 </span>
@@ -88,14 +88,26 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
         );
     const documentedIndex = enumValues?.findIndex((item: any) => enumValueText(item) === stringValue) ?? -1;
     const customValueActive = manualMode || (stringValue !== '' && documentedIndex < 0 && !!enumValues);
+    const listFromText = (text: string): string[] => {
+        const trimmed = text.trim();
+        // A saved array may arrive as JSON text; splitting that on commas would
+        // tear the document apart, so parse it first.
+        if (trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed.map(enumValueText);
+            } catch {}
+        }
+        return trimmed
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean);
+    };
     const selectedValues: string[] = Array.isArray(value)
         ? value.map(enumValueText)
         : value === undefined || value === null || value === ''
           ? []
-          : String(value)
-                .split(',')
-                .map(item => item.trim())
-                .filter(Boolean);
+          : listFromText(String(value));
     const parameterIdentity = `${String(param.in || '')}:${String(param.name || '')}:${JSON.stringify(
         schema.enum ?? schema.const ?? schema.type ?? '',
     )}`;
@@ -316,6 +328,7 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
                             value={stringValue}
                             onChange={event => onChange(event.target.value)}
                             className={patternInputClassName}
+                            style={patternInputStyle}
                             placeholder="Enter any value for a permissive test"
                         />
                         {patternIndicator}
@@ -354,6 +367,7 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
                 value={stringValue}
                 onChange={event => onChange(event.target.value)}
                 className={patternInputClassName}
+                style={patternInputStyle}
                 placeholder={
                     example !== undefined
                         ? enumValueText(example)
