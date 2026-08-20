@@ -18,7 +18,7 @@ const PARAMETER_TABLE_OPTIONS: {value: ParameterTableLayout; label: string; icon
     {value: 'unified', label: 'Unified', icon: 'ph ph-table'},
 ];
 const NARROW_TABLE_OPTIONS: {value: NarrowTableLayout; label: string; icon: string}[] = [
-    {value: 'cards', label: 'Cards', icon: 'ph ph-cards'},
+    {value: 'cards', label: 'Cards', icon: 'ph ph-rows'},
     {value: 'table', label: 'Table', icon: 'ph ph-table'},
 ];
 const MODAL_SCOPE_OPTIONS: {value: ModalRepresentationScope; label: string; icon: string}[] = [
@@ -85,7 +85,7 @@ export default function GeneralSettingsSection() {
                 />
                 <SettingRow
                     label="Narrow panes"
-                    description="On a phone, or in a narrowed split pane, a parameter table can become one card per row instead of a table that scrolls sideways."
+                    description="How every table reads once the pane is too narrow for its columns: parameters, schema properties, response headers and the compatibility matrix. Cards give each row a block of its own, Table keeps the columns and scrolls sideways."
                     icon="ph ph-device-mobile"
                     control={
                         <SettingChoice
