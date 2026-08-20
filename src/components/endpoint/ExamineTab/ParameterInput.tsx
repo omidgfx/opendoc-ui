@@ -340,7 +340,10 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
     }
 
     const example =
-        param.example ?? exampleValueOf(Object.values(param.examples || {})[0], spec) ?? schema.example ?? schema.default;
+        param.example ??
+        exampleValueOf(Object.values(param.examples || {})[0], spec) ??
+        schema.example ??
+        schema.default;
     const inputMode = type === 'integer' ? 'numeric' : type === 'number' ? 'decimal' : undefined;
     if (type === 'object') {
         return (

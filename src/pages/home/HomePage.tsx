@@ -60,8 +60,7 @@ export default function HomeView({
     }
     const {title, description, version} = spec.info || {title: 'OpenDoc API', description: '', version: '1.0.0'};
     const specLogo = (spec.info as any)?.['x-logo'] as
-        | {url?: string; altText?: string; href?: string; backgroundColor?: string}
-        | undefined;
+        {url?: string; altText?: string; href?: string; backgroundColor?: string} | undefined;
     const tagGroups = Array.isArray((spec as any)['x-tagGroups']) ? ((spec as any)['x-tagGroups'] as any[]) : [];
     const generatedAt = typeof (spec as any)['x-generated-at'] === 'string' ? (spec as any)['x-generated-at'] : '';
     const complexityNotes =
@@ -71,7 +70,9 @@ export default function HomeView({
     const specMetaFacts = [
         spec.info.summary ? {label: 'Summary', value: spec.info.summary} : null,
         spec.jsonSchemaDialect ? {label: 'JSON Schema dialect', value: spec.jsonSchemaDialect} : null,
-        spec.info.termsOfService ? {label: 'Terms of service', value: spec.info.termsOfService, href: spec.info.termsOfService} : null,
+        spec.info.termsOfService
+            ? {label: 'Terms of service', value: spec.info.termsOfService, href: spec.info.termsOfService}
+            : null,
         generatedAt ? {label: 'Generated at', value: generatedAt} : null,
     ].filter(Boolean) as Array<{label: string; value: string; href?: string}>;
     const getEndpointsList = () => {
@@ -231,7 +232,12 @@ export default function HomeView({
                                         }
                                     >
                                         {specLogo.href ? (
-                                            <a href={specLogo.href} target="_blank" rel="noopener noreferrer" className="flex h-full w-full items-center justify-center">
+                                            <a
+                                                href={specLogo.href}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex h-full w-full items-center justify-center"
+                                            >
                                                 <img
                                                     src={specLogo.url}
                                                     alt={specLogo.altText || `${title} logo`}
@@ -286,7 +292,9 @@ export default function HomeView({
                                             {fact.value}
                                         </a>
                                     ) : (
-                                        <code className="truncate font-mono text-[var(--text-heading)]">{fact.value}</code>
+                                        <code className="truncate font-mono text-[var(--text-heading)]">
+                                            {fact.value}
+                                        </code>
                                     )}
                                 </span>
                             ))}
@@ -429,7 +437,10 @@ export default function HomeView({
                                                 <div className="mt-2 space-y-1 text-[var(--text)]">
                                                     {spec.info.contact.name && <div>{spec.info.contact.name}</div>}
                                                     {spec.info.contact.email && (
-                                                        <a href={`mailto:${spec.info.contact.email}`} className="text-[var(--primary)] hover:underline">
+                                                        <a
+                                                            href={`mailto:${spec.info.contact.email}`}
+                                                            className="text-[var(--primary)] hover:underline"
+                                                        >
                                                             {spec.info.contact.email}
                                                         </a>
                                                     )}
@@ -477,7 +488,9 @@ export default function HomeView({
                             {tagGroups.length > 0 && (
                                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
                                     <div className="flex items-center justify-between gap-3">
-                                        <h3 className="text-xs font-extrabold text-[var(--text-heading)]">Tag groups</h3>
+                                        <h3 className="text-xs font-extrabold text-[var(--text-heading)]">
+                                            Tag groups
+                                        </h3>
                                         <span className="text-[10px] font-mono text-[var(--text-muted)]">
                                             x-tagGroups
                                         </span>
@@ -492,14 +505,16 @@ export default function HomeView({
                                                     {group.name || `Group ${index + 1}`}
                                                 </div>
                                                 <div className="mt-2 flex flex-wrap gap-1.5">
-                                                    {(Array.isArray(group.tags) ? group.tags : []).map((tag: string) => (
-                                                        <span
-                                                            key={`${group.name}:${tag}`}
-                                                            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] text-[var(--text)]"
-                                                        >
-                                                            {tag}
-                                                        </span>
-                                                    ))}
+                                                    {(Array.isArray(group.tags) ? group.tags : []).map(
+                                                        (tag: string) => (
+                                                            <span
+                                                                key={`${group.name}:${tag}`}
+                                                                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] text-[var(--text)]"
+                                                            >
+                                                                {tag}
+                                                            </span>
+                                                        ),
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -510,7 +525,9 @@ export default function HomeView({
                         {complexityNotes && (
                             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
                                 <div className="flex items-center justify-between gap-3">
-                                    <h3 className="text-xs font-extrabold text-[var(--text-heading)]">Complexity notes</h3>
+                                    <h3 className="text-xs font-extrabold text-[var(--text-heading)]">
+                                        Complexity notes
+                                    </h3>
                                     <span className="text-[10px] font-mono text-[var(--text-muted)]">
                                         x-complexity-notes
                                     </span>

@@ -95,7 +95,10 @@ export default function ResponseLinksPanel({links, spec}: ResponseLinksPanelProp
                                             </thead>
                                             <tbody>
                                                 {parameterEntries.map(([parameterName, value]) => (
-                                                    <tr key={parameterName} className="border-b border-[var(--border)]/70 last:border-b-0">
+                                                    <tr
+                                                        key={parameterName}
+                                                        className="border-b border-[var(--border)]/70 last:border-b-0"
+                                                    >
                                                         <td className="px-2 py-1.5 font-mono text-[10px] font-bold text-[var(--text-heading)]">
                                                             {parameterName}
                                                         </td>

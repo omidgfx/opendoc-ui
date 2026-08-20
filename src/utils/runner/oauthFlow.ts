@@ -48,7 +48,8 @@ export const oauthAuthorizationFlow = (scheme: any) => {
 };
 
 export const supportsInteractiveAuthorization = (scheme: any): boolean =>
-    !!oauthAuthorizationFlow(scheme) || (scheme?.type === 'openIdConnect' && typeof scheme?.openIdConnectUrl === 'string');
+    !!oauthAuthorizationFlow(scheme) ||
+    (scheme?.type === 'openIdConnect' && typeof scheme?.openIdConnectUrl === 'string');
 
 const openIdScopes = (credential: AuthCredential): string[] => {
     const scopes = credential.scopes?.length ? credential.scopes : ['openid'];
