@@ -56,6 +56,8 @@ export const schemaVariantLabel = (
     const nonNullTypes = types.filter(type => type !== 'null');
     if (nonNullTypes.length === 1 && nonNullTypes[0] === 'object' && resolved?.properties)
         return `object (${Object.keys(resolved.properties).length} props)`;
+    if (nonNullTypes.length === 1 && nonNullTypes[0] === 'array' && Array.isArray(resolved?.prefixItems))
+        return `array (${resolved.prefixItems.length} tuple slot${resolved.prefixItems.length === 1 ? '' : 's'})`;
     if (nonNullTypes.length > 0) return nonNullTypes.join(' | ');
     if (types.includes('null')) return 'null';
     return `Variant ${index + 1}`;

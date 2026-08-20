@@ -405,8 +405,14 @@ export default function Field({
     }
     if (type === 'array') {
         const items = Array.isArray(value) ? value : [];
-        const itemSchema = current.items || {};
+        const tupleSchemas = Array.isArray(current.prefixItems) ? current.prefixItems : [];
+        const hasTuple = tupleSchemas.length > 0;
+        const additionalItemSchema = current.items === false ? null : current.items || {};
         const maxItems = typeof current.maxItems === 'number' ? current.maxItems : Infinity;
+        const visibleCount = hasTuple ? Math.max(items.length, tupleSchemas.length) : items.length;
+        const typeLabel = hasTuple
+            ? `tuple<${tupleSchemas.length}${additionalItemSchema ? '+' : ''}>`
+            : `array${additionalItemSchema?.type ? `<${additionalItemSchema.type}>` : ''}`;
         const itemActions = (index: number) => (
             <>
                 <Tip content="Move item up">
@@ -466,38 +472,59 @@ export default function Field({
                     resolvedSchema={current}
                     spec={spec}
                     onOpenSchema={onOpenSchema}
-                    typeLabel={`array${itemSchema.type ? `<${itemSchema.type}>` : ''}`}
+                    typeLabel={typeLabel}
                     actions={actions}
                 />
+                {hasTuple && (
+                    <p className="mt-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-2 text-[9px] leading-relaxed text-[var(--text-muted)]">
+                        This array uses tuple validation. The first {tupleSchemas.length} slot
+                        {tupleSchemas.length === 1 ? '' : 's'} have fixed schemas.
+                        {additionalItemSchema
+                            ? ' Additional items use the trailing item schema.'
+                            : ' Additional items are not declared by the schema.'}
+                    </p>
+                )}
                 <GuideBranch focusedPath={focusedPath}>
-                    {items.length === 0 && (
+                    {visibleCount === 0 && (
                         <p className={clsx('py-2 text-[10px] italic', mutedLineClass)}>No items. Add one to begin.</p>
                     )}
-                    {items.map((item, index) => (
-                        <Field
-                            key={index}
-                            schema={itemSchema}
-                            spec={spec}
-                            value={item}
-                            label={`Item ${index + 1}`}
-                            path={[...path, index]}
-                            depth={depth + 1}
-                            ancestorRefs={nextAncestorRefs}
-                            onChange={onChange}
-                            setPatternToTest={setPatternToTest}
-                            selectedFiles={selectedFiles}
-                            setSelectedFiles={setSelectedFiles}
-                            onOpenSchema={onOpenSchema}
-                            focusedPath={focusedPath}
-                            setFocusedPath={setFocusedPath}
-                            actions={itemActions(index)}
-                        />
-                    ))}
+                    {Array.from({length: visibleCount}).map((_, index) => {
+                        const schemaForIndex =
+                            index < tupleSchemas.length ? tupleSchemas[index] : additionalItemSchema || {};
+                        const itemValue =
+                            index < items.length
+                                ? items[index]
+                                : defaultBodyValue(schemaForIndex, spec, depth + 1, new Set(nextAncestorRefs));
+                        const tupleLabel = index < tupleSchemas.length ? `Item ${index + 1} · fixed slot` : `Item ${index + 1}`;
+                        return (
+                            <Field
+                                key={index}
+                                schema={schemaForIndex}
+                                spec={spec}
+                                value={itemValue}
+                                label={tupleLabel}
+                                path={[...path, index]}
+                                depth={depth + 1}
+                                ancestorRefs={nextAncestorRefs}
+                                onChange={onChange}
+                                setPatternToTest={setPatternToTest}
+                                selectedFiles={selectedFiles}
+                                setSelectedFiles={setSelectedFiles}
+                                onOpenSchema={onOpenSchema}
+                                focusedPath={focusedPath}
+                                setFocusedPath={setFocusedPath}
+                                actions={index < items.length ? itemActions(index) : undefined}
+                            />
+                        );
+                    })}
                     <div className="py-2">
                         <button
                             type="button"
-                            disabled={items.length >= maxItems}
-                            onClick={() => onChange(path, [...items, defaultBodyValue(itemSchema, spec)])}
+                            disabled={!additionalItemSchema || items.length >= maxItems}
+                            onClick={() =>
+                                additionalItemSchema &&
+                                onChange(path, [...items, defaultBodyValue(additionalItemSchema, spec)])
+                            }
                             className="rounded-lg border border-[var(--primary)]/30 px-3 py-2 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                         >
                             <i className="ph ph-plus me-1" />
