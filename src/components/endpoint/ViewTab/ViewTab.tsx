@@ -576,6 +576,7 @@ export default function ViewTab({
     // branches are constraints the reader still wants to inspect one by one.
     const requestBodyCombinator = detectSchemaCombinator(
         requestBodySource.schema ? resolveReference(requestBodySource.schema) || requestBodySource.schema : null,
+        resolveReference,
     );
     const requestBodyBranchIndex = requestBodyCombinator
         ? Math.min(requestBodyVariant, requestBodyCombinator.branches.length - 1)

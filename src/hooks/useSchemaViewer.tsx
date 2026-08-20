@@ -3,7 +3,7 @@ import {useState} from 'react';
 import type {OpenApiSpec} from '@/src/types';
 import AdaptiveTabStrip from '@/src/components/common/AdaptiveTabStrip';
 import CombinatorLabel from '@/src/components/common/CombinatorLabel';
-import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import {detectSchemaCombinator, mergeAllOfBranches} from '@/src/utils/schema/combinators';
 import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
 import {Tip} from '@/src/components/common/Tooltip';
 
@@ -181,7 +181,8 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
         if (schema.$ref) return resolveReference(schema) || schema;
         if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) return schema.oneOf[0];
         if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) return schema.anyOf[0];
-        if (Array.isArray(schema.allOf) && schema.allOf.length > 0) return schema.allOf[0];
+        if (Array.isArray(schema.allOf) && schema.allOf.length > 0)
+            return mergeAllOfBranches(schema.allOf, resolveReference) || schema.allOf[0];
         if (schema.type === 'array' && schema.items) return getDefaultViewerSchema(schema.items);
         return schema;
     };
@@ -255,7 +256,7 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
                 </span>
             );
         }
-        const combinator = detectSchemaCombinator(prop);
+        const combinator = detectSchemaCombinator(prop, resolveReference);
         if (combinator) {
             const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             const activeIndex = Math.max(

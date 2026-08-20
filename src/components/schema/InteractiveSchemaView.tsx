@@ -3,6 +3,7 @@ import SchemaPropertiesTable from './SchemaPropertiesTable';
 import CodeViewer from '../common/CodeViewer';
 import Markdown from '../common/Markdown';
 import {flattenSchemaProperties, RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
+import {mergeAllOfBranches, UNIFIED_BRANCH_TITLE} from '../../utils/schema/combinators';
 
 interface InteractiveSchemaViewProps {
     schema: any;
@@ -53,6 +54,9 @@ export default function InteractiveSchemaView({
     const hasAllOf = resolved.allOf && Array.isArray(resolved.allOf) && resolved.allOf.length > 0;
     const combinatorType = hasOneOf ? 'oneOf' : hasAnyOf ? 'anyOf' : hasAllOf ? 'allOf' : null;
     const subSchemas = combinatorType ? (resolved[combinatorType] as any[]) : [];
+    // allOf applies every branch at once, so the merged object leads: it is the
+    // shape a payload really has, and the parts stay listed behind it.
+    const unifiedAllOf = hasAllOf ? mergeAllOfBranches(subSchemas, resolveReference) : null;
     const getSubSchemaLabel = (sub: any, idx: number): string => {
         if (!sub) return `Option ${idx + 1}`;
         if (sub.$ref) {
@@ -219,6 +223,16 @@ export default function InteractiveSchemaView({
                         </p>
                     </div>
                 </div>
+                {unifiedAllOf && (
+                    <section className="rounded-xl border border-[var(--primary)]/30 bg-[var(--surface)] p-4">
+                        <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--primary)]">
+                                {UNIFIED_BRANCH_TITLE} · every constraint merged
+                            </span>
+                        </div>
+                        {renderStandardSchema(unifiedAllOf)}
+                    </section>
+                )}
                 {subSchemas.map((sub, index) => (
                     <section key={index} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
                         <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
