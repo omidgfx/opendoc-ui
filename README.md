@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.2.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.2.1-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -21,7 +21,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.2.0](#version-020)
+- [Version 0.2.1](#version-021)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -91,29 +91,17 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.2.0
+## Version 0.2.1
 
-This release answers a full review of the documentation, Runner, and mobile surfaces:
+A follow-up to 0.2.0, from reading a real specification in the app:
 
-- a **Settings page** with its own tab and deep links (`/#/<spec>/settings#<section>`) for General,
-  Appearance, Navigation, Code viewer, and AI, replacing the theme selector modal with an in-page
-  theme gallery;
-- the schema/example switch became a **scope** choice: per endpoint or globally, per schema or
-  globally for the modal;
-- **serialization awareness** for parameters — `style`/`explode` descriptors, a serializer
-  playground that hands its result to the Runner, a pattern tester with live indicators, a
-  structured editor for object parameters, and a live final URL;
-- correct array parameters: `tagsCompact` sends `one,two,three` instead of its own JSON text, and
-  exploded arrays send every value;
-- the parameter matrix split per location (path, query, header, cookie), polymorphism selectors as a
-  scrolling rail with an overflow menu, and combinator labels on responses too;
-- a **mobile response navigator** — a pinned pill that follows the response you are reading, plus a
-  bottom sheet to jump between responses;
-- cards instead of sideways-scrolling tables once a pane runs out of room, a container-aware split
-  view, and a notes panel that floats over the pane and slides like the sidebar;
-- stacking and gesture fixes: the code gutter, the pinned navigator, and the sidebar edge swipe no
-  longer fight the app chrome;
-- the package and lockfile versions are bumped to `0.2.0`.
+- the pattern tester, the serializer playground and the endpoint info modal no longer open **under**
+  the topbar or the mobile drawer — a dialog opened from inside the endpoint workspace was trapped in
+  that workspace's stacking layer and now renders at the end of the document;
+- an `allOf` request body is read as the object it assembles: the matrix shows that object, with the
+  required list declared beside the keyword, under a note naming the parts it came from — instead of
+  offering those parts as if they were alternatives;
+- a composed part that declares nothing is marked as empty instead of opening an empty view.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 

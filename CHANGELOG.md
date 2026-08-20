@@ -3,6 +3,19 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.2.1] — 2026-08-20
+
+Dialogs opened from inside the endpoint workspace, and the allOf request body.
+
+- fixes the pattern tester, the serializer playground and the endpoint info modal being drawn under
+  the topbar and under the mobile drawer: a dialog opened from inside the workspace was trapped in
+  the workspace's own stacking layer, and now renders through a portal at the end of the document;
+- reads an `allOf` request body as the object it assembles — the matrix shows that object with the
+  required list declared beside the keyword, above a note naming the parts it was assembled from —
+  instead of offering the parts as if they were alternatives, and marks a part that declares nothing
+  as empty instead of opening an empty view for it;
+- bumps the package, lockfile, README, and release metadata to `0.2.1`.
+
 ## [0.2.0] — 2026-08-20
 
 Endpoint notes review: a settings page, serialization awareness, and a responsive documentation and
@@ -37,9 +50,6 @@ Runner surface. Large enough in scope to take a minor version.
 - fixes several stacking and gesture defects: the code viewer gutter painting over pinned elements,
   the endpoint pane competing with the app chrome, and the sidebar edge swipe opening the drawer
   behind an open modal, sheet, or overlay;
-- reads an `allOf` request body as the object it assembles — the matrix shows that object with the
-  required list declared beside the keyword, above a note naming the parts it came from — instead of
-  offering the parts as if they were alternatives;
 - docks the endpoint notes panel beside the documentation on desktop, folds the colour mode into a
   single cycling button on a narrow topbar where the mark stands without the wordmark, and leads an
   `allOf` rail with the object it unifies, selected by default;
