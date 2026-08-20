@@ -39,6 +39,7 @@ export default function EndpointTabs({
     assistantUnread = false,
 }: EndpointTabsProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const draggedElementRef = useRef<HTMLElement | null>(null);
     const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
     const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -107,14 +108,17 @@ export default function EndpointTabs({
         setDraggedIndex(index);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', String(index));
-        setTimeout(() => {
-            const el = e.currentTarget as HTMLElement;
-            el.classList.add('dragging');
-        }, 0);
-    }, []);
-    const handleDragEnd = useCallback((e: React.DragEvent) => {
+        // React clears currentTarget once the handler returns, so the element
+        // has to be kept here: reading it a tick later crashed the app.
         const el = e.currentTarget as HTMLElement;
-        el.classList.remove('dragging');
+        draggedElementRef.current = el;
+        // The class lands one tick later so the browser still takes its drag
+        // image from the untouched tab.
+        setTimeout(() => el.classList.add('dragging'), 0);
+    }, []);
+    const handleDragEnd = useCallback(() => {
+        draggedElementRef.current?.classList.remove('dragging');
+        draggedElementRef.current = null;
         setDraggedIndex(null);
         setDropTarget(null);
     }, []);
@@ -154,10 +158,9 @@ export default function EndpointTabs({
         (e: React.DragEvent, toIndex: number) => {
             e.preventDefault();
             commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), toIndex);
-            setDraggedIndex(null);
-            setDropTarget(null);
+            handleDragEnd();
         },
-        [commitDrop],
+        [commitDrop, handleDragEnd],
     );
     const handleTrailingDragOver = useCallback(
         (e: React.DragEvent) => {
@@ -173,10 +176,9 @@ export default function EndpointTabs({
         (e: React.DragEvent) => {
             e.preventDefault();
             commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), tabs.length - 1);
-            setDraggedIndex(null);
-            setDropTarget(null);
+            handleDragEnd();
         },
-        [commitDrop, tabs.length],
+        [commitDrop, handleDragEnd, tabs.length],
     );
     if (tabs.length === 0) return null;
     const tabIndex = (id: string) => tabs.findIndex(t => t.id === id);
