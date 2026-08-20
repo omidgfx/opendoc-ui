@@ -1,6 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import {usePreferences} from '../../contexts/PreferencesContext';
+import CardOrTable, {CARD_LAYOUT_WIDTH} from '../common/CardOrTable';
 import DataCard, {RequiredBadge} from '../common/DataCard';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
@@ -385,80 +386,88 @@ export default function SchemaPropertiesTable({
             {Object.keys(properties).length > 0 && (
                 <>
                     {/* One card per property when the pane has no room for columns. */}
-                    <div className={clsx('@2xl:hidden', !cardLayout && 'hidden')}>
-                        {inspectButton && (
-                            <div className="flex justify-end border-b px-3 py-2 border-[var(--border)] bg-[var(--surface-hover)]">
-                                {inspectButton}
+                    <CardOrTable
+                        preferCards={cardLayout}
+                        maxWidth={CARD_LAYOUT_WIDTH}
+                        cards={() => (
+                            <>
+                                {inspectButton && (
+                                    <div className="flex justify-end border-b px-3 py-2 border-[var(--border)] bg-[var(--surface-hover)]">
+                                        {inspectButton}
+                                    </div>
+                                )}
+                                <div className="space-y-2 p-2">
+                                    {Object.entries(properties).map(([name, pVal]) => {
+                                        const cells = propertyCells(name, pVal);
+                                        return (
+                                            <DataCard
+                                                key={name}
+                                                title={
+                                                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                        {cells.name}
+                                                    </span>
+                                                }
+                                                badge={<RequiredBadge required={cells.isRequired} />}
+                                                facts={[
+                                                    {label: 'Type', value: cells.type},
+                                                    {label: 'Example', value: cells.example},
+                                                    {label: 'Details', value: cells.description, wide: true},
+                                                ]}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                        table={() => (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse text-xs min-w-[560px]">
+                                    <thead>
+                                        <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
+                                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
+                                                Field Target
+                                            </th>
+                                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
+                                                Type/Structure
+                                            </th>
+                                            <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider animate-pulse text-[var(--primary)] text-[var(--text-heading)]">
+                                                EXAMPLE
+                                            </th>
+                                            <th
+                                                className="px-3 w-full py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]"
+                                                style={{width: '100%'}}
+                                            >
+                                                <div className={'flex justify-between'}>
+                                                    <span>Description</span>
+                                                    {inspectButton}
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(properties).map(([name, pVal]) => {
+                                            const cells = propertyCells(name, pVal);
+                                            return (
+                                                <tr
+                                                    key={name}
+                                                    className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]"
+                                                >
+                                                    <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
+                                                        {cells.name}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap">{cells.type}</td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap">{cells.example}</td>
+                                                    <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
+                                                        {cells.description}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
-                        <div className="space-y-2 p-2">
-                            {Object.entries(properties).map(([name, pVal]) => {
-                                const cells = propertyCells(name, pVal);
-                                return (
-                                    <DataCard
-                                        key={name}
-                                        title={
-                                            <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                {cells.name}
-                                            </span>
-                                        }
-                                        badge={<RequiredBadge required={cells.isRequired} />}
-                                        facts={[
-                                            {label: 'Type', value: cells.type},
-                                            {label: 'Example', value: cells.example},
-                                            {label: 'Details', value: cells.description, wide: true},
-                                        ]}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                    <div className={clsx('overflow-x-auto', cardLayout && 'hidden @2xl:block')}>
-                        <table className="w-full text-left border-collapse text-xs min-w-[560px]">
-                            <thead>
-                                <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
-                                    <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                        Field Target
-                                    </th>
-                                    <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                        Type/Structure
-                                    </th>
-                                    <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider animate-pulse text-[var(--primary)] text-[var(--text-heading)]">
-                                        EXAMPLE
-                                    </th>
-                                    <th
-                                        className="px-3 w-full py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]"
-                                        style={{width: '100%'}}
-                                    >
-                                        <div className={'flex justify-between'}>
-                                            <span>Description</span>
-                                            {inspectButton}
-                                        </div>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {Object.entries(properties).map(([name, pVal]) => {
-                                    const cells = propertyCells(name, pVal);
-                                    return (
-                                        <tr
-                                            key={name}
-                                            className="hover:bg-[var(--text-muted)]/5 transition-colors align-top border-b last:border-b-0 border-b-[var(--border)]"
-                                        >
-                                            <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
-                                                {cells.name}
-                                            </td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap">{cells.type}</td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap">{cells.example}</td>
-                                            <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
-                                                {cells.description}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    />
                 </>
             )}
             {patternEntries.length > 0 && (

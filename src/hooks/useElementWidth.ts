@@ -1,13 +1,15 @@
-import {useEffect, useState, type RefObject} from 'react';
+import {useLayoutEffect, useState, type RefObject} from 'react';
 
 /**
  * Width of an element, tracked with a ResizeObserver. Layout decisions inside
  * the endpoint workspace depend on the room the pane actually has — in split
- * view or with the notes sidebar open that is nothing like the viewport.
+ * view or with the notes sidebar open that is nothing like the viewport. The
+ * first measurement happens before paint, so a layout that depends on it does
+ * not flash the other one.
  */
 export function useElementWidth(ref: RefObject<HTMLElement | null>): number {
     const [width, setWidth] = useState(0);
-    useEffect(() => {
+    useLayoutEffect(() => {
         const element = ref.current;
         if (!element) return;
         const update = () => setWidth(element.getBoundingClientRect().width);

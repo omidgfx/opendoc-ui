@@ -22,6 +22,7 @@ import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import ScrollableRow from '../../common/ScrollableRow';
 import OverflowActionsMenu from '../../common/OverflowActionsMenu';
+import CardOrTable, {CARD_LAYOUT_WIDTH, COMPACT_CARD_LAYOUT_WIDTH} from '../../common/CardOrTable';
 import DataCard, {RequiredBadge} from '../../common/DataCard';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
@@ -640,104 +641,114 @@ export default function ViewTab({
             </h2>
             <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
                 {/* A table needs room; below that the same rows read as cards. */}
-                <div className={clsx('space-y-2 p-2 @2xl:hidden', !cardParameterTables && 'hidden')}>
-                    {params.map((param, index) => renderParameterCard(param, index, showLocation))}
-                </div>
-                <div className={clsx('overflow-x-auto scrollbar-thin', cardParameterTables && 'hidden @2xl:block')}>
-                    <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
-                        <thead>
-                            <tr>
-                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                    Parameter Name
-                                </th>
-                                {showLocation && (
-                                    <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                        Location
-                                    </th>
-                                )}
-                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                    Schema / Pattern
-                                </th>
-                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                    Example
-                                </th>
-                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                    Required
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {params.map((param, idx) => {
-                                const pattern = getPatternFromParam(param, spec);
-                                return (
-                                    <tr
-                                        key={idx}
-                                        className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
-                                    >
-                                        <td className="px-4 py-3 text-xs align-top">
-                                            <div className="flex items-start flex-wrap gap-1">
-                                                <span className="font-mono font-bold text-[var(--text-heading)]">
-                                                    {param.name}
-                                                </span>
-                                                {param.description && usesDescriptionTooltip(param.description) && (
-                                                    <DescriptionTip
-                                                        fieldLabel={param.name}
-                                                        documents={[{text: param.description}]}
-                                                    />
-                                                )}
-                                            </div>
-                                            {param.description && !usesDescriptionTooltip(param.description) && (
-                                                <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
-                                                    {param.description}
-                                                </p>
-                                            )}
-                                        </td>
+                <CardOrTable
+                    preferCards={cardParameterTables}
+                    maxWidth={CARD_LAYOUT_WIDTH}
+                    cards={() => (
+                        <div className="space-y-2 p-2">
+                            {params.map((param, index) => renderParameterCard(param, index, showLocation))}
+                        </div>
+                    )}
+                    table={() => (
+                        <div className="overflow-x-auto scrollbar-thin">
+                            <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
+                                <thead>
+                                    <tr>
+                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                            Parameter Name
+                                        </th>
                                         {showLocation && (
-                                            <td className="px-4 py-3 text-xs select-none">
-                                                {(() => {
-                                                    const paramGroup = parameterGroupMetaOf(param);
-                                                    return paramGroup ? (
-                                                        <ParameterLocationTag group={paramGroup} />
-                                                    ) : (
-                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
-                                                            {param.in}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </td>
+                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                                Location
+                                            </th>
                                         )}
-                                        <td className="px-4 py-3 text-xs">
-                                            <div className="flex flex-col items-start gap-1">
-                                                <div>{renderSchemaButton(param.schema)}</div>
-                                                <SerializationTag
-                                                    descriptor={describeParameterSerialization(param)}
-                                                    onOpenPlayground={() => setSerializerParameter(param)}
-                                                />
-                                                {pattern && (
-                                                    <PatternPreview
-                                                        pattern={pattern}
-                                                        showLabel
-                                                        onTest={() => setPatternToTest(pattern)}
-                                                    />
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">{renderParameterExample(param)}</td>
-                                        <td className="px-4 py-3 text-xs select-none">
-                                            {param.required ? (
-                                                <span className="text-[var(--method-delete)] font-bold text-xs">
-                                                    Yes
-                                                </span>
-                                            ) : (
-                                                <span>No</span>
-                                            )}
-                                        </td>
+                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                            Schema / Pattern
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                            Example
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                            Required
+                                        </th>
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                </thead>
+                                <tbody>
+                                    {params.map((param, idx) => {
+                                        const pattern = getPatternFromParam(param, spec);
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
+                                            >
+                                                <td className="px-4 py-3 text-xs align-top">
+                                                    <div className="flex items-start flex-wrap gap-1">
+                                                        <span className="font-mono font-bold text-[var(--text-heading)]">
+                                                            {param.name}
+                                                        </span>
+                                                        {param.description &&
+                                                            usesDescriptionTooltip(param.description) && (
+                                                                <DescriptionTip
+                                                                    fieldLabel={param.name}
+                                                                    documents={[{text: param.description}]}
+                                                                />
+                                                            )}
+                                                    </div>
+                                                    {param.description &&
+                                                        !usesDescriptionTooltip(param.description) && (
+                                                            <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
+                                                                {param.description}
+                                                            </p>
+                                                        )}
+                                                </td>
+                                                {showLocation && (
+                                                    <td className="px-4 py-3 text-xs select-none">
+                                                        {(() => {
+                                                            const paramGroup = parameterGroupMetaOf(param);
+                                                            return paramGroup ? (
+                                                                <ParameterLocationTag group={paramGroup} />
+                                                            ) : (
+                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
+                                                                    {param.in}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                )}
+                                                <td className="px-4 py-3 text-xs">
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        <div>{renderSchemaButton(param.schema)}</div>
+                                                        <SerializationTag
+                                                            descriptor={describeParameterSerialization(param)}
+                                                            onOpenPlayground={() => setSerializerParameter(param)}
+                                                        />
+                                                        {pattern && (
+                                                            <PatternPreview
+                                                                pattern={pattern}
+                                                                showLabel
+                                                                onTest={() => setPatternToTest(pattern)}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-xs">{renderParameterExample(param)}</td>
+                                                <td className="px-4 py-3 text-xs select-none">
+                                                    {param.required ? (
+                                                        <span className="text-[var(--method-delete)] font-bold text-xs">
+                                                            Yes
+                                                        </span>
+                                                    ) : (
+                                                        <span>No</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                />
             </div>
         </div>
     );
@@ -1124,86 +1135,86 @@ export default function ViewTab({
                                                     <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
                                                         Response Headers
                                                     </p>
-                                                    <div className="@container border rounded-lg overflow-hidden border-[var(--border)]">
+                                                    <div className="border rounded-lg overflow-hidden border-[var(--border)]">
                                                         {/* Cards when the pane is too narrow for two columns. */}
-                                                        <div
-                                                            className={clsx(
-                                                                '@md:hidden',
-                                                                !cardParameterTables && 'hidden',
-                                                            )}
-                                                        >
-                                                            <div className="space-y-2 p-2">
-                                                                {Object.entries(resp.headers).map(
-                                                                    ([hName, hObj]: any) => (
-                                                                        <DataCard
-                                                                            key={hName}
-                                                                            title={
-                                                                                <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                                                    {hName}
-                                                                                </span>
-                                                                            }
-                                                                            subtitle={hObj.description}
-                                                                            facts={[
-                                                                                {
-                                                                                    label: 'Example',
-                                                                                    value: hObj.schema?.example ? (
-                                                                                        <code className="font-mono text-[10px]">
-                                                                                            {String(
-                                                                                                hObj.schema.example,
-                                                                                            )}
-                                                                                        </code>
-                                                                                    ) : null,
-                                                                                },
-                                                                            ]}
-                                                                        />
-                                                                    ),
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div
-                                                            className={clsx(
-                                                                'overflow-x-auto scrollbar-thin',
-                                                                cardParameterTables && 'hidden @md:block',
-                                                            )}
-                                                        >
-                                                            <table
-                                                                className="w-full text-xs text-left border-collapse"
-                                                                style={{minWidth: 400}}
-                                                            >
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th className="px-3 py-2 font-semibold">
-                                                                            Header
-                                                                        </th>
-                                                                        <th className="px-3 py-2 font-semibold">
-                                                                            Details
-                                                                        </th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
+                                                        <CardOrTable
+                                                            preferCards={cardParameterTables}
+                                                            maxWidth={COMPACT_CARD_LAYOUT_WIDTH}
+                                                            cards={() => (
+                                                                <div className="space-y-2 p-2">
                                                                     {Object.entries(resp.headers).map(
                                                                         ([hName, hObj]: any) => (
-                                                                            <tr
+                                                                            <DataCard
                                                                                 key={hName}
-                                                                                className="border-b border-[var(--border)]"
-                                                                            >
-                                                                                <td className="px-3 py-2 font-mono font-bold whitespace-nowrap text-[var(--text-heading)]">
-                                                                                    {hName}
-                                                                                </td>
-                                                                                <td className="px-3 py-2 leading-relaxed text-[var(--text)]">
-                                                                                    {hObj.description}
-                                                                                    {hObj.schema?.example && (
-                                                                                        <div className="font-mono text-[9px] mt-0.5 opacity-80 overflow-x-auto whitespace-pre-wrap">
-                                                                                            Ex: {hObj.schema.example}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </td>
-                                                                            </tr>
+                                                                                title={
+                                                                                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                                                        {hName}
+                                                                                    </span>
+                                                                                }
+                                                                                subtitle={hObj.description}
+                                                                                facts={[
+                                                                                    {
+                                                                                        label: 'Example',
+                                                                                        value: hObj.schema?.example ? (
+                                                                                            <code className="font-mono text-[10px]">
+                                                                                                {String(
+                                                                                                    hObj.schema.example,
+                                                                                                )}
+                                                                                            </code>
+                                                                                        ) : null,
+                                                                                    },
+                                                                                ]}
+                                                                            />
                                                                         ),
                                                                     )}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
+                                                                </div>
+                                                            )}
+                                                            table={() => (
+                                                                <div className="overflow-x-auto scrollbar-thin">
+                                                                    <table
+                                                                        className="w-full text-xs text-left border-collapse"
+                                                                        style={{minWidth: 400}}
+                                                                    >
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th className="px-3 py-2 font-semibold">
+                                                                                    Header
+                                                                                </th>
+                                                                                <th className="px-3 py-2 font-semibold">
+                                                                                    Details
+                                                                                </th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {Object.entries(resp.headers).map(
+                                                                                ([hName, hObj]: any) => (
+                                                                                    <tr
+                                                                                        key={hName}
+                                                                                        className="border-b border-[var(--border)]"
+                                                                                    >
+                                                                                        <td className="px-3 py-2 font-mono font-bold whitespace-nowrap text-[var(--text-heading)]">
+                                                                                            {hName}
+                                                                                        </td>
+                                                                                        <td className="px-3 py-2 leading-relaxed text-[var(--text)]">
+                                                                                            {hObj.description}
+                                                                                            {hObj.schema?.example && (
+                                                                                                <div className="font-mono text-[9px] mt-0.5 opacity-80 overflow-x-auto whitespace-pre-wrap">
+                                                                                                    Ex:{' '}
+                                                                                                    {
+                                                                                                        hObj.schema
+                                                                                                            .example
+                                                                                                    }
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ),
+                                                                            )}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            )}
+                                                        />
                                                     </div>
                                                 </div>
                                             )}
