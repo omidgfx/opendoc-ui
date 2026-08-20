@@ -7,6 +7,8 @@ interface ScrollableRowProps {
     className?: string;
     /** Keeps the content on one line, which is what routes and URLs want. */
     nowrap?: boolean;
+    /** Off inside a button or a link, which already takes the focus. */
+    focusable?: boolean;
 }
 
 const EDGE = 2;
@@ -15,16 +17,20 @@ const EDGE = 2;
  * Content that is too wide stays reachable: it scrolls sideways with touch,
  * trackpad and mouse wheel, without a scrollbar and without truncating what it
  * holds. A soft fade marks the side that still has content — the scrolling
- * equivalent of an ellipsis, which a scroll container cannot show.
+ * equivalent of an ellipsis, which a scroll container cannot show. While it
+ * does scroll it takes the focus, so the keyboard reaches the rest of the line
+ * too and it stops being an unreachable region.
  */
-export default function ScrollableRow({children, className, nowrap = true}: ScrollableRowProps) {
+export default function ScrollableRow({children, className, nowrap = true, focusable = true}: ScrollableRowProps) {
     const ref = useRef<HTMLDivElement>(null);
     const [edges, setEdges] = useState({start: false, end: false});
+    const [overflows, setOverflows] = useState(false);
     useHorizontalWheelScroll(ref);
     const measure = useCallback(() => {
         const element = ref.current;
         if (!element) return;
         const maxScroll = element.scrollWidth - element.clientWidth;
+        setOverflows(maxScroll > EDGE);
         const next = {
             start: element.scrollLeft > EDGE,
             end: maxScroll > EDGE && element.scrollLeft < maxScroll - EDGE,
@@ -51,7 +57,13 @@ export default function ScrollableRow({children, className, nowrap = true}: Scro
         <div
             ref={ref}
             onScroll={measure}
-            className={clsx('min-w-0 overflow-x-auto scrollbar-none', nowrap && 'whitespace-nowrap', className)}
+            tabIndex={focusable && overflows ? 0 : undefined}
+            role={focusable && overflows ? 'group' : undefined}
+            className={clsx(
+                'min-w-0 overflow-x-auto scrollbar-none rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40',
+                nowrap && 'whitespace-nowrap',
+                className,
+            )}
             style={fade ? {maskImage: fade, WebkitMaskImage: fade} : undefined}
         >
             {children}
