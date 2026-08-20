@@ -11,6 +11,7 @@ import {createLlmsText} from '../../utils/export/llmsExport';
 import ScrollableRow from '../../components/common/ScrollableRow';
 import clsx from 'clsx';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
+import CardOrTable, {WIDE_CARD_LAYOUT_WIDTH} from '../../components/common/CardOrTable';
 import DataCard from '../../components/common/DataCard';
 
 interface RunnerCompatibilityPageProps {
@@ -379,127 +380,159 @@ export default function RunnerCompatibilityPage({
                     />
                 </div>
 
-                <div className="@container overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                     {/* One card per endpoint when nine columns cannot fit. */}
-                    <div
-                        className={clsx(
-                            'max-h-[62vh] overflow-auto scrollbar-thin @4xl:hidden',
-                            !cardLayout && 'hidden',
-                        )}
-                    >
-                        <div className="space-y-2 p-2">
-                            {endpoints.map(endpoint => (
-                                <DataCard
-                                    key={`${endpoint.method}:${endpoint.path}`}
-                                    title={
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())
+                    <CardOrTable
+                        preferCards={cardLayout}
+                        maxWidth={WIDE_CARD_LAYOUT_WIDTH}
+                        cards={() => (
+                            <div className="max-h-[62vh] overflow-auto scrollbar-thin">
+                                <div className="space-y-2 p-2">
+                                    {endpoints.map(endpoint => (
+                                        <DataCard
+                                            key={`${endpoint.method}:${endpoint.path}`}
+                                            title={
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())
+                                                    }
+                                                    className="flex min-w-0 items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
+                                                >
+                                                    <MethodBadge
+                                                        method={endpoint.method}
+                                                        size="xs"
+                                                        className="shrink-0"
+                                                    />
+                                                    <ScrollableRow
+                                                        focusable={false}
+                                                        className="font-mono text-[11px] font-bold"
+                                                    >
+                                                        {endpoint.path}
+                                                    </ScrollableRow>
+                                                </button>
                                             }
-                                            className="flex min-w-0 items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
-                                        >
-                                            <MethodBadge method={endpoint.method} size="xs" className="shrink-0" />
-                                            <ScrollableRow className="font-mono text-[11px] font-bold">
-                                                {endpoint.path}
-                                            </ScrollableRow>
-                                        </button>
-                                    }
-                                    badge={
-                                        <span
-                                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${ratingPresentation[endpoint.rating].tone}`}
-                                        >
-                                            <i className={`${ratingPresentation[endpoint.rating].icon} text-[10px]`} />
-                                            {endpoint.rating} · {endpoint.score}
-                                        </span>
-                                    }
-                                    subtitle={endpoint.summary}
-                                    facts={[
-                                        {label: 'Auth', value: endpoint.auth},
-                                        {label: 'Inputs', value: String(endpoint.parameterCount)},
-                                        {label: 'Request', value: endpoint.requestMediaTypes.join(', ') || '—'},
-                                        {label: 'Responses', value: endpoint.responseMediaTypes.join(', ') || '—'},
-                                        {label: 'Notes', value: endpoint.notes.join(' · ') || 'Ready', wide: true},
-                                    ]}
-                                />
-                            ))}
-                        </div>
-                        {endpoints.length === 0 && (
-                            <p className="p-8 text-center text-xs text-[var(--text-muted)]">
-                                No endpoints match these filters.
-                            </p>
+                                            badge={
+                                                <span
+                                                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${ratingPresentation[endpoint.rating].tone}`}
+                                                >
+                                                    <i
+                                                        className={`${ratingPresentation[endpoint.rating].icon} text-[10px]`}
+                                                    />
+                                                    {endpoint.rating} · {endpoint.score}
+                                                </span>
+                                            }
+                                            subtitle={endpoint.summary}
+                                            facts={[
+                                                {label: 'Auth', value: endpoint.auth},
+                                                {label: 'Inputs', value: String(endpoint.parameterCount)},
+                                                {label: 'Request', value: endpoint.requestMediaTypes.join(', ') || '—'},
+                                                {
+                                                    label: 'Responses',
+                                                    value: endpoint.responseMediaTypes.join(', ') || '—',
+                                                },
+                                                {
+                                                    label: 'Notes',
+                                                    value: endpoint.notes.join(' · ') || 'Ready',
+                                                    wide: true,
+                                                },
+                                            ]}
+                                        />
+                                    ))}
+                                </div>
+                                {endpoints.length === 0 && (
+                                    <p className="p-8 text-center text-xs text-[var(--text-muted)]">
+                                        No endpoints match these filters.
+                                    </p>
+                                )}
+                            </div>
                         )}
-                    </div>
-                    <div
-                        className={clsx('max-h-[62vh] overflow-auto scrollbar-thin', cardLayout && 'hidden @4xl:block')}
-                    >
-                        <table className="w-full min-w-[1020px] border-collapse text-left text-[10px]">
-                            <thead className="sticky top-0 z-10 bg-[var(--background)] text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
-                                <tr>
-                                    <th className="w-10 px-2 py-2 text-right">#</th>
-                                    <th className="px-2 py-2">Rating</th>
-                                    <th className="px-2 py-2">Operation</th>
-                                    <th className="px-2 py-2">Summary</th>
-                                    <th className="px-2 py-2">Auth</th>
-                                    <th className="px-2 py-2">Inputs</th>
-                                    <th className="px-2 py-2">Request</th>
-                                    <th className="px-2 py-2">Responses</th>
-                                    <th className="px-2 py-2">Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {endpoints.map((endpoint, index) => (
-                                    <tr
-                                        key={`${endpoint.method}:${endpoint.path}`}
-                                        className="border-t border-[var(--border)] hover:bg-[var(--surface-hover)]"
-                                    >
-                                        <td className="px-2 py-1.5 text-right font-mono font-bold text-[var(--text-muted)]">
-                                            {index + 1}
-                                        </td>
-                                        <td className="px-2 py-1.5">
-                                            <span
-                                                className={`inline-flex min-w-12 items-center justify-center rounded-md border px-1.5 py-1 font-black ${ratingPresentation[endpoint.rating].tone}`}
+                        table={() => (
+                            <div className="max-h-[62vh] overflow-auto scrollbar-thin">
+                                <table className="w-full min-w-[1020px] border-collapse text-left text-[10px]">
+                                    <thead className="sticky top-0 z-10 bg-[var(--background)] text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+                                        <tr>
+                                            <th className="w-10 px-2 py-2 text-right">#</th>
+                                            <th className="px-2 py-2">Rating</th>
+                                            <th className="px-2 py-2">Operation</th>
+                                            <th className="px-2 py-2">Summary</th>
+                                            <th className="px-2 py-2">Auth</th>
+                                            <th className="px-2 py-2">Inputs</th>
+                                            <th className="px-2 py-2">Request</th>
+                                            <th className="px-2 py-2">Responses</th>
+                                            <th className="px-2 py-2">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {endpoints.map((endpoint, index) => (
+                                            <tr
+                                                key={`${endpoint.method}:${endpoint.path}`}
+                                                className="border-t border-[var(--border)] hover:bg-[var(--surface-hover)]"
                                             >
-                                                {endpoint.rating} · {endpoint.score}
-                                            </span>
-                                        </td>
-                                        <td className="px-2 py-1.5">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())
-                                                }
-                                                className="flex max-w-[310px] items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
-                                            >
-                                                <MethodBadge method={endpoint.method} size="xs" className="shrink-0" />
-                                                <ScrollableRow className="font-mono">{endpoint.path}</ScrollableRow>
-                                            </button>
-                                        </td>
-                                        <TooltipCell value={endpoint.summary} className="max-w-56 px-2 py-1.5" />
-                                        <TooltipCell value={endpoint.auth} className="max-w-44 px-2 py-1.5 font-mono" />
-                                        <td className="px-2 py-1.5 font-mono">{endpoint.parameterCount}</td>
-                                        <TooltipCell
-                                            value={endpoint.requestMediaTypes.join(', ') || '—'}
-                                            className="max-w-36 px-2 py-1.5 font-mono"
-                                        />
-                                        <TooltipCell
-                                            value={endpoint.responseMediaTypes.join(', ') || '—'}
-                                            className="max-w-36 px-2 py-1.5 font-mono"
-                                        />
-                                        <TooltipCell
-                                            value={endpoint.notes.join(' · ') || 'Ready'}
-                                            className="max-w-60 px-2 py-1.5"
-                                        />
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {endpoints.length === 0 && (
-                            <p className="p-8 text-center text-xs text-[var(--text-muted)]">
-                                No endpoints match these filters.
-                            </p>
+                                                <td className="px-2 py-1.5 text-right font-mono font-bold text-[var(--text-muted)]">
+                                                    {index + 1}
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <span
+                                                        className={`inline-flex min-w-12 items-center justify-center rounded-md border px-1.5 py-1 font-black ${ratingPresentation[endpoint.rating].tone}`}
+                                                    >
+                                                        {endpoint.rating} · {endpoint.score}
+                                                    </span>
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            onSelectEndpoint(
+                                                                endpoint.path,
+                                                                endpoint.method.toLowerCase(),
+                                                            )
+                                                        }
+                                                        className="flex max-w-[310px] items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
+                                                    >
+                                                        <MethodBadge
+                                                            method={endpoint.method}
+                                                            size="xs"
+                                                            className="shrink-0"
+                                                        />
+                                                        <ScrollableRow className="font-mono">
+                                                            {endpoint.path}
+                                                        </ScrollableRow>
+                                                    </button>
+                                                </td>
+                                                <TooltipCell
+                                                    value={endpoint.summary}
+                                                    className="max-w-56 px-2 py-1.5"
+                                                />
+                                                <TooltipCell
+                                                    value={endpoint.auth}
+                                                    className="max-w-44 px-2 py-1.5 font-mono"
+                                                />
+                                                <td className="px-2 py-1.5 font-mono">{endpoint.parameterCount}</td>
+                                                <TooltipCell
+                                                    value={endpoint.requestMediaTypes.join(', ') || '—'}
+                                                    className="max-w-36 px-2 py-1.5 font-mono"
+                                                />
+                                                <TooltipCell
+                                                    value={endpoint.responseMediaTypes.join(', ') || '—'}
+                                                    className="max-w-36 px-2 py-1.5 font-mono"
+                                                />
+                                                <TooltipCell
+                                                    value={endpoint.notes.join(' · ') || 'Ready'}
+                                                    className="max-w-60 px-2 py-1.5"
+                                                />
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {endpoints.length === 0 && (
+                                    <p className="p-8 text-center text-xs text-[var(--text-muted)]">
+                                        No endpoints match these filters.
+                                    </p>
+                                )}
+                            </div>
                         )}
-                    </div>
+                    />
                 </div>
             </div>
         </div>
