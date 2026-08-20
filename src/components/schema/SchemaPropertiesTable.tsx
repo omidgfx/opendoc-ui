@@ -1,6 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import {usePreferences} from '../../contexts/PreferencesContext';
+import DataCard, {RequiredBadge} from '../common/DataCard';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
 import {describeNotConstraint, RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../utils/schemaProperties';
@@ -390,44 +391,27 @@ export default function SchemaPropertiesTable({
                                 {inspectButton}
                             </div>
                         )}
-                        {Object.entries(properties).map(([name, pVal]) => {
-                            const cells = propertyCells(name, pVal);
-                            return (
-                                <div
-                                    key={name}
-                                    className="space-y-2 border-b p-3 last:border-b-0 border-[var(--border)]"
-                                >
-                                    <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs font-bold text-[var(--text-heading)]">
-                                        {cells.name}
-                                        <span className="font-sans text-[10px] font-semibold text-[var(--text-muted)]">
-                                            {cells.isRequired ? 'required' : 'optional'}
-                                        </span>
-                                    </div>
-                                    <dl className="space-y-1.5 text-xs">
-                                        <div className="flex flex-wrap items-start gap-2">
-                                            <dt className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                Type
-                                            </dt>
-                                            <dd className="min-w-0 flex-1">{cells.type}</dd>
-                                        </div>
-                                        <div className="flex flex-wrap items-start gap-2">
-                                            <dt className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                Example
-                                            </dt>
-                                            <dd className="min-w-0 flex-1">{cells.example}</dd>
-                                        </div>
-                                        <div className="flex flex-wrap items-start gap-2">
-                                            <dt className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                Details
-                                            </dt>
-                                            <dd className="min-w-0 flex-1 leading-relaxed font-sans text-[var(--text)]">
-                                                {cells.description}
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            );
-                        })}
+                        <div className="space-y-2 p-2">
+                            {Object.entries(properties).map(([name, pVal]) => {
+                                const cells = propertyCells(name, pVal);
+                                return (
+                                    <DataCard
+                                        key={name}
+                                        title={
+                                            <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                {cells.name}
+                                            </span>
+                                        }
+                                        badge={<RequiredBadge required={cells.isRequired} />}
+                                        facts={[
+                                            {label: 'Type', value: cells.type},
+                                            {label: 'Example', value: cells.example},
+                                            {label: 'Details', value: cells.description, wide: true},
+                                        ]}
+                                    />
+                                );
+                            })}
+                        </div>
                     </div>
                     <div className={clsx('overflow-x-auto', cardLayout && 'hidden @2xl:block')}>
                         <table className="w-full text-left border-collapse text-xs min-w-[560px]">

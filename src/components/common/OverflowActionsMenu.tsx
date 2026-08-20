@@ -86,7 +86,7 @@ export default function OverflowActionsMenu({actions, ariaLabel, className}: Ove
                         className,
                     )}
                 >
-                    <i className="ph-fill ph-dots-three-vertical text-[15px]" />
+                    <i className="ph ph-dots-three-circle-vertical text-[17px]" />
                 </button>
             </Tip>
             {open &&
