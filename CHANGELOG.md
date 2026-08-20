@@ -37,6 +37,9 @@ Runner surface. Large enough in scope to take a minor version.
 - fixes several stacking and gesture defects: the code viewer gutter painting over pinned elements,
   the endpoint pane competing with the app chrome, and the sidebar edge swipe opening the drawer
   behind an open modal, sheet, or overlay;
+- reads an `allOf` request body as the object it assembles — the matrix shows that object with the
+  required list declared beside the keyword, above a note naming the parts it came from — instead of
+  offering the parts as if they were alternatives;
 - docks the endpoint notes panel beside the documentation on desktop, folds the colour mode into a
   single cycling button on a narrow topbar where the mark stands without the wordmark, and leads an
   `allOf` rail with the object it unifies, selected by default;
