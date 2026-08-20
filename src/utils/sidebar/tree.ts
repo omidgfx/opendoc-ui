@@ -127,6 +127,14 @@ export function buildTagTree(
     if (!spec?.paths) return root;
     const byTag: Record<string, typeof root.endpoints> = {};
     const hiddenEndpoints: typeof root.endpoints = [];
+    const groupedTags = Array.isArray(spec['x-tagGroups']) ? spec['x-tagGroups'] : [];
+    const tagGroupByTag = new Map<string, string>();
+    groupedTags.forEach(group => {
+        if (!group?.name || !Array.isArray(group.tags)) return;
+        group.tags.forEach(tag => {
+            if (typeof tag === 'string' && tag && !tagGroupByTag.has(tag)) tagGroupByTag.set(tag, group.name);
+        });
+    });
     Object.entries(spec.paths).forEach(([pathStr, pathItem]) => {
         if (!pathItem) return;
         getPathItemOperations(pathItem).forEach(({method, operation}) => {
@@ -145,9 +153,11 @@ export function buildTagTree(
         });
     });
     Object.entries(byTag).forEach(([tag, endpoints]) => {
-        const parts = config.flattenTags ? [tag] : tag.split('/').filter(Boolean);
+        const tagParts = config.flattenTags ? [tag] : tag.split('/').filter(Boolean);
+        const groupName = tagGroupByTag.get(tag);
+        const parts = [...(groupName ? [groupName] : []), ...(tagParts.length > 0 ? tagParts : ['General'])];
         let node = root;
-        for (const part of parts.length ? parts : ['General']) {
+        for (const part of parts) {
             if (!node.children[part]) node.children[part] = {name: part, children: {}, endpoints: []};
             node = node.children[part];
         }

@@ -59,6 +59,21 @@ export default function HomeView({
         );
     }
     const {title, description, version} = spec.info || {title: 'OpenDoc API', description: '', version: '1.0.0'};
+    const specLogo = (spec.info as any)?.['x-logo'] as
+        | {url?: string; altText?: string; href?: string; backgroundColor?: string}
+        | undefined;
+    const tagGroups = Array.isArray((spec as any)['x-tagGroups']) ? ((spec as any)['x-tagGroups'] as any[]) : [];
+    const generatedAt = typeof (spec as any)['x-generated-at'] === 'string' ? (spec as any)['x-generated-at'] : '';
+    const complexityNotes =
+        (spec as any)['x-complexity-notes'] && typeof (spec as any)['x-complexity-notes'] === 'object'
+            ? ((spec as any)['x-complexity-notes'] as Record<string, any>)
+            : null;
+    const specMetaFacts = [
+        spec.info.summary ? {label: 'Summary', value: spec.info.summary} : null,
+        spec.jsonSchemaDialect ? {label: 'JSON Schema dialect', value: spec.jsonSchemaDialect} : null,
+        spec.info.termsOfService ? {label: 'Terms of service', value: spec.info.termsOfService, href: spec.info.termsOfService} : null,
+        generatedAt ? {label: 'Generated at', value: generatedAt} : null,
+    ].filter(Boolean) as Array<{label: string; value: string; href?: string}>;
     const getEndpointsList = () => {
         const list: Array<{
             path: string;
@@ -145,8 +160,12 @@ export default function HomeView({
                                     : config.type === 'http'
                                       ? config.scheme === 'basic'
                                           ? 'Basic Auth'
-                                          : 'Bearer Hash'
-                                      : config.type}
+                                          : 'Bearer Token'
+                                      : config.type === 'openIdConnect'
+                                        ? 'OpenID Connect'
+                                        : config.type === 'mutualTLS'
+                                          ? 'Mutual TLS'
+                                          : config.type}
                             </span>
                             <span className="font-mono text-xs font-bold text-[var(--text-heading)]">{key}</span>
                         </div>
@@ -199,12 +218,80 @@ export default function HomeView({
                         </Tip>
                     </div>
 
-                    <div className="space-y-1">
-                        <h1 className="text-2xl md:text-3.5xl font-extrabold tracking-tight text-[var(--text-heading)]">
-                            {title}
-                        </h1>
-                        <p className="text-xs text-[var(--text-muted)]">Specification Landing Hub & Overview Portal</p>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="flex min-w-0 flex-1 items-start gap-4">
+                            {specLogo?.url && (
+                                <div className="flex shrink-0 flex-col items-center gap-1.5">
+                                    <div
+                                        className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] p-2 shadow-sm"
+                                        style={
+                                            specLogo.backgroundColor
+                                                ? {backgroundColor: specLogo.backgroundColor}
+                                                : undefined
+                                        }
+                                    >
+                                        {specLogo.href ? (
+                                            <a href={specLogo.href} target="_blank" rel="noopener noreferrer" className="flex h-full w-full items-center justify-center">
+                                                <img
+                                                    src={specLogo.url}
+                                                    alt={specLogo.altText || `${title} logo`}
+                                                    className="max-h-full max-w-full object-contain"
+                                                />
+                                            </a>
+                                        ) : (
+                                            <img
+                                                src={specLogo.url}
+                                                alt={specLogo.altText || `${title} logo`}
+                                                className="max-h-full max-w-full object-contain"
+                                            />
+                                        )}
+                                    </div>
+                                    {specLogo.altText && specLogo.altText !== title && (
+                                        <span className="max-w-24 text-center text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                                            {specLogo.altText}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                            <div className="min-w-0 space-y-1">
+                                <h1 className="text-2xl md:text-3.5xl font-extrabold tracking-tight text-[var(--text-heading)] break-words">
+                                    {title}
+                                </h1>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Specification Landing Hub & Overview Portal
+                                </p>
+                                {spec.info.summary && (
+                                    <p className="max-w-3xl text-sm leading-relaxed text-[var(--text)]">
+                                        {spec.info.summary}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
+                    {specMetaFacts.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {specMetaFacts.map(fact => (
+                                <span
+                                    key={fact.label}
+                                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--background)] px-2.5 py-1 text-[10px] text-[var(--text-muted)]"
+                                >
+                                    <span className="font-black uppercase tracking-wider">{fact.label}</span>
+                                    {fact.href ? (
+                                        <a
+                                            href={fact.href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="truncate font-mono text-[var(--primary)] hover:underline"
+                                        >
+                                            {fact.value}
+                                        </a>
+                                    ) : (
+                                        <code className="truncate font-mono text-[var(--text-heading)]">{fact.value}</code>
+                                    )}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="absolute right-0 bottom-0 top-0 w-1/3 pointer-events-none opacity-[0.03] flex items-center justify-center select-none">
@@ -315,6 +402,153 @@ export default function HomeView({
                     selected server.
                 </p>
             </section>
+
+            {(spec.info.contact || spec.info.license || tagGroups.length > 0 || complexityNotes) && (
+                <section className="space-y-4">
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                            Document Identity & Extensions
+                        </h2>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                            Additional specification metadata beyond paths, schemas, and responses.
+                        </p>
+                    </div>
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                        <div className="space-y-4">
+                            {(spec.info.contact || spec.info.license) && (
+                                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+                                    <h3 className="text-xs font-extrabold text-[var(--text-heading)]">
+                                        Publisher metadata
+                                    </h3>
+                                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                        {spec.info.contact && (
+                                            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs">
+                                                <div className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                                    Contact
+                                                </div>
+                                                <div className="mt-2 space-y-1 text-[var(--text)]">
+                                                    {spec.info.contact.name && <div>{spec.info.contact.name}</div>}
+                                                    {spec.info.contact.email && (
+                                                        <a href={`mailto:${spec.info.contact.email}`} className="text-[var(--primary)] hover:underline">
+                                                            {spec.info.contact.email}
+                                                        </a>
+                                                    )}
+                                                    {spec.info.contact.url && (
+                                                        <a
+                                                            href={spec.info.contact.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="block break-all text-[var(--primary)] hover:underline"
+                                                        >
+                                                            {spec.info.contact.url}
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {spec.info.license && (
+                                            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs">
+                                                <div className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                                    License
+                                                </div>
+                                                <div className="mt-2 space-y-1 text-[var(--text)]">
+                                                    <div>{spec.info.license.name}</div>
+                                                    {spec.info.license.identifier && (
+                                                        <code className="inline-block rounded bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                                                            {spec.info.license.identifier}
+                                                        </code>
+                                                    )}
+                                                    {spec.info.license.url && (
+                                                        <a
+                                                            href={spec.info.license.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="block break-all text-[var(--primary)] hover:underline"
+                                                        >
+                                                            {spec.info.license.url}
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {tagGroups.length > 0 && (
+                                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h3 className="text-xs font-extrabold text-[var(--text-heading)]">Tag groups</h3>
+                                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                            x-tagGroups
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 space-y-3">
+                                        {tagGroups.map((group: any, index: number) => (
+                                            <div
+                                                key={`${group.name || 'group'}:${index}`}
+                                                className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3"
+                                            >
+                                                <div className="text-[11px] font-bold text-[var(--text-heading)]">
+                                                    {group.name || `Group ${index + 1}`}
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {(Array.isArray(group.tags) ? group.tags : []).map((tag: string) => (
+                                                        <span
+                                                            key={`${group.name}:${tag}`}
+                                                            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] text-[var(--text)]"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {complexityNotes && (
+                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-xs font-extrabold text-[var(--text-heading)]">Complexity notes</h3>
+                                    <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                        x-complexity-notes
+                                    </span>
+                                </div>
+                                <div className="mt-3 space-y-2 text-xs text-[var(--text)]">
+                                    {Object.entries(complexityNotes).map(([key, value]) => (
+                                        <div
+                                            key={key}
+                                            className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2"
+                                        >
+                                            <div className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                                {key}
+                                            </div>
+                                            <div className="mt-1">
+                                                {Array.isArray(value) ? (
+                                                    <ul className="list-disc space-y-1 ps-4">
+                                                        {value.map((item, index) => (
+                                                            <li key={`${key}:${index}`}>{String(item)}</li>
+                                                        ))}
+                                                    </ul>
+                                                ) : typeof value === 'object' && value !== null ? (
+                                                    <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-[var(--surface)] px-2 py-2 font-mono text-[10px] text-[var(--text-heading)]">
+                                                        {JSON.stringify(value, null, 2)}
+                                                    </pre>
+                                                ) : (
+                                                    <code className="rounded bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                                                        {String(value)}
+                                                    </code>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            )}
 
             <RunnerCompatibilityReport
                 spec={spec}
