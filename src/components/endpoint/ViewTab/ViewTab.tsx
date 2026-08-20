@@ -14,12 +14,14 @@ import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
+import ResponseCodeSheet from './ResponseCodeSheet';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
 import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import ScrollableRow from '../../common/ScrollableRow';
 import OverflowActionsMenu from '../../common/OverflowActionsMenu';
+import DataCard, {RequiredBadge} from '../../common/DataCard';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
@@ -587,43 +589,39 @@ export default function ViewTab({
         const pattern = getPatternFromParam(param, spec);
         const paramGroup = parameterGroupMetaOf(param);
         return (
-            <div key={index} className="space-y-2 border-b p-3 last:border-b-0 border-[var(--border)]">
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">{param.name}</span>
-                    {param.required ? (
-                        <span className="text-[10px] font-bold text-[var(--method-delete)]">required</span>
-                    ) : (
-                        <span className="text-[10px] text-[var(--text-muted)]">optional</span>
-                    )}
-                    {showLocation && paramGroup && <ParameterLocationTag group={paramGroup} />}
-                </div>
-                {param.description && (
-                    <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{param.description}</p>
-                )}
-                <dl className="space-y-1.5 text-xs">
-                    <div className="flex flex-wrap items-start gap-2">
-                        <dt className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            Schema
-                        </dt>
-                        <dd className="flex min-w-0 flex-col items-start gap-1">
-                            {renderSchemaButton(param.schema)}
-                            <SerializationTag
-                                descriptor={describeParameterSerialization(param)}
-                                onOpenPlayground={() => setSerializerParameter(param)}
-                            />
-                            {pattern && (
-                                <PatternPreview pattern={pattern} showLabel onTest={() => setPatternToTest(pattern)} />
-                            )}
-                        </dd>
-                    </div>
-                    <div className="flex flex-wrap items-start gap-2">
-                        <dt className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            Example
-                        </dt>
-                        <dd className="min-w-0">{renderParameterExample(param)}</dd>
-                    </div>
-                </dl>
-            </div>
+            <DataCard
+                key={index}
+                title={
+                    <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-[var(--text-heading)]">{param.name}</span>
+                        {showLocation && paramGroup && <ParameterLocationTag group={paramGroup} />}
+                    </span>
+                }
+                badge={<RequiredBadge required={!!param.required} />}
+                subtitle={param.description}
+                facts={[
+                    {
+                        label: 'Schema',
+                        value: (
+                            <span className="flex flex-col items-start gap-1">
+                                {renderSchemaButton(param.schema)}
+                                <SerializationTag
+                                    descriptor={describeParameterSerialization(param)}
+                                    onOpenPlayground={() => setSerializerParameter(param)}
+                                />
+                                {pattern && (
+                                    <PatternPreview
+                                        pattern={pattern}
+                                        showLabel
+                                        onTest={() => setPatternToTest(pattern)}
+                                    />
+                                )}
+                            </span>
+                        ),
+                    },
+                    {label: 'Example', value: renderParameterExample(param)},
+                ]}
+            />
         );
     };
     const renderParameterTable = (
@@ -638,7 +636,7 @@ export default function ViewTab({
             </h2>
             <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
                 {/* A table needs room; below that the same rows read as cards. */}
-                <div className={clsx('@2xl:hidden', !cardParameterTables && 'hidden')}>
+                <div className={clsx('space-y-2 p-2 @2xl:hidden', !cardParameterTables && 'hidden')}>
                     {params.map((param, index) => renderParameterCard(param, index, showLocation))}
                 </div>
                 <div className={clsx('overflow-x-auto scrollbar-thin', cardParameterTables && 'hidden @2xl:block')}>
@@ -1017,6 +1015,16 @@ export default function ViewTab({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Response Matrix
                     </h4>
+                    {/* The rail needs a column of its own; a phone gets the same
+                        navigator as a pill above the matrix and a bottom sheet. */}
+                    {isMobile && (
+                        <ResponseCodeSheet
+                            responses={operation.responses}
+                            activeCode={navigatorActiveCode}
+                            expandedCodes={expandedResponseCodes}
+                            onSelect={openAndScrollToResponse}
+                        />
+                    )}
                     <div className={clsx('relative space-y-2', !isMobile && 'pl-16')}>
                         {!isMobile && (
                             <div className="absolute inset-y-0 left-0 w-16">
@@ -1120,26 +1128,33 @@ export default function ViewTab({
                                                                 !cardParameterTables && 'hidden',
                                                             )}
                                                         >
-                                                            {Object.entries(resp.headers).map(([hName, hObj]: any) => (
-                                                                <div
-                                                                    key={hName}
-                                                                    className="space-y-1 border-b p-3 text-xs last:border-b-0 border-[var(--border)]"
-                                                                >
-                                                                    <span className="block font-mono font-bold text-[var(--text-heading)]">
-                                                                        {hName}
-                                                                    </span>
-                                                                    {hObj.description && (
-                                                                        <p className="leading-relaxed text-[var(--text-muted)]">
-                                                                            {hObj.description}
-                                                                        </p>
-                                                                    )}
-                                                                    {hObj.schema?.example && (
-                                                                        <p className="font-mono text-[10px] text-[var(--text-muted)]">
-                                                                            Ex: {hObj.schema.example}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                            <div className="space-y-2 p-2">
+                                                                {Object.entries(resp.headers).map(
+                                                                    ([hName, hObj]: any) => (
+                                                                        <DataCard
+                                                                            key={hName}
+                                                                            title={
+                                                                                <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                                                    {hName}
+                                                                                </span>
+                                                                            }
+                                                                            subtitle={hObj.description}
+                                                                            facts={[
+                                                                                {
+                                                                                    label: 'Example',
+                                                                                    value: hObj.schema?.example ? (
+                                                                                        <code className="font-mono text-[10px]">
+                                                                                            {String(
+                                                                                                hObj.schema.example,
+                                                                                            )}
+                                                                                        </code>
+                                                                                    ) : null,
+                                                                                },
+                                                                            ]}
+                                                                        />
+                                                                    ),
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <div
                                                             className={clsx(
