@@ -79,14 +79,14 @@ export default function OverflowActionsMenu({actions, ariaLabel, className}: Ove
                     aria-expanded={open}
                     onClick={() => setOpen(current => !current)}
                     className={clsx(
-                        'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-colors',
+                        'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors',
                         open
-                            ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
-                            : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                            ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                            : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
                         className,
                     )}
                 >
-                    <i className="ph ph-dots-three-vertical text-[14px]" />
+                    <i className="ph-fill ph-dots-three-vertical text-[15px]" />
                 </button>
             </Tip>
             {open &&

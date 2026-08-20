@@ -764,34 +764,6 @@ export default function ViewTab({
                             <ScrollableRow className="font-mono text-sm font-bold tracking-tight text-[var(--text-heading)]">
                                 {path}
                             </ScrollableRow>
-                            {/* Narrow panes fold the route actions into one menu
-                                instead of crowding the route itself. */}
-                            <OverflowActionsMenu
-                                className="@xl:hidden"
-                                ariaLabel="Endpoint actions"
-                                actions={[
-                                    {
-                                        id: 'copy-path',
-                                        label: 'Copy endpoint path',
-                                        doneLabel: 'Copied',
-                                        icon: 'ph ph-copy',
-                                        onSelect: () => navigator.clipboard.writeText(path),
-                                    },
-                                    {
-                                        id: 'copy-url',
-                                        label: 'Copy full URL',
-                                        doneLabel: 'Copied',
-                                        icon: 'ph ph-link-simple',
-                                        onSelect: () => navigator.clipboard.writeText(fullEndpointUrl),
-                                    },
-                                    {
-                                        id: 'share',
-                                        label: 'Share this endpoint',
-                                        icon: 'ph ph-share-network',
-                                        onSelect: handleShareEndpoint,
-                                    },
-                                ]}
-                            />
                             <Tip content="Copy endpoint path">
                                 <button
                                     aria-label="Copy endpoint path"
@@ -855,6 +827,34 @@ export default function ViewTab({
                                 {isAuthorized ? 'Authorized' : 'Protected'}
                             </span>
                         )}
+                        {/* Narrow panes fold the route actions into one menu at
+                            the end of the heading instead of crowding the route. */}
+                        <OverflowActionsMenu
+                            className="@xl:hidden"
+                            ariaLabel="Endpoint actions"
+                            actions={[
+                                {
+                                    id: 'copy-path',
+                                    label: 'Copy endpoint path',
+                                    doneLabel: 'Copied',
+                                    icon: 'ph ph-copy',
+                                    onSelect: () => navigator.clipboard.writeText(path),
+                                },
+                                {
+                                    id: 'copy-url',
+                                    label: 'Copy full URL',
+                                    doneLabel: 'Copied',
+                                    icon: 'ph ph-link-simple',
+                                    onSelect: () => navigator.clipboard.writeText(fullEndpointUrl),
+                                },
+                                {
+                                    id: 'share',
+                                    label: 'Share this endpoint',
+                                    icon: 'ph ph-share-network',
+                                    onSelect: handleShareEndpoint,
+                                },
+                            ]}
+                        />
                         <Tip content="Share this endpoint">
                             <button
                                 onClick={handleShareEndpoint}
@@ -1072,18 +1072,9 @@ export default function ViewTab({
                                             >
                                                 {code}
                                             </span>
-                                            <Tip content={resp.description || 'Response details'} fullWidth>
-                                                <span
-                                                    className={clsx(
-                                                        'min-w-0 flex-1 text-xs font-semibold text-[var(--text-heading)]',
-                                                        // Collapsed rows keep one line; an opened
-                                                        // response shows its summary in full.
-                                                        isCollapsed ? 'truncate leading-none' : 'leading-relaxed',
-                                                    )}
-                                                >
-                                                    {resp.description || 'Response details'}
-                                                </span>
-                                            </Tip>
+                                            <ScrollableRow className="min-w-0 flex-1 text-xs font-semibold leading-none text-[var(--text-heading)]">
+                                                {resp.description || 'Response details'}
+                                            </ScrollableRow>
 
                                             {!isMobile && schemaNames.length > 0 && (
                                                 <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] min-w-0 flex-wrap">
@@ -1121,8 +1112,41 @@ export default function ViewTab({
                                                     <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
                                                         Response Headers
                                                     </p>
-                                                    <div className="border rounded-lg overflow-hidden border-[var(--border)]">
-                                                        <div className="overflow-x-auto scrollbar-thin">
+                                                    <div className="@container border rounded-lg overflow-hidden border-[var(--border)]">
+                                                        {/* Cards when the pane is too narrow for two columns. */}
+                                                        <div
+                                                            className={clsx(
+                                                                '@md:hidden',
+                                                                !cardParameterTables && 'hidden',
+                                                            )}
+                                                        >
+                                                            {Object.entries(resp.headers).map(([hName, hObj]: any) => (
+                                                                <div
+                                                                    key={hName}
+                                                                    className="space-y-1 border-b p-3 text-xs last:border-b-0 border-[var(--border)]"
+                                                                >
+                                                                    <span className="block font-mono font-bold text-[var(--text-heading)]">
+                                                                        {hName}
+                                                                    </span>
+                                                                    {hObj.description && (
+                                                                        <p className="leading-relaxed text-[var(--text-muted)]">
+                                                                            {hObj.description}
+                                                                        </p>
+                                                                    )}
+                                                                    {hObj.schema?.example && (
+                                                                        <p className="font-mono text-[10px] text-[var(--text-muted)]">
+                                                                            Ex: {hObj.schema.example}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div
+                                                            className={clsx(
+                                                                'overflow-x-auto scrollbar-thin',
+                                                                cardParameterTables && 'hidden @md:block',
+                                                            )}
+                                                        >
                                                             <table
                                                                 className="w-full text-xs text-left border-collapse"
                                                                 style={{minWidth: 400}}
