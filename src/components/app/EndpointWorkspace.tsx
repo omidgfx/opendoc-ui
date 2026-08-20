@@ -21,6 +21,7 @@ import {useEndpointNotes} from '../../contexts/EndpointNotesContext';
 import EndpointNotesSidebar from '../notes/EndpointNotesSidebar';
 import ScrollableRow from '../common/ScrollableRow';
 import {useElementWidth} from '../../hooks/useElementWidth';
+import {usePanelTransition} from '../../hooks/usePanelTransition';
 
 export type EndpointViewMode = 'docs' | 'examine' | 'both';
 export type ActiveSplitPane = 'docs' | 'examine';
@@ -93,6 +94,7 @@ export default function EndpointWorkspace({
 }: EndpointWorkspaceProps) {
     const {noteCountForEndpoint, openEndpointNotes} = useEndpointNotes();
     const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
+    const notesTransition = usePanelTransition(notesSidebarOpen);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const workspaceWidth = useElementWidth(workspaceRef);
     // Side by side needs real room. The decision follows the pane, not the
@@ -340,8 +342,9 @@ export default function EndpointWorkspace({
                 ) : (
                     <div className="relative flex h-full min-h-0 min-w-0">
                         <div className="min-w-0 flex-1 overflow-hidden">{selectedTab === 'docs' ? docs : runner}</div>
-                        {notesSidebarOpen && (
+                        {notesTransition.shouldRender && (
                             <EndpointNotesSidebar
+                                open={notesTransition.entered}
                                 spec={spec}
                                 specKey={parsableKey}
                                 path={endpoint.path}

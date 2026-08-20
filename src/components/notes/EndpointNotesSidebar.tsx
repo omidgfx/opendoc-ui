@@ -25,6 +25,7 @@ interface EndpointNotesSidebarProps {
     path: string;
     method: string;
     overlay?: boolean;
+    open?: boolean;
     onClose: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function EndpointNotesSidebar({
     path,
     method,
     overlay = false,
+    open = true,
     onClose,
 }: EndpointNotesSidebarProps) {
     const {notesForEndpoint, canAddNote, openCreateNote, openNote, requestToggleTodo, isEndpointHidden} =
@@ -105,7 +107,10 @@ export default function EndpointNotesSidebar({
                 <button
                     type="button"
                     aria-label="Close endpoint notes"
-                    className="absolute inset-0 z-20 bg-black/30"
+                    className={clsx(
+                        'absolute inset-0 z-20 bg-black/30 transition-opacity duration-300',
+                        open ? 'opacity-100' : 'opacity-0',
+                    )}
                     onClick={onClose}
                 />
             )}
@@ -114,11 +119,14 @@ export default function EndpointNotesSidebar({
                 data-endpoint-notes-sidebar
                 aria-label="Endpoint notes sidebar"
                 // Drawn over the endpoint content, inside the pane it belongs
-                // to: opening notes must not squeeze the documentation.
+                // to: opening notes must not squeeze the documentation. It
+                // slides in and out like the mobile sidebar does.
                 className={clsx(
-                    'absolute inset-y-0 right-0 z-30 flex h-full min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-[-12px_0_28px_rgba(0,0,0,0.18)]',
+                    'absolute inset-y-0 right-0 z-30 flex h-full min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] transition-transform duration-300 ease-out',
                     overlay && 'max-w-[86vw]',
+                    open ? 'translate-x-0 shadow-[-12px_0_28px_rgba(0,0,0,0.18)]' : 'translate-x-full shadow-none',
                 )}
+                aria-hidden={!open}
                 style={{width: overlay ? `min(${width}px, 86vw)` : width}}
             >
                 {!overlay && (
