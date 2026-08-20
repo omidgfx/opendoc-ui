@@ -137,7 +137,9 @@ export function useWorkspaceTabs({
             setShowSettings,
         ],
     );
-    const withPreviewLast = useCallback((list: TabItem[]): TabItem[] => {
+    const withPreviewLast = useCallback((input: TabItem[]): TabItem[] => {
+        // A hole in the list would take every consumer down with it.
+        const list = input.filter(Boolean);
         const previewIdx = list.findIndex(t => t.isPreview);
         if (previewIdx < 0 || previewIdx === list.length - 1) return list;
         const next = [...list];
@@ -616,8 +618,11 @@ export function useWorkspaceTabs({
     const handleReorderTabs = useCallback(
         (fromIndex: number, toIndex: number) => {
             setEndpointTabs(prev => {
+                const inRange = (index: number) => Number.isInteger(index) && index >= 0 && index < prev.length;
+                if (!inRange(fromIndex) || !inRange(toIndex) || fromIndex === toIndex) return prev;
                 const next = [...prev];
                 const [moved] = next.splice(fromIndex, 1);
+                if (!moved) return prev;
                 next.splice(toIndex, 0, moved);
                 return withPreviewLast(next);
             });

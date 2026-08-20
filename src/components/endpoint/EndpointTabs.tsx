@@ -20,6 +20,10 @@ interface EndpointTabsProps {
     assistantUnread?: boolean;
 }
 
+/** A private type keeps foreign drags — links, files, text, a tab from another
+ *  window of the app — out of the reorder path. */
+const TAB_DRAG_TYPE = 'application/x-opendoc-tab-index';
+
 type ContextMenuState = {
     x: number;
     y: number;
@@ -107,6 +111,7 @@ export default function EndpointTabs({
     const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
         setDraggedIndex(index);
         e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData(TAB_DRAG_TYPE, String(index));
         e.dataTransfer.setData('text/plain', String(index));
         // React clears currentTarget once the handler returns, so the element
         // has to be kept here: reading it a tick later crashed the app.
@@ -128,6 +133,7 @@ export default function EndpointTabs({
     );
     const handleDragOver = useCallback(
         (e: React.DragEvent, index: number) => {
+            if (!e.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             if (draggedIndex === null || draggedIndex === index) {
@@ -143,9 +149,18 @@ export default function EndpointTabs({
         if (next && e.currentTarget.contains(next)) return;
         setDropTarget(null);
     }, []);
+    const readDragIndex = useCallback((e: React.DragEvent): number | null => {
+        const raw = e.dataTransfer.getData(TAB_DRAG_TYPE);
+        if (!raw) return null;
+        const index = Number(raw);
+        return Number.isInteger(index) ? index : null;
+    }, []);
     const commitDrop = useCallback(
-        (fromIndex: number, toIndex: number) => {
-            if (isNaN(fromIndex) || fromIndex === toIndex) return;
+        (fromIndex: number | null, toIndex: number) => {
+            // Anything outside the strip, or a stale index from another window,
+            // would reorder against a tab that is not there.
+            const inRange = (index: number) => index >= 0 && index < tabs.length;
+            if (fromIndex === null || !inRange(fromIndex) || !inRange(toIndex) || fromIndex === toIndex) return;
             const draggedTab = tabs[fromIndex];
             if (draggedTab?.isPreview) {
                 onDoubleClickTab(draggedTab.id);
@@ -157,13 +172,14 @@ export default function EndpointTabs({
     const handleDrop = useCallback(
         (e: React.DragEvent, toIndex: number) => {
             e.preventDefault();
-            commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), toIndex);
+            commitDrop(readDragIndex(e), toIndex);
             handleDragEnd();
         },
-        [commitDrop, handleDragEnd],
+        [commitDrop, handleDragEnd, readDragIndex],
     );
     const handleTrailingDragOver = useCallback(
         (e: React.DragEvent) => {
+            if (!e.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             if (draggedIndex === null) return;
@@ -175,10 +191,10 @@ export default function EndpointTabs({
     const handleTrailingDrop = useCallback(
         (e: React.DragEvent) => {
             e.preventDefault();
-            commitDrop(parseInt(e.dataTransfer.getData('text/plain'), 10), tabs.length - 1);
+            commitDrop(readDragIndex(e), tabs.length - 1);
             handleDragEnd();
         },
-        [commitDrop, handleDragEnd, tabs.length],
+        [commitDrop, handleDragEnd, readDragIndex, tabs.length],
     );
     if (tabs.length === 0) return null;
     const tabIndex = (id: string) => tabs.findIndex(t => t.id === id);
