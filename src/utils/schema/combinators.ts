@@ -55,73 +55,164 @@ export const COMBINATOR_META: Record<CombinatorKind, CombinatorMeta> = {
 export interface SchemaCombinator {
     meta: CombinatorMeta;
     branches: any[];
-    /** True when the first branch is the merged allOf object, not a declared one. */
-    unifiedFirst?: boolean;
 }
 
 export type SchemaBranchResolver = (schema: any) => any;
 
-/** Caption of the merged allOf branch, and the way every label helper names it. */
-export const UNIFIED_BRANCH_TITLE = 'Unified';
+export interface AllOfPart {
+    /** What the part is called in the composition line. */
+    label: string;
+    refName: string | null;
+    fieldCount: number;
+    /** A part that declares nothing has nothing to show. */
+    empty: boolean;
+    description?: string;
+}
+
+export interface AllOfComposition {
+    /** The single object a payload really has: parent and every part merged. */
+    effective: any;
+    parts: AllOfPart[];
+    fieldCount: number;
+    requiredCount: number;
+    /** Parts that declare nothing at all, e.g. an empty base schema. */
+    emptyCount: number;
+}
+
+const SCHEMA_KEYWORDS = [
+    'type',
+    'properties',
+    'items',
+    'enum',
+    'const',
+    'format',
+    'pattern',
+    'required',
+    'additionalProperties',
+    'oneOf',
+    'anyOf',
+    'allOf',
+    'not',
+    'minimum',
+    'maximum',
+    'minLength',
+    'maxLength',
+    'minItems',
+    'maxItems',
+];
+
+const declaresSomething = (schema: any): boolean =>
+    !!schema && typeof schema === 'object' && SCHEMA_KEYWORDS.some(keyword => schema[keyword] !== undefined);
+
+/** An empty schema accepts anything, and adds nothing wherever it is composed. */
+export const schemaDeclaresNothing = (schema: any): boolean =>
+    !!schema && typeof schema === 'object' && !Array.isArray(schema) && !declaresSomething(schema);
 
 /**
- * allOf means every branch applies at once, so the shape a payload really has
- * is the merge of them. That merge is offered as a branch of its own; the
- * declared parts stay behind it so each constraint can still be inspected.
- * Returns null when there is nothing to unify, e.g. allOf of plain constraints.
+ * allOf composes: every part applies at once, so a payload has one object made
+ * of the parent and all parts together. This builds that object — properties
+ * and required from every level, nested allOf included — and returns null when
+ * there is nothing to merge.
  */
-export const mergeAllOfBranches = (branches: any[], resolve: SchemaBranchResolver = schema => schema): any => {
+export const effectiveAllOfSchema = (schema: any, resolve: SchemaBranchResolver = value => value): any => {
+    if (!schema || typeof schema !== 'object') return null;
     const properties: Record<string, any> = {};
     const required: string[] = [];
     const seen = new Set<any>();
     let merged = false;
-    const visit = (branch: any, depth: number) => {
-        if (!branch || typeof branch !== 'object' || depth > 16) return;
-        const schema = resolve(branch) || branch;
-        if (!schema || typeof schema !== 'object' || seen.has(schema)) return;
-        seen.add(schema);
-        if (Array.isArray(schema.allOf)) schema.allOf.forEach((part: any) => visit(part, depth + 1));
-        if (schema.properties && typeof schema.properties === 'object') {
+    let additionalProperties: any;
+    const visit = (input: any, depth: number) => {
+        if (!input || typeof input !== 'object' || depth > 16) return;
+        const current = resolve(input) || input;
+        if (!current || typeof current !== 'object' || seen.has(current)) return;
+        seen.add(current);
+        if (Array.isArray(current.allOf)) current.allOf.forEach((part: any) => visit(part, depth + 1));
+        if (current.properties && typeof current.properties === 'object') {
             merged = true;
-            Object.entries(schema.properties).forEach(([name, property]) => {
+            Object.entries(current.properties).forEach(([name, property]) => {
                 properties[name] = property;
             });
         }
-        if (Array.isArray(schema.required))
-            schema.required.forEach((name: any) => {
+        if (Array.isArray(current.required))
+            current.required.forEach((name: any) => {
                 const key = String(name);
                 if (!required.includes(key)) required.push(key);
             });
+        if (current.additionalProperties !== undefined && additionalProperties === undefined)
+            additionalProperties = current.additionalProperties;
     };
-    branches.forEach(branch => visit(branch, 0));
+    visit(schema, 0);
     if (!merged) return null;
+    const resolvedRoot = resolve(schema) || schema;
     return {
-        title: UNIFIED_BRANCH_TITLE,
         type: 'object',
-        description: 'Every allOf constraint merged into the one object a payload actually has.',
+        ...(resolvedRoot.title ? {title: resolvedRoot.title} : {}),
+        ...(resolvedRoot.description ? {description: resolvedRoot.description} : {}),
+        ...(resolvedRoot.example !== undefined ? {example: resolvedRoot.example} : {}),
         properties,
         ...(required.length > 0 ? {required} : {}),
+        ...(additionalProperties !== undefined ? {additionalProperties} : {}),
     };
 };
 
-/**
- * The polymorphism keyword a schema declares, if any, with its branches. Give
- * it a reference resolver and allOf leads with its merged object.
- */
-export const detectSchemaCombinator = (schema: any, resolve?: SchemaBranchResolver): SchemaCombinator | null => {
+/** Names each declared part of an allOf, so the reader sees where the fields come from. */
+export const describeAllOfParts = (
+    branches: any[],
+    resolve: SchemaBranchResolver = value => value,
+    refName: (ref: string) => string = ref => ref.split('/').pop() || ref,
+): AllOfPart[] =>
+    branches.map((branch, index) => {
+        const resolved = (branch && resolve(branch)) || branch;
+        const fieldCount =
+            resolved && typeof resolved === 'object' && resolved.properties
+                ? Object.keys(resolved.properties).length
+                : 0;
+        const empty = !declaresSomething(resolved);
+        const name = branch?.$ref ? refName(branch.$ref) : resolved?.title || null;
+        const label = name
+            ? name
+            : empty
+              ? 'Empty part'
+              : fieldCount > 0
+                ? `${fieldCount} inline field${fieldCount === 1 ? '' : 's'}`
+                : `Part ${index + 1}`;
+        return {
+            label,
+            refName: branch?.$ref ? refName(branch.$ref) : null,
+            fieldCount,
+            empty,
+            description: resolved?.description,
+        };
+    });
+
+/** Everything a view needs to explain an allOf without pretending it is a choice. */
+export const describeAllOfComposition = (
+    schema: any,
+    resolve: SchemaBranchResolver = value => value,
+    refName?: (ref: string) => string,
+): AllOfComposition | null => {
+    const branches = Array.isArray(schema?.allOf) ? schema.allOf : [];
+    if (branches.length === 0) return null;
+    const effective = effectiveAllOfSchema(schema, resolve);
+    const parts = describeAllOfParts(branches, resolve, refName);
+    return {
+        effective: effective || schema,
+        parts,
+        fieldCount: effective?.properties ? Object.keys(effective.properties).length : 0,
+        requiredCount: Array.isArray(effective?.required) ? effective.required.length : 0,
+        emptyCount: parts.filter(part => part.empty).length,
+    };
+};
+
+/** The polymorphism keyword a schema declares, if any, with its branches. */
+export const detectSchemaCombinator = (schema: any, _resolve?: SchemaBranchResolver): SchemaCombinator | null => {
     if (!schema || typeof schema !== 'object') return null;
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
         return {meta: COMBINATOR_META.oneOf, branches: schema.oneOf};
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)
         return {meta: COMBINATOR_META.anyOf, branches: schema.anyOf};
-    if (Array.isArray(schema.allOf) && schema.allOf.length) {
-        const unified = mergeAllOfBranches(schema.allOf, resolve);
-        return {
-            meta: COMBINATOR_META.allOf,
-            branches: unified ? [unified, ...schema.allOf] : schema.allOf,
-            unifiedFirst: !!unified,
-        };
-    }
+    if (Array.isArray(schema.allOf) && schema.allOf.length)
+        return {meta: COMBINATOR_META.allOf, branches: schema.allOf};
     if (schema.not && typeof schema.not === 'object') return {meta: COMBINATOR_META.not, branches: [schema.not]};
     return null;
 };

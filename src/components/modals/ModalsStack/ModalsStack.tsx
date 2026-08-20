@@ -29,7 +29,7 @@ import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import {usePreferences} from '../../../contexts/PreferencesContext';
 import {modalRepresentationOf} from '../../../utils/storage/preferences';
 import CombinatorLabel from '../../common/CombinatorLabel';
-import {COMBINATOR_META} from '../../../utils/schema/combinators';
+import {COMBINATOR_META, schemaDeclaresNothing} from '../../../utils/schema/combinators';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -490,6 +490,15 @@ export default function ModalsStack({
                                 </div>
                             )}
                         </div>
+                        {schemaDeclaresNothing(activeSchemaObj.schema) && (
+                            <div className="mb-4 flex items-start gap-2 rounded-lg border border-dashed p-3 text-xs leading-relaxed border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
+                                <i className="ph ph-info mt-0.5 text-[13px] text-[var(--primary)]" />
+                                <span>
+                                    This schema declares no properties and no constraints, so it accepts any value and
+                                    adds nothing where it is composed.
+                                </span>
+                            </div>
+                        )}
                         {(activeSchemaObj.schema?.description || activeSchemaObj.schema?.externalDocs) && (
                             <div className="mb-4 p-3 rounded-lg border text-xs leading-relaxed space-y-3 bg-[var(--background)] border-[var(--border)]">
                                 {activeSchemaObj.schema?.description && (
