@@ -240,7 +240,7 @@ export default function EndpointWorkspace({
                                 aria-label={`Open endpoint notes (${endpointNoteCount})`}
                                 aria-expanded={selectedTab === 'both' ? undefined : notesSidebarOpen}
                                 aria-haspopup={selectedTab === 'both' ? 'dialog' : undefined}
-                                className="group inline-flex h-8.5 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                                className="group inline-flex h-8.5 w-[60px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] px-2 text-xs font-bold text-[var(--text-heading)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
                             >
                                 <i className="ph-fill ph-note text-[15px] text-[#f59e0b] transition-colors group-hover:text-[var(--primary)] group-active:text-[var(--primary)]" />
                                 <span data-endpoint-note-count>{endpointNoteCount}</span>
