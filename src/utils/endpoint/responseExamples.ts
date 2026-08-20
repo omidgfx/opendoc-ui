@@ -1,6 +1,6 @@
 import * as jsYaml from 'js-yaml';
 import type {OpenApiSpec} from '@/src/types';
-import {getRefName} from '@/src/utils/openapi';
+import {exampleValueOf, getRefName} from '@/src/utils/openapi';
 import {formatXml} from '@/src/utils/endpoint/exampleFormatting';
 import {
     extractMockLineMarkers,
@@ -25,14 +25,7 @@ export const createResponseExampleHelpers = (spec: OpenApiSpec) => {
         if (contentObj.example !== undefined) return contentObj.example;
         if (contentObj.examples && typeof contentObj.examples === 'object') {
             const first = Object.values(contentObj.examples)[0] as any;
-            if (first) {
-                if (first.dataValue !== undefined) return first.dataValue;
-                if (first.value !== undefined) return first.value;
-                if (first.serializedValue !== undefined) return first.serializedValue;
-                if (first.externalValue !== undefined) return first.externalValue;
-                if (first.externalDataValue !== undefined) return first.externalDataValue;
-                return first;
-            }
+            if (first !== undefined) return exampleValueOf(first, spec);
         }
         return undefined;
     };

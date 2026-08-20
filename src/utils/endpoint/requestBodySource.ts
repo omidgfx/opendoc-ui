@@ -1,5 +1,5 @@
 import type {OpenApiSpec} from '@/src/types';
-import {resolveReference, resolveRequestBody} from '@/src/utils/openapi';
+import {firstExampleValueOf, resolveReference, resolveRequestBody} from '@/src/utils/openapi';
 
 export type RequestBodyVariantKind = 'oneOf' | 'anyOf' | 'allOf';
 
@@ -34,16 +34,11 @@ export const resolveRequestBodyMediaType = (resolvedBody: any, preferred = ''): 
 
 /** Explicit example of a media type object, covering both `example` and the
  *  `examples` map (including Swagger 2 style data/serialized values). */
-export const getRequestBodyExample = (content: any): any => {
+export const getRequestBodyExample = (content: any, spec?: OpenApiSpec | null): any => {
     if (!content) return undefined;
     if (content.example !== undefined) return content.example;
-    const first = Object.values(content.examples || {})[0] as any;
-    if (first) {
-        if (first.dataValue !== undefined) return first.dataValue;
-        if (first.value !== undefined) return first.value;
-        if (first.serializedValue !== undefined) return first.serializedValue;
-        if (first.externalValue !== undefined) return first.externalValue;
-    }
+    const named = firstExampleValueOf(content.examples, spec);
+    if (named !== undefined) return named;
     if (content.schema?.example !== undefined) return content.schema.example;
     return undefined;
 };
@@ -83,6 +78,6 @@ export const resolveRequestBodySource = (
         variants,
         variantIndex: boundedVariantIndex,
         activeSchema,
-        example: getRequestBodyExample(content),
+        example: getRequestBodyExample(content, spec),
     };
 };
