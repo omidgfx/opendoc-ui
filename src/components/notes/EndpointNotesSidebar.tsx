@@ -106,6 +106,7 @@ export default function EndpointNotesSidebar({
             {overlay && (
                 <button
                     type="button"
+                    data-overlay-backdrop
                     aria-label="Close endpoint notes"
                     className={clsx(
                         'absolute inset-0 z-[45] bg-black/30 transition-opacity duration-300',
