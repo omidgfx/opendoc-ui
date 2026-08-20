@@ -56,7 +56,8 @@ export default function ResponseCodeSheet({responses, activeCode, expandedCodes,
                 onClick={() => setOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={open}
-                className="sticky top-2 z-20 flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm backdrop-blur transition-colors cursor-pointer border-[var(--border)] bg-[var(--surface)]/95 hover:border-[var(--primary)]/40"
+                // Above the code viewer, whose gutter sits on a layer of its own.
+                className="sticky top-2 z-40 flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm backdrop-blur transition-colors cursor-pointer border-[var(--border)] bg-[var(--surface)]/95 hover:border-[var(--primary)]/40"
             >
                 <span
                     className="flex shrink-0 items-center rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-bold"

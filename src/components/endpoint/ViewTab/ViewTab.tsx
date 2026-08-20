@@ -15,6 +15,7 @@ import {useModalTransition} from '../../../hooks/useModalTransition';
 import EndpointInfoModal from './EndpointInfoModal';
 import ResponseCodeNavigator from './ResponseCodeNavigator';
 import ResponseCodeSheet from './ResponseCodeSheet';
+import {useVisibleResponseCode} from '@/src/hooks/useVisibleResponseCode';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
@@ -254,6 +255,9 @@ export default function ViewTab({
         onSelectResponseCode?.(null);
     };
     const expandedResponseCodes = new Set(responseCodes.filter(code => !collapsedResponses[code]));
+    // Purely observational: the pill follows the response being read without
+    // opening, collapsing or navigating anything.
+    const visibleResponseCode = useVisibleResponseCode(scrollContainerRef, responseCodes, isMobile);
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container || isMobile) return;
@@ -1020,7 +1024,7 @@ export default function ViewTab({
                     {isMobile && (
                         <ResponseCodeSheet
                             responses={operation.responses}
-                            activeCode={navigatorActiveCode}
+                            activeCode={visibleResponseCode || navigatorActiveCode}
                             expandedCodes={expandedResponseCodes}
                             onSelect={openAndScrollToResponse}
                         />

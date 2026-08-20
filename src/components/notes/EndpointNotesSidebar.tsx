@@ -113,9 +113,11 @@ export default function EndpointNotesSidebar({
                 ref={panelRef}
                 data-endpoint-notes-sidebar
                 aria-label="Endpoint notes sidebar"
+                // Drawn over the endpoint content, inside the pane it belongs
+                // to: opening notes must not squeeze the documentation.
                 className={clsx(
-                    'relative z-30 flex h-full min-h-0 shrink-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-[-8px_0_20px_rgba(0,0,0,0.04)]',
-                    overlay && 'absolute inset-y-0 right-0 max-w-[86vw] shadow-[-12px_0_28px_rgba(0,0,0,0.18)]',
+                    'absolute inset-y-0 right-0 z-30 flex h-full min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-[-12px_0_28px_rgba(0,0,0,0.18)]',
+                    overlay && 'max-w-[86vw]',
                 )}
                 style={{width: overlay ? `min(${width}px, 86vw)` : width}}
             >
