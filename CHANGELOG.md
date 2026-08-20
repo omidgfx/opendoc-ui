@@ -3,6 +3,43 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.2.0] — 2026-08-20
+
+Endpoint notes review: a settings page, serialization awareness, and a responsive documentation and
+Runner surface. Large enough in scope to take a minor version.
+
+- adds a **Settings page** with its own tab and deep links (`/#/<spec>/settings#<section>`) covering
+  General, Appearance, Navigation, Code viewer, and AI, and retires the theme selector modal in
+  favour of an in-page theme gallery;
+- makes the schema/example switch a **scope** choice — per endpoint or globally for the
+  documentation, per schema or globally for the schema modal — stored with the rest of the
+  preferences in IndexedDB;
+- fixes the documentation, the example viewer, and the Runner disagreeing about the request body:
+  all three now resolve the same media type and the same declared example;
+- teaches parameters their **serialization**: `style`/`explode` descriptors next to every parameter,
+  a serializer playground that can hand its result to the Runner, a pattern tester, live pattern
+  indicators, a structured (JSON/YAML) editor for object parameters, and a live final URL;
+- fixes array parameters being seeded with JSON text, so `tagsCompact` sends `one,two,three`
+  instead of splitting `["one","two"]` on its own commas, and exploded arrays send every value;
+- splits the parameter matrix per location (path, query, header, cookie) with a setting to keep the
+  unified table, and tags each location with its own icon and hue;
+- reworks polymorphism: `oneOf`/`anyOf`/`allOf` selectors became a scrolling tab rail with an
+  overflow menu, on responses as well, and nested combinators read correctly on a phone;
+- adds a **mobile response navigator** — a pinned pill that follows the response you are reading and
+  a bottom sheet to jump between responses;
+- turns tables into cards when a pane runs out of room for its columns (parameters, schema
+  properties, response headers, compatibility), with a setting to keep the table;
+- makes the workspace container-aware: split view is offered only where it fits, the endpoint header
+  actions stay on one row, the notes panel floats over the pane instead of squeezing it, and it now
+  slides in and out like the sidebar;
+- adds shared modal shortcuts (Escape, Ctrl/⌘+Enter, and the mobile back gesture), a scrolling tab
+  strip that never hijacks the page scroll, and an overflow action menu for route actions;
+- fixes several stacking and gesture defects: the code viewer gutter painting over pinned elements,
+  the endpoint pane competing with the app chrome, and the sidebar edge swipe opening the drawer
+  behind an open modal, sheet, or overlay;
+- indents XML examples, adds a code viewer gutter and indicator-icon settings, restores the tablet
+  search panel, and bumps the package, lockfile, README, and release metadata to `0.2.0`.
+
 ## [0.1.16] — 2026-08-17
 
 Brand identity refresh and logo rollout.
