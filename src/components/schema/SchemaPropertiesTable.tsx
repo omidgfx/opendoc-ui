@@ -160,6 +160,13 @@ export default function SchemaPropertiesTable({
                 </div>
             );
         }
+        if (prop.type === 'array' && Array.isArray(prop.prefixItems) && prop.prefixItems.length > 0) {
+            return (
+                <span className="text-xs font-mono text-[var(--text-muted)]">
+                    tuple[{prop.prefixItems.length} slot{prop.prefixItems.length === 1 ? '' : 's'}]
+                </span>
+            );
+        }
         if (prop.type === 'array' && prop.items) {
             if (prop.items.$ref) {
                 const refName = getRefName(prop.items.$ref);
@@ -198,6 +205,19 @@ export default function SchemaPropertiesTable({
         return null;
     };
     const patternEntries = Object.entries((schema as any)?.patternProperties || {});
+    const tupleEntries = Array.isArray((schema as any)?.prefixItems)
+        ? ((schema as any).prefixItems as any[]).map((item, index) => [index, item] as const)
+        : [];
+    const dependentRequiredEntries = Object.entries((schema as any)?.dependentRequired || {});
+    const discriminator = (schema as any)?.discriminator;
+    const propertyNamesSchema = (schema as any)?.propertyNames;
+    const ifSchema = (schema as any)?.if;
+    const thenSchema = (schema as any)?.then;
+    const elseSchema = (schema as any)?.else;
+    const arrayItemsSchema = (schema as any)?.items;
+    const unevaluatedProperties = (schema as any)?.unevaluatedProperties;
+    const schemaContentEncoding = (schema as any)?.contentEncoding;
+    const schemaContentMediaType = (schema as any)?.contentMediaType;
     const notSchema = (schema as any)?.not;
     const isOpenObject =
         (schema as any)?.type === 'object' &&
@@ -208,7 +228,23 @@ export default function SchemaPropertiesTable({
         isOpenObject && (schema as any).additionalProperties !== true
             ? (schema as any).additionalProperties
             : undefined;
-    if (Object.keys(properties).length === 0 && patternEntries.length === 0 && !notSchema && !isOpenObject) {
+    const hasSchemaNotes =
+        tupleEntries.length > 0 ||
+        dependentRequiredEntries.length > 0 ||
+        !!discriminator ||
+        !!propertyNamesSchema ||
+        !!ifSchema ||
+        unevaluatedProperties !== undefined ||
+        !!schemaContentEncoding ||
+        !!schemaContentMediaType ||
+        !!arrayItemsSchema;
+    if (
+        Object.keys(properties).length === 0 &&
+        patternEntries.length === 0 &&
+        !notSchema &&
+        !isOpenObject &&
+        !hasSchemaNotes
+    ) {
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
     }
     const propertyFacts = (name: string, pVal: any) => {
@@ -242,12 +278,17 @@ export default function SchemaPropertiesTable({
             isComplexType,
             pattern: resolvePattern(pVal),
             recursive: schemaIsRecursive(pVal, resolveReference),
+            deprecated: pVal?.deprecated === true,
+            readOnly: pVal?.readOnly === true,
+            writeOnly: pVal?.writeOnly === true,
+            contentEncoding: typeof pVal?.contentEncoding === 'string' ? pVal.contentEncoding : '',
+            contentMediaType: typeof pVal?.contentMediaType === 'string' ? pVal.contentMediaType : '',
         };
     };
     /** The four cells of a property, shared by the table and the card list so
      *  the two views can never drift apart. */
     const propertyCells = (name: string, pVal: any) => {
-        const {isRequired, isComplexType, pattern, recursive} = propertyFacts(name, pVal);
+        const {isRequired, isComplexType, pattern, recursive, deprecated, readOnly, writeOnly, contentEncoding, contentMediaType} = propertyFacts(name, pVal);
         return {
             isRequired,
             name: (
@@ -275,12 +316,45 @@ export default function SchemaPropertiesTable({
                             </Tip>
                         </div>
                     )}
+                    {(deprecated || readOnly || writeOnly) && (
+                        <div className="flex flex-wrap gap-1">
+                            {deprecated && (
+                                <span className="rounded-md border border-[var(--method-put)]/25 bg-[var(--method-put)]/10 px-1.5 py-0.5 text-[9px] font-bold text-[var(--method-put)]">
+                                    deprecated
+                                </span>
+                            )}
+                            {readOnly && (
+                                <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)]">
+                                    readOnly
+                                </span>
+                            )}
+                            {writeOnly && (
+                                <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)]">
+                                    writeOnly
+                                </span>
+                            )}
+                        </div>
+                    )}
                     {pVal.format && (
                         <div className="text-[10px] font-mono flex items-center gap-1">
                             <span>format:</span>
                             <code className="px-1 py-0.5 rounded bg-[var(--background)] text-[var(--accent)] border border-[var(--border)] font-mono select-all text-[9.5px]">
                                 {pVal.format}
                             </code>
+                        </div>
+                    )}
+                    {(contentEncoding || contentMediaType) && (
+                        <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                            {contentEncoding && (
+                                <span className="rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[var(--text-heading)]">
+                                    encoding: {contentEncoding}
+                                </span>
+                            )}
+                            {contentMediaType && (
+                                <span className="rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[var(--text-heading)]">
+                                    media: {contentMediaType}
+                                </span>
+                            )}
                         </div>
                     )}
                     {pattern && (
@@ -539,6 +613,226 @@ export default function SchemaPropertiesTable({
                                 </p>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+            {tupleEntries.length > 0 && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Tuple Items
+                        </span>
+                        <Tip content="OpenAPI 3.1 tuple validation using prefixItems. Each position has its own schema.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="space-y-2">
+                        {tupleEntries.map(([index, tupleSchema]) => (
+                            <div key={`tuple:${index}`} className="flex items-start gap-2.5">
+                                <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--text-muted)] whitespace-nowrap">
+                                    [{index}]
+                                </code>
+                                <div className="min-w-0">
+                                    <div>{renderSchemaType(tupleSchema)}</div>
+                                    {tupleSchema?.description && (
+                                        <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                            {tupleSchema.description}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {arrayItemsSchema && arrayItemsSchema !== false && (
+                            <div className="flex items-start gap-2.5">
+                                <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--text-muted)] whitespace-nowrap">
+                                    [n+]
+                                </code>
+                                <div className="min-w-0">
+                                    <div>{renderSchemaType(arrayItemsSchema)}</div>
+                                    <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                        Additional items after the fixed tuple slots use this schema.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            {arrayItemsSchema && tupleEntries.length === 0 && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Array Items
+                        </span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono select-all text-[10px] text-[var(--text-muted)] whitespace-nowrap">
+                            [*]
+                        </code>
+                        <div className="min-w-0">{renderSchemaType(arrayItemsSchema)}</div>
+                    </div>
+                </div>
+            )}
+            {propertyNamesSchema && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Property Names
+                        </span>
+                        <Tip content="Every object key must satisfy this schema in addition to the value rules.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="min-w-0">{renderSchemaType(propertyNamesSchema)}</div>
+                    {resolvePattern(propertyNamesSchema) && (
+                        <div className="mt-1 text-[10px] text-[var(--text-muted)]">
+                            Pattern:{' '}
+                            <code className="font-mono text-[var(--text-heading)]">
+                                {resolvePattern(propertyNamesSchema)}
+                            </code>
+                        </div>
+                    )}
+                </div>
+            )}
+            {dependentRequiredEntries.length > 0 && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Dependent Required
+                        </span>
+                        <Tip content="When the left-hand property appears, the listed companion properties become required too.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="space-y-1.5">
+                        {dependentRequiredEntries.map(([name, values]) => (
+                            <div key={name} className="text-xs text-[var(--text)]">
+                                <code className="rounded bg-[var(--background)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                                    {name}
+                                </code>{' '}
+                                requires{' '}
+                                <code className="rounded bg-[var(--background)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                                    {Array.isArray(values) ? values.join(', ') : String(values)}
+                                </code>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {discriminator && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Discriminator
+                        </span>
+                        <Tip content="Polymorphism switch used to decide which branch schema applies.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="text-xs text-[var(--text)]">
+                        Property:{' '}
+                        <code className="rounded bg-[var(--background)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-heading)]">
+                            {discriminator.propertyName}
+                        </code>
+                    </div>
+                    {discriminator.mapping && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {Object.entries(discriminator.mapping).map(([key, ref]) => {
+                                const schemaName = typeof ref === 'string' ? getRefName(ref) : '';
+                                return (
+                                    <div
+                                        key={key}
+                                        className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-[10px]"
+                                    >
+                                        <code className="font-mono text-[var(--text-heading)]">{key}</code>
+                                        <span className="text-[var(--text-muted)]">→</span>
+                                        {schemaName ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onPushSchema(schemaName)}
+                                                className="font-bold text-[var(--primary)] cursor-pointer"
+                                            >
+                                                {schemaName}
+                                            </button>
+                                        ) : (
+                                            <code className="font-mono text-[var(--text-heading)]">{String(ref)}</code>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+            {(ifSchema || thenSchema || elseSchema) && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Conditional Validation
+                        </span>
+                        <Tip content="If the IF schema matches, THEN applies; otherwise ELSE applies when present.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-3">
+                        {ifSchema && (
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">If</div>
+                                <div className="mt-1">{renderSchemaType(ifSchema)}</div>
+                            </div>
+                        )}
+                        {thenSchema && (
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Then</div>
+                                <div className="mt-1">{renderSchemaType(thenSchema)}</div>
+                            </div>
+                        )}
+                        {elseSchema && (
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Else</div>
+                                <div className="mt-1">{renderSchemaType(elseSchema)}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            {unevaluatedProperties !== undefined && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Unevaluated Properties
+                        </span>
+                        <Tip content="Rules for properties not already covered by properties, patternProperties, allOf, or other evaluated keywords.">
+                            <i className="ph ph-info text-[11px] text-[var(--text-muted)] cursor-help"></i>
+                        </Tip>
+                    </div>
+                    {unevaluatedProperties === false ? (
+                        <p className="text-xs text-[var(--text-muted)]">Additional unevaluated properties are rejected.</p>
+                    ) : unevaluatedProperties === true ? (
+                        <p className="text-xs text-[var(--text-muted)]">Additional unevaluated properties are allowed.</p>
+                    ) : (
+                        <div className="min-w-0">{renderSchemaType(unevaluatedProperties)}</div>
+                    )}
+                </div>
+            )}
+            {(schemaContentEncoding || schemaContentMediaType) && (
+                <div className="border-t border-[var(--border)] px-3 py-2.5">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                            Content Hints
+                        </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                        {schemaContentEncoding && (
+                            <span className="rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[var(--text-heading)]">
+                                encoding: {schemaContentEncoding}
+                            </span>
+                        )}
+                        {schemaContentMediaType && (
+                            <span className="rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[var(--text-heading)]">
+                                media: {schemaContentMediaType}
+                            </span>
+                        )}
                     </div>
                 </div>
             )}

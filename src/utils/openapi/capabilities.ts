@@ -136,7 +136,7 @@ export const OPENAPI_CAPABILITIES: OpenApiCapability[] = [
         dialects: ['swagger2', 'oas3.0', 'oas3.1', 'oas3.2'],
         consumers: ['execute'],
         status: 'partial',
-        note: 'The Runner accepts an access token but does not perform authorization flows.',
+        note: 'Browser authorization-code + PKCE and implicit flows are supported, including OpenID Connect discovery when the provider exposes browser-friendly discovery and token-endpoint CORS. Non-browser flows still require a manual token.',
     },
 ];
 

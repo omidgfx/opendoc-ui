@@ -103,7 +103,13 @@ export const defaultBodyValue = (
                 ]),
         );
     }
-    if (current.type === 'array') return [];
+    if (current.type === 'array') {
+        if (Array.isArray(current.prefixItems) && current.prefixItems.length > 0)
+            return current.prefixItems.map((item: any) =>
+                defaultBodyValue(item, spec, depth + 1, new Set(refs), new Set(objects)),
+            );
+        return [];
+    }
     if (current.type === 'boolean') return false;
     if (current.type === 'integer' || current.type === 'number') return '';
     return '';

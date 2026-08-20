@@ -74,6 +74,8 @@ const typeLabel = (schema: any, spec: OpenApiSpec | null): string => {
     if (!resolved || typeof resolved !== 'object') return 'any';
     if (schemaDeclaresBinary(resolved)) return 'binary';
     const type = Array.isArray(resolved.type) ? resolved.type.filter((t: string) => t !== 'null')[0] : resolved.type;
+    if (type === 'array' && Array.isArray(resolved.prefixItems) && resolved.prefixItems.length > 0)
+        return `tuple<${resolved.prefixItems.map((item: any) => typeLabel(item, spec)).join(', ')}>`;
     if (type === 'array') return `array<${typeLabel(resolved.items, spec)}>`;
     if (resolved.format) return `${type || 'string'} (${resolved.format})`;
     if (!type && (resolved.oneOf || resolved.anyOf || resolved.allOf)) return 'variant';

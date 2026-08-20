@@ -47,19 +47,59 @@ export const oauthAuthorizationFlow = (scheme: any) => {
     return null;
 };
 
+export const supportsInteractiveAuthorization = (scheme: any): boolean =>
+    !!oauthAuthorizationFlow(scheme) || (scheme?.type === 'openIdConnect' && typeof scheme?.openIdConnectUrl === 'string');
+
+const openIdScopes = (credential: AuthCredential): string[] => {
+    const scopes = credential.scopes?.length ? credential.scopes : ['openid'];
+    return scopes.includes('openid') ? scopes : ['openid', ...scopes];
+};
+
+const openIdDiscoveryFlow = async (scheme: any) => {
+    if (!scheme?.openIdConnectUrl) throw new Error('OpenID Connect discovery URL is missing.');
+    const response = await fetch(String(scheme.openIdConnectUrl), {
+        headers: {Accept: 'application/json'},
+        cache: 'no-store',
+    });
+    if (!response.ok) throw new Error(`OpenID Connect discovery returned HTTP ${response.status}.`);
+    const discovery = await response.json();
+    if (!discovery?.authorization_endpoint)
+        throw new Error('OpenID Connect discovery did not provide an authorization endpoint.');
+    return {
+        kind: 'authorizationCode' as const,
+        authorizationUrl: String(discovery.authorization_endpoint),
+        tokenUrl: discovery.token_endpoint ? String(discovery.token_endpoint) : undefined,
+        scopes: Array.isArray(discovery.scopes_supported)
+            ? Object.fromEntries(discovery.scopes_supported.map((scope: string) => [scope, scope]))
+            : {openid: 'OpenID Connect'},
+    };
+};
+
+const resolveInteractiveAuthorizationFlow = async (scheme: any) => {
+    const oauthFlow = oauthAuthorizationFlow(scheme);
+    if (oauthFlow) return oauthFlow;
+    if (scheme?.type === 'openIdConnect') return openIdDiscoveryFlow(scheme);
+    return null;
+};
+
 export const beginOAuthAuthorization = async (options: {
     schemeId: string;
     specKey: string;
     scheme: any;
     credential: AuthCredential;
 }) => {
-    const flow = oauthAuthorizationFlow(options.scheme);
-    if (!flow) throw new Error('This OAuth scheme has no browser authorization flow.');
+    const flow = await resolveInteractiveAuthorizationFlow(options.scheme);
+    if (!flow) throw new Error('This OAuth or OpenID Connect scheme has no browser authorization flow.');
     if (!options.credential.clientId?.trim()) throw new Error('OAuth client ID is required.');
     const state = randomValue();
     const verifier = flow.kind === 'authorizationCode' ? randomValue(48) : undefined;
     const redirectUri = `${window.location.origin}${getRouteBasePath()}oauth/callback`;
-    const scopes = options.credential.scopes?.length ? options.credential.scopes : Object.keys(flow.scopes || {});
+    const scopes =
+        options.scheme?.type === 'openIdConnect'
+            ? openIdScopes(options.credential)
+            : options.credential.scopes?.length
+              ? options.credential.scopes
+              : Object.keys(flow.scopes || {});
     const pending: PendingOAuth = {
         state,
         verifier,

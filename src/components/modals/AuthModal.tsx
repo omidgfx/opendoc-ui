@@ -4,7 +4,11 @@ import CustomDropdown from '../common/CustomDropdown';
 import {Tip} from '../common/Tooltip';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
-import {beginOAuthAuthorization, oauthAuthorizationFlow} from '../../utils/runner/oauthFlow';
+import {
+    beginOAuthAuthorization,
+    oauthAuthorizationFlow,
+    supportsInteractiveAuthorization,
+} from '../../utils/runner/oauthFlow';
 import {
     createEmptyAuth,
     getAuthSchemeLabel,
@@ -315,65 +319,75 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                                                 placeholder="Bearer access token"
                                             />
                                         </label>
-                                        {credential.type === 'oauth2' && oauthAuthorizationFlow(scheme) && (
-                                            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
-                                                <label className="block space-y-1">
-                                                    <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
-                                                        Public OAuth client ID
-                                                    </span>
-                                                    <input
-                                                        className={fieldClass}
-                                                        value={credential.clientId || ''}
-                                                        onChange={event =>
-                                                            updateCredential(id, {clientId: event.target.value})
-                                                        }
-                                                        placeholder="Client ID registered for this documentation origin"
-                                                    />
-                                                </label>
-                                                <label className="block space-y-1">
-                                                    <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
-                                                        Scopes
-                                                    </span>
-                                                    <input
-                                                        className={fieldClass}
-                                                        value={(credential.scopes || []).join(' ')}
-                                                        onChange={event =>
-                                                            updateCredential(id, {
-                                                                scopes: event.target.value.split(/\s+/).filter(Boolean),
-                                                            })
-                                                        }
-                                                        placeholder={Object.keys(
-                                                            oauthAuthorizationFlow(scheme)?.scopes || {},
-                                                        ).join(' ')}
-                                                    />
-                                                </label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setOauthError(null);
-                                                        void beginOAuthAuthorization({
-                                                            schemeId: id,
-                                                            specKey,
-                                                            scheme,
-                                                            credential: credentialFor(id),
-                                                        }).catch(error =>
-                                                            setOauthError(
-                                                                error instanceof Error
-                                                                    ? error.message
-                                                                    : 'OAuth authorization could not start.',
-                                                            ),
-                                                        );
-                                                    }}
-                                                    className="w-full rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:opacity-90 cursor-pointer"
-                                                >
-                                                    <i className="ph ph-browser me-1.5" /> Authorize with OAuth + PKCE
-                                                </button>
-                                                <p className="text-[9px] leading-relaxed text-[var(--text-muted)]">
-                                                    The provider must allow this origin and token-endpoint CORS. No
-                                                    client secret is stored or sent.
-                                                </p>
-                                            </div>
-                                        )}
+                                        {supportsInteractiveAuthorization(scheme) &&
+                                            (credential.type === 'oauth2' ||
+                                                credential.type === 'openIdConnect') && (
+                                                <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                                                    <label className="block space-y-1">
+                                                        <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                            Public {credential.type === 'openIdConnect' ? 'OpenID Connect' : 'OAuth'} client ID
+                                                        </span>
+                                                        <input
+                                                            className={fieldClass}
+                                                            value={credential.clientId || ''}
+                                                            onChange={event =>
+                                                                updateCredential(id, {clientId: event.target.value})
+                                                            }
+                                                            placeholder="Client ID registered for this documentation origin"
+                                                        />
+                                                    </label>
+                                                    <label className="block space-y-1">
+                                                        <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
+                                                            Scopes
+                                                        </span>
+                                                        <input
+                                                            className={fieldClass}
+                                                            value={(credential.scopes || []).join(' ')}
+                                                            onChange={event =>
+                                                                updateCredential(id, {
+                                                                    scopes: event.target.value.split(/\s+/).filter(Boolean),
+                                                                })
+                                                            }
+                                                            placeholder={
+                                                                credential.type === 'openIdConnect'
+                                                                    ? 'openid profile email'
+                                                                    : Object.keys(
+                                                                          oauthAuthorizationFlow(scheme)?.scopes || {},
+                                                                      ).join(' ')
+                                                            }
+                                                        />
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setOauthError(null);
+                                                            void beginOAuthAuthorization({
+                                                                schemeId: id,
+                                                                specKey,
+                                                                scheme,
+                                                                credential: credentialFor(id),
+                                                            }).catch(error =>
+                                                                setOauthError(
+                                                                    error instanceof Error
+                                                                        ? error.message
+                                                                        : 'OAuth authorization could not start.',
+                                                                ),
+                                                            );
+                                                        }}
+                                                        className="w-full rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-[var(--primary-contrast)] hover:opacity-90 cursor-pointer"
+                                                    >
+                                                        <i className="ph ph-browser me-1.5" />{' '}
+                                                        {credential.type === 'openIdConnect'
+                                                            ? 'Authorize with OpenID Connect'
+                                                            : 'Authorize with OAuth + PKCE'}
+                                                    </button>
+                                                    <p className="text-[9px] leading-relaxed text-[var(--text-muted)]">
+                                                        The provider must allow this origin and token-endpoint CORS. No
+                                                        client secret is stored or sent. OpenID Connect uses discovery when the scheme provides an
+                                                        <code className="mx-1 rounded bg-[var(--surface)] px-1 py-0.5 font-mono">openIdConnectUrl</code>.
+                                                    </p>
+                                                </div>
+                                            )}
                                     </div>
                                 )}
                                 {credential.type === 'basic' && (

@@ -490,14 +490,29 @@ export function generateMock(
         return object;
     }
     if (type === 'array') {
-        const minItems = Math.max(0, typeof schema.minItems === 'number' ? schema.minItems : 1);
-        const count = typeof schema.maxItems === 'number' ? Math.min(minItems, schema.maxItems) : minItems;
-        return Array.from({length: count}, (_, index) => {
-            const item = generateMock(schema.items || {}, spec, depth + 1, new Set(visited), usage);
-            if (schema.uniqueItems && typeof item === 'string') return `${item}${index || ''}`;
-            if (schema.uniqueItems && typeof item === 'number') return item + index;
-            return item;
+        const tupleSchemas = Array.isArray(schema.prefixItems) ? schema.prefixItems : [];
+        const minItems = Math.max(0, typeof schema.minItems === 'number' ? schema.minItems : tupleSchemas.length > 0 ? tupleSchemas.length : 1);
+        const maxItems = typeof schema.maxItems === 'number' ? schema.maxItems : Infinity;
+        const tupleCount = Math.min(tupleSchemas.length, maxItems);
+        const values = tupleSchemas.slice(0, tupleCount).map((item: any, index: number) => {
+            const generated = generateMock(item, spec, depth + 1, new Set(visited), usage);
+            if (schema.uniqueItems && typeof generated === 'string') return `${generated}${index || ''}`;
+            if (schema.uniqueItems && typeof generated === 'number') return generated + index;
+            return generated;
         });
+        const additionalCount = Math.max(0, Math.min(maxItems, minItems) - values.length);
+        if (additionalCount > 0) {
+            const additionalSchema = schema.items === false ? null : schema.items || {};
+            for (let index = 0; index < additionalCount; index += 1) {
+                const generated = additionalSchema
+                    ? generateMock(additionalSchema, spec, depth + 1, new Set(visited), usage)
+                    : null;
+                if (schema.uniqueItems && typeof generated === 'string') values.push(`${generated}${values.length || ''}`);
+                else if (schema.uniqueItems && typeof generated === 'number') values.push(generated + values.length);
+                else values.push(generated);
+            }
+        }
+        return values;
     }
     if (type === 'string') return constrainedString(schema);
     if (type === 'integer' || type === 'number') return constrainedNumber(schema);
@@ -598,11 +613,14 @@ export const validateMockValue = (
             errors.push(`${path}: more than maxItems`);
         if (schema.uniqueItems && new Set(value.map(item => JSON.stringify(item))).size !== value.length)
             errors.push(`${path}: items are not unique`);
-        value.forEach((item, index) =>
-            errors.push(
-                ...validateMockValue(schema.items || true, item, spec, `${path}[${index}]`, new Set(visited), usage),
-            ),
-        );
+        const tupleSchemas = Array.isArray(schema.prefixItems) ? schema.prefixItems : [];
+        value.forEach((item, index) => {
+            const itemSchema =
+                index < tupleSchemas.length ? tupleSchemas[index] : schema.items === false ? false : schema.items || true;
+            errors.push(...validateMockValue(itemSchema, item, spec, `${path}[${index}]`, new Set(visited), usage));
+        });
+        if (schema.items === false && value.length > tupleSchemas.length)
+            errors.push(`${path}: additional tuple items are not allowed`);
     }
     if (value && typeof value === 'object' && !Array.isArray(value)) {
         const object = value as Record<string, unknown>;
