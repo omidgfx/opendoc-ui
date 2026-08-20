@@ -491,7 +491,10 @@ export function generateMock(
     }
     if (type === 'array') {
         const tupleSchemas = Array.isArray(schema.prefixItems) ? schema.prefixItems : [];
-        const minItems = Math.max(0, typeof schema.minItems === 'number' ? schema.minItems : tupleSchemas.length > 0 ? tupleSchemas.length : 1);
+        const minItems = Math.max(
+            0,
+            typeof schema.minItems === 'number' ? schema.minItems : tupleSchemas.length > 0 ? tupleSchemas.length : 1,
+        );
         const maxItems = typeof schema.maxItems === 'number' ? schema.maxItems : Infinity;
         const tupleCount = Math.min(tupleSchemas.length, maxItems);
         const values = tupleSchemas.slice(0, tupleCount).map((item: any, index: number) => {
@@ -507,7 +510,8 @@ export function generateMock(
                 const generated = additionalSchema
                     ? generateMock(additionalSchema, spec, depth + 1, new Set(visited), usage)
                     : null;
-                if (schema.uniqueItems && typeof generated === 'string') values.push(`${generated}${values.length || ''}`);
+                if (schema.uniqueItems && typeof generated === 'string')
+                    values.push(`${generated}${values.length || ''}`);
                 else if (schema.uniqueItems && typeof generated === 'number') values.push(generated + values.length);
                 else values.push(generated);
             }
@@ -616,7 +620,11 @@ export const validateMockValue = (
         const tupleSchemas = Array.isArray(schema.prefixItems) ? schema.prefixItems : [];
         value.forEach((item, index) => {
             const itemSchema =
-                index < tupleSchemas.length ? tupleSchemas[index] : schema.items === false ? false : schema.items || true;
+                index < tupleSchemas.length
+                    ? tupleSchemas[index]
+                    : schema.items === false
+                      ? false
+                      : schema.items || true;
             errors.push(...validateMockValue(itemSchema, item, spec, `${path}[${index}]`, new Set(visited), usage));
         });
         if (schema.items === false && value.length > tupleSchemas.length)

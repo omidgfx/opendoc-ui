@@ -212,7 +212,10 @@ export default function ExamineTab({
             const isArray = schema?.type === 'array' || param.type === 'array';
             const itemEnum = schema.items?.enum || param.items?.enum;
             const example =
-                param.example ?? exampleValueOf(Object.values(param.examples || {})[0], spec) ?? schema?.example ?? schema?.default;
+                param.example ??
+                exampleValueOf(Object.values(param.examples || {})[0], spec) ??
+                schema?.example ??
+                schema?.default;
             const key = parameterStateKey(param.in, param.name);
             if (isArray) {
                 // Array parameters hold a list of items, never a JSON string:

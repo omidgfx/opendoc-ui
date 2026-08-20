@@ -495,7 +495,8 @@ export default function Field({
                             index < items.length
                                 ? items[index]
                                 : defaultBodyValue(schemaForIndex, spec, depth + 1, new Set(nextAncestorRefs));
-                        const tupleLabel = index < tupleSchemas.length ? `Item ${index + 1} · fixed slot` : `Item ${index + 1}`;
+                        const tupleLabel =
+                            index < tupleSchemas.length ? `Item ${index + 1} · fixed slot` : `Item ${index + 1}`;
                         return (
                             <Field
                                 key={index}

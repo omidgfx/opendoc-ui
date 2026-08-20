@@ -412,7 +412,10 @@ test('discovers native OAuth authorization-code and implicit browser flows', () 
         null,
     );
     assert.equal(
-        supportsInteractiveAuthorization({type: 'openIdConnect', openIdConnectUrl: 'https://auth.example.test/.well-known/openid-configuration'}),
+        supportsInteractiveAuthorization({
+            type: 'openIdConnect',
+            openIdConnectUrl: 'https://auth.example.test/.well-known/openid-configuration',
+        }),
         true,
     );
 });
@@ -1566,7 +1569,10 @@ test('creates typed defaults for recursive object and array schemas', () => {
 test('creates tuple defaults and mocks for prefixItems arrays', () => {
     const tuple = {
         type: 'array',
-        prefixItems: [{type: 'number', minimum: 1}, {type: 'string', pattern: '^[A-Z]{3}$'}],
+        prefixItems: [
+            {type: 'number', minimum: 1},
+            {type: 'string', pattern: '^[A-Z]{3}$'},
+        ],
         minItems: 2,
         maxItems: 2,
     };

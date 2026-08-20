@@ -288,7 +288,17 @@ export default function SchemaPropertiesTable({
     /** The four cells of a property, shared by the table and the card list so
      *  the two views can never drift apart. */
     const propertyCells = (name: string, pVal: any) => {
-        const {isRequired, isComplexType, pattern, recursive, deprecated, readOnly, writeOnly, contentEncoding, contentMediaType} = propertyFacts(name, pVal);
+        const {
+            isRequired,
+            isComplexType,
+            pattern,
+            recursive,
+            deprecated,
+            readOnly,
+            writeOnly,
+            contentEncoding,
+            contentMediaType,
+        } = propertyFacts(name, pVal);
         return {
             isRequired,
             name: (
@@ -777,19 +787,25 @@ export default function SchemaPropertiesTable({
                     <div className="grid gap-2 md:grid-cols-3">
                         {ifSchema && (
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
-                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">If</div>
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                    If
+                                </div>
                                 <div className="mt-1">{renderSchemaType(ifSchema)}</div>
                             </div>
                         )}
                         {thenSchema && (
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
-                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Then</div>
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                    Then
+                                </div>
                                 <div className="mt-1">{renderSchemaType(thenSchema)}</div>
                             </div>
                         )}
                         {elseSchema && (
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
-                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Else</div>
+                                <div className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                    Else
+                                </div>
                                 <div className="mt-1">{renderSchemaType(elseSchema)}</div>
                             </div>
                         )}
@@ -807,9 +823,13 @@ export default function SchemaPropertiesTable({
                         </Tip>
                     </div>
                     {unevaluatedProperties === false ? (
-                        <p className="text-xs text-[var(--text-muted)]">Additional unevaluated properties are rejected.</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Additional unevaluated properties are rejected.
+                        </p>
                     ) : unevaluatedProperties === true ? (
-                        <p className="text-xs text-[var(--text-muted)]">Additional unevaluated properties are allowed.</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Additional unevaluated properties are allowed.
+                        </p>
                     ) : (
                         <div className="min-w-0">{renderSchemaType(unevaluatedProperties)}</div>
                     )}

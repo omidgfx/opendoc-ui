@@ -100,10 +100,13 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                             </div>
                                             <div className="mt-4 space-y-4">
                                                 {operations.map(({method, operation}) => {
-                                                    const resolvedBody = resolveRequestBody((operation as any).requestBody, spec);
-                                                    const requestEntries = Object.entries(resolvedBody?.content || {}) as Array<
-                                                        [string, any]
-                                                    >;
+                                                    const resolvedBody = resolveRequestBody(
+                                                        (operation as any).requestBody,
+                                                        spec,
+                                                    );
+                                                    const requestEntries = Object.entries(
+                                                        resolvedBody?.content || {},
+                                                    ) as Array<[string, any]>;
                                                     return (
                                                         <div
                                                             key={`${callbackName}:${expression}:${method}`}
@@ -112,7 +115,9 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <MethodBadge method={method} size="xs" />
                                                                 <span className="text-xs font-bold text-[var(--text-heading)]">
-                                                                    {operation.summary || operation.operationId || 'Callback operation'}
+                                                                    {operation.summary ||
+                                                                        operation.operationId ||
+                                                                        'Callback operation'}
                                                                 </span>
                                                             </div>
                                                             {operation.description && (
@@ -127,7 +132,10 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                                     </h4>
                                                                     {requestEntries.map(([contentType, media]) => {
                                                                         const label = schemaLabel(media?.schema, spec);
-                                                                        const example = getRequestBodyExample(media, spec);
+                                                                        const example = getRequestBodyExample(
+                                                                            media,
+                                                                            spec,
+                                                                        );
                                                                         return (
                                                                             <div
                                                                                 key={contentType}
@@ -143,7 +151,11 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                                                     {label.schemaName && (
                                                                                         <button
                                                                                             type="button"
-                                                                                            onClick={() => onOpenSchema(label.schemaName!)}
+                                                                                            onClick={() =>
+                                                                                                onOpenSchema(
+                                                                                                    label.schemaName!,
+                                                                                                )
+                                                                                            }
                                                                                             className="rounded border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-2 py-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer"
                                                                                         >
                                                                                             Open schema
@@ -160,7 +172,13 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                                                                     label.label ||
                                                                                                     'callback',
                                                                                             )}
-                                                                                            language={contentType.includes('json') ? 'json' : 'text'}
+                                                                                            language={
+                                                                                                contentType.includes(
+                                                                                                    'json',
+                                                                                                )
+                                                                                                    ? 'json'
+                                                                                                    : 'text'
+                                                                                            }
                                                                                             maxHeight="220px"
                                                                                         />
                                                                                     </div>
@@ -175,68 +193,88 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                                     Responses
                                                                 </h4>
                                                                 <div className="space-y-2">
-                                                                    {Object.entries(operation.responses || {}).map(([code, response]) => {
-                                                                        const resolvedResponse = resolveReference(response, spec) || response;
-                                                                        const responseContent = Object.entries(
-                                                                            resolvedResponse?.content || {},
-                                                                        ) as Array<[string, any]>;
-                                                                        return (
-                                                                            <div
-                                                                                key={code}
-                                                                                className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2"
-                                                                            >
-                                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                                    <span className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--text-heading)]">
-                                                                                        {code}
-                                                                                    </span>
-                                                                                    <span className="text-[10px] text-[var(--text)]">
-                                                                                        {resolvedResponse?.description || 'Response'}
-                                                                                    </span>
-                                                                                </div>
-                                                                                {responseContent.length > 0 && (
-                                                                                    <div className="mt-2 flex flex-wrap gap-2">
-                                                                                        {responseContent.map(([contentType, media]) => {
-                                                                                            const label = schemaLabel(media?.schema, spec);
-                                                                                            return (
-                                                                                                <div
-                                                                                                    key={`${code}:${contentType}`}
-                                                                                                    className="flex flex-wrap items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px]"
-                                                                                                >
-                                                                                                    <code className="font-mono text-[var(--text-heading)]">
-                                                                                                        {contentType}
-                                                                                                    </code>
-                                                                                                    <span className="text-[var(--text-muted)]">
-                                                                                                        {label.label}
-                                                                                                    </span>
-                                                                                                    {label.schemaName && (
-                                                                                                        <button
-                                                                                                            type="button"
-                                                                                                            onClick={() =>
-                                                                                                                onOpenSchema(
-                                                                                                                    label.schemaName!,
-                                                                                                                )
-                                                                                                            }
-                                                                                                            className="font-bold text-[var(--primary)] cursor-pointer"
+                                                                    {Object.entries(operation.responses || {}).map(
+                                                                        ([code, response]) => {
+                                                                            const resolvedResponse =
+                                                                                resolveReference(response, spec) ||
+                                                                                response;
+                                                                            const responseContent = Object.entries(
+                                                                                resolvedResponse?.content || {},
+                                                                            ) as Array<[string, any]>;
+                                                                            return (
+                                                                                <div
+                                                                                    key={code}
+                                                                                    className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2"
+                                                                                >
+                                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                                        <span className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--text-heading)]">
+                                                                                            {code}
+                                                                                        </span>
+                                                                                        <span className="text-[10px] text-[var(--text)]">
+                                                                                            {resolvedResponse?.description ||
+                                                                                                'Response'}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    {responseContent.length > 0 && (
+                                                                                        <div className="mt-2 flex flex-wrap gap-2">
+                                                                                            {responseContent.map(
+                                                                                                ([
+                                                                                                    contentType,
+                                                                                                    media,
+                                                                                                ]) => {
+                                                                                                    const label =
+                                                                                                        schemaLabel(
+                                                                                                            media?.schema,
+                                                                                                            spec,
+                                                                                                        );
+                                                                                                    return (
+                                                                                                        <div
+                                                                                                            key={`${code}:${contentType}`}
+                                                                                                            className="flex flex-wrap items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px]"
                                                                                                         >
-                                                                                                            Open
-                                                                                                        </button>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            );
-                                                                                        })}
-                                                                                    </div>
-                                                                                )}
-                                                                                {resolvedResponse?.links && (
-                                                                                    <div className="mt-2 text-[10px] text-[var(--text-muted)]">
-                                                                                        Link names:{' '}
-                                                                                        <code className="font-mono text-[var(--text-heading)]">
-                                                                                            {Object.keys(resolvedResponse.links).join(', ')}
-                                                                                        </code>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                                                            <code className="font-mono text-[var(--text-heading)]">
+                                                                                                                {
+                                                                                                                    contentType
+                                                                                                                }
+                                                                                                            </code>
+                                                                                                            <span className="text-[var(--text-muted)]">
+                                                                                                                {
+                                                                                                                    label.label
+                                                                                                                }
+                                                                                                            </span>
+                                                                                                            {label.schemaName && (
+                                                                                                                <button
+                                                                                                                    type="button"
+                                                                                                                    onClick={() =>
+                                                                                                                        onOpenSchema(
+                                                                                                                            label.schemaName!,
+                                                                                                                        )
+                                                                                                                    }
+                                                                                                                    className="font-bold text-[var(--primary)] cursor-pointer"
+                                                                                                                >
+                                                                                                                    Open
+                                                                                                                </button>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                },
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {resolvedResponse?.links && (
+                                                                                        <div className="mt-2 text-[10px] text-[var(--text-muted)]">
+                                                                                            Link names:{' '}
+                                                                                            <code className="font-mono text-[var(--text-heading)]">
+                                                                                                {Object.keys(
+                                                                                                    resolvedResponse.links,
+                                                                                                ).join(', ')}
+                                                                                            </code>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        },
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -244,7 +282,8 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                                                 })}
                                                 {operations.length === 0 && (
                                                     <div className="rounded-lg border border-[var(--method-put)]/25 bg-[var(--method-put)]/5 px-3 py-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                                        This callback destination does not resolve to runnable HTTP operations.
+                                                        This callback destination does not resolve to runnable HTTP
+                                                        operations.
                                                     </div>
                                                 )}
                                             </div>

@@ -320,12 +320,15 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                                             />
                                         </label>
                                         {supportsInteractiveAuthorization(scheme) &&
-                                            (credential.type === 'oauth2' ||
-                                                credential.type === 'openIdConnect') && (
+                                            (credential.type === 'oauth2' || credential.type === 'openIdConnect') && (
                                                 <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
                                                     <label className="block space-y-1">
                                                         <span className="block text-[10px] font-semibold text-[var(--text-muted)]">
-                                                            Public {credential.type === 'openIdConnect' ? 'OpenID Connect' : 'OAuth'} client ID
+                                                            Public{' '}
+                                                            {credential.type === 'openIdConnect'
+                                                                ? 'OpenID Connect'
+                                                                : 'OAuth'}{' '}
+                                                            client ID
                                                         </span>
                                                         <input
                                                             className={fieldClass}
@@ -345,7 +348,9 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                                                             value={(credential.scopes || []).join(' ')}
                                                             onChange={event =>
                                                                 updateCredential(id, {
-                                                                    scopes: event.target.value.split(/\s+/).filter(Boolean),
+                                                                    scopes: event.target.value
+                                                                        .split(/\s+/)
+                                                                        .filter(Boolean),
                                                                 })
                                                             }
                                                             placeholder={
@@ -383,8 +388,12 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                                                     </button>
                                                     <p className="text-[9px] leading-relaxed text-[var(--text-muted)]">
                                                         The provider must allow this origin and token-endpoint CORS. No
-                                                        client secret is stored or sent. OpenID Connect uses discovery when the scheme provides an
-                                                        <code className="mx-1 rounded bg-[var(--surface)] px-1 py-0.5 font-mono">openIdConnectUrl</code>.
+                                                        client secret is stored or sent. OpenID Connect uses discovery
+                                                        when the scheme provides an
+                                                        <code className="mx-1 rounded bg-[var(--surface)] px-1 py-0.5 font-mono">
+                                                            openIdConnectUrl
+                                                        </code>
+                                                        .
                                                     </p>
                                                 </div>
                                             )}

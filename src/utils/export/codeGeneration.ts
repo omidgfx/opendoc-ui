@@ -106,7 +106,9 @@ export const buildCodegenRequest = (input: {
     const parameterValues: Record<string, unknown> = {};
     getMergedParameters(pathItem, input.operation, input.spec).forEach((parameter: any) => {
         const schema = parameter.schema ?? parameter;
-        let value = SECRET_NAME.test(parameter.name) ? placeholder(parameter.name) : firstExample(parameter, input.spec);
+        let value = SECRET_NAME.test(parameter.name)
+            ? placeholder(parameter.name)
+            : firstExample(parameter, input.spec);
         if (value === undefined) {
             if (schema?.type === 'array') value = [placeholder(`${parameter.name}_ITEM`)];
             else if (schema?.type === 'object') value = {[placeholder('KEY')]: placeholder('VALUE')};
