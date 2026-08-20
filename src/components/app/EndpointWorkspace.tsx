@@ -268,7 +268,10 @@ export default function EndpointWorkspace({
                     </div>
                 </div>
             </div>
-            <div className="flex-1 overflow-hidden h-full min-h-0">
+            {/* A layer of its own: the pinned response navigator, the code
+                gutter and the notes panel must never climb over the app
+                chrome, the mobile sidebar included. */}
+            <div className="flex-1 overflow-hidden h-full min-h-0 isolate">
                 {selectedTab === 'both' ? (
                     isMobile ? (
                         <div
