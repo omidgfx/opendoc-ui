@@ -100,10 +100,13 @@ export default function Sidebar(props: SidebarProps) {
         onOpenMobile,
     } = props;
     const {hiddenEndpointKeys, unhideAllEndpoints} = useEndpointNotes();
+    // Before a specification is chosen the drawer is still the only way to
+    // reach the specification list on a phone, so it renders without one.
+    const hasSpec = !!spec;
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
     const selectedServerDefinition = useMemo(() => {
-        const servers = spec.servers || [];
+        const servers = spec?.servers || [];
         return servers.find(server => server.url === selectedServer) || servers[0] || null;
     }, [spec, selectedServer]);
     const resolvedServerUrl = useMemo(() => {
@@ -621,6 +624,7 @@ export default function Sidebar(props: SidebarProps) {
     const pageNavigation = (
         <SidebarPageNavigation
             spec={spec}
+            hasSpec={hasSpec}
             overviewActive={isOverview}
             aboutActive={showAbout}
             schemasActive={showSchemaExplorer}
@@ -640,7 +644,21 @@ export default function Sidebar(props: SidebarProps) {
             }
         />
     );
-    const endpointNavigation = (
+    const endpointNavigation = !hasSpec ? (
+        <div className="px-2 py-3 space-y-2">
+            <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                No specification loaded. Open one to browse its endpoints.
+            </p>
+            <button
+                type="button"
+                onClick={() => setShowSpecModal(true)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] hover:brightness-110"
+            >
+                <i className="ph-fill ph-files text-[14px]" />
+                Open specification
+            </button>
+        </div>
+    ) : (
         <div className="pt-1">
             {Object.keys(visibleTagTree.children).length === 0 ? (
                 <p className="text-[11px] italic px-2 text-[var(--text-muted)]">
@@ -671,25 +689,27 @@ export default function Sidebar(props: SidebarProps) {
                             <i className="ph-fill ph-files text-[15px]" />
                         </button>
                     </Tip>
-                    <Tip
-                        content={
-                            activeAuth?.activeScheme && activeAuth.activeScheme !== 'none'
-                                ? `${activeAuth.activeScheme.toUpperCase()} auth active`
-                                : 'Authorize'
-                        }
-                    >
-                        <button
-                            onClick={navTo(onOpenAuthModal)}
-                            className={clsx(
-                                'size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border hover:bg-[var(--surface-hover)]',
+                    {hasSpec && (
+                        <Tip
+                            content={
                                 activeAuth?.activeScheme && activeAuth.activeScheme !== 'none'
-                                    ? 'border-[var(--method-get)]/30 text-[var(--method-get)]'
-                                    : 'border-[var(--border)] text-[var(--text-muted)]',
-                            )}
+                                    ? `${activeAuth.activeScheme.toUpperCase()} auth active`
+                                    : 'Authorize'
+                            }
                         >
-                            <i className={clsx('ph-fill ph-lock-key text-[15px]')} />
-                        </button>
-                    </Tip>
+                            <button
+                                onClick={navTo(onOpenAuthModal)}
+                                className={clsx(
+                                    'size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border hover:bg-[var(--surface-hover)]',
+                                    activeAuth?.activeScheme && activeAuth.activeScheme !== 'none'
+                                        ? 'border-[var(--method-get)]/30 text-[var(--method-get)]'
+                                        : 'border-[var(--border)] text-[var(--text-muted)]',
+                                )}
+                            >
+                                <i className={clsx('ph-fill ph-lock-key text-[15px]')} />
+                            </button>
+                        </Tip>
+                    )}
                     <Tip content="Toggle light/dark mode">
                         <button
                             onClick={onToggleThemeMode}
@@ -712,24 +732,28 @@ export default function Sidebar(props: SidebarProps) {
                             <i className="ph-fill ph-palette text-[15px]" />
                         </button>
                     </Tip>
-                    <Tip content="Reload specification (drop cache)">
-                        <button
-                            onClick={onRefreshSpec}
-                            className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
-                        >
-                            <i
-                                className={`ph-fill ph-arrows-clockwise text-[var(--primary)] text-[15px] ${isRefreshingSpec ? 'animate-spin' : ''}`}
-                            />
-                        </button>
-                    </Tip>
-                    <Tip content="Download raw specification">
-                        <button
-                            onClick={onDownloadSpec}
-                            className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
-                        >
-                            <i className="ph-fill ph-download-simple text-[var(--primary)] text-[15px]"></i>
-                        </button>
-                    </Tip>
+                    {hasSpec && (
+                        <>
+                            <Tip content="Reload specification (drop cache)">
+                                <button
+                                    onClick={onRefreshSpec}
+                                    className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                >
+                                    <i
+                                        className={`ph-fill ph-arrows-clockwise text-[var(--primary)] text-[15px] ${isRefreshingSpec ? 'animate-spin' : ''}`}
+                                    />
+                                </button>
+                            </Tip>
+                            <Tip content="Download raw specification">
+                                <button
+                                    onClick={onDownloadSpec}
+                                    className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                >
+                                    <i className="ph-fill ph-download-simple text-[var(--primary)] text-[15px]"></i>
+                                </button>
+                            </Tip>
+                        </>
+                    )}
                     <Tip content="Close menu">
                         <button
                             onClick={onCloseMobile}
@@ -781,7 +805,10 @@ export default function Sidebar(props: SidebarProps) {
 
             <div
                 data-sidebar-navigation-header
-                className="relative z-20 h-7 px-3 flex items-center justify-between gap-2 shrink-0"
+                className={clsx(
+                    'relative z-20 h-7 px-3 flex items-center justify-between gap-2 shrink-0',
+                    !hasSpec && 'hidden',
+                )}
             >
                 {sidebarFilterOpen ? (
                     <div className="flex w-full min-w-0 items-center gap-1">

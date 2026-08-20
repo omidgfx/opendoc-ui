@@ -258,20 +258,27 @@ export default function Topbar({
         <>
             <div className="app-topbar h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <Tip
-                        content={isMobile ? 'Open menu' : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        placement="bottom"
-                    >
-                        <button
-                            onClick={isMobile ? onOpenMobileSidebar : onToggleCollapse}
-                            aria-label={isMobile ? 'Open menu' : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0"
+                    {/* Without a specification there is no sidebar to collapse.
+                        The narrow widths keep the button: it is the only way to
+                        open the drawer, which carries the specification list. */}
+                    {(hasSpec || isMobile) && (
+                        <Tip
+                            content={isMobile ? 'Open menu' : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            placement="bottom"
                         >
-                            <i
-                                className={`ph ${isMobile ? 'ph-list' : isCollapsed ? 'ph-list' : 'ph-sidebar-simple'} text-[18px]`}
-                            ></i>
-                        </button>
-                    </Tip>
+                            <button
+                                onClick={isMobile ? onOpenMobileSidebar : onToggleCollapse}
+                                aria-label={
+                                    isMobile ? 'Open menu' : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
+                                }
+                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0"
+                            >
+                                <i
+                                    className={`ph ${isMobile ? 'ph-list' : isCollapsed ? 'ph-list' : 'ph-sidebar-simple'} text-[18px]`}
+                                ></i>
+                            </button>
+                        </Tip>
+                    )}
 
                     <BrandLogo
                         type={null}

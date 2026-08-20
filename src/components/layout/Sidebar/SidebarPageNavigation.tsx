@@ -7,6 +7,8 @@ import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 
 interface SidebarPageNavigationProps {
     spec: OpenApiSpec | null;
+    /** Every page but About needs a specification behind it. */
+    hasSpec: boolean;
     overviewActive: boolean;
     aboutActive: boolean;
     schemasActive: boolean;
@@ -89,6 +91,7 @@ function PageButton(props: PageButtonProps) {
 
 export default function SidebarPageNavigation({
     spec,
+    hasSpec,
     overviewActive,
     aboutActive,
     schemasActive,
@@ -103,6 +106,19 @@ export default function SidebarPageNavigation({
     onContextMenu,
 }: SidebarPageNavigationProps) {
     const {notes} = useEndpointNotes();
+    if (!hasSpec)
+        return (
+            <PageButton
+                id="view:about"
+                label="About OpenDoc UI"
+                tip="About OpenDoc UI"
+                icon="ph-fill ph-info"
+                active={aboutActive}
+                onOpen={onOpenAbout}
+                onPermanent={() => onOpenPermanent('about')}
+                onContextMenu={event => onContextMenu(event, 'about')}
+            />
+        );
     return (
         <>
             <PageButton

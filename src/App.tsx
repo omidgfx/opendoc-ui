@@ -1144,6 +1144,100 @@ export default function App() {
         if (isMobile) setMobileOpen(o => !o);
         else setDesktopCollapsed(c => !c);
     };
+    const sidebar = (
+        <Sidebar
+            spec={spec}
+            parsables={isMobile ? parsables : undefined}
+            selectedParsableKey={selectedParsableKey}
+            onSelectParsable={isMobile ? handleSelectParsable : undefined}
+            selectedServer={selectedServer}
+            onSelectServer={setSelectedServer}
+            serverVariables={serverVariables}
+            onOpenServerVariables={() => setShowServerVariablesModal(true)}
+            isCollapsed={desktopCollapsed}
+            onToggleCollapse={() => setDesktopCollapsed(c => !c)}
+            onOpenSchemaExplorer={handleOpenSchemaExplorer}
+            showSchemaExplorer={showSchemaExplorer}
+            onOpenNotes={handleOpenNotes}
+            showNotes={showNotes}
+            showCompatibility={showCompatibility}
+            onOpenCompatibility={handleOpenCompatibility}
+            selectedMethods={selectedMethods}
+            setSelectedMethods={setSelectedMethods}
+            selectedTags={selectedTags}
+            setSelectedTags={setSelectedTags}
+            onlyProtected={onlyProtected}
+            setOnlyProtected={setOnlyProtected}
+            searchQuery={searchQuery}
+            selectedEndpoint={selectedEndpoint}
+            onSelectEndpoint={handleSelectEndpoint}
+            onMiddleClickEndpoint={openEndpointPermanentWithHistory}
+            getEndpointHref={(path, method) =>
+                generateSmartRoute({
+                    parsableKey: selectedParsableKey,
+                    showHome: false,
+                    showAbout: false,
+                    showAssistant: false,
+                    showSchemaExplorer: false,
+                    endpoint: {path, method},
+                    tab: 'docs',
+                    schemaModals: [],
+                    responseCode: null,
+                    searchQuery: '',
+                    searchMethods: [],
+                    searchTags: [],
+                    searchSecured: null,
+                    activeSpec: spec,
+                })
+            }
+            onOpenHome={handleOpenHome}
+            onOpenAbout={handleOpenAbout}
+            onOpenViewPermanent={openViewTabPermanentWithHistory}
+            onContextAction={handleContextAction}
+            scrollIntent={scrollIntent}
+            setScrollIntent={setScrollIntent}
+            showHome={showHome}
+            showAbout={showAbout}
+            showAssistant={showAssistant}
+            assistantContextEndpoints={assistantContextEndpoints}
+            hasAIProfile={hasAIProfile}
+            themeMode={currentThemeMode}
+            resolvedThemeMode={resolvedThemeMode}
+            onToggleThemeMode={toggleThemeMode}
+            onOpenAppearanceSettings={() => handleOpenSettings('appearance')}
+            onOpenAuthModal={() => setShowAuthModal(true)}
+            activeAuth={activeAuth}
+            onDownloadSpec={handleDownload}
+            isLocalMode={isLocalMode}
+            canOpenLocal={canOpenLocal}
+            onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
+            onDisplayRoutesChange={setSidebarDisplayRoutes}
+            onReloadSpecification={handleReloadSpecification}
+            onResetSpecification={handleResetSpecification}
+            onResetAllConfigurations={handleResetAllConfigurations}
+            onRefreshSpec={handleRefreshSpec}
+            isRefreshingSpec={isRefreshingSpec}
+            localHistory={localHistory}
+            onSelectHistoryEntry={handleSelectHistoryEntry}
+            onRemoveHistoryEntry={handleRemoveHistoryEntry}
+            onClearHistory={handleClearHistory}
+            localOpenError={localOpenError}
+            onDismissLocalError={() => setLocalOpenError(null)}
+            remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
+            downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+            remoteHistory={remoteHistory}
+            remoteOpenError={remoteOpenError}
+            isLoadingRemoteSpec={isLoadingRemoteSpec}
+            remoteLoadStatus={remoteLoadStatus}
+            onLoadRemoteUrl={loadRemoteSpec}
+            onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
+            onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
+            onClearRemoteHistory={handleClearRemoteHistory}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            onOpenMobile={() => setMobileOpen(true)}
+        />
+    );
     return (
         <TooltipProvider>
             <EndpointNotesProvider specKey={selectedParsableKey} spec={spec}>
@@ -1216,101 +1310,16 @@ export default function App() {
                             {isLoadingSpec ? (
                                 <SpecLoadingState />
                             ) : !spec ? (
-                                content()
+                                <>
+                                    {/* The drawer carries the specification
+                                        list, so on a phone it opens before a
+                                        specification is chosen too. */}
+                                    {isMobile && sidebar}
+                                    {content()}
+                                </>
                             ) : (
                                 <>
-                                    <Sidebar
-                                        spec={spec}
-                                        parsables={isMobile ? parsables : undefined}
-                                        selectedParsableKey={selectedParsableKey}
-                                        onSelectParsable={isMobile ? handleSelectParsable : undefined}
-                                        selectedServer={selectedServer}
-                                        onSelectServer={setSelectedServer}
-                                        serverVariables={serverVariables}
-                                        onOpenServerVariables={() => setShowServerVariablesModal(true)}
-                                        isCollapsed={desktopCollapsed}
-                                        onToggleCollapse={() => setDesktopCollapsed(c => !c)}
-                                        onOpenSchemaExplorer={handleOpenSchemaExplorer}
-                                        showSchemaExplorer={showSchemaExplorer}
-                                        onOpenNotes={handleOpenNotes}
-                                        showNotes={showNotes}
-                                        showCompatibility={showCompatibility}
-                                        onOpenCompatibility={handleOpenCompatibility}
-                                        selectedMethods={selectedMethods}
-                                        setSelectedMethods={setSelectedMethods}
-                                        selectedTags={selectedTags}
-                                        setSelectedTags={setSelectedTags}
-                                        onlyProtected={onlyProtected}
-                                        setOnlyProtected={setOnlyProtected}
-                                        searchQuery={searchQuery}
-                                        selectedEndpoint={selectedEndpoint}
-                                        onSelectEndpoint={handleSelectEndpoint}
-                                        onMiddleClickEndpoint={openEndpointPermanentWithHistory}
-                                        getEndpointHref={(path, method) =>
-                                            generateSmartRoute({
-                                                parsableKey: selectedParsableKey,
-                                                showHome: false,
-                                                showAbout: false,
-                                                showAssistant: false,
-                                                showSchemaExplorer: false,
-                                                endpoint: {path, method},
-                                                tab: 'docs',
-                                                schemaModals: [],
-                                                responseCode: null,
-                                                searchQuery: '',
-                                                searchMethods: [],
-                                                searchTags: [],
-                                                searchSecured: null,
-                                                activeSpec: spec,
-                                            })
-                                        }
-                                        onOpenHome={handleOpenHome}
-                                        onOpenAbout={handleOpenAbout}
-                                        onOpenViewPermanent={openViewTabPermanentWithHistory}
-                                        onContextAction={handleContextAction}
-                                        scrollIntent={scrollIntent}
-                                        setScrollIntent={setScrollIntent}
-                                        showHome={showHome}
-                                        showAbout={showAbout}
-                                        showAssistant={showAssistant}
-                                        assistantContextEndpoints={assistantContextEndpoints}
-                                        hasAIProfile={hasAIProfile}
-                                        themeMode={currentThemeMode}
-                                        resolvedThemeMode={resolvedThemeMode}
-                                        onToggleThemeMode={toggleThemeMode}
-                                        onOpenAppearanceSettings={() => handleOpenSettings('appearance')}
-                                        onOpenAuthModal={() => setShowAuthModal(true)}
-                                        activeAuth={activeAuth}
-                                        onDownloadSpec={handleDownload}
-                                        isLocalMode={isLocalMode}
-                                        canOpenLocal={canOpenLocal}
-                                        onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
-                                        onDisplayRoutesChange={setSidebarDisplayRoutes}
-                                        onReloadSpecification={handleReloadSpecification}
-                                        onResetSpecification={handleResetSpecification}
-                                        onResetAllConfigurations={handleResetAllConfigurations}
-                                        onRefreshSpec={handleRefreshSpec}
-                                        isRefreshingSpec={isRefreshingSpec}
-                                        localHistory={localHistory}
-                                        onSelectHistoryEntry={handleSelectHistoryEntry}
-                                        onRemoveHistoryEntry={handleRemoveHistoryEntry}
-                                        onClearHistory={handleClearHistory}
-                                        localOpenError={localOpenError}
-                                        onDismissLocalError={() => setLocalOpenError(null)}
-                                        remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
-                                        downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
-                                        remoteHistory={remoteHistory}
-                                        remoteOpenError={remoteOpenError}
-                                        isLoadingRemoteSpec={isLoadingRemoteSpec}
-                                        remoteLoadStatus={remoteLoadStatus}
-                                        onLoadRemoteUrl={loadRemoteSpec}
-                                        onSelectRemoteHistoryEntry={handleSelectRemoteHistoryEntry}
-                                        onRemoveRemoteHistoryEntry={handleRemoveRemoteHistoryEntry}
-                                        onClearRemoteHistory={handleClearRemoteHistory}
-                                        mobileOpen={mobileOpen}
-                                        onCloseMobile={() => setMobileOpen(false)}
-                                        onOpenMobile={() => setMobileOpen(true)}
-                                    />
+                                    {sidebar}
                                     <div className="flex-1 h-full overflow-hidden flex flex-col min-w-0 w-full">
                                         {endpointTabs.length > 0 && spec && (
                                             <EndpointTabs
