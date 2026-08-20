@@ -90,7 +90,7 @@ import {formatEngineErrorPath, summarizeEngineValidationErrors} from '@/src/util
 import {registerSpecDiagnostics} from '@/src/utils/specification/specSource';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {positionFor} from '@/src/components/common/tooltip/tooltipPosition';
-import {oauthAuthorizationFlow} from '@/src/utils/runner/oauthFlow';
+import {oauthAuthorizationFlow, supportsInteractiveAuthorization} from '@/src/utils/runner/oauthFlow';
 import {createLlmsText} from '@/src/utils/export/llmsExport';
 import {
     declaredContentIsBinary,
@@ -410,6 +410,10 @@ test('discovers native OAuth authorization-code and implicit browser flows', () 
     assert.equal(
         oauthAuthorizationFlow({type: 'oauth2', flows: {clientCredentials: {tokenUrl: 'https://auth'}}}),
         null,
+    );
+    assert.equal(
+        supportsInteractiveAuthorization({type: 'openIdConnect', openIdConnectUrl: 'https://auth.example.test/.well-known/openid-configuration'}),
+        true,
     );
 });
 test('derives protected indicators from effective security including anonymous alternatives', () => {
@@ -1525,6 +1529,27 @@ test('moves hidden endpoints into one final gray-folder tree group', () => {
         false,
     );
 });
+
+test('groups tags through x-tagGroups before normal tag folders', () => {
+    const spec: any = {
+        ...baseSpec,
+        'x-tagGroups': [
+            {name: 'Commerce', tags: ['Catalog', 'Orders']},
+            {name: 'Platform', tags: ['Admin']},
+        ],
+        paths: {
+            '/products': {get: {tags: ['Catalog'], summary: 'Products', responses: {'200': {description: 'ok'}}}},
+            '/orders': {get: {tags: ['Orders'], summary: 'Orders', responses: {'200': {description: 'ok'}}}},
+            '/health': {get: {tags: ['Admin'], summary: 'Health', responses: {'200': {description: 'ok'}}}},
+            '/users': {get: {tags: ['Users'], summary: 'Users', responses: {'200': {description: 'ok'}}}},
+        },
+    };
+    const tree = buildTagTree(spec, normalizeSidebarConfig({}), undefined, new Set());
+    assert.deepEqual(Object.keys(tree.children), ['Commerce', 'Platform', 'Users']);
+    assert.deepEqual(Object.keys(tree.children.Commerce.children), ['Catalog', 'Orders']);
+    assert.equal(tree.children.Commerce.children.Catalog.endpoints[0].path, '/products');
+    assert.equal(tree.children.Platform.children.Admin.endpoints[0].path, '/health');
+});
 test('creates typed defaults for recursive object and array schemas', () => {
     const schema = {
         type: 'object',
@@ -1536,6 +1561,19 @@ test('creates typed defaults for recursive object and array schemas', () => {
     const value: any = defaultBodyValue(schema, baseSpec);
     assert.equal(value.name, 'OpenDoc');
     assert.deepEqual(value.items, []);
+});
+
+test('creates tuple defaults and mocks for prefixItems arrays', () => {
+    const tuple = {
+        type: 'array',
+        prefixItems: [{type: 'number', minimum: 1}, {type: 'string', pattern: '^[A-Z]{3}$'}],
+        minItems: 2,
+        maxItems: 2,
+    };
+    assert.deepEqual(defaultBodyValue(tuple, baseSpec), ['', '']);
+    const mock = generateValidatedMock(tuple, baseSpec);
+    assert.equal(mock.ok, true, mock.diagnostics.map(item => item.message).join('; '));
+    assert.deepEqual(mock.value, [1, 'AAA']);
 });
 test('renders oneOf request-matrix branches with referenced names and keeps the edited branch', () => {
     const spec: any = {
