@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type {ActiveAuth, OpenApiSpec, ParsableConfig, ThemeMode} from '../../types';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
 import ApiSpecificationSelectorModal from '../modals/ApiSpecificationSelectorModal';
+import {nextThemeMode, THEME_MODE_META} from '@/src/utils/theme/modes';
 import {Tip} from '../common/Tooltip';
 import type {LocalHistoryEntry} from '../../utils/storage/localHistory';
 import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
@@ -280,9 +281,13 @@ export default function Topbar({
                         </Tip>
                     )}
 
+                    {/* The mark alone carries the brand where every pixel of
+                        the row is needed for the specification controls. */}
                     <BrandLogo
                         type={null}
                         logoFrame={false}
+                        hideWordmarkInMobile
+                        hideWordmarkInTablet
                         logoClassName="size-8 sm:size-9 p-1"
                         wordmarkClassName="text-sm text-[var(--text-heading)]"
                         className="select-none shrink-0"
@@ -454,7 +459,23 @@ export default function Topbar({
                         </Tip>
                     )}
 
-                    {hasSpec && (
+                    {/* One button cycles the three modes where the row has no
+                        space for a group of them. */}
+                    {hasSpec && isMobile && (
+                        <Tip
+                            content={`${THEME_MODE_META[themeMode].label} · tap for ${THEME_MODE_META[nextThemeMode(themeMode)].label.toLowerCase()}`}
+                        >
+                            <button
+                                type="button"
+                                aria-label={`Color mode: ${THEME_MODE_META[themeMode].label}. Switch to ${THEME_MODE_META[nextThemeMode(themeMode)].label}`}
+                                onClick={() => onSetThemeMode(nextThemeMode(themeMode))}
+                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                            >
+                                <i className={clsx(THEME_MODE_META[themeMode].icon, 'text-[14px]')} />
+                            </button>
+                        </Tip>
+                    )}
+                    {hasSpec && !isMobile && (
                         <div
                             role="radiogroup"
                             aria-label="Color mode"
@@ -462,9 +483,9 @@ export default function Topbar({
                         >
                             {(
                                 [
-                                    ['system', 'ph ph-monitor', `Follow system (${resolvedThemeMode})`],
-                                    ['light', 'ph-fill ph-sun', 'Light mode'],
-                                    ['dark', 'ph-fill ph-moon', 'Dark mode'],
+                                    ['system', THEME_MODE_META.system.icon, `Follow system (${resolvedThemeMode})`],
+                                    ['light', THEME_MODE_META.light.icon, THEME_MODE_META.light.label],
+                                    ['dark', THEME_MODE_META.dark.icon, THEME_MODE_META.dark.label],
                                 ] as [ThemeMode, string, string][]
                             ).map(([mode, icon, tip]) => (
                                 <Tip key={mode} content={tip}>
