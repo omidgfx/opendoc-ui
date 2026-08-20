@@ -43,6 +43,7 @@ import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
 import {specStorage, storage} from '../../../utils/storage/index';
 import {
+    exampleValueOf,
     getMergedParameters,
     getRefName,
     resolveReference as resolveOpenApiReference,
@@ -50,6 +51,8 @@ import {
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/runner/auth';
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
+import ResponseLinksPanel from './ResponseLinksPanel';
+import OperationCallbacksPanel from './OperationCallbacksPanel';
 
 interface ViewTabProps {
     key: any;
@@ -450,10 +453,13 @@ export default function ViewTab({
         param: any,
     ): {entries: Array<{label?: string; value: unknown}>; isDefault: boolean} => {
         const named = (map: Record<string, any>) =>
-            Object.entries(map).map(([key, entry]) => ({
-                label: entry?.summary || key,
-                value: exampleEntryValue(entry),
-            }));
+            Object.entries(map).map(([key, entry]) => {
+                const resolvedEntry = exampleValueOf(entry, spec);
+                return {
+                    label: entry?.summary || key,
+                    value: resolvedEntry,
+                };
+            });
         if (param.example !== undefined) return {entries: [{value: param.example}], isDefault: false};
         if (param.examples && typeof param.examples === 'object' && Object.keys(param.examples).length > 0)
             return {entries: named(param.examples), isDefault: false};
@@ -1237,6 +1243,10 @@ export default function ViewTab({
                                                 </div>
                                             )}
 
+                                            {resp.links && Object.keys(resp.links).length > 0 && (
+                                                <ResponseLinksPanel links={resp.links as any} spec={spec} />
+                                            )}
+
                                             {resp.content && selectedContentObj ? (
                                                 <>
                                                     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1454,6 +1464,14 @@ export default function ViewTab({
                     </div>
                 </div>
             </div>
+
+            {(operation as any).callbacks && Object.keys((operation as any).callbacks).length > 0 && (
+                <OperationCallbacksPanel
+                    callbacks={(operation as any).callbacks}
+                    spec={spec}
+                    onOpenSchema={onOpenSchemaModal}
+                />
+            )}
 
             <EndpointInfoModal
                 visible={exampleTransition.shouldRender && !!exampleModalContent}
