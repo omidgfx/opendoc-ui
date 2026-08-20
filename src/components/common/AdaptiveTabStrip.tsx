@@ -210,7 +210,7 @@ export default function AdaptiveTabStrip({
                                     : 'border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
                             )}
                         >
-                            <i className="ph ph-dots-three-vertical text-[14px]" />
+                            <i className="ph ph-caret-down text-[14px]" />
                         </button>
                     </Tip>
                 )}

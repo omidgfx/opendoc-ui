@@ -9,6 +9,8 @@ import {analyzeRunnerCompatibility, type RunnerCompatibilityRating} from '../../
 import {getRawSpecDocument} from '../../utils/specification/specSource';
 import {createLlmsText} from '../../utils/export/llmsExport';
 import ScrollableRow from '../../components/common/ScrollableRow';
+import clsx from 'clsx';
+import {usePreferences} from '@/src/contexts/PreferencesContext';
 
 interface RunnerCompatibilityPageProps {
     spec: OpenApiSpec;
@@ -85,6 +87,8 @@ export default function RunnerCompatibilityPage({
     const report = useMemo(() => analyzeRunnerCompatibility(spec), [spec]);
     const issues = useMemo(() => collectReferenceIssues(spec), [spec]);
     const missingFiles = useMemo(() => missingReferenceDocuments(spec), [spec]);
+    const {preferences} = usePreferences();
+    const cardLayout = preferences.narrowTableLayout === 'cards';
     const [query, setQuery] = useState('');
     const [rating, setRating] = useState('all');
     const endpoints = report.endpoints.filter(endpoint => {
@@ -374,8 +378,71 @@ export default function RunnerCompatibilityPage({
                     />
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-                    <div className="max-h-[62vh] overflow-auto scrollbar-thin">
+                <div className="@container overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                    {/* One card per endpoint when nine columns cannot fit. */}
+                    <div
+                        className={clsx(
+                            'max-h-[62vh] overflow-auto scrollbar-thin @4xl:hidden',
+                            !cardLayout && 'hidden',
+                        )}
+                    >
+                        {endpoints.map((endpoint, index) => {
+                            const presentation = ratingPresentation[endpoint.rating];
+                            return (
+                                <div
+                                    key={`${endpoint.method}:${endpoint.path}`}
+                                    className="space-y-2 border-b p-3 text-[11px] last:border-b-0 border-[var(--border)]"
+                                >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                onSelectEndpoint(endpoint.path, endpoint.method.toLowerCase())
+                                            }
+                                            className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-[var(--primary)] cursor-pointer"
+                                        >
+                                            <MethodBadge method={endpoint.method} size="xs" className="shrink-0" />
+                                            <ScrollableRow className="font-mono">{endpoint.path}</ScrollableRow>
+                                        </button>
+                                        <span
+                                            className={`inline-flex shrink-0 items-center justify-center rounded-md border px-1.5 py-1 text-[10px] font-black ${presentation.tone}`}
+                                        >
+                                            {endpoint.rating} · {endpoint.score}
+                                        </span>
+                                    </div>
+                                    {endpoint.summary && (
+                                        <p className="leading-relaxed text-[var(--text-muted)]">{endpoint.summary}</p>
+                                    )}
+                                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
+                                        {[
+                                            {label: 'Auth', value: endpoint.auth},
+                                            {label: 'Inputs', value: String(endpoint.parameterCount)},
+                                            {label: 'Request', value: endpoint.requestMediaTypes.join(', ') || '—'},
+                                            {label: 'Responses', value: endpoint.responseMediaTypes.join(', ') || '—'},
+                                        ].map(fact => (
+                                            <div key={fact.label} className="min-w-0">
+                                                <dt className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                    {fact.label}
+                                                </dt>
+                                                <dd className="truncate font-mono text-[var(--text)]">{fact.value}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                    <p className="rounded-lg border px-2 py-1.5 leading-relaxed border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
+                                        {endpoint.notes.join(' · ') || 'Ready'}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                        {endpoints.length === 0 && (
+                            <p className="p-8 text-center text-xs text-[var(--text-muted)]">
+                                No endpoints match these filters.
+                            </p>
+                        )}
+                    </div>
+                    <div
+                        className={clsx('max-h-[62vh] overflow-auto scrollbar-thin', cardLayout && 'hidden @4xl:block')}
+                    >
                         <table className="w-full min-w-[1020px] border-collapse text-left text-[10px]">
                             <thead className="sticky top-0 z-10 bg-[var(--background)] text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
                                 <tr>
