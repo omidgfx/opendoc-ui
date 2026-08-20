@@ -108,7 +108,7 @@ export default function EndpointNotesSidebar({
                     type="button"
                     aria-label="Close endpoint notes"
                     className={clsx(
-                        'absolute inset-0 z-20 bg-black/30 transition-opacity duration-300',
+                        'absolute inset-0 z-[45] bg-black/30 transition-opacity duration-300',
                         open ? 'opacity-100' : 'opacity-0',
                     )}
                     onClick={onClose}
@@ -120,9 +120,10 @@ export default function EndpointNotesSidebar({
                 aria-label="Endpoint notes sidebar"
                 // Drawn over the endpoint content, inside the pane it belongs
                 // to: opening notes must not squeeze the documentation. It
-                // slides in and out like the mobile sidebar does.
+                // slides in and out like the mobile sidebar does, and it
+                // covers the pinned response navigator (z-40) as well.
                 className={clsx(
-                    'absolute inset-y-0 right-0 z-30 flex h-full min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] transition-transform duration-300 ease-out',
+                    'absolute inset-y-0 right-0 z-50 flex h-full min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)] transition-transform duration-300 ease-out',
                     overlay && 'max-w-[86vw]',
                     open ? 'translate-x-0 shadow-[-12px_0_28px_rgba(0,0,0,0.18)]' : 'translate-x-full shadow-none',
                 )}
