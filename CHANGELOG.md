@@ -37,6 +37,8 @@ Runner surface. Large enough in scope to take a minor version.
 - fixes several stacking and gesture defects: the code viewer gutter painting over pinned elements,
   the endpoint pane competing with the app chrome, and the sidebar edge swipe opening the drawer
   behind an open modal, sheet, or overlay;
+- fixes dragging a workspace tab crashing into the recovery screen, and hides the sidebar toggle
+  where no sidebar exists while letting the narrow-width drawer open without a specification;
 - renders one table layout at a time — the card and column variants are no longer both present with
   one of them hidden — and lets the keyboard focus and scroll a row that overflows sideways;
 - indents XML examples, adds a code viewer gutter and indicator-icon settings, restores the tablet
