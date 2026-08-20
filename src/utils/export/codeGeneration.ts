@@ -1,6 +1,6 @@
 import type {ActiveAuth, OpenApiSpec, Operation} from '../../types';
 import {normalizeActiveAuth} from '../runner/auth';
-import {getMergedParameters, resolveRequestBody} from '../openapi';
+import {exampleValueOf, getMergedParameters, resolveRequestBody} from '../openapi';
 import {compileBrowserRequest, parameterStateKey} from '../runner/requestPlan';
 import {generateValidatedMock} from '../runner/mockGenerator';
 
@@ -70,20 +70,18 @@ const placeholderAuth = (auth: ActiveAuth): ActiveAuth => {
     };
 };
 
-const firstExample = (parameter: any): unknown => {
-    const named = Object.values(parameter.examples || {})[0] as any;
-    return (
-        parameter.example ?? named?.dataValue ?? named?.value ?? parameter.schema?.example ?? parameter.schema?.default
-    );
-};
+const firstExample = (parameter: any, spec: OpenApiSpec): unknown =>
+    parameter.example ??
+    exampleValueOf(Object.values(parameter.examples || {})[0], spec) ??
+    parameter.schema?.example ??
+    parameter.schema?.default;
 
 const bodyPreview = (spec: OpenApiSpec, operation: Operation): {body?: string; bodyType?: string} => {
     const body = resolveRequestBody(operation.requestBody, spec);
     const bodyType = Object.keys(body?.content || {})[0];
     if (!bodyType) return {};
     const media = body.content[bodyType];
-    const named = Object.values(media.examples || {})[0] as any;
-    const explicit = media.example ?? named?.dataValue ?? named?.value;
+    const explicit = media.example ?? exampleValueOf(Object.values(media.examples || {})[0], spec);
     if (explicit !== undefined) {
         const redacted = redactExampleSecrets(explicit);
         return {body: typeof redacted === 'string' ? redacted : JSON.stringify(redacted, null, 2), bodyType};
@@ -108,7 +106,7 @@ export const buildCodegenRequest = (input: {
     const parameterValues: Record<string, unknown> = {};
     getMergedParameters(pathItem, input.operation, input.spec).forEach((parameter: any) => {
         const schema = parameter.schema ?? parameter;
-        let value = SECRET_NAME.test(parameter.name) ? placeholder(parameter.name) : firstExample(parameter);
+        let value = SECRET_NAME.test(parameter.name) ? placeholder(parameter.name) : firstExample(parameter, input.spec);
         if (value === undefined) {
             if (schema?.type === 'array') value = [placeholder(`${parameter.name}_ITEM`)];
             else if (schema?.type === 'object') value = {[placeholder('KEY')]: placeholder('VALUE')};

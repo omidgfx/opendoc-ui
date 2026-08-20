@@ -4,6 +4,7 @@ import type {OpenApiSpec} from '../../../types';
 import CustomDropdown from '../../common/CustomDropdown';
 import StructuredValueEditor from './StructuredValueEditor';
 import {Tip} from '../../common/Tooltip';
+import {exampleValueOf} from '../../../utils/openapi';
 import {enumDropdownOptions, enumValueDescriptions, enumValueText} from '../../../utils/enumOptions';
 import {resolved} from '../../../utils/runner/recursiveBody';
 
@@ -338,14 +339,8 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
         );
     }
 
-    const firstNamedExample = Object.values(param.examples || {})[0] as any;
     const example =
-        param.example ??
-        firstNamedExample?.dataValue ??
-        firstNamedExample?.value ??
-        firstNamedExample?.serializedValue ??
-        schema.example ??
-        schema.default;
+        param.example ?? exampleValueOf(Object.values(param.examples || {})[0], spec) ?? schema.example ?? schema.default;
     const inputMode = type === 'integer' ? 'numeric' : type === 'number' ? 'decimal' : undefined;
     if (type === 'object') {
         return (

@@ -1,7 +1,7 @@
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import type {ActiveAuth, ExamineResponse, OpenApiSpec, Operation} from '../../../types';
-import {getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
+import {exampleValueOf, getMergedParameters, resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {groupParameters, type ParameterGroupMeta} from '../../../utils/endpoint/parameterGroups';
 import ParameterLocationTag from '../../common/ParameterLocationTag';
 import SerializationTag from '../../common/SerializationTag';
@@ -211,14 +211,8 @@ export default function ExamineTab({
             const schema = param.schema ?? param;
             const isArray = schema?.type === 'array' || param.type === 'array';
             const itemEnum = schema.items?.enum || param.items?.enum;
-            const firstNamedExample = Object.values(param.examples || {})[0] as any;
             const example =
-                param.example ??
-                firstNamedExample?.dataValue ??
-                firstNamedExample?.value ??
-                firstNamedExample?.serializedValue ??
-                schema?.example ??
-                schema?.default;
+                param.example ?? exampleValueOf(Object.values(param.examples || {})[0], spec) ?? schema?.example ?? schema?.default;
             const key = parameterStateKey(param.in, param.name);
             if (isArray) {
                 // Array parameters hold a list of items, never a JSON string:
@@ -253,7 +247,7 @@ export default function ExamineTab({
             setRequestBodyType(seedType);
             const contentObj = resolvedBody.content[seedType];
             if (contentObj) {
-                const example = getRequestBodyExample(contentObj);
+                const example = getRequestBodyExample(contentObj, spec);
                 const resolvedSchema = contentObj.schema
                     ? resolveReference(contentObj.schema, spec) || contentObj.schema
                     : null;

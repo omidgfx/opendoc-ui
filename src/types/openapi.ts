@@ -45,6 +45,47 @@ export interface ParsableConfig {
     [key: string]: Parsable;
 }
 
+export interface ExternalDocumentation {
+    description?: string;
+    url?: string;
+}
+
+export interface ContactObject {
+    name?: string;
+    url?: string;
+    email?: string;
+}
+
+export interface LicenseObject {
+    name: string;
+    identifier?: string;
+    url?: string;
+}
+
+export interface LogoDefinition {
+    url: string;
+    altText?: string;
+    href?: string;
+    backgroundColor?: string;
+}
+
+export interface ExampleDefinition {
+    summary?: string;
+    description?: string;
+    value?: any;
+    externalValue?: string;
+    serializedValue?: any;
+    dataValue?: any;
+    externalDataValue?: any;
+}
+
+export interface MediaTypeDefinition {
+    schema?: any;
+    example?: any;
+    examples?: Record<string, ExampleDefinition | any>;
+    encoding?: any;
+}
+
 export interface SecurityScheme {
     type: string;
     description?: string;
@@ -70,6 +111,19 @@ export interface ServerDefinition {
     variables?: Record<string, ServerVariable>;
 }
 
+export interface LinkDefinition {
+    operationRef?: string;
+    operationId?: string;
+    parameters?: Record<string, any>;
+    requestBody?: any;
+    description?: string;
+    server?: ServerDefinition;
+}
+
+export interface CallbackDefinition {
+    [expression: string]: PathItem | {$ref: string};
+}
+
 export interface Parameter {
     name: string;
     in: 'path' | 'query' | 'querystring' | 'header' | 'cookie';
@@ -81,34 +135,25 @@ export interface Parameter {
     explode?: boolean;
     allowReserved?: boolean;
     schema?: any;
-    content?: Record<string, any>;
+    content?: Record<string, MediaTypeDefinition | any>;
     example?: any;
-    examples?: Record<string, any>;
+    examples?: Record<string, ExampleDefinition | any>;
 }
 
 export interface ResponseDefinition {
     description?: string;
     headers?: any;
     content?: {
-        [contentType: string]: {
-            schema?: any;
-            example?: any;
-            examples?: any;
-            encoding?: any;
-        };
+        [contentType: string]: MediaTypeDefinition;
     };
+    links?: Record<string, LinkDefinition | {$ref: string}>;
 }
 
 export interface RequestBodyDefinition {
     description?: string;
     required?: boolean;
     content: {
-        [contentType: string]: {
-            schema?: any;
-            example?: any;
-            examples?: any;
-            encoding?: any;
-        };
+        [contentType: string]: MediaTypeDefinition;
     };
 }
 
@@ -116,13 +161,14 @@ export interface Operation {
     tags?: string[];
     summary?: string;
     description?: string;
-    externalDocs?: any;
+    externalDocs?: ExternalDocumentation;
     operationId?: string;
     parameters?: Parameter[];
     requestBody?: RequestBodyDefinition;
     responses: {
         [statusCode: string]: ResponseDefinition;
     };
+    callbacks?: Record<string, CallbackDefinition | {$ref: string}>;
     security?: Array<{
         [key: string]: string[];
     }>;
@@ -147,23 +193,37 @@ export interface PathItem {
     parameters?: Parameter[];
 }
 
+export interface TagDefinition {
+    name: string;
+    description?: string;
+    externalDocs?: ExternalDocumentation;
+}
+
+export interface OpenApiInfo {
+    title: string;
+    summary?: string;
+    description?: string;
+    version: string;
+    termsOfService?: string;
+    contact?: ContactObject;
+    license?: LicenseObject;
+    'x-logo'?: LogoDefinition;
+}
+
+export interface TagGroupDefinition {
+    name: string;
+    tags: string[];
+}
+
 export interface OpenApiSpec {
     openapi: string;
     swagger?: string;
     /** OpenAPI 3.2 document self URI. */
     $self?: string;
     jsonSchemaDialect?: string;
-    externalDocs?: any;
-    info: {
-        title: string;
-        description?: string;
-        version: string;
-        contact?: {
-            name?: string;
-            url?: string;
-            email?: string;
-        };
-    };
+    externalDocs?: ExternalDocumentation;
+    info: OpenApiInfo;
+    tags?: TagDefinition[];
     servers?: ServerDefinition[];
     paths: {
         [path: string]: PathItem;
@@ -191,10 +251,16 @@ export interface OpenApiSpec {
         headers?: {
             [name: string]: any;
         };
+        examples?: Record<string, ExampleDefinition | any>;
+        links?: Record<string, LinkDefinition | {$ref: string}>;
+        callbacks?: Record<string, CallbackDefinition | {$ref: string}>;
         pathItems?: Record<string, PathItem | {$ref: string}>;
         /** OpenAPI 3.2 reusable Media Type Objects. */
         mediaTypes?: Record<string, any>;
     };
+    'x-tagGroups'?: TagGroupDefinition[];
+    'x-generated-at'?: string;
+    'x-complexity-notes'?: Record<string, any>;
 }
 
 export type AuthCredentialType =
