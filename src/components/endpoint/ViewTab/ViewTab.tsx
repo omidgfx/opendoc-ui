@@ -25,7 +25,8 @@ import OverflowActionsMenu from '../../common/OverflowActionsMenu';
 import CardOrTable, {CARD_LAYOUT_WIDTH, COMPACT_CARD_LAYOUT_WIDTH} from '../../common/CardOrTable';
 import DataCard, {RequiredBadge} from '../../common/DataCard';
 import CombinatorLabel from '../../common/CombinatorLabel';
-import {detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import {describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import AllOfCompositionNote from '@/src/components/schema/AllOfCompositionNote';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
@@ -574,16 +575,25 @@ export default function ViewTab({
     const selectedRequestBodyContent = requestBodySource.content;
     // Every polymorphism keyword gets the same rail, including allOf, whose
     // branches are constraints the reader still wants to inspect one by one.
-    const requestBodyCombinator = detectSchemaCombinator(
-        requestBodySource.schema ? resolveReference(requestBodySource.schema) || requestBodySource.schema : null,
-        resolveReference,
-    );
-    const requestBodyBranchIndex = requestBodyCombinator
-        ? Math.min(requestBodyVariant, requestBodyCombinator.branches.length - 1)
+    const resolvedRequestBodySchema = requestBodySource.schema
+        ? resolveReference(requestBodySource.schema) || requestBodySource.schema
+        : null;
+    const requestBodyCombinator = detectSchemaCombinator(resolvedRequestBodySchema);
+    // allOf composes rather than offers alternatives: the reader gets the one
+    // object it assembles, with a note saying which parts it came from.
+    const requestBodyComposition =
+        requestBodyCombinator?.meta.kind === 'allOf'
+            ? describeAllOfComposition(resolvedRequestBodySchema, resolveReference, getRefName)
+            : null;
+    const requestBodyChoice = requestBodyComposition ? null : requestBodyCombinator;
+    const requestBodyBranchIndex = requestBodyChoice
+        ? Math.min(requestBodyVariant, requestBodyChoice.branches.length - 1)
         : 0;
-    const requestBodyMatrixSchema = requestBodyCombinator
-        ? requestBodyCombinator.branches[requestBodyBranchIndex]
-        : requestBodySource.schema;
+    const requestBodyMatrixSchema = requestBodyComposition
+        ? requestBodyComposition.effective
+        : requestBodyChoice
+          ? requestBodyChoice.branches[requestBodyBranchIndex]
+          : requestBodySource.schema;
     const requestBodyExample = requestBodySource.example;
     const requestBodyShape = describeRequestBody(selectedRequestBodyContentType, requestBodyMatrixSchema);
     const requestBodyFormFields =
@@ -961,13 +971,20 @@ export default function ViewTab({
                                         </span>
                                     </Tip>
                                 </div>
-                                {requestBodyCombinator && (
+                                {requestBodyComposition && (
+                                    <AllOfCompositionNote
+                                        composition={requestBodyComposition}
+                                        subject="request body"
+                                        onInspect={onOpenSchemaModal}
+                                    />
+                                )}
+                                {requestBodyChoice && (
                                     <AdaptiveTabStrip
-                                        labelNode={<CombinatorLabel meta={requestBodyCombinator.meta} />}
+                                        labelNode={<CombinatorLabel meta={requestBodyChoice.meta} />}
                                         ariaLabel="Request body variants"
                                         activeId={String(requestBodyBranchIndex)}
                                         onSelect={id => setRequestBodyVariant(Number(id))}
-                                        items={requestBodyCombinator.branches.map((sub, index) => ({
+                                        items={requestBodyChoice.branches.map((sub, index) => ({
                                             id: String(index),
                                             label: schemaVariantLabel(sub, resolveReference, getRefName, index),
                                             description: (resolveReference(sub) || sub)?.description,

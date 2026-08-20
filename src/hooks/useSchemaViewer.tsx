@@ -3,7 +3,8 @@ import {useState} from 'react';
 import type {OpenApiSpec} from '@/src/types';
 import AdaptiveTabStrip from '@/src/components/common/AdaptiveTabStrip';
 import CombinatorLabel from '@/src/components/common/CombinatorLabel';
-import {detectSchemaCombinator, mergeAllOfBranches} from '@/src/utils/schema/combinators';
+import {describeAllOfComposition, detectSchemaCombinator, effectiveAllOfSchema} from '@/src/utils/schema/combinators';
+import AllOfCompositionNote from '@/src/components/schema/AllOfCompositionNote';
 import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
 import {Tip} from '@/src/components/common/Tooltip';
 
@@ -182,7 +183,7 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
         if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) return schema.oneOf[0];
         if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) return schema.anyOf[0];
         if (Array.isArray(schema.allOf) && schema.allOf.length > 0)
-            return mergeAllOfBranches(schema.allOf, resolveReference) || schema.allOf[0];
+            return effectiveAllOfSchema(schema, resolveReference) || schema.allOf[0];
         if (schema.type === 'array' && schema.items) return getDefaultViewerSchema(schema.items);
         return schema;
     };
@@ -256,7 +257,21 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
                 </span>
             );
         }
-        const combinator = detectSchemaCombinator(prop, resolveReference);
+        if (Array.isArray(prop.allOf) && prop.allOf.length > 0) {
+            // Not a choice: every part applies, so the cell explains the object
+            // the parts assemble instead of offering them as alternatives.
+            const composition = describeAllOfComposition(prop, resolveReference, getRefName);
+            if (composition)
+                return (
+                    <AllOfCompositionNote
+                        composition={composition}
+                        variant="inline"
+                        subject="value"
+                        onInspect={onOpenSchemaModal}
+                    />
+                );
+        }
+        const combinator = detectSchemaCombinator(prop);
         if (combinator) {
             const viewerSchema = viewerExampleSchemas[code] ?? getDefaultViewerSchema(prop);
             const activeIndex = Math.max(
