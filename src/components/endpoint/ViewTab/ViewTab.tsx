@@ -38,6 +38,11 @@ import {describeParameterSerialization} from '@/src/utils/endpoint/parameterSeri
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
+import {
+    extractMockLineMarkers,
+    generateValidatedMock,
+    prepareMockForAnnotation,
+} from '@/src/utils/runner/mockGenerator';
 import {useSchemaViewer} from '@/src/hooks/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
@@ -112,15 +117,19 @@ const inlineMenusForCode = (
                 .at(-1)
                 ?.replace(/\[[^\]]+\]/g, '')
                 .replace(/\*/g, '') || path;
-        const probes = [`"${tail}"`, `'${tail}'`, `<${tail}>`, `<${tail} `, `${tail}:`, tail];
+        const probes = [
+            {text: `"${tail}"`, anchor: `"${tail}"`.length},
+            {text: `'${tail}'`, anchor: `'${tail}'`.length},
+            {text: `<${tail}>`, anchor: tail.length + 1},
+            {text: `<${tail} `, anchor: tail.length + 1},
+            {text: `${tail}:`, anchor: tail.length},
+            {text: tail, anchor: tail.length},
+        ];
         for (let index = 0; index < lines.length; index += 1) {
             const line = lines[index];
             for (const probe of probes) {
-                const column = line.indexOf(probe);
-                if (probe && column >= 0) {
-                    const anchor = probe.includes(tail) ? probe.indexOf(tail) + tail.length : probe.length;
-                    return {line: index + 1, column: column + anchor};
-                }
+                const column = line.indexOf(probe.text);
+                if (probe.text && column >= 0) return {line: index + 1, column: column + probe.anchor};
             }
         }
         return {line: 1, column: 0};
@@ -172,9 +181,11 @@ export default function ViewTab({
         description?: string;
     } | null>(null);
     const [responseActiveTab, setResponseActiveTab] = useState<{
-        [code: string]: 'example' | 'schema' | 'enum';
+        [code: string]: 'example' | 'schema' | 'enum' | 'spec-example';
     }>({});
-    const [requestActiveTab, setRequestActiveTab] = useState<'example' | 'schema'>(endpointRepresentation);
+    const [requestActiveTab, setRequestActiveTab] = useState<'example' | 'schema' | 'spec-example'>(
+        endpointRepresentation,
+    );
     const [requestExampleKey, setRequestExampleKey] = useState('');
     const [responseExampleKeys, setResponseExampleKeys] = useState<Record<string, string>>({});
     // Enum is a peek at the values, not a representation the reader chose to
@@ -487,7 +498,6 @@ export default function ViewTab({
         getMockSnippetWithMarkers,
         getSchemaDisplayName,
         getLanguageForContentType,
-        getResponseExampleSnippetWithMarkers,
         humanizeSchemaName,
         getSchemaNamesFromResponse,
     } = createResponseExampleHelpers(spec);
@@ -682,11 +692,54 @@ export default function ViewTab({
             value: exampleValueOf(entry, spec),
         }));
     };
+    const schemaModalNameOf = (schemaCandidate: any, fallback: string | null = null): string | null => {
+        if (schemaCandidate?.$ref) return getRefName(schemaCandidate.$ref);
+        if (schemaCandidate?.title && spec.components?.schemas?.[schemaCandidate.title]) return schemaCandidate.title;
+        return fallback || null;
+    };
+    const renderViewSchemaButton = (schemaName: string | null) => {
+        if (!schemaName) return null;
+        return (
+            <button
+                type="button"
+                onClick={() => onOpenSchemaModal(schemaName)}
+                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer"
+            >
+                <i className="ph ph-diamonds-four text-[11px]" />
+                <span>View Schema</span>
+            </button>
+        );
+    };
+    const buildSchemaRepresentationSnippet = (
+        schemaCandidate: any,
+        contentType: string,
+        usage: 'request' | 'response',
+    ): {code: string; markers: any[]} => {
+        const generated = generateValidatedMock(schemaCandidate, spec, usage);
+        if (generated.value === undefined)
+            return {
+                code: `// Mock unavailable: ${generated.diagnostics.map(item => item.message).join('; ')}`,
+                markers: [],
+            };
+        const prepared = prepareMockForAnnotation(generated.value);
+        const rootName = getSchemaDisplayName(schemaCandidate, usage === 'request' ? 'request' : 'response');
+        const serialized = formatExample(
+            prepared.value,
+            contentType,
+            rootName || (usage === 'request' ? 'request' : 'response'),
+        );
+        return extractMockLineMarkers(serialized, prepared);
+    };
     const requestNamedExamples = namedMediaExamples(selectedRequestBodyContent);
-    const activeRequestExampleValue =
-        requestExampleKey && requestNamedExamples.find(example => example.key === requestExampleKey)
-            ? requestNamedExamples.find(example => example.key === requestExampleKey)?.value
-            : requestNamedExamples[0]?.value;
+    const requestSpecExamples =
+        requestNamedExamples.length > 0
+            ? requestNamedExamples
+            : requestBodyExample !== undefined
+              ? [{key: 'example', label: 'Example', value: requestBodyExample}]
+              : [];
+    const activeRequestSpecExample =
+        requestSpecExamples.find(example => example.key === (requestExampleKey || requestSpecExamples[0]?.key)) ||
+        requestSpecExamples[0];
 
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
     const requestBodyOneOfChoices = useMemo(
@@ -1117,7 +1170,7 @@ export default function ViewTab({
                                     />
                                 )}
                                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap">
+                                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
                                         <button
                                             onClick={() => {
                                                 setRequestActiveTab('example');
@@ -1140,20 +1193,47 @@ export default function ViewTab({
                                             <span className="hidden sm:inline">Unified Schema</span>
                                             <span className="sm:hidden">Schema</span>
                                         </button>
+                                        {requestSpecExamples.length > 0 && (
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => setRequestActiveTab('spec-example')}
+                                                onKeyDown={event => {
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        setRequestActiveTab('spec-example');
+                                                    }
+                                                }}
+                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${requestActiveTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                            >
+                                                <span>Example:</span>
+                                                {requestSpecExamples.length > 1 &&
+                                                requestActiveTab === 'spec-example' ? (
+                                                    <span className="inline-flex min-w-0 items-center gap-1">
+                                                        <CustomDropdown
+                                                            value={requestExampleKey || requestSpecExamples[0].key}
+                                                            onChange={setRequestExampleKey}
+                                                            options={requestSpecExamples.map(example => ({
+                                                                value: example.key,
+                                                                label: example.label,
+                                                            }))}
+                                                            className="w-auto min-w-0 max-w-[180px]"
+                                                            ariaLabel="Request examples"
+                                                            plainTrigger
+                                                        />
+                                                    </span>
+                                                ) : (
+                                                    <span>{activeRequestSpecExample?.label || 'Example'}</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-wrap justify-end">
-                                        {requestNamedExamples.length > 1 && (
-                                            <CustomDropdown
-                                                value={requestExampleKey || requestNamedExamples[0].key}
-                                                onChange={setRequestExampleKey}
-                                                options={requestNamedExamples.map(example => ({
-                                                    value: example.key,
-                                                    label: example.label,
-                                                }))}
-                                                icon="ph ph-list text-[12px]"
-                                                className="w-[180px] max-w-full"
-                                                ariaLabel="Request body examples"
-                                            />
+                                        {renderViewSchemaButton(
+                                            schemaModalNameOf(
+                                                requestBodyMatrixSchema,
+                                                schemaModalNameOf(selectedRequestBodyContent?.schema),
+                                            ),
                                         )}
                                     </div>
                                 </div>
@@ -1185,8 +1265,10 @@ export default function ViewTab({
                                             </div>
                                         </div>
                                         {(() => {
-                                            const example = getMockSnippetWithMarkers(
+                                            const example = buildSchemaRepresentationSnippet(
                                                 requestBodyEffectiveSchema || selectedRequestBodyContent.schema,
+                                                selectedRequestBodyContentType,
+                                                'request',
                                             );
                                             const inlineMenus = inlineMenusForCode(
                                                 example.code,
@@ -1206,6 +1288,22 @@ export default function ViewTab({
                                                 />
                                             );
                                         })()}
+                                    </div>
+                                ) : requestActiveTab === 'spec-example' ? (
+                                    <div className="space-y-3 min-w-0">
+                                        <div className="border-t border-[var(--border)] pt-2">
+                                            <CodeViewer
+                                                code={formatExample(
+                                                    activeRequestSpecExample?.value,
+                                                    selectedRequestBodyContentType,
+                                                    requestBodyEffectiveSchema?.$ref
+                                                        ? getRefName(requestBodyEffectiveSchema.$ref)
+                                                        : requestBodyEffectiveSchema?.title || 'request',
+                                                )}
+                                                language={exampleLanguageFor(selectedRequestBodyContentType)}
+                                                maxHeight="320px"
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3 min-w-0">
@@ -1280,14 +1378,19 @@ export default function ViewTab({
                             const selectedContentObj =
                                 selectedContentType && resp.content ? (resp.content as any)[selectedContentType] : null;
                             const responseNamedExamples = namedMediaExamples(selectedContentObj);
-                            const activeResponseExampleValue =
-                                responseExampleKeys[code] &&
-                                responseNamedExamples.find(example => example.key === responseExampleKeys[code])
-                                    ? responseNamedExamples.find(example => example.key === responseExampleKeys[code])
-                                          ?.value
-                                    : responseNamedExamples[0]?.value;
-                            const setResponseTab = (tab: 'example' | 'schema' | 'enum') => {
-                                if (tab === 'enum') {
+                            const responseSpecExamples =
+                                responseNamedExamples.length > 0
+                                    ? responseNamedExamples
+                                    : selectedContentObj?.example !== undefined
+                                      ? [{key: 'example', label: 'Example', value: selectedContentObj.example}]
+                                      : [];
+                            const activeResponseSpecExample =
+                                responseSpecExamples.find(
+                                    example =>
+                                        example.key === (responseExampleKeys[code] || responseSpecExamples[0]?.key),
+                                ) || responseSpecExamples[0];
+                            const setResponseTab = (tab: 'example' | 'schema' | 'enum' | 'spec-example') => {
+                                if (tab === 'enum' || tab === 'spec-example') {
                                     setResponseActiveTab(prev => ({...prev, [code]: tab}));
                                     return;
                                 }
@@ -1448,7 +1551,7 @@ export default function ViewTab({
                                             {resp.content && selectedContentObj ? (
                                                 <>
                                                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                        <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap">
+                                                        <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
                                                             <button
                                                                 onClick={() => setResponseTab('example')}
                                                                 aria-pressed={activeResponseTab === 'example'}
@@ -1488,28 +1591,63 @@ export default function ViewTab({
                                                                 <span className="hidden sm:inline">Unified Schema</span>
                                                                 <span className="sm:hidden">Schema</span>
                                                             </button>
+                                                            {responseSpecExamples.length > 0 && (
+                                                                <div
+                                                                    role="button"
+                                                                    tabIndex={0}
+                                                                    onClick={() => setResponseTab('spec-example')}
+                                                                    onKeyDown={event => {
+                                                                        if (
+                                                                            event.key === 'Enter' ||
+                                                                            event.key === ' '
+                                                                        ) {
+                                                                            event.preventDefault();
+                                                                            setResponseTab('spec-example');
+                                                                        }
+                                                                    }}
+                                                                    className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${activeResponseTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                                                >
+                                                                    <span>Example:</span>
+                                                                    {responseSpecExamples.length > 1 &&
+                                                                    activeResponseTab === 'spec-example' ? (
+                                                                        <CustomDropdown
+                                                                            value={
+                                                                                responseExampleKeys[code] ||
+                                                                                responseSpecExamples[0].key
+                                                                            }
+                                                                            onChange={value =>
+                                                                                setResponseExampleKeys(previous => ({
+                                                                                    ...previous,
+                                                                                    [code]: value,
+                                                                                }))
+                                                                            }
+                                                                            options={responseSpecExamples.map(
+                                                                                example => ({
+                                                                                    value: example.key,
+                                                                                    label: example.label,
+                                                                                }),
+                                                                            )}
+                                                                            className="w-auto min-w-0 max-w-[180px]"
+                                                                            ariaLabel={`Response ${code} examples`}
+                                                                            plainTrigger
+                                                                        />
+                                                                    ) : (
+                                                                        <span>
+                                                                            {activeResponseSpecExample?.label ||
+                                                                                'Example'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-center gap-2 min-w-0 flex-1 justify-end flex-wrap">
-                                                            {responseNamedExamples.length > 1 && (
-                                                                <CustomDropdown
-                                                                    value={
-                                                                        responseExampleKeys[code] ||
-                                                                        responseNamedExamples[0].key
-                                                                    }
-                                                                    onChange={value =>
-                                                                        setResponseExampleKeys(previous => ({
-                                                                            ...previous,
-                                                                            [code]: value,
-                                                                        }))
-                                                                    }
-                                                                    options={responseNamedExamples.map(example => ({
-                                                                        value: example.key,
-                                                                        label: example.label,
-                                                                    }))}
-                                                                    icon="ph ph-list text-[12px]"
-                                                                    className="w-[180px] max-w-full"
-                                                                    ariaLabel={`Response ${code} examples`}
-                                                                />
+                                                            {renderViewSchemaButton(
+                                                                schemaModalNameOf(
+                                                                    viewerExampleSchemas[code] ??
+                                                                        selectedContentObj?.schema,
+                                                                    viewerExampleNames[code] ||
+                                                                        schemaModalNameOf(selectedContentObj?.schema),
+                                                                ),
                                                             )}
                                                             {responseContentEntries.length > 1 && (
                                                                 <div className="flex items-center gap-2 min-w-0">
@@ -1607,26 +1745,11 @@ export default function ViewTab({
                                                                             </div>
                                                                             {(() => {
                                                                                 const example =
-                                                                                    activeResponseExampleValue !==
-                                                                                    undefined
-                                                                                        ? {
-                                                                                              code: formatExample(
-                                                                                                  activeResponseExampleValue,
-                                                                                                  cType,
-                                                                                                  activeSchemaWithSelections?.$ref
-                                                                                                      ? getRefName(
-                                                                                                            activeSchemaWithSelections.$ref,
-                                                                                                        )
-                                                                                                      : activeSchemaWithSelections?.title ||
-                                                                                                            'response',
-                                                                                              ),
-                                                                                              markers: [],
-                                                                                          }
-                                                                                        : getResponseExampleSnippetWithMarkers(
-                                                                                              activeSchemaWithSelections,
-                                                                                              cObj,
-                                                                                              cType,
-                                                                                          );
+                                                                                    buildSchemaRepresentationSnippet(
+                                                                                        activeSchemaWithSelections,
+                                                                                        cType,
+                                                                                        'response',
+                                                                                    );
                                                                                 const inlineMenus = inlineMenusForCode(
                                                                                     example.code,
                                                                                     responseSelectionScopeKey,
@@ -1652,6 +1775,25 @@ export default function ViewTab({
                                                                                     />
                                                                                 );
                                                                             })()}
+                                                                        </div>
+                                                                    ) : activeResponseTab === 'spec-example' ? (
+                                                                        <div className="space-y-3 min-w-0">
+                                                                            <div className="border-t border-[var(--border)] pt-2">
+                                                                                <CodeViewer
+                                                                                    code={formatExample(
+                                                                                        activeResponseSpecExample?.value,
+                                                                                        cType,
+                                                                                        activeSchemaWithSelections?.$ref
+                                                                                            ? getRefName(
+                                                                                                  activeSchemaWithSelections.$ref,
+                                                                                              )
+                                                                                            : activeSchemaWithSelections?.title ||
+                                                                                                  'response',
+                                                                                    )}
+                                                                                    language={exampleLanguageFor(cType)}
+                                                                                    maxHeight="320px"
+                                                                                />
+                                                                            </div>
                                                                         </div>
                                                                     ) : activeResponseTab === 'enum' && isEnum ? (
                                                                         <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">

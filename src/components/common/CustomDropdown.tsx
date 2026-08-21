@@ -12,6 +12,7 @@ interface CustomDropdownProps {
     placeholder?: string;
     disabled?: boolean;
     ariaLabel?: string;
+    plainTrigger?: boolean;
 }
 
 export default function CustomDropdown({
@@ -23,6 +24,7 @@ export default function CustomDropdown({
     placeholder = 'Select...',
     disabled = false,
     ariaLabel,
+    plainTrigger = false,
 }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -175,7 +177,7 @@ export default function CustomDropdown({
                         event.stopPropagation();
                         selectIndex(index);
                     }}
-                    className={`px-3 py-2 flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${option.disabled ? 'cursor-not-allowed opacity-45 bg-transparent text-[var(--text-muted)]' : 'cursor-pointer'} ${!option.disabled && index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
+                    className={`mx-[1px] my-[1px] px-3 py-2 flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${option.disabled ? 'cursor-not-allowed opacity-45 bg-transparent text-[var(--text-muted)]' : 'cursor-pointer'} ${!option.disabled && index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
                 >
                     <span
                         className={`size-2 shrink-0 rounded-full ${index === activeIndex ? 'bg-[var(--primary)]' : option.value === value ? 'bg-[var(--method-get)]' : 'bg-transparent'}`}
@@ -211,7 +213,11 @@ export default function CustomDropdown({
                         if (!isOpen) open(event.key === 'ArrowDown' ? selectedIndex : Math.max(0, selectedIndex));
                     }
                 }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className={
+                    plainTrigger
+                        ? 'flex w-full min-w-0 items-center justify-between gap-1 bg-transparent px-0 py-0 text-inherit font-inherit cursor-pointer transition-all select-none focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                        : 'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 disabled:cursor-not-allowed disabled:opacity-60'
+                }
             >
                 <span className="flex min-w-0 items-center gap-2 truncate">
                     {icon && <i className={icon} />}

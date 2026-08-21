@@ -378,10 +378,12 @@ export default function CodeViewer({
                                         </span>
                                         {dot ? (
                                             <Tip content={dot.tip}>
-                                                <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-[var(--text)] cursor-help" />
+                                                <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center cursor-help text-[var(--method-delete)]">
+                                                    <i className="ph-fill ph-asterisk text-[8px] leading-none" />
+                                                </span>
                                             </Tip>
                                         ) : (
-                                            <span className="ml-1 inline-block size-[5px] shrink-0 rounded-full bg-transparent" />
+                                            <span className="ml-1 inline-block size-[10px] shrink-0 rounded-full bg-transparent" />
                                         )}
                                     </div>
                                 );
@@ -410,13 +412,16 @@ export default function CodeViewer({
                                             onClick={() =>
                                                 setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
                                             }
-                                            className="inline-flex items-center justify-center text-[var(--text-muted)] opacity-80 transition-opacity hover:opacity-100 cursor-pointer"
+                                            className="inline-flex items-center justify-center text-[var(--text-muted)] opacity-90 transition-opacity hover:opacity-100 cursor-pointer"
                                             aria-label={menu.ariaLabel || 'Select schema branch'}
                                             aria-haspopup="menu"
                                             aria-expanded={open}
                                         >
                                             <i
-                                                className={`ph ${open ? 'ph-caret-down' : 'ph-caret-right'} text-[12px]`}
+                                                className={clsx(
+                                                    'ph-fill ph-caret-circle-down text-[12px] transition-transform',
+                                                    open && 'rotate-180',
+                                                )}
                                             />
                                         </button>
                                         {open && (
