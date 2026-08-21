@@ -30,6 +30,7 @@ import {usePreferences} from '../../../contexts/PreferencesContext';
 import {modalRepresentationOf} from '../../../utils/storage/preferences';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {COMBINATOR_META, schemaDeclaresNothing} from '../../../utils/schema/combinators';
+import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -69,6 +70,7 @@ export default function ModalsStack({
     }>({});
     const [exampleEncodings, setExampleEncodings] = useState<Record<number, string>>({});
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
+    const [schemaBranchRevision, setSchemaBranchRevision] = useState(0);
     const [shareModal, setShareModal] = useState<{
         url: string;
         title: string;
@@ -139,6 +141,11 @@ export default function ModalsStack({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [shareModal]);
+    useEffect(() => {
+        const handler = () => setSchemaBranchRevision(current => current + 1);
+        window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+        return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+    }, []);
     if (modals.length === 0) {
         return null;
     }
@@ -394,8 +401,14 @@ export default function ModalsStack({
         setActiveTabs({});
         setModalRepresentation(activeSchemaObj.schemaName, tab === 'table' ? 'schema' : 'example');
     };
-    const properties = traverseSchemaProperties(activeSchemaObj.schema);
-    const schemaIsRecursiveView = schemaIsRecursive(activeSchemaObj.schema, resolveReference);
+    const modalSelectionScopeKey = `${parsableKey}:schema-modal:${activeSchemaObj.schemaName}`;
+    const effectiveModalSchema = applySchemaBranchSelections(
+        activeSchemaObj.schema,
+        modalSelectionScopeKey,
+        resolveReference,
+    );
+    const properties = traverseSchemaProperties(effectiveModalSchema);
+    const schemaIsRecursiveView = schemaIsRecursive(effectiveModalSchema, resolveReference);
     return (
         <>
             <div
@@ -490,7 +503,7 @@ export default function ModalsStack({
                                 </div>
                             )}
                         </div>
-                        {schemaDeclaresNothing(activeSchemaObj.schema) && (
+                        {schemaDeclaresNothing(effectiveModalSchema) && (
                             <div className="mb-4 flex items-start gap-2 rounded-lg border border-dashed p-3 text-xs leading-relaxed border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
                                 <i className="ph ph-info mt-0.5 text-[13px] text-[var(--primary)]" />
                                 <span>
@@ -499,30 +512,30 @@ export default function ModalsStack({
                                 </span>
                             </div>
                         )}
-                        {(activeSchemaObj.schema?.description || activeSchemaObj.schema?.externalDocs) && (
+                        {(effectiveModalSchema?.description || effectiveModalSchema?.externalDocs) && (
                             <div className="mb-4 p-3 rounded-lg border text-xs leading-relaxed space-y-3 bg-[var(--background)] border-[var(--border)]">
-                                {activeSchemaObj.schema?.description && (
+                                {effectiveModalSchema?.description && (
                                     <div>
                                         <p className="font-semibold mb-1 text-[var(--text-heading)]">Description:</p>
                                         <div>
-                                            <Markdown text={activeSchemaObj.schema.description} />
+                                            <Markdown text={effectiveModalSchema.description} />
                                         </div>
                                     </div>
                                 )}
-                                {activeSchemaObj.schema?.externalDocs && activeSchemaObj.schema.externalDocs.url && (
+                                {effectiveModalSchema?.externalDocs && effectiveModalSchema.externalDocs.url && (
                                     <div className="pt-2 border-t border-[var(--border)]">
                                         <p className="font-semibold mb-1 text-[var(--text-heading)]">
                                             External Reference Docs:
                                         </p>
                                         <a
-                                            href={activeSchemaObj.schema.externalDocs.url}
+                                            href={effectiveModalSchema.externalDocs.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors"
                                         >
                                             <i className="ph ph-arrow-square-out text-[8.5px]"></i>
                                             <span>
-                                                {activeSchemaObj.schema.externalDocs.description ||
+                                                {effectiveModalSchema.externalDocs.description ||
                                                     'Open External Documentation'}
                                             </span>
                                         </a>
@@ -531,14 +544,14 @@ export default function ModalsStack({
                             </div>
                         )}
 
-                        {activeSchemaObj.schema === true ? (
+                        {effectiveModalSchema === true ? (
                             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 text-xs">
                                 <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
                                 <p className="mt-1 text-[var(--text-muted)]">
                                     Any JSON value satisfies this boolean schema.
                                 </p>
                             </div>
-                        ) : activeSchemaObj.schema === false ? (
+                        ) : effectiveModalSchema === false ? (
                             <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-5 text-xs">
                                 <strong className="text-[var(--method-delete)]">Impossible schema</strong>
                                 <p className="mt-1 text-[var(--text-muted)]">
@@ -558,7 +571,7 @@ export default function ModalsStack({
                                 )}
                                 {(() => {
                                     const simulation = formatSimulationExample(
-                                        activeSchemaObj.schema,
+                                        effectiveModalSchema,
                                         activeSchemaObj.schemaName,
                                         activeExampleEncoding,
                                     );
@@ -588,13 +601,13 @@ export default function ModalsStack({
                             </div>
                         ) : (
                             <div className="space-y-4 animate-in fade-in">
-                                {activeSchemaObj.schema?.type && (
+                                {effectiveModalSchema?.type && (
                                     <div className="text-xs font-mono">
                                         <span className="font-sans font-semibold mr-1 text-[var(--text-heading)]">
                                             Base Type:
                                         </span>
                                         <span className="px-2 py-0.5 rounded text-[11px] border bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]">
-                                            {activeSchemaObj.schema.type}
+                                            {effectiveModalSchema.type}
                                         </span>
                                     </div>
                                 )}
@@ -604,7 +617,7 @@ export default function ModalsStack({
                                 </h4>
                                 <SchemaPropertiesTable
                                     properties={properties}
-                                    schema={activeSchemaObj.schema}
+                                    schema={effectiveModalSchema}
                                     inspectName={activeSchemaObj.schemaName}
                                     resolveReference={resolveReference}
                                     getRefName={getRefName}
@@ -625,6 +638,7 @@ export default function ModalsStack({
                                         });
                                     }}
                                     onTestPattern={setPatternToTest}
+                                    selectionScopeKey={modalSelectionScopeKey}
                                 />
                             </div>
                         )}

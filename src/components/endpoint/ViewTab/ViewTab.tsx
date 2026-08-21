@@ -53,6 +53,7 @@ import {isOperationAuthenticated, isOperationProtected} from '../../../utils/run
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 import ResponseLinksPanel from './ResponseLinksPanel';
 import OperationCallbacksPanel from './OperationCallbacksPanel';
+import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
 
 interface ViewTabProps {
     key: any;
@@ -129,11 +130,17 @@ export default function ViewTab({
     useEffect(() => {
         setResponseActiveTab({});
     }, [representationKey, endpointRepresentation]);
+    useEffect(() => {
+        const handler = () => setSchemaBranchRevision(current => current + 1);
+        window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+        return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+    }, []);
     const [responseContentTypes, setResponseContentTypes] = useState<{
         [code: string]: string;
     }>({});
     const [requestBodyContentType, setRequestBodyContentType] = useState('');
     const [requestBodyVariant, setRequestBodyVariant] = useState(0);
+    const [schemaBranchRevision, setSchemaBranchRevision] = useState(0);
     const responseCodes = Object.keys(operation.responses || {});
     const [navigatorActiveCode, setNavigatorActiveCode] = useState<string | null>(() =>
         activeResponseCode && responseCodes.includes(activeResponseCode)
@@ -390,7 +397,7 @@ export default function ViewTab({
         resetViewerSchema,
     } = useSchemaViewer(spec, onOpenSchemaModal);
     const resolveProperties = (schema: any): Record<string, any> => flattenSchemaProperties(schema, resolveReference);
-    const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null) => {
+    const renderSchemaPropertiesTable = (schema: any, inspectName?: string | null, selectionScopeKey?: string) => {
         if (schema === undefined || schema === null) return null;
         const properties = resolveProperties(schema);
         return (
@@ -417,6 +424,7 @@ export default function ViewTab({
                 }}
                 onTestPattern={setPatternToTest}
                 useModal={true}
+                selectionScopeKey={selectionScopeKey}
             />
         );
     };
@@ -600,11 +608,15 @@ export default function ViewTab({
         : requestBodyChoice
           ? requestBodyChoice.branches[requestBodyBranchIndex]
           : requestBodySource.schema;
+    const requestBodySelectionScopeKey = `${parsableKey || 'default'}:request:${method.toLowerCase()}:${path}`;
+    const requestBodyEffectiveSchema = requestBodyMatrixSchema
+        ? applySchemaBranchSelections(requestBodyMatrixSchema, requestBodySelectionScopeKey, resolveReference)
+        : requestBodyMatrixSchema;
     const requestBodyExample = requestBodySource.example;
-    const requestBodyShape = describeRequestBody(selectedRequestBodyContentType, requestBodyMatrixSchema);
+    const requestBodyShape = describeRequestBody(selectedRequestBodyContentType, requestBodyEffectiveSchema);
     const requestBodyFormFields =
         requestBodyShape.kind === 'form' || requestBodyShape.kind === 'multipart'
-            ? buildFormSkeleton(requestBodyMatrixSchema, spec, selectedRequestBodyContent?.encoding)
+            ? buildFormSkeleton(requestBodyEffectiveSchema, spec, selectedRequestBodyContent?.encoding)
             : [];
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
     const renderParameterCard = (param: any, index: number, showLocation: boolean) => {
@@ -999,7 +1011,7 @@ export default function ViewTab({
                                 )}
                                 <div className="pt-1 min-w-0">
                                     {renderSchemaPropertiesTable(
-                                        requestBodyMatrixSchema,
+                                        requestBodyEffectiveSchema,
                                         requestBodyMatrixSchema?.$ref
                                             ? getRefName(requestBodyMatrixSchema.$ref)
                                             : requestBodyMatrixSchema?.title || null,
@@ -1030,9 +1042,9 @@ export default function ViewTab({
                                             code={formatExample(
                                                 requestBodyExample,
                                                 selectedRequestBodyContentType,
-                                                requestBodyMatrixSchema?.$ref
-                                                    ? getRefName(requestBodyMatrixSchema.$ref)
-                                                    : requestBodyMatrixSchema?.title || 'request',
+                                                requestBodyEffectiveSchema?.$ref
+                                                    ? getRefName(requestBodyEffectiveSchema.$ref)
+                                                    : requestBodyEffectiveSchema?.title || 'request',
                                             )}
                                             language={exampleLanguageFor(selectedRequestBodyContentType)}
                                             maxHeight="320px"
@@ -1323,7 +1335,16 @@ export default function ViewTab({
                                                             const activeSchema =
                                                                 viewerExampleSchemas[code] ??
                                                                 getDefaultViewerSchema(cObj.schema);
-                                                            const resolvedSchema = resolveReference(activeSchema);
+                                                            const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
+                                                            const activeSchemaWithSelections = activeSchema
+                                                                ? applySchemaBranchSelections(
+                                                                      activeSchema,
+                                                                      responseSelectionScopeKey,
+                                                                      resolveReference,
+                                                                  )
+                                                                : activeSchema;
+                                                            const resolvedSchema =
+                                                                resolveReference(activeSchemaWithSelections);
                                                             const isEnum =
                                                                 resolvedSchema?.enum &&
                                                                 Array.isArray(resolvedSchema.enum) &&
@@ -1346,7 +1367,7 @@ export default function ViewTab({
                                                                                             code,
                                                                                         )}
                                                                                     </div>
-                                                                                    {activeSchema?.description && (
+                                                                                    {activeSchemaWithSelections?.description && (
                                                                                         <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
                                                                                             <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
                                                                                                 Schema Description:
@@ -1354,7 +1375,7 @@ export default function ViewTab({
                                                                                             <div className="markdown-body">
                                                                                                 <Markdown
                                                                                                     text={
-                                                                                                        activeSchema.description
+                                                                                                        activeSchemaWithSelections.description
                                                                                                     }
                                                                                                 />
                                                                                             </div>
@@ -1365,7 +1386,7 @@ export default function ViewTab({
                                                                             {(() => {
                                                                                 const example =
                                                                                     getResponseExampleSnippetWithMarkers(
-                                                                                        activeSchema,
+                                                                                        activeSchemaWithSelections,
                                                                                         cObj,
                                                                                         cType,
                                                                                     );
@@ -1413,7 +1434,7 @@ export default function ViewTab({
                                                                                             code,
                                                                                         )}
                                                                                     </div>
-                                                                                    {activeSchema?.description && (
+                                                                                    {activeSchemaWithSelections?.description && (
                                                                                         <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
                                                                                             <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
                                                                                                 Schema Description:
@@ -1421,7 +1442,7 @@ export default function ViewTab({
                                                                                             <div className="markdown-body">
                                                                                                 <Markdown
                                                                                                     text={
-                                                                                                        activeSchema.description
+                                                                                                        activeSchemaWithSelections.description
                                                                                                     }
                                                                                                 />
                                                                                             </div>
@@ -1430,11 +1451,12 @@ export default function ViewTab({
                                                                                 </div>
                                                                             </div>
                                                                             {renderSchemaPropertiesTable(
-                                                                                activeSchema,
+                                                                                activeSchemaWithSelections,
                                                                                 viewerExampleNames[code] ||
                                                                                     (cObj.schema?.$ref
                                                                                         ? getRefName(cObj.schema.$ref)
                                                                                         : cObj.schema?.title || null),
+                                                                                responseSelectionScopeKey,
                                                                             )}
                                                                         </div>
                                                                     )}
