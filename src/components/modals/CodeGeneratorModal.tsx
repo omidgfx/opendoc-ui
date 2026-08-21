@@ -54,15 +54,19 @@ const inlineMenusForCode = (
                 .at(-1)
                 ?.replace(/\[[^\]]+\]/g, '')
                 .replace(/\*/g, '') || path;
-        const probes = [`"${tail}"`, `'${tail}'`, `<${tail}>`, `<${tail} `, `${tail}:`, tail];
+        const probes = [
+            {text: `"${tail}"`, anchor: `"${tail}"`.length},
+            {text: `'${tail}'`, anchor: `'${tail}'`.length},
+            {text: `<${tail}>`, anchor: tail.length + 1},
+            {text: `<${tail} `, anchor: tail.length + 1},
+            {text: `${tail}:`, anchor: tail.length},
+            {text: tail, anchor: tail.length},
+        ];
         for (let index = 0; index < lines.length; index += 1) {
             const line = lines[index];
             for (const probe of probes) {
-                const column = line.indexOf(probe);
-                if (probe && column >= 0) {
-                    const anchor = probe.includes(tail) ? probe.indexOf(tail) + tail.length : probe.length;
-                    return {line: index + 1, column: column + anchor};
-                }
+                const column = line.indexOf(probe.text);
+                if (probe.text && column >= 0) return {line: index + 1, column: column + probe.anchor};
             }
         }
         return {line: 1, column: 0};

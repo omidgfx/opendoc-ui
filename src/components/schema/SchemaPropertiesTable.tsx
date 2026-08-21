@@ -82,7 +82,8 @@ export default function SchemaPropertiesTable({
 }: SchemaPropertiesTableProps) {
     const {preferences} = usePreferences();
     const bp = useBreakpoint();
-    const isMobileLayout = bp === 'mobile' || bp === 'tablet';
+    const isMobileLayout = bp === 'mobile';
+    const isTabletLayout = bp === 'tablet';
     const cardLayout = preferences.narrowTableLayout === 'cards';
     const preferCards = isMobileLayout || (!useModal && cardLayout);
     const [selectedPropertyName, setSelectedPropertyName] = useState('');
@@ -91,7 +92,7 @@ export default function SchemaPropertiesTable({
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
     const [expandedCardProperties, setExpandedCardProperties] = useState<Record<string, boolean>>({});
-    const sidebarOpen = !isMobileLayout && !sidebarCollapsed;
+    const sidebarOpen = isTabletLayout ? !sidebarCollapsed : !isMobileLayout && !sidebarCollapsed;
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -342,7 +343,7 @@ export default function SchemaPropertiesTable({
                                 className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
                             >
                                 {kind === 'oneOf' ? (
-                                    <span className="relative mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                                    <span className="relative mt-0.5 flex size-3.5 shrink-0 items-center justify-center">
                                         <input
                                             type="radio"
                                             name={`oneof-${selectionKey}-${controlScope}-${name}`}
@@ -351,7 +352,7 @@ export default function SchemaPropertiesTable({
                                             className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
                                         <span className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)]/10"></span>
-                                        <span className="relative size-1.5 rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
+                                        <span className="relative size-[5px] rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
                                     </span>
                                 ) : (
                                     <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)]"></span>
@@ -1026,8 +1027,10 @@ export default function SchemaPropertiesTable({
             <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
                 <div
                     className={clsx(
-                        'grid h-full min-w-0 xl:gap-0',
-                        sidebarOpen ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : 'xl:grid-cols-[minmax(0,1fr)]',
+                        'relative grid h-full min-w-0 xl:gap-0',
+                        sidebarOpen && !isTabletLayout
+                            ? 'xl:grid-cols-[minmax(0,1fr)_296px]'
+                            : 'xl:grid-cols-[minmax(0,1fr)]',
                     )}
                 >
                     <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
@@ -1217,8 +1220,13 @@ export default function SchemaPropertiesTable({
 
                     {sidebarOpen && (
                         <aside
-                            className="min-w-0 h-full min-h-0 bg-[var(--surface)] xl:sticky xl:top-0"
-                            style={{boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
+                            className={clsx(
+                                'min-w-0 h-full min-h-0 bg-[var(--surface)]',
+                                isTabletLayout
+                                    ? 'absolute inset-y-0 right-0 z-30 w-[296px] border-l border-[var(--border)] shadow-xl'
+                                    : 'xl:sticky xl:top-0',
+                            )}
+                            style={isTabletLayout ? undefined : {boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
                         >
                             <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
                                 <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
