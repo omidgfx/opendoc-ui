@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import {usePreferences} from '../../contexts/PreferencesContext';
+import {useBreakpoint} from '../../hooks/useBreakpoint';
 import CardOrTable, {CARD_LAYOUT_WIDTH} from '../common/CardOrTable';
 import DataCard from '../common/DataCard';
 import Markdown from '../common/Markdown';
@@ -65,7 +66,7 @@ const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
 const STICKY_HEADER_CLASS =
-    'sticky top-0 z-10 h-10 bg-[var(--surface-hover)] px-3 py-0 text-[10px] font-semibold uppercase tracking-wider leading-none text-[var(--text-heading)] align-middle';
+    'sticky top-0 z-10 h-10 border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-0 text-[10px] font-semibold uppercase tracking-wider leading-none text-[var(--text-heading)] align-middle';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -80,13 +81,16 @@ export default function SchemaPropertiesTable({
     selectionScopeKey,
 }: SchemaPropertiesTableProps) {
     const {preferences} = usePreferences();
+    const bp = useBreakpoint();
+    const isMobileLayout = bp === 'mobile' || bp === 'tablet';
     const cardLayout = preferences.narrowTableLayout === 'cards';
-    const preferCards = useModal ? false : cardLayout;
+    const preferCards = isMobileLayout || (!useModal && cardLayout);
     const [selectedPropertyName, setSelectedPropertyName] = useState('');
     const [detailsModalName, setDetailsModalName] = useState<string | null>(null);
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
+    const sidebarOpen = isMobileLayout || !sidebarCollapsed;
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -990,14 +994,14 @@ export default function SchemaPropertiesTable({
                 <div
                     className={clsx(
                         'grid h-full min-w-0 xl:gap-0',
-                        sidebarCollapsed ? 'xl:grid-cols-[minmax(0,1fr)]' : 'xl:grid-cols-[minmax(0,1fr)_320px]',
+                        sidebarOpen ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : 'xl:grid-cols-[minmax(0,1fr)]',
                     )}
                 >
                     <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
-                            className="h-full"
+                            className="h-full min-h-0"
                             cards={() => (
                                 <>
                                     {useModal && (inspectName ?? schemaName) && (
@@ -1044,27 +1048,32 @@ export default function SchemaPropertiesTable({
                                 </>
                             )}
                             table={() => (
-                                <div className="h-full overflow-auto scrollbar-thin">
+                                <div className="h-full min-h-0 overflow-auto scrollbar-thin">
                                     <table className="w-full text-left border-collapse text-xs min-w-[860px]">
                                         <thead>
-                                            <tr className={'whitespace-nowrap bg-[var(--surface-hover)]'}>
-                                                <th className={STICKY_HEADER_CLASS}>Field Target</th>
-                                                <th className={STICKY_HEADER_CLASS}>Type/Structure</th>
-                                                <th className={STICKY_HEADER_CLASS}>Consumer Notes</th>
+                                            <tr className={'whitespace-nowrap'}>
+                                                <th className={STICKY_HEADER_CLASS}>
+                                                    <div className="flex h-full items-center">Field Target</div>
+                                                </th>
+                                                <th className={STICKY_HEADER_CLASS}>
+                                                    <div className="flex h-full items-center">Type/Structure</div>
+                                                </th>
+                                                <th className={STICKY_HEADER_CLASS}>
+                                                    <div className="flex h-full items-center">Consumer Notes</div>
+                                                </th>
                                                 <th className={STICKY_HEADER_CLASS} style={{width: '100%'}}>
-                                                    <div className="flex w-full items-center justify-between gap-2">
+                                                    <div className="flex h-full w-full items-center justify-between gap-2">
                                                         <span>Description</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSidebarCollapsed(current => !current)}
-                                                            className={clsx(
-                                                                'inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer',
-                                                                !sidebarCollapsed && 'opacity-0 pointer-events-none',
-                                                            )}
-                                                            aria-label="Expand sidebar"
-                                                        >
-                                                            <i className="ph ph-caret-left text-[12px]" />
-                                                        </button>
+                                                        {!sidebarOpen && !isMobileLayout && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSidebarCollapsed(false)}
+                                                                className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                                                aria-label="Expand sidebar"
+                                                            >
+                                                                <i className="ph ph-caret-left text-[12px]" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </th>
                                             </tr>
@@ -1101,23 +1110,25 @@ export default function SchemaPropertiesTable({
                         />
                     </div>
 
-                    {!sidebarCollapsed && (
+                    {sidebarOpen && (
                         <aside className="min-w-0 h-full min-h-0 bg-[var(--surface)] xl:sticky xl:top-0">
                             <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
                                 <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
                                     <section>
                                         <div
-                                            className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2 border-b border-[var(--border)]`}
+                                            className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2`}
                                         >
                                             <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSidebarCollapsed(true)}
-                                                className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                                aria-label="Collapse sidebar"
-                                            >
-                                                <i className="ph ph-caret-right text-[12px]" />
-                                            </button>
+                                            {!isMobileLayout && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSidebarCollapsed(true)}
+                                                    className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                                    aria-label="Collapse sidebar"
+                                                >
+                                                    <i className="ph ph-caret-right text-[12px]" />
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="grid gap-px bg-[var(--border)]">
                                             {schemaWideRows.map(row => (
@@ -1135,7 +1146,7 @@ export default function SchemaPropertiesTable({
                                     </section>
                                     <section>
                                         <div
-                                            className={`${STICKY_HEADER_CLASS} flex items-center border-y border-[var(--border)]`}
+                                            className={`${STICKY_HEADER_CLASS} flex items-center border-t border-[var(--border)]`}
                                         >
                                             <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
                                         </div>
