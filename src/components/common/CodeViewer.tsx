@@ -27,6 +27,7 @@ export interface CodeInlineMenu {
     id: string;
     line: number;
     column?: number;
+    token?: string;
     tone?: 'property' | 'string' | 'xml' | 'default';
     activeIndex: number;
     options: CodeInlineMenuOption[];
@@ -176,10 +177,35 @@ export default function CodeViewer({
     const codeRef = useRef<HTMLElement>(null);
     const codeBarRef = useRef<HTMLDivElement>(null);
     const gutterBarRef = useRef<HTMLDivElement>(null);
-    let finalCode = code;
+    const preparedInlineMenus = useMemo(() => {
+        const source = String(code ?? '');
+        const menus = (inlineMenus || []).map(menu => ({...menu}));
+        const sourceLines = source.split('\n');
+        menus.forEach(menu => {
+            if (!menu.token) return;
+            for (let index = 0; index < sourceLines.length; index += 1) {
+                const column = sourceLines[index].indexOf(menu.token);
+                if (column >= 0) {
+                    menu.line = index + 1;
+                    menu.column = column;
+                    break;
+                }
+            }
+        });
+        let stripped = source;
+        menus.forEach(menu => {
+            if (menu.token) stripped = stripped.split(menu.token).join('');
+        });
+        return {code: stripped, menus};
+    }, [code, inlineMenus]);
+
+    let finalCode = preparedInlineMenus.code;
     if (language.toLowerCase() === 'json' && lineMarkers === undefined) {
         try {
-            const obj = typeof code === 'string' ? JSON.parse(code) : code;
+            const obj =
+                typeof preparedInlineMenus.code === 'string'
+                    ? JSON.parse(preparedInlineMenus.code)
+                    : preparedInlineMenus.code;
             finalCode = JSON.stringify(obj, null, 4);
         } catch {}
     }
@@ -261,11 +287,11 @@ export default function CodeViewer({
     }, []);
     const visibleInlineMenus = useMemo(
         () =>
-            (inlineMenus || []).filter(
+            preparedInlineMenus.menus.filter(
                 menu =>
                     Number.isInteger(menu.line) && menu.line >= 1 && menu.line <= lineCount && menu.options.length > 0,
             ),
-        [inlineMenus, lineCount],
+        [preparedInlineMenus, lineCount],
     );
 
     useEffect(() => {
@@ -384,7 +410,9 @@ export default function CodeViewer({
                                                 </span>
                                             </Tip>
                                         ) : (
-                                            <span className="ml-1 inline-block size-[10px] shrink-0 rounded-full bg-transparent" />
+                                            <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center text-transparent">
+                                                <i className="ph-bold ph-asterisk text-[8px] leading-none" />
+                                            </span>
                                         )}
                                     </div>
                                 );

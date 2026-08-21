@@ -43,59 +43,62 @@ const inlineMenusForCode = (
     code: string,
     selectionKey: string,
     choices: ReturnType<typeof collectSchemaOneOfChoices>,
-): CodeInlineMenu[] => {
+): {code: string; menus: CodeInlineMenu[]} => {
     const selections = readSchemaBranchSelections(selectionKey);
-    const lines = code.split('\n');
-    const lineAndColumnForPath = (path: string) => {
+    let nextCode = code;
+    const menus = choices.map((choice, menuIndex) => {
         const tail =
-            path
+            choice.path
                 .split('.')
                 .filter(Boolean)
                 .at(-1)
                 ?.replace(/\[[^\]]+\]/g, '')
-                .replace(/\*/g, '') || path;
+                .replace(/\*/g, '') || choice.path;
         const escapedTail = tail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const probes = [
+        const token = `__ODUI_MENU_${menuIndex}__`;
+        const replacements = [
             {
-                pattern: new RegExp(`(["'])${escapedTail}\\1\\s*:`),
-                anchor: (match: RegExpMatchArray) => match[0].indexOf(tail) + tail.length + 1,
-                tone: 'string',
+                pattern: new RegExp(`(["'])(${escapedTail})(\\1)(\\s*:)`),
+                replace: (_: string, q1: string, key: string, q2: string, suffix: string) =>
+                    `${q1}${key}${q2} ${token}${suffix}`,
+                tone: 'string' as const,
             },
             {
-                pattern: new RegExp(`^\\s*${escapedTail}\\s*:`),
-                anchor: (match: RegExpMatchArray) => match[0].indexOf(tail) + tail.length,
-                tone: 'property',
+                pattern: new RegExp(`^(\\s*)(${escapedTail})(\\s*:)`, 'm'),
+                replace: (_: string, indent: string, key: string, suffix: string) =>
+                    `${indent}${key} ${token}${suffix}`,
+                tone: 'property' as const,
             },
-            {pattern: new RegExp(`<${escapedTail}(?:>|\\s)`), anchor: () => tail.length + 1, tone: 'xml'},
+            {
+                pattern: new RegExp(`<(\/?${escapedTail})(?=[>\\s])`),
+                replace: (_: string, tag: string) => `<${tag} ${token}`,
+                tone: 'xml' as const,
+            },
         ];
-        for (let index = 0; index < lines.length; index += 1) {
-            const line = lines[index];
-            for (const probe of probes) {
-                const match = line.match(probe.pattern);
-                if (match && match.index !== undefined) {
-                    return {
-                        line: index + 1,
-                        column: match.index + probe.anchor(match),
-                        tone: probe.tone as 'string' | 'property' | 'xml',
-                    };
-                }
-            }
+        let tone: CodeInlineMenu['tone'] = 'default';
+        let inserted = false;
+        for (const replacement of replacements) {
+            const updated = nextCode.replace(replacement.pattern, (...args: any[]) => {
+                if (inserted) return args[0];
+                inserted = true;
+                tone = replacement.tone;
+                return (replacement.replace as any)(...args);
+            });
+            nextCode = updated;
+            if (inserted) break;
         }
-        return {line: 1, column: 0, tone: 'default' as const};
-    };
-    return choices.map(choice => {
-        const position = lineAndColumnForPath(choice.path);
         return {
             id: `${selectionKey}:${choice.path}`,
-            line: position.line,
-            column: position.column,
-            tone: position.tone,
+            line: 1,
+            token,
+            tone,
             activeIndex: selections[choice.path] ?? 0,
             options: choice.options,
             onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),
             ariaLabel: `Select ${choice.title} schema`,
         };
     });
+    return {code: nextCode, menus};
 };
 
 export default function CodeGeneratorModal({
@@ -274,11 +277,11 @@ export default function CodeGeneratorModal({
 
                         <div className="p-1 bg-transparent">
                             <CodeViewer
-                                code={activeSnippet}
+                                code={inlineMenus.code}
                                 language={getLanguageLabel(selectedLang)}
                                 maxHeight="420px"
                                 lineMarkers={secretMarkers}
-                                inlineMenus={inlineMenus}
+                                inlineMenus={inlineMenus.menus}
                             />
                         </div>
                     </div>

@@ -343,7 +343,7 @@ export default function SchemaPropertiesTable({
                                 className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
                             >
                                 {kind === 'oneOf' ? (
-                                    <span className="relative mt-0.5 flex size-3.5 shrink-0 items-center justify-center">
+                                    <span className="relative mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
                                         <input
                                             type="radio"
                                             name={`oneof-${selectionKey}-${controlScope}-${name}`}
@@ -352,7 +352,7 @@ export default function SchemaPropertiesTable({
                                             className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
                                         <span className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)]/10"></span>
-                                        <span className="relative size-[5px] rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
+                                        <span className="absolute left-1/2 top-1/2 h-[4px] w-[4px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
                                     </span>
                                 ) : (
                                     <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)]"></span>
@@ -1027,13 +1027,13 @@ export default function SchemaPropertiesTable({
             <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
                 <div
                     className={clsx(
-                        'relative grid h-full min-w-0 xl:gap-0',
+                        'relative grid h-full min-w-0 lg:gap-0',
                         sidebarOpen && !isTabletLayout
-                            ? 'xl:grid-cols-[minmax(0,1fr)_296px]'
-                            : 'xl:grid-cols-[minmax(0,1fr)]',
+                            ? 'lg:grid-cols-[minmax(0,1fr)_296px]'
+                            : 'lg:grid-cols-[minmax(0,1fr)]',
                     )}
                 >
-                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
+                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] lg:border-b-0 lg:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
@@ -1224,7 +1224,7 @@ export default function SchemaPropertiesTable({
                                 'min-w-0 h-full min-h-0 bg-[var(--surface)]',
                                 isTabletLayout
                                     ? 'absolute inset-y-0 right-0 z-30 w-[296px] border-l border-[var(--border)] shadow-xl'
-                                    : 'xl:sticky xl:top-0',
+                                    : 'lg:sticky lg:top-0',
                             )}
                             style={isTabletLayout ? undefined : {boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
                         >
