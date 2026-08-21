@@ -1148,17 +1148,21 @@ export default function SchemaPropertiesTable({
                             )}
                             table={() => (
                                 <div className="h-full min-h-0 overflow-auto scrollbar-thin">
-                                    <table className="w-full text-left border-collapse text-xs min-w-[860px]">
+                                    <table className="w-full table-fixed text-left border-collapse text-xs">
                                         <thead>
                                             <tr className={'whitespace-nowrap'}>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Field Target</div>
+                                                    <div className="flex h-full items-center min-w-0">Field Target</div>
                                                 </th>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Type/Structure</div>
+                                                    <div className="flex h-full items-center min-w-0">
+                                                        Type/Structure
+                                                    </div>
                                                 </th>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Consumer Notes</div>
+                                                    <div className="flex h-full items-center min-w-0">
+                                                        Consumer Notes
+                                                    </div>
                                                 </th>
                                                 <th className={STICKY_HEADER_CLASS} style={{width: '100%'}}>
                                                     <div className="flex h-full w-full items-center justify-between gap-2">
@@ -1189,11 +1193,13 @@ export default function SchemaPropertiesTable({
                                                             selectedPropertyName === name && 'bg-[var(--primary)]/4',
                                                         )}
                                                     >
-                                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
+                                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] break-words align-top">
                                                             {cells.name}
                                                         </td>
-                                                        <td className="px-3 py-2.5 min-w-[260px]">{cells.type}</td>
-                                                        <td className="px-3 py-2.5 whitespace-nowrap align-top">
+                                                        <td className="px-3 py-2.5 align-top w-[38%] min-w-0">
+                                                            {cells.type}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 align-top w-[140px]">
                                                             {cells.consumer}
                                                         </td>
                                                         <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">

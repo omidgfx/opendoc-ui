@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
 import CodeViewer from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
@@ -7,8 +7,9 @@ import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveRequestBody} from '../../utils/openapi';
-import {schemaVariantLabel} from '../../utils/schemaProperties';
 import {applySchemaBranchSelections} from '../../utils/schema/branchSelections';
+import {collectSchemaOneOfChoices} from '../../utils/schema/branchChoices';
+import SchemaOneOfMenuButton from '../schema/SchemaOneOfMenuButton';
 
 interface CodeGeneratorModalProps {
     isOpen: boolean;
@@ -48,9 +49,6 @@ export default function CodeGeneratorModal({
     activeAuth,
 }: CodeGeneratorModalProps) {
     const [selectedLang, setSelectedLang] = useState<CodeLanguage>('curl');
-    const [selectedRootBranchIndex, setSelectedRootBranchIndex] = useState(0);
-    const [branchMenuOpen, setBranchMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement | null>(null);
     const {shouldRender, requestClose, backdropClassName} = useModalTransition(isOpen, onClose);
     useModalShortcuts({isOpen, onClose: requestClose});
 
@@ -66,50 +64,17 @@ export default function CodeGeneratorModal({
     );
     const requestBodyMedia = requestBodyContentType ? resolvedRequestBody?.content?.[requestBodyContentType] : null;
     const rawRequestBodySchema = requestBodyMedia?.schema;
-    const resolvedRequestBodySchema = rawRequestBodySchema
-        ? resolveReference(rawRequestBodySchema) || rawRequestBodySchema
-        : null;
-    const rootOneOfBranches = Array.isArray(resolvedRequestBodySchema?.oneOf) ? resolvedRequestBodySchema.oneOf : [];
-
-    useEffect(() => {
-        setSelectedRootBranchIndex(0);
-        setBranchMenuOpen(false);
-    }, [isOpen, path, method, requestBodyContentType]);
-
-    useEffect(() => {
-        if (!branchMenuOpen) return;
-        const handlePointerDown = (event: MouseEvent) => {
-            if (menuRef.current?.contains(event.target as Node)) return;
-            setBranchMenuOpen(false);
-        };
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setBranchMenuOpen(false);
-        };
-        document.addEventListener('mousedown', handlePointerDown);
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('mousedown', handlePointerDown);
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [branchMenuOpen]);
-
-    const selectedRequestBodySchema = useMemo(() => {
-        if (!rawRequestBodySchema) return undefined;
-        const baseSchema =
-            rootOneOfBranches.length > 0
-                ? rootOneOfBranches[Math.max(0, Math.min(rootOneOfBranches.length - 1, selectedRootBranchIndex))]
-                : rawRequestBodySchema;
-        return applySchemaBranchSelections(baseSchema, selectionScopeKey, resolveReference);
-    }, [rawRequestBodySchema, rootOneOfBranches, selectedRootBranchIndex, selectionScopeKey]);
-
-    const branchOptions = useMemo(
+    const selectedRequestBodySchema = useMemo(
         () =>
-            rootOneOfBranches.map((branch: any, index: number) => ({
-                index,
-                label: schemaVariantLabel(branch, resolveReference, getRefName, index),
-                description: (resolveReference(branch) || branch)?.description || '',
-            })),
-        [rootOneOfBranches, spec],
+            rawRequestBodySchema
+                ? applySchemaBranchSelections(rawRequestBodySchema, selectionScopeKey, resolveReference)
+                : undefined,
+        [rawRequestBodySchema, selectionScopeKey, spec],
+    );
+    const branchChoices = useMemo(
+        () =>
+            rawRequestBodySchema ? collectSchemaOneOfChoices(rawRequestBodySchema, resolveReference, getRefName) : [],
+        [rawRequestBodySchema, spec],
     );
 
     const codegenRequest = useMemo(
@@ -240,67 +205,7 @@ export default function CodeGeneratorModal({
                                 </div>
                             </div>
 
-                            {branchOptions.length > 0 && (
-                                <div ref={menuRef} className="relative shrink-0 select-none">
-                                    <Tip
-                                        content={`Select oneOf schema${branchOptions[selectedRootBranchIndex] ? ` · ${branchOptions[selectedRootBranchIndex].label}` : ''}`}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => setBranchMenuOpen(current => !current)}
-                                            className={
-                                                'flex size-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer'
-                                            }
-                                            aria-label="Select oneOf schema"
-                                            aria-haspopup="menu"
-                                            aria-expanded={branchMenuOpen}
-                                        >
-                                            <i
-                                                className={`ph ${branchMenuOpen ? 'ph-caret-up' : 'ph-caret-down'} text-[14px]`}
-                                            />
-                                        </button>
-                                    </Tip>
-
-                                    {branchMenuOpen && (
-                                        <div className="absolute right-0 top-full z-20 mt-1 min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]">
-                                            {branchOptions.map(option => (
-                                                <button
-                                                    key={`branch:${option.index}`}
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() => {
-                                                        setSelectedRootBranchIndex(option.index);
-                                                        setBranchMenuOpen(false);
-                                                    }}
-                                                    className={`flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
-                                                        selectedRootBranchIndex === option.index
-                                                            ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                                                            : 'text-[var(--text)] hover:bg-[var(--surface-hover)]'
-                                                    }`}
-                                                >
-                                                    <span
-                                                        className={`mt-1 size-2 shrink-0 rounded-full ${
-                                                            selectedRootBranchIndex === option.index
-                                                                ? 'bg-[var(--primary)]'
-                                                                : 'bg-[var(--border)]'
-                                                        }`}
-                                                    />
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block text-[11px] font-semibold">
-                                                            {option.label}
-                                                        </span>
-                                                        {option.description && (
-                                                            <span className="mt-0.5 block text-[9px] leading-snug text-[var(--text-muted)]">
-                                                                {option.description}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            <SchemaOneOfMenuButton selectionKey={selectionScopeKey} choices={branchChoices} />
                         </div>
 
                         <div className="p-1 bg-transparent">
