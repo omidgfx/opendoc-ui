@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.2.2-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.2.3-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -21,7 +21,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.2.2](#version-022)
+- [Version 0.2.3](#version-023)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -91,22 +91,19 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.2.2
+## Version 0.2.3
 
-A schema-viewer release focused on keeping the table-first documentation style while making complex
-schemas practical to inspect:
+A follow-up schema-viewer and generated-example release, focused on making branch-heavy schemas more
+practical to inspect and share:
 
-- the schema viewer keeps the existing property table and adds a practical right sidebar for
-  schema-wide and selected-property details, with sticky headers and a collapsible layout that stays
-  aligned with the table;
-- `oneOf` selection now lives inside the property table itself, using custom radios that re-render
-  the unified schema descendants and the active example representation from the chosen branch;
-- deeper unified traversal now reaches nested descendants such as
-  `employees.*.employment.salary.amount`, while recursive references still stop safely at the first
-  cycle;
-- property-level tools and styling were restored and tightened: pattern testing, serializer
-  playground access, validation pills, clearer array/item structure hints, copyable long property
-  names, and sticky headers/shared table-sidebar chrome.
+- `oneOf` branch selection now reaches generated examples and generated code, with inline caret
+  pickers inside code viewers and branch-aware request/response example rendering;
+- request and response example views now support named OpenAPI `examples`, dedicated example tabs,
+  selected-format regeneration, and restored view-schema actions in the schema tab row;
+- the schema viewer and its responsive layout were tightened further: more stable table sizing,
+  icon-based oneOf radios, a persistent top-right sidebar toggle, side-by-side table/sidebar layout
+  through tablet and desktop widths, and code-gutter required markers that keep their alignment with
+  a preserved red asterisk slot.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
