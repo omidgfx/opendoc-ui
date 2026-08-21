@@ -25,11 +25,20 @@ export const applySchemaBranchSelections = (
     selectionKey: string,
     resolveReference: (item: any) => any,
     path = '',
+    ancestorRefs = new Set<string>(),
+    ancestorObjects = new Set<object>(),
 ): any => {
     if (!input || typeof input !== 'object' || input === true || input === false) return input;
     if (Array.isArray(input))
         return input.map((item, index) =>
-            applySchemaBranchSelections(item, selectionKey, resolveReference, `${path}[${index}]`),
+            applySchemaBranchSelections(
+                item,
+                selectionKey,
+                resolveReference,
+                `${path}[${index}]`,
+                new Set(ancestorRefs),
+                new Set(ancestorObjects),
+            ),
         );
     const selections = schemaBranchSelections.get(selectionKey) || {};
     if (path && Array.isArray(input.oneOf) && input.oneOf.length > 0) {
@@ -45,14 +54,62 @@ export const applySchemaBranchSelections = (
             ...(picked?.readOnly === undefined && input.readOnly !== undefined ? {readOnly: input.readOnly} : {}),
             ...(picked?.writeOnly === undefined && input.writeOnly !== undefined ? {writeOnly: input.writeOnly} : {}),
         };
-        return applySchemaBranchSelections(merged, selectionKey, resolveReference, path);
+        return applySchemaBranchSelections(
+            merged,
+            selectionKey,
+            resolveReference,
+            path,
+            new Set(ancestorRefs),
+            new Set(ancestorObjects),
+        );
     }
-    const output: any = Array.isArray(input) ? [] : {...input};
+    if (typeof input.$ref === 'string') {
+        const ref = input.$ref;
+        if (ancestorRefs.has(ref)) return input;
+        const resolved = resolveReference(input);
+        if (!resolved || resolved === input) return input;
+        const nextRefs = new Set(ancestorRefs);
+        nextRefs.add(ref);
+        const selectedResolved = applySchemaBranchSelections(
+            resolved,
+            selectionKey,
+            resolveReference,
+            path,
+            nextRefs,
+            new Set(ancestorObjects),
+        );
+        if (!selectedResolved || typeof selectedResolved !== 'object' || Array.isArray(selectedResolved))
+            return selectedResolved;
+        return {
+            ...selectedResolved,
+            ...(input.title !== undefined ? {title: input.title} : {}),
+            ...(input.description !== undefined ? {description: input.description} : {}),
+            ...(input.deprecated !== undefined ? {deprecated: input.deprecated} : {}),
+            ...(input.readOnly !== undefined ? {readOnly: input.readOnly} : {}),
+            ...(input.writeOnly !== undefined ? {writeOnly: input.writeOnly} : {}),
+            ...(input.example !== undefined ? {example: input.example} : {}),
+            ...(input.externalDocs !== undefined ? {externalDocs: input.externalDocs} : {}),
+        };
+    }
+    if (ancestorObjects.has(input)) return input;
+    const nextObjects = new Set(ancestorObjects);
+    nextObjects.add(input);
+    const output: any = {...input};
     if (input.properties && typeof input.properties === 'object') {
         output.properties = Object.fromEntries(
             Object.entries(input.properties).map(([name, value]) => {
                 const childPath = path ? `${path}.${name}` : name;
-                return [name, applySchemaBranchSelections(value, selectionKey, resolveReference, childPath)];
+                return [
+                    name,
+                    applySchemaBranchSelections(
+                        value,
+                        selectionKey,
+                        resolveReference,
+                        childPath,
+                        new Set(ancestorRefs),
+                        new Set(nextObjects),
+                    ),
+                ];
             }),
         );
     }
@@ -63,41 +120,57 @@ export const applySchemaBranchSelections = (
             selectionKey,
             resolveReference,
             childPath,
+            new Set(ancestorRefs),
+            new Set(nextObjects),
         );
     }
     if (input.items && typeof input.items === 'object') {
         const childPath = path ? `${path}.*` : '*';
-        output.items = applySchemaBranchSelections(input.items, selectionKey, resolveReference, childPath);
+        output.items = applySchemaBranchSelections(
+            input.items,
+            selectionKey,
+            resolveReference,
+            childPath,
+            new Set(ancestorRefs),
+            new Set(nextObjects),
+        );
     }
     if (Array.isArray(input.prefixItems)) {
         output.prefixItems = input.prefixItems.map((item: any, index: number) =>
-            applySchemaBranchSelections(item, selectionKey, resolveReference, `${path}[${index}]`),
-        );
-    }
-    [
-        'allOf',
-        'anyOf',
-        'then',
-        'else',
-        'if',
-        'not',
-        'contains',
-        'contentSchema',
-        'unevaluatedItems',
-        'unevaluatedProperties',
-    ].forEach(key => {
-        if (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key]))
-            output[key] = applySchemaBranchSelections(
-                input[key],
+            applySchemaBranchSelections(
+                item,
                 selectionKey,
                 resolveReference,
-                path ? `${path}.${key}` : key,
-            );
-    });
-    ['allOf', 'anyOf'].forEach(key => {
+                `${path}[${index}]`,
+                new Set(ancestorRefs),
+                new Set(nextObjects),
+            ),
+        );
+    }
+    ['then', 'else', 'if', 'not', 'contains', 'contentSchema', 'unevaluatedItems', 'unevaluatedProperties'].forEach(
+        key => {
+            if (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key]))
+                output[key] = applySchemaBranchSelections(
+                    input[key],
+                    selectionKey,
+                    resolveReference,
+                    path ? `${path}.${key}` : key,
+                    new Set(ancestorRefs),
+                    new Set(nextObjects),
+                );
+        },
+    );
+    ['allOf', 'anyOf', 'oneOf'].forEach(key => {
         if (Array.isArray(input[key]))
-            output[key] = input[key].map((item: any, index: number) =>
-                applySchemaBranchSelections(item, selectionKey, resolveReference, `${path}.${key}[${index}]`),
+            output[key] = input[key].map((item: any) =>
+                applySchemaBranchSelections(
+                    item,
+                    selectionKey,
+                    resolveReference,
+                    path,
+                    new Set(ancestorRefs),
+                    new Set(nextObjects),
+                ),
             );
     });
     return output;

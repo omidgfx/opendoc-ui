@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import {usePreferences} from '../../contexts/PreferencesContext';
 import CardOrTable, {CARD_LAYOUT_WIDTH} from '../common/CardOrTable';
-import DataCard, {RequiredBadge} from '../common/DataCard';
+import DataCard from '../common/DataCard';
 import Markdown from '../common/Markdown';
 import {Tip} from '../common/Tooltip';
 import {
@@ -61,6 +61,8 @@ const CHROME_BUTTON_CLASS =
     'sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer';
 const GRID_TITLE_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]';
 const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
+const FACT_PILL_BASE_CLASS =
+    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -178,24 +180,20 @@ export default function SchemaPropertiesTable({
         return 'any';
     };
 
-    const structureHint = (prop: any): string | null => {
-        if (!prop) return null;
-        if (prop.$ref) return `reference → ${getRefName(prop.$ref)}`;
-        const resolved = resolveReference(prop) || prop;
-        if (resolved?.oneOf) return `${resolved.oneOf.length} oneOf branches`;
-        if (resolved?.anyOf) return `${resolved.anyOf.length} anyOf branches`;
-        if (resolved?.allOf) return `${resolved.allOf.length} allOf parts`;
-        if (resolved?.type === 'array' && Array.isArray(resolved?.prefixItems) && resolved.prefixItems.length > 0)
-            return `tuple head ${resolved.prefixItems.length}`;
-        if (
-            resolved?.type === 'object' &&
-            !resolved?.properties &&
-            resolved?.additionalProperties &&
-            typeof resolved.additionalProperties === 'object'
-        )
-            return `map of ${displayType(resolved.additionalProperties)}`;
-        if (resolved?.type === 'array' && resolved?.items) return `items ${displayType(resolved.items)}`;
-        return null;
+    const renderSchemaLink = (schemaName: string, withIcon = true) => (
+        <button
+            type="button"
+            onClick={() => onPushSchema(schemaName)}
+            className="inline-flex items-center gap-1 text-left font-semibold text-[var(--primary)] hover:underline cursor-pointer"
+        >
+            {withIcon && <i className="ph ph-diamonds-four text-[10px]"></i>}
+            <span className="break-all">{schemaName}</span>
+        </button>
+    );
+
+    const renderTypeName = (typeValue: any): string => {
+        if (Array.isArray(typeValue)) return typeValue.join(' | ');
+        return typeValue ? String(typeValue) : 'any';
     };
 
     const mapValueLabel = (additionalProperties: any): string => {
@@ -205,172 +203,209 @@ export default function SchemaPropertiesTable({
             ? additionalProperties.type.find((x: string) => x !== 'null')
             : additionalProperties.type;
         if (t === 'array') {
-            if (additionalProperties.items?.$ref) return `Array<${getRefName(additionalProperties.items.$ref)}>`;
+            if (additionalProperties.items?.$ref) return `array<${getRefName(additionalProperties.items.$ref)}>`;
             const it = Array.isArray(additionalProperties.items?.type)
                 ? additionalProperties.items.type.find((x: string) => x !== 'null')
                 : additionalProperties.items?.type;
-            return `Array<${it || 'any'}>`;
+            return `array<${it || 'any'}>`;
         }
-        if (t) return additionalProperties.format ? `${t} (${additionalProperties.format})` : `${t}`;
+        if (t) return `${t}`;
         return 'any';
     };
 
-    const renderSchemaType = (name: string, prop: any): React.ReactNode => {
-        if (!prop) return <span className="text-xs font-mono opacity-50">any</span>;
-        const renderTypeName = (tValue: any, format?: string) => {
-            if (Array.isArray(tValue)) {
-                return tValue.map(t => `${t}${format ? ` (${format})` : ''}`).join(' | ');
+    const directReferenceNames = (prop: any): string[] => {
+        const names: string[] = [];
+        const pushRef = (value: any) => {
+            if (value?.$ref) {
+                const refName = getRefName(value.$ref);
+                if (!names.includes(refName)) names.push(refName);
             }
-            return `${tValue || 'any'}${format ? ` (${format})` : ''}`;
         };
-        if (prop.$ref) {
-            const refName = getRefName(prop.$ref);
-            return (
-                <Tip content={`Inspect schema: ${refName}`}>
-                    <button
-                        type="button"
-                        onClick={() => onPushSchema(refName)}
-                        className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer"
-                    >
-                        <i className="ph ph-diamonds-four text-[12px]"></i>
-                        <div className={'max-w-32 truncate'}>{refName}</div>
-                    </button>
-                </Tip>
-            );
-        }
+        if (!prop || typeof prop !== 'object') return names;
+        pushRef(prop);
+        ['oneOf', 'anyOf', 'allOf'].forEach(key => {
+            if (Array.isArray(prop[key])) prop[key].forEach((item: any) => pushRef(item));
+        });
+        if (prop.items) pushRef(prop.items);
+        if (prop.additionalProperties && typeof prop.additionalProperties === 'object')
+            pushRef(prop.additionalProperties);
+        if (Array.isArray(prop.prefixItems)) prop.prefixItems.forEach((item: any) => pushRef(item));
+        return names;
+    };
+
+    const renderReferenceList = (names: string[]) => {
+        if (names.length === 0) return null;
+        return (
+            <div className="flex flex-wrap gap-1.5">
+                {names.map(name => (
+                    <span key={name}>{renderSchemaLink(name, true)}</span>
+                ))}
+            </div>
+        );
+    };
+
+    const renderInlineSchemaValue = (prop: any): React.ReactNode => {
+        if (prop === true) return <span className="font-mono text-[10px] text-[var(--text)]">any</span>;
+        if (prop === false) return <span className="font-mono text-[10px] text-[var(--method-delete)]">never</span>;
+        if (!prop) return <span className="font-mono text-[10px] text-[var(--text)]">any</span>;
+        if (prop.$ref) return renderSchemaLink(getRefName(prop.$ref), true);
+        const resolved = resolveReference(prop) || prop;
+        if (resolved?.oneOf) return <span className="font-mono text-[10px] text-[var(--text)]">oneOf</span>;
+        if (resolved?.anyOf) return <span className="font-mono text-[10px] text-[var(--text)]">anyOf</span>;
+        if (resolved?.allOf) return <span className="font-mono text-[10px] text-[var(--text)]">allOf</span>;
+        if (resolved?.type === 'array') return <span className="font-mono text-[10px] text-[var(--text)]">array</span>;
         if (
-            prop.type === 'object' &&
-            !prop.properties &&
-            prop.additionalProperties &&
-            typeof prop.additionalProperties === 'object'
+            resolved?.type === 'object' &&
+            !resolved?.properties &&
+            resolved?.additionalProperties &&
+            typeof resolved.additionalProperties === 'object'
         ) {
             return (
-                <span className="font-mono text-xs text-[var(--text)]">
+                <span className="font-mono text-[10px] text-[var(--text)]">
                     object{' '}
                     <span className="text-[var(--text-muted)]">
-                        Map&lt;string, {mapValueLabel(prop.additionalProperties)}&gt;
+                        map&lt;string, {mapValueLabel(resolved.additionalProperties)}&gt;
                     </span>
                 </span>
             );
         }
-        if (prop.oneOf && Array.isArray(prop.oneOf)) {
-            const selected = Math.max(0, Math.min(prop.oneOf.length - 1, branchSelections[name] ?? 0));
-            return (
-                <div className="flex flex-col gap-1.5 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.oneOf} variant="inline" />
-                    <div className="flex flex-col gap-1.5">
-                        {prop.oneOf.map((sub: any, index: number) => {
-                            const label = schemaVariantLabel(sub, resolveReference, getRefName, index);
-                            const active = selected === index;
-                            const refName = sub?.$ref ? getRefName(sub.$ref) : '';
-                            return (
-                                <label
-                                    key={`${name}:oneOf:${index}`}
-                                    className="flex items-center gap-2 text-xs text-[var(--text)]"
-                                >
+        const type = resolved?.type;
+        if (type) return <span className="font-mono text-[10px] text-[var(--text)]">{renderTypeName(type)}</span>;
+        if (resolved?.properties || resolved?.additionalProperties || resolved?.patternProperties)
+            return <span className="font-mono text-[10px] text-[var(--text)]">object</span>;
+        return <span className="font-mono text-[10px] text-[var(--text)]">any</span>;
+    };
+
+    const renderStructureLine = (label: string, value: React.ReactNode, key: string) => (
+        <div key={key} className="flex flex-wrap items-center gap-1.5 text-[10px] leading-relaxed">
+            <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 font-bold uppercase tracking-wide text-[9px] text-[var(--text-muted)]">
+                {label}
+            </span>
+            <div className="min-w-0 break-words text-[var(--text)]">{value}</div>
+        </div>
+    );
+
+    const combinatorTitle = (kind: 'oneOf' | 'anyOf' | 'allOf', count: number) => {
+        const meta = COMBINATOR_META[kind];
+        const title = kind === 'oneOf' ? 'ONE OF' : kind === 'anyOf' ? 'ANY OF' : 'ALL OF';
+        return (
+            <div
+                className="inline-flex items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider"
+                style={{color: meta.color}}
+            >
+                <i className={`${meta.icon} text-[11px]`} />
+                {title} ({count}):
+            </div>
+        );
+    };
+
+    const renderCombinatorOptions = (
+        name: string,
+        kind: 'oneOf' | 'anyOf' | 'allOf',
+        branches: any[],
+    ): React.ReactNode => {
+        if (!Array.isArray(branches) || branches.length === 0) return null;
+        const selected = kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
+        return (
+            <div className="flex flex-col gap-1.5">
+                {combinatorTitle(kind, branches.length)}
+                <div className="flex flex-col gap-1.5">
+                    {branches.map((sub: any, index: number) => {
+                        const label = schemaVariantLabel(sub, resolveReference, getRefName, index);
+                        const active = kind === 'oneOf' ? selected === index : false;
+                        const refName = sub?.$ref ? getRefName(sub.$ref) : '';
+                        return (
+                            <label
+                                key={`${name}:${kind}:${index}`}
+                                className="flex items-start gap-2 text-xs leading-relaxed text-[var(--text)]"
+                            >
+                                {kind === 'oneOf' ? (
                                     <input
                                         type="radio"
                                         name={`oneof-${selectionKey}-${name}`}
                                         checked={active}
                                         onChange={() => updateBranchSelection(name, index)}
-                                        className="m-0 size-3.5 accent-[var(--primary)]"
+                                        className="mt-0.5 m-0 size-3.5 accent-[var(--primary)]"
                                     />
-                                    {refName ? (
-                                        <button
-                                            type="button"
-                                            onClick={event => {
-                                                event.preventDefault();
-                                                onPushSchema(refName);
-                                            }}
-                                            className="text-[var(--primary)] hover:underline font-semibold cursor-pointer"
-                                        >
-                                            {refName}
-                                        </button>
-                                    ) : (
-                                        <span>{label}</span>
-                                    )}
-                                </label>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-        if (prop.anyOf && Array.isArray(prop.anyOf)) {
-            return (
-                <div className="flex flex-col gap-1 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.anyOf} variant="inline" />
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.anyOf.map((sub: any, sIdx: number) => (
-                            <React.Fragment key={sIdx}>
-                                {sIdx > 0 && (
-                                    <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>
+                                ) : (
+                                    <span className="mt-[3px] size-1.5 rounded-full bg-[var(--border)]"></span>
                                 )}
-                                {renderSchemaType(`${name}.anyOf[${sIdx}]`, sub)}
-                            </React.Fragment>
-                        ))}
-                    </div>
+                                <span className="min-w-0 break-words">
+                                    {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
+                                </span>
+                            </label>
+                        );
+                    })}
                 </div>
+            </div>
+        );
+    };
+
+    const renderStructureDetails = (name: string, prop: any): React.ReactNode => {
+        if (!prop || prop === true || prop === false || prop.$ref) return null;
+        const resolved = resolveReference(prop) || prop;
+        const rows: React.ReactNode[] = [];
+        if (Array.isArray(resolved?.oneOf) && resolved.oneOf.length > 0)
+            rows.push(
+                <div key={`${name}:oneOf`} className="flex flex-col gap-1.5">
+                    {renderCombinatorOptions(name, 'oneOf', resolved.oneOf)}
+                </div>,
+            );
+        if (Array.isArray(resolved?.anyOf) && resolved.anyOf.length > 0)
+            rows.push(
+                <div key={`${name}:anyOf`} className="flex flex-col gap-1.5">
+                    {renderCombinatorOptions(name, 'anyOf', resolved.anyOf)}
+                </div>,
+            );
+        if (Array.isArray(resolved?.allOf) && resolved.allOf.length > 0)
+            rows.push(
+                <div key={`${name}:allOf`} className="flex flex-col gap-1.5">
+                    {renderCombinatorOptions(name, 'allOf', resolved.allOf)}
+                </div>,
+            );
+        if (
+            resolved?.type === 'object' &&
+            !resolved?.properties &&
+            resolved?.additionalProperties &&
+            typeof resolved.additionalProperties === 'object'
+        ) {
+            rows.push(
+                renderStructureLine(
+                    'values',
+                    <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-[10px] text-[var(--text-muted)]">string</span>
+                        <span className="text-[var(--text-muted)]">→</span>
+                        {renderInlineSchemaValue(resolved.additionalProperties)}
+                    </span>,
+                    `${name}:values`,
+                ),
             );
         }
-        if (prop.allOf && Array.isArray(prop.allOf)) {
-            return (
-                <div className="flex flex-col gap-1 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.allOf} variant="inline" />
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.allOf.map((sub: any, sIdx: number) => (
-                            <React.Fragment key={sIdx}>
-                                {sIdx > 0 && (
-                                    <span className="text-[var(--text-muted)] font-mono text-xs select-none">
-                                        &amp;
-                                    </span>
-                                )}
-                                {renderSchemaType(`${name}.allOf[${sIdx}]`, sub)}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
+        if (resolved?.type === 'array' && Array.isArray(resolved?.prefixItems) && resolved.prefixItems.length > 0) {
+            rows.push(
+                renderStructureLine(
+                    'items',
+                    <span className="font-mono text-[10px] text-[var(--text)]">
+                        tuple · {resolved.prefixItems.length} slot{resolved.prefixItems.length === 1 ? '' : 's'}
+                    </span>,
+                    `${name}:tuple`,
+                ),
             );
         }
-        if (prop.type === 'array' && Array.isArray(prop.prefixItems) && prop.prefixItems.length > 0) {
-            return (
-                <div className="flex flex-col gap-1 items-start text-xs font-mono text-[var(--text)]">
-                    <span>array</span>
-                    <span className="text-[var(--text-muted)]">
-                        tuple[{prop.prefixItems.length} slot{prop.prefixItems.length === 1 ? '' : 's'}]
-                    </span>
-                </div>
+        if (resolved?.type === 'array' && resolved?.items !== undefined) {
+            rows.push(
+                renderStructureLine(
+                    'items',
+                    resolved.items === false ? (
+                        <span className="font-mono text-[10px] text-[var(--method-delete)]">false</span>
+                    ) : (
+                        renderInlineSchemaValue(resolved.items)
+                    ),
+                    `${name}:items`,
+                ),
             );
         }
-        if (prop.type === 'array' && prop.items) {
-            if (prop.items.$ref) {
-                const refName = getRefName(prop.items.$ref);
-                return (
-                    <span className="text-xs font-sans">
-                        Array&lt;
-                        <button
-                            type="button"
-                            onClick={() => onPushSchema(refName)}
-                            className="text-[var(--primary)] hover:underline font-semibold cursor-pointer"
-                        >
-                            {refName}
-                        </button>
-                        &gt;
-                    </span>
-                );
-            }
-            if (prop.items.oneOf || prop.items.anyOf)
-                return (
-                    <span className="text-xs font-sans">
-                        Array&lt;{renderSchemaType(`${name}.items`, prop.items)}&gt;
-                    </span>
-                );
-            const resolvedItemsType = Array.isArray(prop.items.type)
-                ? prop.items.type.join(' | ')
-                : prop.items.type || 'any';
-            return <span className="text-xs font-mono text-[var(--text-muted)]">Array&lt;{resolvedItemsType}&gt;</span>;
-        }
-        return <span className="font-mono text-xs text-[var(--text)]">{renderTypeName(prop.type, prop.format)}</span>;
+        return rows.length > 0 ? <div className="flex flex-col gap-1.5">{rows}</div> : null;
     };
 
     const resolvePattern = (prop: any): string | null => {
@@ -399,7 +434,6 @@ export default function SchemaPropertiesTable({
     const unevaluatedProperties = (effectiveSchema as any)?.unevaluatedProperties;
     const schemaContentEncoding = (effectiveSchema as any)?.contentEncoding;
     const schemaContentMediaType = (effectiveSchema as any)?.contentMediaType;
-    const schemaContentSchema = (effectiveSchema as any)?.contentSchema;
     const notSchema = (effectiveSchema as any)?.not;
     const additionalPropertiesSchema = (effectiveSchema as any)?.additionalProperties;
     const isOpenObject =
@@ -407,10 +441,6 @@ export default function SchemaPropertiesTable({
         !(effectiveSchema as any).properties &&
         (effectiveSchema as any)?.additionalProperties !== undefined &&
         (effectiveSchema as any)?.additionalProperties !== false;
-    const openAdditionalPropertiesSchema =
-        isOpenObject && (effectiveSchema as any).additionalProperties !== true
-            ? (effectiveSchema as any).additionalProperties
-            : undefined;
     const hasSchemaNotes =
         tupleEntries.length > 0 ||
         dependentRequiredEntries.length > 0 ||
@@ -432,23 +462,102 @@ export default function SchemaPropertiesTable({
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
     }
 
+    const isRequiredAlongPath = (propertyPath: string): boolean => {
+        const segments = propertyPath.split('.');
+        const walk = (current: any, index: number): boolean => {
+            const resolved = resolveReference(current) || current;
+            if (!resolved || typeof resolved !== 'object' || index >= segments.length) return false;
+            const token = segments[index];
+            const branches = [
+                ...(Array.isArray(resolved.allOf) ? resolved.allOf : []),
+                ...(Array.isArray(resolved.anyOf) ? resolved.anyOf : []),
+                ...(Array.isArray(resolved.oneOf) ? resolved.oneOf : []),
+            ];
+            if (branches.some(branch => walk(branch, index))) return true;
+            if (token === '*') return resolved.items ? walk(resolved.items, index + 1) : false;
+            if (token === '«any key»')
+                return resolved.additionalProperties && typeof resolved.additionalProperties === 'object'
+                    ? walk(resolved.additionalProperties, index + 1)
+                    : false;
+            if (Array.isArray(resolved.required) && resolved.required.includes(token)) return true;
+            if (resolved.properties && resolved.properties[token]) return walk(resolved.properties[token], index + 1);
+            return false;
+        };
+        return walk(effectiveSchema, 0);
+    };
+
+    const renderFactPill = (
+        key: string,
+        label: React.ReactNode,
+        tone: 'neutral' | 'good' | 'danger' | 'warn' = 'neutral',
+    ) => {
+        const toneClass =
+            tone === 'good'
+                ? 'border-[var(--method-get)]/25 bg-[var(--method-get)]/10 text-[var(--method-get)]'
+                : tone === 'danger'
+                  ? 'border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 text-[var(--method-delete)]'
+                  : tone === 'warn'
+                    ? 'border-[var(--method-put)]/25 bg-[var(--method-put)]/10 text-[var(--method-put)]'
+                    : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]';
+        return (
+            <span key={key} className={`${FACT_PILL_BASE_CLASS} ${toneClass}`}>
+                {label}
+            </span>
+        );
+    };
+
+    const renderValidationPills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
+        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
+            pills.push(renderFactPill('enum', `enum ${facts.resolved.enum.length}`));
+        if (facts.resolved?.const !== undefined) pills.push(renderFactPill('const', 'const'));
+        if (facts.resolved?.minLength !== undefined)
+            pills.push(renderFactPill('minLength', `minLength ${facts.resolved.minLength}`));
+        if (facts.resolved?.maxLength !== undefined)
+            pills.push(renderFactPill('maxLength', `maxLength ${facts.resolved.maxLength}`));
+        if (facts.resolved?.minimum !== undefined)
+            pills.push(renderFactPill('minimum', `minimum ${facts.resolved.minimum}`));
+        if (facts.resolved?.maximum !== undefined)
+            pills.push(renderFactPill('maximum', `maximum ${facts.resolved.maximum}`));
+        if (facts.resolved?.exclusiveMinimum !== undefined)
+            pills.push(renderFactPill('exclusiveMinimum', `exclusiveMinimum ${facts.resolved.exclusiveMinimum}`));
+        if (facts.resolved?.exclusiveMaximum !== undefined)
+            pills.push(renderFactPill('exclusiveMaximum', `exclusiveMaximum ${facts.resolved.exclusiveMaximum}`));
+        if (facts.resolved?.multipleOf !== undefined)
+            pills.push(renderFactPill('multipleOf', `multipleOf ${facts.resolved.multipleOf}`));
+        if (facts.resolved?.minItems !== undefined)
+            pills.push(renderFactPill('minItems', `minItems ${facts.resolved.minItems}`));
+        if (facts.resolved?.maxItems !== undefined)
+            pills.push(renderFactPill('maxItems', `maxItems ${facts.resolved.maxItems}`));
+        if (facts.resolved?.uniqueItems === true) pills.push(renderFactPill('uniqueItems', 'uniqueItems'));
+        if (facts.resolved?.minProperties !== undefined)
+            pills.push(renderFactPill('minProperties', `minProperties ${facts.resolved.minProperties}`));
+        if (facts.resolved?.maxProperties !== undefined)
+            pills.push(renderFactPill('maxProperties', `maxProperties ${facts.resolved.maxProperties}`));
+        if (facts.pattern) pills.push(renderFactPill('pattern', 'pattern', 'warn'));
+        return pills;
+    };
+
+    const renderStatePills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
+        if (facts.readOnly) pills.push(renderFactPill('readOnly', 'readOnly', 'good'));
+        if (facts.writeOnly) pills.push(renderFactPill('writeOnly', 'writeOnly'));
+        if (facts.deprecated) pills.push(renderFactPill('deprecated', 'deprecated', 'danger'));
+        if (facts.recursive)
+            pills.push(
+                renderFactPill(
+                    'recursive',
+                    <>
+                        <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px] text-[var(--method-delete)]`} /> recursive
+                    </>,
+                ),
+            );
+        if (facts.contentEncoding) pills.push(renderFactPill('contentEncoding', `encoding ${facts.contentEncoding}`));
+        if (facts.contentMediaType) pills.push(renderFactPill('contentMediaType', `media ${facts.contentMediaType}`));
+        return pills;
+    };
+
     const propertyFacts = (name: string, pVal: any) => {
-        let isRequired = false;
-        const nameParts = name.split('.');
-        let schemaContext = resolveReference(effectiveSchema);
-        for (let i = 0; i < nameParts.length; i++) {
-            const part = nameParts[i];
-            if (!schemaContext) break;
-            if (schemaContext.required && schemaContext.required.includes(part)) {
-                isRequired = true;
-                break;
-            }
-            if (schemaContext.properties && schemaContext.properties[part]) {
-                schemaContext = resolveReference(schemaContext.properties[part]);
-            } else {
-                break;
-            }
-        }
         const resolved = resolveReference(pVal) || pVal;
         const isComplexType =
             pVal?.$ref ||
@@ -459,11 +568,13 @@ export default function SchemaPropertiesTable({
             resolved?.allOf ||
             resolved?.anyOf ||
             resolved?.oneOf;
+        const pattern = resolvePattern(pVal);
+        const referenceNames = directReferenceNames(pVal);
         return {
             resolved,
-            isRequired,
+            isRequired: isRequiredAlongPath(name),
             isComplexType,
-            pattern: resolvePattern(pVal),
+            pattern,
             recursive: schemaIsRecursive(pVal, resolveReference),
             deprecated: resolved?.deprecated === true,
             readOnly: resolved?.readOnly === true,
@@ -471,126 +582,19 @@ export default function SchemaPropertiesTable({
             contentEncoding: typeof resolved?.contentEncoding === 'string' ? resolved.contentEncoding : '',
             contentMediaType: typeof resolved?.contentMediaType === 'string' ? resolved.contentMediaType : '',
             format: typeof resolved?.format === 'string' ? resolved.format : '',
-            hint: structureHint(pVal),
+            referenceNames,
+            structureNode: renderStructureDetails(name, pVal),
         };
     };
 
     const renderInlineFacts = (name: string, pVal: any) => {
         const facts = propertyFacts(name, pVal);
-        const tags: React.ReactNode[] = [];
-        if (facts.readOnly)
-            tags.push(
-                <span key="readOnly" className="fact good">
-                    readOnly
-                </span>,
-            );
-        if (facts.writeOnly)
-            tags.push(
-                <span key="writeOnly" className="fact">
-                    writeOnly
-                </span>,
-            );
-        if (facts.deprecated)
-            tags.push(
-                <span key="deprecated" className="fact danger">
-                    deprecated
-                </span>,
-            );
-        if (facts.recursive)
-            tags.push(
-                <span key="recursive" className="fact">
-                    <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px]`} /> recursive
-                </span>,
-            );
-        if (facts.hint)
-            tags.push(
-                <span key="hint" className="fact">
-                    {facts.hint}
-                </span>,
-            );
-        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
-            tags.push(
-                <span key="enum" className="fact">
-                    enum {facts.resolved.enum.length}
-                </span>,
-            );
-        if (facts.resolved?.const !== undefined)
-            tags.push(
-                <span key="const" className="fact">
-                    const
-                </span>,
-            );
-        if (facts.resolved?.minLength !== undefined)
-            tags.push(
-                <span key="minLength" className="fact">
-                    minLength {facts.resolved.minLength}
-                </span>,
-            );
-        if (facts.resolved?.maxLength !== undefined)
-            tags.push(
-                <span key="maxLength" className="fact">
-                    maxLength {facts.resolved.maxLength}
-                </span>,
-            );
-        if (facts.resolved?.minimum !== undefined)
-            tags.push(
-                <span key="minimum" className="fact">
-                    minimum {facts.resolved.minimum}
-                </span>,
-            );
-        if (facts.resolved?.maximum !== undefined)
-            tags.push(
-                <span key="maximum" className="fact">
-                    maximum {facts.resolved.maximum}
-                </span>,
-            );
-        if (facts.resolved?.multipleOf !== undefined)
-            tags.push(
-                <span key="multipleOf" className="fact">
-                    multipleOf {facts.resolved.multipleOf}
-                </span>,
-            );
-        if (facts.resolved?.minItems !== undefined)
-            tags.push(
-                <span key="minItems" className="fact">
-                    minItems {facts.resolved.minItems}
-                </span>,
-            );
-        if (facts.resolved?.maxItems !== undefined)
-            tags.push(
-                <span key="maxItems" className="fact">
-                    maxItems {facts.resolved.maxItems}
-                </span>,
-            );
-        if (facts.resolved?.uniqueItems === true)
-            tags.push(
-                <span key="uniqueItems" className="fact">
-                    uniqueItems
-                </span>,
-            );
-        if (facts.pattern)
-            tags.push(
-                <span key="pattern" className="fact warn">
-                    pattern
-                </span>,
-            );
-        if (facts.contentEncoding)
-            tags.push(
-                <span key="contentEncoding" className="fact">
-                    {facts.contentEncoding}
-                </span>,
-            );
-        if (facts.contentMediaType)
-            tags.push(
-                <span key="contentMediaType" className="fact">
-                    {facts.contentMediaType}
-                </span>,
-            );
-        return tags;
+        return [...renderStatePills(facts), ...renderValidationPills(facts)];
     };
 
     const propertyCells = (name: string, pVal: any) => {
         const facts = propertyFacts(name, pVal);
+        const factPills = renderInlineFacts(name, pVal);
         const combinedAction = (
             <button
                 type="button"
@@ -598,7 +602,7 @@ export default function SchemaPropertiesTable({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
             >
                 {facts.recursive ? (
-                    <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px]`} />
+                    <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px] text-[var(--method-delete)]`} />
                 ) : (
                     <i className="ph ph-eye text-[9px]" />
                 )}{' '}
@@ -620,8 +624,8 @@ export default function SchemaPropertiesTable({
                 </div>
             ),
             type: (
-                <div className="flex flex-col gap-1">
-                    <div>{renderSchemaType(name, pVal)}</div>
+                <div className="flex flex-col gap-1.5">
+                    <div>{renderInlineSchemaValue(pVal)}</div>
                     {facts.format && (
                         <div className="text-[10px] text-[var(--text-muted)]">
                             format:{' '}
@@ -630,9 +634,8 @@ export default function SchemaPropertiesTable({
                             </code>
                         </div>
                     )}
-                    {renderInlineFacts(name, pVal).length > 0 && (
-                        <div className="flex flex-wrap gap-1">{renderInlineFacts(name, pVal)}</div>
-                    )}
+                    {facts.structureNode}
+                    {factPills.length > 0 && <div className="flex flex-wrap gap-1">{factPills}</div>}
                 </div>
             ),
             consumer: combinedAction,
@@ -738,6 +741,8 @@ export default function SchemaPropertiesTable({
     const selectedRows = useMemo(() => {
         if (!selectedPropertyName || !selectedProperty) return [] as Array<{label: string; value: React.ReactNode}>;
         const facts = propertyFacts(selectedPropertyName, selectedProperty);
+        const validationPills = renderValidationPills(facts);
+        const statePills = renderStatePills(facts);
         const rows: Array<{label: string; value: React.ReactNode}> = [
             {label: 'Name', value: <code className="mono">{selectedPropertyName}</code>},
             {label: 'Type', value: displayType(selectedProperty)},
@@ -752,8 +757,14 @@ export default function SchemaPropertiesTable({
                 ),
             },
         ];
+        if (facts.referenceNames.length > 0)
+            rows.push({label: 'Reference', value: renderReferenceList(facts.referenceNames)});
+        if (facts.structureNode) rows.push({label: 'Structure', value: facts.structureNode});
+        if (validationPills.length > 0)
+            rows.push({label: 'Validation', value: <div className="flex flex-wrap gap-1">{validationPills}</div>});
+        if (statePills.length > 0)
+            rows.push({label: 'Flags', value: <div className="flex flex-wrap gap-1">{statePills}</div>});
         if (facts.pattern) rows.push({label: 'Pattern', value: <code className="mono">{facts.pattern}</code>});
-        if (facts.hint) rows.push({label: 'Structure', value: facts.hint});
         if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
         if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
         return rows;
@@ -804,11 +815,11 @@ export default function SchemaPropertiesTable({
 
         const compositionRows: PropertyRowDetailsSection['rows'] = [];
         if (Array.isArray(facts.resolved?.oneOf))
-            compositionRows.push({label: 'oneOf', value: `${facts.resolved.oneOf.length} branches`});
+            compositionRows.push({label: 'oneOf', value: `ONE OF (${facts.resolved.oneOf.length})`});
         if (Array.isArray(facts.resolved?.anyOf))
-            compositionRows.push({label: 'anyOf', value: `${facts.resolved.anyOf.length} branches`});
+            compositionRows.push({label: 'anyOf', value: `ANY OF (${facts.resolved.anyOf.length})`});
         if (Array.isArray(facts.resolved?.allOf))
-            compositionRows.push({label: 'allOf', value: `${facts.resolved.allOf.length} parts`});
+            compositionRows.push({label: 'allOf', value: `ALL OF (${facts.resolved.allOf.length})`});
         if (facts.resolved?.not)
             compositionRows.push({label: 'Not', value: `Must not match ${describeNotConstraint(facts.resolved.not)}`});
         if (facts.resolved?.discriminator?.propertyName)
@@ -903,12 +914,16 @@ export default function SchemaPropertiesTable({
     const activeDetails = detailsModalName
         ? buildDetailSections(detailsModalName, effectiveProperties[detailsModalName])
         : [];
+    const selectedPropertyFacts =
+        selectedPropertyName && effectiveProperties[selectedPropertyName]
+            ? propertyFacts(selectedPropertyName, effectiveProperties[selectedPropertyName])
+            : null;
 
     return (
         <>
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px] min-w-0 items-start">
-                <div className="min-w-0">
-                    <div className="border rounded-xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in">
+                <div className="grid min-w-0 items-start xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-0">
+                    <div className="min-w-0 border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
@@ -945,7 +960,6 @@ export default function SchemaPropertiesTable({
                                                                 {cells.name}
                                                             </span>
                                                         }
-                                                        badge={<RequiredBadge required={cells.isRequired} />}
                                                         facts={[
                                                             {label: 'Type', value: cells.type},
                                                             {label: 'Consumer notes', value: cells.consumer},
@@ -959,7 +973,7 @@ export default function SchemaPropertiesTable({
                                 </>
                             )}
                             table={() => (
-                                <div className="overflow-x-auto">
+                                <div className="overflow-auto xl:max-h-[calc(100vh-10rem)] scrollbar-thin">
                                     <table className="w-full text-left border-collapse text-xs min-w-[860px]">
                                         <thead>
                                             <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
@@ -995,8 +1009,8 @@ export default function SchemaPropertiesTable({
                                                         <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap">
                                                             {cells.name}
                                                         </td>
-                                                        <td className="px-3 py-2.5 min-w-[240px]">{cells.type}</td>
-                                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                                        <td className="px-3 py-2.5 min-w-[260px]">{cells.type}</td>
+                                                        <td className="px-3 py-2.5 whitespace-nowrap align-top">
                                                             {cells.consumer}
                                                         </td>
                                                         <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
@@ -1011,10 +1025,8 @@ export default function SchemaPropertiesTable({
                             )}
                         />
                     </div>
-                </div>
 
-                <aside className="min-w-0 xl:sticky xl:top-4 self-start">
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                    <aside className="min-w-0 self-start bg-[var(--surface)] xl:sticky xl:top-4 xl:max-h-[calc(100vh-10rem)] xl:overflow-auto scrollbar-thin">
                         <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface-hover)]">
                             <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
                         </div>
@@ -1049,18 +1061,24 @@ export default function SchemaPropertiesTable({
                         </div>
                         {selectedPropertyName && effectiveProperties[selectedPropertyName] && (
                             <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2">
-                                {propertyFacts(selectedPropertyName, effectiveProperties[selectedPropertyName])
-                                    .pattern && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDetailsModalName(selectedPropertyName)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                >
+                                    {selectedPropertyFacts?.recursive ? (
+                                        <i
+                                            className={`${RECURSIVE_SCHEMA_ICON} text-[9px] text-[var(--method-delete)]`}
+                                        />
+                                    ) : (
+                                        <i className="ph ph-eye text-[9px]" />
+                                    )}
+                                    View Example / More
+                                </button>
+                                {selectedPropertyFacts?.pattern && (
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            onTestPattern(
-                                                propertyFacts(
-                                                    selectedPropertyName,
-                                                    effectiveProperties[selectedPropertyName],
-                                                ).pattern || '',
-                                            )
-                                        }
+                                        onClick={() => onTestPattern(selectedPropertyFacts.pattern || '')}
                                         className={CHROME_BUTTON_CLASS}
                                     >
                                         <i className="ph ph-dna text-[11px]"></i>
@@ -1077,8 +1095,8 @@ export default function SchemaPropertiesTable({
                                 </button>
                             </div>
                         )}
-                    </div>
-                </aside>
+                    </aside>
+                </div>
             </div>
 
             {serializerPropertyName && effectiveProperties[serializerPropertyName] && (
