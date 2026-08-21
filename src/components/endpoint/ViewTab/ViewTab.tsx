@@ -128,11 +128,15 @@ export default function ViewTab({
         [code: string]: 'example' | 'schema' | 'enum';
     }>({});
     const [requestActiveTab, setRequestActiveTab] = useState<'example' | 'schema'>(endpointRepresentation);
+    const [requestExampleKey, setRequestExampleKey] = useState('');
+    const [responseExampleKeys, setResponseExampleKeys] = useState<Record<string, string>>({});
     // Enum is a peek at the values, not a representation the reader chose to
     // keep: it lasts for this visit only and never touches the preference.
     useEffect(() => {
         setResponseActiveTab({});
         setRequestActiveTab(endpointRepresentation);
+        setRequestExampleKey('');
+        setResponseExampleKeys({});
     }, [representationKey, endpointRepresentation]);
     useEffect(() => {
         const handler = () => setSchemaBranchRevision(current => current + 1);
@@ -622,6 +626,21 @@ export default function ViewTab({
         requestBodyShape.kind === 'form' || requestBodyShape.kind === 'multipart'
             ? buildFormSkeleton(requestBodyEffectiveSchema, spec, selectedRequestBodyContent?.encoding)
             : [];
+    const namedMediaExamples = (content: any) => {
+        if (!content?.examples || typeof content.examples !== 'object')
+            return [] as Array<{key: string; label: string; value: unknown}>;
+        return Object.entries(content.examples).map(([key, entry]: [string, any]) => ({
+            key,
+            label: entry?.summary || key,
+            value: exampleValueOf(entry, spec),
+        }));
+    };
+    const requestNamedExamples = namedMediaExamples(selectedRequestBodyContent);
+    const activeRequestExampleValue =
+        requestExampleKey && requestNamedExamples.find(example => example.key === requestExampleKey)
+            ? requestNamedExamples.find(example => example.key === requestExampleKey)?.value
+            : requestNamedExamples[0]?.value;
+
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
     const requestBodyOneOfChoices = useMemo(
         () =>
@@ -1075,17 +1094,38 @@ export default function ViewTab({
                                             <span className="sm:hidden">Schema</span>
                                         </button>
                                     </div>
-                                    <SchemaOneOfMenuButton
-                                        selectionKey={requestBodySelectionScopeKey}
-                                        choices={requestBodyOneOfChoices}
-                                    />
+                                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                                        {requestNamedExamples.length > 1 && (
+                                            <CustomDropdown
+                                                value={requestExampleKey || requestNamedExamples[0].key}
+                                                onChange={setRequestExampleKey}
+                                                options={requestNamedExamples.map(example => ({
+                                                    value: example.key,
+                                                    label: example.label,
+                                                }))}
+                                                icon="ph ph-list text-[12px]"
+                                                className="w-[180px] max-w-full"
+                                                ariaLabel="Request body examples"
+                                            />
+                                        )}
+                                        <SchemaOneOfMenuButton
+                                            selectionKey={requestBodySelectionScopeKey}
+                                            choices={requestBodyOneOfChoices}
+                                        />
+                                    </div>
                                 </div>
                                 {requestActiveTab === 'example' ? (
                                     <div className="space-y-3 min-w-0">
                                         <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                            <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-[var(--text-muted)]">
-                                                Inspect Body Schema
-                                            </h4>
+                                            <div className="mb-2 flex items-center justify-between gap-2">
+                                                <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                    Inspect Body Schema
+                                                </h4>
+                                                <SchemaOneOfMenuButton
+                                                    selectionKey={requestBodySelectionScopeKey}
+                                                    choices={requestBodyOneOfChoices}
+                                                />
+                                            </div>
                                             <div className="flex flex-col gap-2 min-w-0">
                                                 <div className="min-w-0 overflow-x-auto scrollbar-thin">
                                                     {renderSchemaTypeExample(
@@ -1194,6 +1234,13 @@ export default function ViewTab({
                                     : responseContentEntries[0]?.[0] || '';
                             const selectedContentObj =
                                 selectedContentType && resp.content ? (resp.content as any)[selectedContentType] : null;
+                            const responseNamedExamples = namedMediaExamples(selectedContentObj);
+                            const activeResponseExampleValue =
+                                responseExampleKeys[code] &&
+                                responseNamedExamples.find(example => example.key === responseExampleKeys[code])
+                                    ? responseNamedExamples.find(example => example.key === responseExampleKeys[code])
+                                          ?.value
+                                    : responseNamedExamples[0]?.value;
                             const setResponseTab = (tab: 'example' | 'schema' | 'enum') => {
                                 if (tab === 'enum') {
                                     setResponseActiveTab(prev => ({...prev, [code]: tab}));
@@ -1397,29 +1444,54 @@ export default function ViewTab({
                                                                 <span className="sm:hidden">Schema</span>
                                                             </button>
                                                         </div>
-                                                        {responseContentEntries.length > 1 && (
-                                                            <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                                                                <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
-                                                                    Format
-                                                                </span>
+                                                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end flex-wrap">
+                                                            {responseNamedExamples.length > 1 && (
                                                                 <CustomDropdown
-                                                                    value={selectedContentType}
-                                                                    onChange={value => {
-                                                                        setResponseContentTypes(previous => ({
+                                                                    value={
+                                                                        responseExampleKeys[code] ||
+                                                                        responseNamedExamples[0].key
+                                                                    }
+                                                                    onChange={value =>
+                                                                        setResponseExampleKeys(previous => ({
                                                                             ...previous,
                                                                             [code]: value,
-                                                                        }));
-                                                                        resetViewerSchema(code);
-                                                                    }}
-                                                                    options={responseContentEntries.map(([mime]) => ({
-                                                                        value: mime,
-                                                                        label: mime,
+                                                                        }))
+                                                                    }
+                                                                    options={responseNamedExamples.map(example => ({
+                                                                        value: example.key,
+                                                                        label: example.label,
                                                                     }))}
-                                                                    icon="ph ph-code-block text-[14px]"
-                                                                    className="w-full max-w-[200px]"
+                                                                    icon="ph ph-list text-[12px]"
+                                                                    className="w-[180px] max-w-full"
+                                                                    ariaLabel={`Response ${code} examples`}
                                                                 />
-                                                            </div>
-                                                        )}
+                                                            )}
+                                                            {responseContentEntries.length > 1 && (
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
+                                                                        Format
+                                                                    </span>
+                                                                    <CustomDropdown
+                                                                        value={selectedContentType}
+                                                                        onChange={value => {
+                                                                            setResponseContentTypes(previous => ({
+                                                                                ...previous,
+                                                                                [code]: value,
+                                                                            }));
+                                                                            resetViewerSchema(code);
+                                                                        }}
+                                                                        options={responseContentEntries.map(
+                                                                            ([mime]) => ({
+                                                                                value: mime,
+                                                                                label: mime,
+                                                                            }),
+                                                                        )}
+                                                                        icon="ph ph-code-block text-[14px]"
+                                                                        className="w-full max-w-[200px]"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                     <div className="mt-3 min-w-0">
@@ -1464,9 +1536,17 @@ export default function ViewTab({
                                                                     {activeResponseTab === 'example' ? (
                                                                         <div className="space-y-3 min-w-0">
                                                                             <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                                                                <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-[var(--text-muted)]">
-                                                                                    Inspect Response Schema
-                                                                                </h4>
+                                                                                <div className="mb-2 flex items-center justify-between gap-2">
+                                                                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                                                        Inspect Response Schema
+                                                                                    </h4>
+                                                                                    <SchemaOneOfMenuButton
+                                                                                        selectionKey={
+                                                                                            responseSelectionScopeKey
+                                                                                        }
+                                                                                        choices={responseOneOfChoices}
+                                                                                    />
+                                                                                </div>
                                                                                 <div className="flex flex-col gap-2 min-w-0">
                                                                                     <div className="min-w-0 overflow-x-auto scrollbar-thin">
                                                                                         {renderSchemaTypeExample(
@@ -1492,11 +1572,26 @@ export default function ViewTab({
                                                                             </div>
                                                                             {(() => {
                                                                                 const example =
-                                                                                    getResponseExampleSnippetWithMarkers(
-                                                                                        activeSchemaWithSelections,
-                                                                                        cObj,
-                                                                                        cType,
-                                                                                    );
+                                                                                    activeResponseExampleValue !==
+                                                                                    undefined
+                                                                                        ? {
+                                                                                              code: formatExample(
+                                                                                                  activeResponseExampleValue,
+                                                                                                  cType,
+                                                                                                  activeSchemaWithSelections?.$ref
+                                                                                                      ? getRefName(
+                                                                                                            activeSchemaWithSelections.$ref,
+                                                                                                        )
+                                                                                                      : activeSchemaWithSelections?.title ||
+                                                                                                            'response',
+                                                                                              ),
+                                                                                              markers: [],
+                                                                                          }
+                                                                                        : getResponseExampleSnippetWithMarkers(
+                                                                                              activeSchemaWithSelections,
+                                                                                              cObj,
+                                                                                              cType,
+                                                                                          );
                                                                                 return (
                                                                                     <CodeViewer
                                                                                         code={example.code}
