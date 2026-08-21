@@ -26,6 +26,7 @@ export interface CodeInlineMenuOption {
 export interface CodeInlineMenu {
     id: string;
     line: number;
+    column?: number;
     activeIndex: number;
     options: CodeInlineMenuOption[];
     onSelect: (index: number) => void;
@@ -393,8 +394,14 @@ export default function CodeViewer({
                             return (
                                 <div
                                     key={menu.id}
-                                    className="absolute left-[4px] z-20 select-none"
-                                    style={{top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`}}
+                                    className="absolute z-20 select-none"
+                                    style={{
+                                        top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
+                                        left:
+                                            typeof menu.column === 'number'
+                                                ? `calc(${Math.max(0, menu.column)}ch + 1px)`
+                                                : '4px',
+                                    }}
                                 >
                                     <div className="relative flex h-[18px] items-center">
                                         <button

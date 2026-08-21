@@ -104,7 +104,7 @@ const inlineMenusForCode = (
 ): CodeInlineMenu[] => {
     const selections = readSchemaBranchSelections(selectionKey);
     const lines = code.split('\n');
-    const lineForPath = (path: string) => {
+    const lineAndColumnForPath = (path: string) => {
         const tail =
             path
                 .split('.')
@@ -112,18 +112,31 @@ const inlineMenusForCode = (
                 .at(-1)
                 ?.replace(/\[[^\]]+\]/g, '')
                 .replace(/\*/g, '') || path;
-        const probes = [`"${tail}"`, `'${tail}'`, `${tail}:`, tail];
-        const index = lines.findIndex(line => probes.some(probe => probe && line.includes(probe)));
-        return index >= 0 ? index + 1 : 1;
+        const probes = [`"${tail}"`, `'${tail}'`, `<${tail}>`, `<${tail} `, `${tail}:`, tail];
+        for (let index = 0; index < lines.length; index += 1) {
+            const line = lines[index];
+            for (const probe of probes) {
+                const column = line.indexOf(probe);
+                if (probe && column >= 0) {
+                    const anchor = probe.includes(tail) ? probe.indexOf(tail) + tail.length : probe.length;
+                    return {line: index + 1, column: column + anchor};
+                }
+            }
+        }
+        return {line: 1, column: 0};
     };
-    return choices.map(choice => ({
-        id: `${selectionKey}:${choice.path}`,
-        line: lineForPath(choice.path),
-        activeIndex: selections[choice.path] ?? 0,
-        options: choice.options,
-        onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),
-        ariaLabel: `Select ${choice.title} schema`,
-    }));
+    return choices.map(choice => {
+        const position = lineAndColumnForPath(choice.path);
+        return {
+            id: `${selectionKey}:${choice.path}`,
+            line: position.line,
+            column: position.column,
+            activeIndex: selections[choice.path] ?? 0,
+            options: choice.options,
+            onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),
+            ariaLabel: `Select ${choice.title} schema`,
+        };
+    });
 };
 
 export default function ViewTab({
