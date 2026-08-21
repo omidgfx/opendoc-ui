@@ -121,7 +121,7 @@ export const describeNotConstraint = (notSchema: any): string => {
 export const flattenSchemaProperties = (
     rootSchema: any,
     resolveReference: SchemaReferenceResolver,
-    maxDepth = 64,
+    maxDepth = 256,
 ): Record<string, any> => {
     const visit = (
         input: any,
