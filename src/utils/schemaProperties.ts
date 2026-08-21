@@ -9,6 +9,12 @@ const isObjectSchema = (schema: any): boolean =>
 const isArraySchema = (schema: any): boolean =>
     !!schema && typeof schema === 'object' && !Array.isArray(schema) && schema.type === 'array' && !!schema.items;
 
+const hasCompositeBranches = (schema: any): boolean =>
+    !!schema &&
+    typeof schema === 'object' &&
+    !Array.isArray(schema) &&
+    (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf) || Array.isArray(schema.allOf));
+
 const schemaTypes = (schema: any): string[] => {
     if (!schema || typeof schema !== 'object') return [];
     if (Array.isArray(schema.type)) return schema.type.filter((type: string) => typeof type === 'string');
@@ -121,7 +127,7 @@ export const describeNotConstraint = (notSchema: any): string => {
 export const flattenSchemaProperties = (
     rootSchema: any,
     resolveReference: SchemaReferenceResolver,
-    maxDepth = 256,
+    maxDepth = Number.POSITIVE_INFINITY,
 ): Record<string, any> => {
     const visit = (
         input: any,
@@ -154,6 +160,10 @@ export const flattenSchemaProperties = (
                 ...visit(branch, branchPrefix, new Set(refs), new Set(objects), depth + 1),
             };
         };
+        const shouldExpand = (candidate: any): boolean => {
+            const resolved = resolveReference(candidate) || candidate;
+            return isObjectSchema(resolved) || isArraySchema(resolved) || hasCompositeBranches(resolved);
+        };
 
         if (Array.isArray(schema.allOf)) schema.allOf.forEach((part: any) => visitBranch(part));
 
@@ -161,15 +171,12 @@ export const flattenSchemaProperties = (
             Object.entries(schema.properties).forEach(([name, property]: [string, any]) => {
                 const key = prefix ? `${prefix}.${name}` : name;
                 properties[key] = property;
-                const resolvedProperty = resolveReference(property) || property;
-                if (isObjectSchema(resolvedProperty)) {
-                    visitBranch(property, key);
-                } else if (isArraySchema(resolvedProperty)) {
-                    const item = resolvedProperty.items;
-                    const resolvedItem = resolveReference(item) || item;
-                    if (isObjectSchema(resolvedItem)) visitBranch(item, `${key}.*`);
-                }
+                if (shouldExpand(property)) visitBranch(property, key);
             });
+        }
+
+        if (isArraySchema(schema) && shouldExpand(schema.items)) {
+            visitBranch(schema.items, prefix ? `${prefix}.*` : '*');
         }
 
         if (Array.isArray(schema.oneOf)) schema.oneOf.forEach((part: any) => visitBranch(part));
@@ -178,6 +185,7 @@ export const flattenSchemaProperties = (
         if (!schema.properties && schema.additionalProperties && typeof schema.additionalProperties === 'object') {
             const key = prefix ? `${prefix}.«any key»` : '«any key»';
             properties[key] = schema.additionalProperties;
+            if (shouldExpand(schema.additionalProperties)) visitBranch(schema.additionalProperties, key);
         }
         return properties;
     };

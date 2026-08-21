@@ -622,6 +622,7 @@ export default function ModalsStack({
                                     resolveReference={resolveReference}
                                     getRefName={getRefName}
                                     onPushSchema={onPushSchema}
+                                    useModal={true}
                                     onViewExample={(name, subSchema) => {
                                         const example = formatSimulationExample(subSchema, name, 'application/json');
                                         setHelpModalContent({

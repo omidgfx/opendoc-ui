@@ -1015,6 +1015,7 @@ export default function ViewTab({
                                         requestBodyMatrixSchema?.$ref
                                             ? getRefName(requestBodyMatrixSchema.$ref)
                                             : requestBodyMatrixSchema?.title || null,
+                                        requestBodySelectionScopeKey,
                                     )}
                                 </div>
                                 {requestBodyFormSnippet && (
