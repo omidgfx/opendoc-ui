@@ -65,7 +65,7 @@ const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
 const STICKY_HEADER_CLASS =
-    'sticky top-0 z-10 h-[39px] bg-[var(--surface-hover)] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
+    'sticky top-0 z-10 h-10 bg-[var(--surface-hover)] px-3 py-0 text-[10px] font-semibold uppercase tracking-wider leading-none text-[var(--text-heading)] align-middle';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -997,6 +997,7 @@ export default function SchemaPropertiesTable({
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
+                            className="h-full"
                             cards={() => (
                                 <>
                                     {useModal && (inspectName ?? schemaName) && (
@@ -1046,7 +1047,7 @@ export default function SchemaPropertiesTable({
                                 <div className="h-full overflow-auto scrollbar-thin">
                                     <table className="w-full text-left border-collapse text-xs min-w-[860px]">
                                         <thead>
-                                            <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
+                                            <tr className={'whitespace-nowrap bg-[var(--surface-hover)]'}>
                                                 <th className={STICKY_HEADER_CLASS}>Field Target</th>
                                                 <th className={STICKY_HEADER_CLASS}>Type/Structure</th>
                                                 <th className={STICKY_HEADER_CLASS}>Consumer Notes</th>
