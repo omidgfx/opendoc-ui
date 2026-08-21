@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Prism from 'prismjs';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
@@ -17,6 +17,21 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-csharp';
 
+export interface CodeInlineMenuOption {
+    index: number;
+    label: string;
+    description?: string;
+}
+
+export interface CodeInlineMenu {
+    id: string;
+    line: number;
+    activeIndex: number;
+    options: CodeInlineMenuOption[];
+    onSelect: (index: number) => void;
+    ariaLabel?: string;
+}
+
 interface CodeViewerProps {
     code: string;
     language: string;
@@ -31,6 +46,7 @@ interface CodeViewerProps {
      * no JSON re-formatting — so the caller's line numbers stay correct.
      */
     lineMarkers?: CodeLineMarker[];
+    inlineMenus?: CodeInlineMenu[];
     /** Line numbers render by default; pass false for chrome-less output.
      *  The reader can still switch the gutter off globally in the settings. */
     showLineNumbers?: boolean;
@@ -140,6 +156,7 @@ export default function CodeViewer({
     language,
     maxHeight,
     lineMarkers,
+    inlineMenus,
     showLineNumbers: showLineNumbersProp = true,
 }: CodeViewerProps) {
     const {preferences} = usePreferences();
@@ -151,6 +168,8 @@ export default function CodeViewer({
         return lineMarkers.filter(marker => !marker.kind || !preferences.disabledIndicatorIcons.includes(marker.kind));
     }, [lineMarkers, preferences.indicatorIconsEnabled, preferences.disabledIndicatorIcons]);
     const [copied, setCopied] = useState(false);
+    const [openInlineMenuId, setOpenInlineMenuId] = useState<string | null>(null);
+    const viewerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLElement>(null);
     const codeBarRef = useRef<HTMLDivElement>(null);
@@ -238,9 +257,37 @@ export default function CodeViewer({
         if (codeBarRef.current) codeBarRef.current.style.opacity = '0';
         if (gutterBarRef.current) gutterBarRef.current.style.opacity = '0';
     }, []);
+    const visibleInlineMenus = useMemo(
+        () =>
+            (inlineMenus || []).filter(
+                menu =>
+                    Number.isInteger(menu.line) && menu.line >= 1 && menu.line <= lineCount && menu.options.length > 0,
+            ),
+        [inlineMenus, lineCount],
+    );
+
+    useEffect(() => {
+        if (!openInlineMenuId) return;
+        const handlePointerDown = (event: MouseEvent) => {
+            if (viewerRef.current?.contains(event.target as Node)) return;
+            setOpenInlineMenuId(null);
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpenInlineMenuId(null);
+        };
+        document.addEventListener('mousedown', handlePointerDown);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handlePointerDown);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [openInlineMenuId]);
 
     return (
-        <div className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]">
+        <div
+            ref={viewerRef}
+            className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
+        >
             <div className="px-4 py-1.5 border-b flex items-center justify-between bg-[var(--surface-hover)] border-[var(--border)]">
                 <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
                     {language}
@@ -341,6 +388,78 @@ export default function CodeViewer({
                         </div>
                     )}
                     <pre className="relative z-0 p-4 flex-1">
+                        {visibleInlineMenus.map(menu => {
+                            const open = openInlineMenuId === menu.id;
+                            return (
+                                <div
+                                    key={menu.id}
+                                    className="absolute left-[4px] z-20 select-none"
+                                    style={{top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`}}
+                                >
+                                    <div className="relative flex h-[18px] items-center">
+                                        <button
+                                            type="button"
+                                            onMouseDown={event => event.preventDefault()}
+                                            onClick={() =>
+                                                setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
+                                            }
+                                            className="inline-flex items-center justify-center text-[var(--text-muted)] opacity-80 transition-opacity hover:opacity-100 cursor-pointer"
+                                            aria-label={menu.ariaLabel || 'Select schema branch'}
+                                            aria-haspopup="menu"
+                                            aria-expanded={open}
+                                        >
+                                            <i
+                                                className={`ph ${open ? 'ph-caret-down' : 'ph-caret-right'} text-[12px]`}
+                                            />
+                                        </button>
+                                        {open && (
+                                            <div className="absolute left-4 top-1/2 z-30 min-w-[220px] max-w-[280px] -translate-y-1/2 overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]">
+                                                {menu.options.map(option => {
+                                                    const active = menu.activeIndex === option.index;
+                                                    return (
+                                                        <button
+                                                            key={`${menu.id}:${option.index}`}
+                                                            type="button"
+                                                            role="menuitem"
+                                                            onMouseDown={event => event.preventDefault()}
+                                                            onClick={() => {
+                                                                menu.onSelect(option.index);
+                                                                setOpenInlineMenuId(null);
+                                                            }}
+                                                            className={clsx(
+                                                                'flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
+                                                                active
+                                                                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                                                                    : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                                            )}
+                                                        >
+                                                            <span
+                                                                className={clsx(
+                                                                    'mt-1 size-2 shrink-0 rounded-full',
+                                                                    active
+                                                                        ? 'bg-[var(--primary)]'
+                                                                        : 'bg-[var(--border)]',
+                                                                )}
+                                                            />
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block text-[11px] font-semibold">
+                                                                    {option.label}
+                                                                </span>
+                                                                {option.description && (
+                                                                    <span className="mt-0.5 block text-[9px] leading-snug text-[var(--text-muted)]">
+                                                                        {option.description}
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                         <code ref={codeRef} dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
                     </pre>
                 </div>

@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ActiveAuth, OpenApiSpec, Operation} from '../../../types';
 import Markdown from '../../common/Markdown';
-import CodeViewer from '../../common/CodeViewer';
+import CodeViewer, {type CodeInlineMenu} from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import MethodBadge from '../../common/MethodBadge';
@@ -53,7 +53,12 @@ import {isOperationAuthenticated, isOperationProtected} from '../../../utils/run
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 import ResponseLinksPanel from './ResponseLinksPanel';
 import OperationCallbacksPanel from './OperationCallbacksPanel';
-import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
+import {
+    applySchemaBranchSelections,
+    readSchemaBranchSelections,
+    SCHEMA_BRANCH_SELECTION_EVENT,
+    writeSchemaBranchSelection,
+} from '../../../utils/schema/branchSelections';
 import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
 import SchemaOneOfMenuButton from '../../schema/SchemaOneOfMenuButton';
 
@@ -92,6 +97,35 @@ const getPatternFromParam = (param: any, spec: OpenApiSpec | null): string | nul
     }
     return null;
 };
+const inlineMenusForCode = (
+    code: string,
+    selectionKey: string,
+    choices: ReturnType<typeof collectSchemaOneOfChoices>,
+): CodeInlineMenu[] => {
+    const selections = readSchemaBranchSelections(selectionKey);
+    const lines = code.split('\n');
+    const lineForPath = (path: string) => {
+        const tail =
+            path
+                .split('.')
+                .filter(Boolean)
+                .at(-1)
+                ?.replace(/\[[^\]]+\]/g, '')
+                .replace(/\*/g, '') || path;
+        const probes = [`"${tail}"`, `'${tail}'`, `${tail}:`, tail];
+        const index = lines.findIndex(line => probes.some(probe => probe && line.includes(probe)));
+        return index >= 0 ? index + 1 : 1;
+    };
+    return choices.map(choice => ({
+        id: `${selectionKey}:${choice.path}`,
+        line: lineForPath(choice.path),
+        activeIndex: selections[choice.path] ?? 0,
+        options: choice.options,
+        onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),
+        ariaLabel: `Select ${choice.title} schema`,
+    }));
+};
+
 export default function ViewTab({
     spec,
     path,
@@ -1108,10 +1142,6 @@ export default function ViewTab({
                                                 ariaLabel="Request body examples"
                                             />
                                         )}
-                                        <SchemaOneOfMenuButton
-                                            selectionKey={requestBodySelectionScopeKey}
-                                            choices={requestBodyOneOfChoices}
-                                        />
                                     </div>
                                 </div>
                                 {requestActiveTab === 'example' ? (
@@ -1121,10 +1151,6 @@ export default function ViewTab({
                                                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                                     Inspect Body Schema
                                                 </h4>
-                                                <SchemaOneOfMenuButton
-                                                    selectionKey={requestBodySelectionScopeKey}
-                                                    choices={requestBodyOneOfChoices}
-                                                />
                                             </div>
                                             <div className="flex flex-col gap-2 min-w-0">
                                                 <div className="min-w-0 overflow-x-auto scrollbar-thin">
@@ -1149,6 +1175,11 @@ export default function ViewTab({
                                             const example = getMockSnippetWithMarkers(
                                                 requestBodyEffectiveSchema || selectedRequestBodyContent.schema,
                                             );
+                                            const inlineMenus = inlineMenusForCode(
+                                                example.code,
+                                                requestBodySelectionScopeKey,
+                                                requestBodyOneOfChoices,
+                                            );
                                             return (
                                                 <CodeViewer
                                                     code={example.code}
@@ -1158,6 +1189,7 @@ export default function ViewTab({
                                                         onOpenSchema: onOpenSchemaModal,
                                                         onTestPattern: setPatternToTest,
                                                     })}
+                                                    inlineMenus={inlineMenus}
                                                 />
                                             );
                                         })()}
@@ -1528,10 +1560,6 @@ export default function ViewTab({
                                                                         <p className="text-[10px] font-mono select-none text-[var(--text-muted)] break-all">
                                                                             Content Type: {cType}
                                                                         </p>
-                                                                        <SchemaOneOfMenuButton
-                                                                            selectionKey={responseSelectionScopeKey}
-                                                                            choices={responseOneOfChoices}
-                                                                        />
                                                                     </div>
                                                                     {activeResponseTab === 'example' ? (
                                                                         <div className="space-y-3 min-w-0">
@@ -1540,12 +1568,6 @@ export default function ViewTab({
                                                                                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                                                                         Inspect Response Schema
                                                                                     </h4>
-                                                                                    <SchemaOneOfMenuButton
-                                                                                        selectionKey={
-                                                                                            responseSelectionScopeKey
-                                                                                        }
-                                                                                        choices={responseOneOfChoices}
-                                                                                    />
                                                                                 </div>
                                                                                 <div className="flex flex-col gap-2 min-w-0">
                                                                                     <div className="min-w-0 overflow-x-auto scrollbar-thin">
@@ -1592,6 +1614,11 @@ export default function ViewTab({
                                                                                               cObj,
                                                                                               cType,
                                                                                           );
+                                                                                const inlineMenus = inlineMenusForCode(
+                                                                                    example.code,
+                                                                                    responseSelectionScopeKey,
+                                                                                    responseOneOfChoices,
+                                                                                );
                                                                                 return (
                                                                                     <CodeViewer
                                                                                         code={example.code}
@@ -1608,6 +1635,7 @@ export default function ViewTab({
                                                                                                     setPatternToTest,
                                                                                             },
                                                                                         )}
+                                                                                        inlineMenus={inlineMenus}
                                                                                     />
                                                                                 );
                                                                             })()}
