@@ -116,6 +116,10 @@ export default function SchemaPropertiesTable({
         setSelectionRevision(current => current + 1);
     };
 
+    const sourceProperties = useMemo(
+        () => flattenSchemaProperties(schema, resolveReference),
+        [schema, resolveReference],
+    );
     const effectiveSchema = useMemo(
         () => applySchemaBranchSelections(schema, selectionKey, resolveReference),
         [schema, selectionKey, branchSelections, selectionRevision, resolveReference],
@@ -124,16 +128,26 @@ export default function SchemaPropertiesTable({
         () => flattenSchemaProperties(effectiveSchema, resolveReference),
         [effectiveSchema, resolveReference],
     );
-    const propertyEntries = useMemo(() => Object.entries(effectiveProperties || {}), [effectiveProperties]);
+    const displayProperties = useMemo(
+        () =>
+            Object.fromEntries(
+                Object.keys(effectiveProperties || {}).map(name => [
+                    name,
+                    sourceProperties[name] ?? effectiveProperties[name],
+                ]),
+            ),
+        [effectiveProperties, sourceProperties],
+    );
+    const propertyEntries = useMemo(() => Object.entries(displayProperties || {}), [displayProperties]);
 
     useEffect(() => {
         if (propertyEntries.length === 0) {
             setSelectedPropertyName('');
             return;
         }
-        if (selectedPropertyName && effectiveProperties[selectedPropertyName]) return;
+        if (selectedPropertyName && displayProperties[selectedPropertyName]) return;
         setSelectedPropertyName(propertyEntries[0][0]);
-    }, [effectiveProperties, propertyEntries, selectedPropertyName]);
+    }, [displayProperties, propertyEntries, selectedPropertyName]);
 
     const displayType = (prop: any): string => {
         if (prop === true) return 'any';
@@ -320,13 +334,17 @@ export default function SchemaPropertiesTable({
                                 className="flex items-start gap-2 text-xs leading-relaxed text-[var(--text)]"
                             >
                                 {kind === 'oneOf' ? (
-                                    <input
-                                        type="radio"
-                                        name={`oneof-${selectionKey}-${name}`}
-                                        checked={active}
-                                        onChange={() => updateBranchSelection(name, index)}
-                                        className="mt-0.5 m-0 size-3.5 accent-[var(--primary)]"
-                                    />
+                                    <span className="relative mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                                        <input
+                                            type="radio"
+                                            name={`oneof-${selectionKey}-${name}`}
+                                            checked={active}
+                                            onChange={() => updateBranchSelection(name, index)}
+                                            className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
+                                        />
+                                        <span className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)]/10"></span>
+                                        <span className="relative size-1.5 rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
+                                    </span>
                                 ) : (
                                     <span className="mt-[3px] size-1.5 rounded-full bg-[var(--border)]"></span>
                                 )}
@@ -601,12 +619,7 @@ export default function SchemaPropertiesTable({
                 onClick={() => setDetailsModalName(name)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
             >
-                {facts.recursive ? (
-                    <i className={`${RECURSIVE_SCHEMA_ICON} text-[9px] text-[var(--method-delete)]`} />
-                ) : (
-                    <i className="ph ph-eye text-[9px]" />
-                )}{' '}
-                View Example / More
+                <i className="ph ph-eye text-[9px]" /> View Example / More
             </button>
         );
         return {
@@ -737,7 +750,8 @@ export default function SchemaPropertiesTable({
         unevaluatedProperties,
     ]);
 
-    const selectedProperty = effectiveProperties[selectedPropertyName];
+    const selectedProperty = displayProperties[selectedPropertyName];
+    const selectedEffectiveProperty = effectiveProperties[selectedPropertyName];
     const selectedRows = useMemo(() => {
         if (!selectedPropertyName || !selectedProperty) return [] as Array<{label: string; value: React.ReactNode}>;
         const facts = propertyFacts(selectedPropertyName, selectedProperty);
@@ -768,7 +782,7 @@ export default function SchemaPropertiesTable({
         if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
         if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
         return rows;
-    }, [effectiveProperties, selectedProperty, selectedPropertyName]);
+    }, [selectedProperty, selectedPropertyName, branchSelections, selectionRevision]);
 
     const buildDetailSections = (name: string, pVal: any): PropertyRowDetailsSection[] => {
         const facts = propertyFacts(name, pVal);
@@ -915,9 +929,7 @@ export default function SchemaPropertiesTable({
         ? buildDetailSections(detailsModalName, effectiveProperties[detailsModalName])
         : [];
     const selectedPropertyFacts =
-        selectedPropertyName && effectiveProperties[selectedPropertyName]
-            ? propertyFacts(selectedPropertyName, effectiveProperties[selectedPropertyName])
-            : null;
+        selectedPropertyName && selectedProperty ? propertyFacts(selectedPropertyName, selectedProperty) : null;
 
     return (
         <>
@@ -1059,20 +1071,14 @@ export default function SchemaPropertiesTable({
                                 </div>
                             ))}
                         </div>
-                        {selectedPropertyName && effectiveProperties[selectedPropertyName] && (
+                        {selectedPropertyName && selectedEffectiveProperty && (
                             <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2">
                                 <button
                                     type="button"
                                     onClick={() => setDetailsModalName(selectedPropertyName)}
                                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
                                 >
-                                    {selectedPropertyFacts?.recursive ? (
-                                        <i
-                                            className={`${RECURSIVE_SCHEMA_ICON} text-[9px] text-[var(--method-delete)]`}
-                                        />
-                                    ) : (
-                                        <i className="ph ph-eye text-[9px]" />
-                                    )}
+                                    <i className="ph ph-eye text-[9px]" />
                                     View Example / More
                                 </button>
                                 {selectedPropertyFacts?.pattern && (

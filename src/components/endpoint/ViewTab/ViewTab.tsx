@@ -1011,7 +1011,7 @@ export default function ViewTab({
                                 )}
                                 <div className="pt-1 min-w-0">
                                     {renderSchemaPropertiesTable(
-                                        requestBodyEffectiveSchema,
+                                        requestBodyMatrixSchema,
                                         requestBodyMatrixSchema?.$ref
                                             ? getRefName(requestBodyMatrixSchema.$ref)
                                             : requestBodyMatrixSchema?.title || null,
@@ -1452,7 +1452,7 @@ export default function ViewTab({
                                                                                 </div>
                                                                             </div>
                                                                             {renderSchemaPropertiesTable(
-                                                                                activeSchemaWithSelections,
+                                                                                activeSchema,
                                                                                 viewerExampleNames[code] ||
                                                                                     (cObj.schema?.$ref
                                                                                         ? getRefName(cObj.schema.$ref)

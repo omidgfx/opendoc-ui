@@ -407,7 +407,7 @@ export default function ModalsStack({
         modalSelectionScopeKey,
         resolveReference,
     );
-    const properties = traverseSchemaProperties(effectiveModalSchema);
+    const properties = traverseSchemaProperties(activeSchemaObj.schema);
     const schemaIsRecursiveView = schemaIsRecursive(effectiveModalSchema, resolveReference);
     return (
         <>
@@ -617,7 +617,7 @@ export default function ModalsStack({
                                 </h4>
                                 <SchemaPropertiesTable
                                     properties={properties}
-                                    schema={effectiveModalSchema}
+                                    schema={activeSchemaObj.schema}
                                     inspectName={activeSchemaObj.schemaName}
                                     resolveReference={resolveReference}
                                     getRefName={getRefName}
