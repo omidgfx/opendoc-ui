@@ -3,6 +3,24 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.2.2] — 2026-08-21
+
+Schema viewer redesign, branch-aware unification, and a practical property-grid sidebar.
+
+- keeps the existing schema property table as the main view while moving schema-wide and
+  selected-property detail into a practical right sidebar with sticky headers and a collapsible
+  layout;
+- makes `oneOf` selection part of the property table itself, with custom radio controls that re-render
+  the unified property matrix and the active example representation from the selected branch across
+  request bodies, responses, and schema modals;
+- deepens schema unification so nested descendants such as
+  `employees.*.employment.salary.amount` appear in the table while recursive references still stop at
+  the first cycle;
+- restores and polishes property-level tools and styling: pattern testing, serializer playground
+  access, validation pills, clearer array item hints, scroll-safe copyable property names, and a
+  shared table/sidebar frame;
+- bumps the package, lockfile, README, and release metadata to `0.2.2`.
+
 ## [0.2.1] — 2026-08-20
 
 Dialogs opened from inside the endpoint workspace, and the allOf request body.
