@@ -1011,6 +1011,144 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/TreeNode'}
 
+  /anything/examples/items:
+    get:
+      tags: [04 Responses/Examples & formats]
+      summary: Compare named JSON, YAML, and XML response examples with oneOf details
+      operationId: getExampleGalleryItem
+      description: |
+        ## Multi-format named response examples
+
+        This endpoint is designed to demonstrate the full example surface of OpenDoc UI:
+
+        - **Generated Example** for schema-derived payloads.
+        - A dedicated **Example: ...** tab for named OpenAPI `examples`.
+        - Inline `oneOf` branch picking inside JSON, YAML, and XML example renderings.
+        - Multi-format switching without losing the active schema understanding.
+        - **View Schema** from the same tab row.
+
+        Use the `details` field to compare how inline and reusable branch schemas read across
+        representational formats.
+      responses:
+        '200':
+          description: Example-rich item response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                jsonBook:
+                  $ref: '#/components/examples/ShowcaseBookJsonExample'
+                jsonElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicJsonExample'
+                jsonApparel:
+                  $ref: '#/components/examples/ShowcaseApparelJsonExample'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                yamlBook:
+                  $ref: '#/components/examples/ShowcaseBookYamlExample'
+                yamlElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicYamlExample'
+                yamlApparel:
+                  $ref: '#/components/examples/ShowcaseApparelYamlExample'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                xmlBook:
+                  $ref: '#/components/examples/ShowcaseBookXmlExample'
+                xmlElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicXmlExample'
+                xmlApparel:
+                  $ref: '#/components/examples/ShowcaseApparelXmlExample'
+
+    post:
+      tags: [03 Request bodies/Examples & formats, 03 Request bodies/Composition]
+      summary: Submit multi-format named request examples with oneOf details
+      operationId: createExampleGalleryItem
+      description: |
+        ## Multi-format named request examples
+
+        This request body is intentionally simple but powerful for demos:
+
+        - The same schema is available as JSON, YAML, and XML.
+        - Each media type declares three named OpenAPI `examples`.
+        - The `details` property uses `oneOf`, so generated examples, schema tables, and generated
+          code all have something meaningful to switch between.
+        - The response echoes the same concept back with reusable detail models.
+
+        Try moving between **Generated Example**, **Unified Schema**, and **Example: ...** tabs while
+        switching both media type and `oneOf` branch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShowcaseItemRequest'
+            examples:
+              jsonBook:
+                $ref: '#/components/examples/ShowcaseBookJsonExample'
+              jsonElectronic:
+                $ref: '#/components/examples/ShowcaseElectronicJsonExample'
+              jsonApparel:
+                $ref: '#/components/examples/ShowcaseApparelJsonExample'
+          application/yaml:
+            schema:
+              $ref: '#/components/schemas/ShowcaseItemRequest'
+            examples:
+              yamlBook:
+                $ref: '#/components/examples/ShowcaseBookYamlExample'
+              yamlElectronic:
+                $ref: '#/components/examples/ShowcaseElectronicYamlExample'
+              yamlApparel:
+                $ref: '#/components/examples/ShowcaseApparelYamlExample'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/ShowcaseItemRequest'
+            examples:
+              xmlBook:
+                $ref: '#/components/examples/ShowcaseBookXmlExample'
+              xmlElectronic:
+                $ref: '#/components/examples/ShowcaseElectronicXmlExample'
+              xmlApparel:
+                $ref: '#/components/examples/ShowcaseApparelXmlExample'
+      responses:
+        '201':
+          description: Created example item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                jsonBook:
+                  $ref: '#/components/examples/ShowcaseBookJsonExample'
+                jsonElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicJsonExample'
+                jsonApparel:
+                  $ref: '#/components/examples/ShowcaseApparelJsonExample'
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                yamlBook:
+                  $ref: '#/components/examples/ShowcaseBookYamlExample'
+                yamlElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicYamlExample'
+                yamlApparel:
+                  $ref: '#/components/examples/ShowcaseApparelYamlExample'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                xmlBook:
+                  $ref: '#/components/examples/ShowcaseBookXmlExample'
+                xmlElectronic:
+                  $ref: '#/components/examples/ShowcaseElectronicXmlExample'
+                xmlApparel:
+                  $ref: '#/components/examples/ShowcaseApparelXmlExample'
+
   /anything/responses/gallery:
     get:
       tags: [04 Responses/Status gallery]
@@ -1900,6 +2038,88 @@ components:
           '200': {$ref: '#/components/responses/EchoResponse'}
 
   examples:
+    ShowcaseBookJsonExample:
+      summary: Book variant (JSON)
+      value:
+        id: 123e4567-e89b-12d3-a456-426614174000
+        name: Clean Code
+        details:
+          format: paperback
+          pages: 464
+    ShowcaseElectronicJsonExample:
+      summary: Electronic variant (JSON)
+      value:
+        id: 223e4567-e89b-12d3-a456-426614174000
+        name: Power Adapter
+        details:
+          voltage: 240
+          wattage: 45.0
+    ShowcaseApparelJsonExample:
+      summary: Apparel variant (JSON)
+      value:
+        id: 323e4567-e89b-12d3-a456-426614174000
+        name: Cotton T-Shirt
+        details:
+          size: L
+          material: Cotton
+    ShowcaseBookYamlExample:
+      summary: Book variant (YAML)
+      serializedValue: |
+        id: 123e4567-e89b-12d3-a456-426614174000
+        name: Clean Code
+        details:
+          format: paperback
+          pages: 464
+    ShowcaseElectronicYamlExample:
+      summary: Electronic variant (YAML)
+      serializedValue: |
+        id: 223e4567-e89b-12d3-a456-426614174000
+        name: Power Adapter
+        details:
+          voltage: 240
+          wattage: 45.0
+    ShowcaseApparelYamlExample:
+      summary: Apparel variant (YAML)
+      serializedValue: |
+        id: 323e4567-e89b-12d3-a456-426614174000
+        name: Cotton T-Shirt
+        details:
+          size: L
+          material: Cotton
+    ShowcaseBookXmlExample:
+      summary: Book variant (XML)
+      serializedValue: |
+        <ShowcaseItemResponse>
+          <id>123e4567-e89b-12d3-a456-426614174000</id>
+          <name>Clean Code</name>
+          <Book>
+            <format>paperback</format>
+            <pages>464</pages>
+          </Book>
+        </ShowcaseItemResponse>
+    ShowcaseElectronicXmlExample:
+      summary: Electronic variant (XML)
+      serializedValue: |
+        <ShowcaseItemResponse>
+          <id>223e4567-e89b-12d3-a456-426614174000</id>
+          <name>Power Adapter</name>
+          <Electronic>
+            <voltage>240</voltage>
+            <wattage>45.0</wattage>
+          </Electronic>
+        </ShowcaseItemResponse>
+    ShowcaseApparelXmlExample:
+      summary: Apparel variant (XML)
+      serializedValue: |
+        <ShowcaseItemResponse>
+          <id>323e4567-e89b-12d3-a456-426614174000</id>
+          <name>Cotton T-Shirt</name>
+          <Apparel>
+            <size>L</size>
+            <material>Cotton</material>
+          </Apparel>
+        </ShowcaseItemResponse>
+
     CustomerExample:
       summary: A complete customer
       description: Reusable Example Object retained for compatible OpenAPI tooling.
@@ -2420,6 +2640,152 @@ components:
           items:
             type: string
             xml: {name: label}
+
+    ShowcaseBookModel:
+      type: object
+      xml:
+        name: Book
+      required: [format, pages]
+      properties:
+        format:
+          type: string
+          enum: [paperback, hardcover, ebook]
+        pages:
+          type: integer
+          example: 350
+
+    ShowcaseElectronicModel:
+      type: object
+      xml:
+        name: Electronic
+      required: [voltage, wattage]
+      properties:
+        voltage:
+          type: integer
+          example: 120
+        wattage:
+          type: number
+          example: 60.5
+
+    ShowcaseApparelModel:
+      type: object
+      xml:
+        name: Apparel
+      required: [size, material]
+      properties:
+        size:
+          type: string
+          enum: [S, M, L, XL]
+        material:
+          type: string
+          example: Cotton
+
+    ShowcaseItemRequest:
+      type: object
+      xml:
+        name: ShowcaseItemRequest
+      required: [id, name, details]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: Sample Item
+        details:
+          description: Inline oneOf details block
+          oneOf:
+            - title: BookDetails
+              type: object
+              xml: {name: Book}
+              required: [format, pages]
+              properties:
+                format:
+                  type: string
+                  enum: [paperback, hardcover, ebook]
+                pages:
+                  type: integer
+                  example: 350
+            - title: ElectronicDetails
+              type: object
+              xml: {name: Electronic}
+              required: [voltage, wattage]
+              properties:
+                voltage:
+                  type: integer
+                  example: 120
+                wattage:
+                  type: number
+                  example: 60.5
+            - title: ApparelDetails
+              type: object
+              xml: {name: Apparel}
+              required: [size, material]
+              properties:
+                size:
+                  type: string
+                  enum: [S, M, L, XL]
+                material:
+                  type: string
+                  example: Cotton
+
+    ShowcaseItemResponse:
+      type: object
+      xml:
+        name: ShowcaseItemResponse
+      required: [id, name, details]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: Sample Item
+        details:
+          oneOf:
+            - $ref: '#/components/schemas/ShowcaseBookModel'
+            - $ref: '#/components/schemas/ShowcaseElectronicModel'
+            - $ref: '#/components/schemas/ShowcaseApparelModel'
+
+    ShowcaseItemRequestReusable:
+      type: object
+      xml:
+        name: ShowcaseItemRequestReusable
+      required: [id, name, details]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: Sample Item Reusable
+        details:
+          oneOf:
+            - $ref: '#/components/schemas/ShowcaseBookModel'
+            - $ref: '#/components/schemas/ShowcaseElectronicModel'
+            - $ref: '#/components/schemas/ShowcaseApparelModel'
+
+    ShowcaseItemResponseReusable:
+      type: object
+      xml:
+        name: ShowcaseItemResponseReusable
+      required: [id, name, details]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: Sample Item Reusable
+        details:
+          oneOf:
+            - $ref: '#/components/schemas/ShowcaseBookModel'
+            - $ref: '#/components/schemas/ShowcaseElectronicModel'
+            - $ref: '#/components/schemas/ShowcaseApparelModel'
 
     FreeFormObject:
       type: object
