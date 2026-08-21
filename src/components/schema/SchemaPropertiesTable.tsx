@@ -1148,23 +1148,25 @@ export default function SchemaPropertiesTable({
                             )}
                             table={() => (
                                 <div className="h-full min-h-0 overflow-auto scrollbar-thin">
-                                    <table className="w-full table-fixed text-left border-collapse text-xs">
+                                    <table className="w-full min-w-[980px] text-left border-collapse text-xs">
+                                        <colgroup>
+                                            <col style={{width: '220px'}} />
+                                            <col style={{width: '360px'}} />
+                                            <col style={{width: '156px'}} />
+                                            <col />
+                                        </colgroup>
                                         <thead>
                                             <tr className={'whitespace-nowrap'}>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center min-w-0">Field Target</div>
+                                                    <div className="flex h-full items-center">Field Target</div>
                                                 </th>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center min-w-0">
-                                                        Type/Structure
-                                                    </div>
+                                                    <div className="flex h-full items-center">Type/Structure</div>
                                                 </th>
                                                 <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center min-w-0">
-                                                        Consumer Notes
-                                                    </div>
+                                                    <div className="flex h-full items-center">Consumer Notes</div>
                                                 </th>
-                                                <th className={STICKY_HEADER_CLASS} style={{width: '100%'}}>
+                                                <th className={STICKY_HEADER_CLASS}>
                                                     <div className="flex h-full w-full items-center justify-between gap-2">
                                                         <span>Description</span>
                                                         {!sidebarOpen && !isMobileLayout && (
@@ -1193,16 +1195,14 @@ export default function SchemaPropertiesTable({
                                                             selectedPropertyName === name && 'bg-[var(--primary)]/4',
                                                         )}
                                                     >
-                                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] break-words align-top">
+                                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap align-top">
                                                             {cells.name}
                                                         </td>
-                                                        <td className="px-3 py-2.5 align-top w-[38%] min-w-0">
-                                                            {cells.type}
-                                                        </td>
-                                                        <td className="px-3 py-2.5 align-top w-[140px]">
+                                                        <td className="px-3 py-2.5 align-top min-w-0">{cells.type}</td>
+                                                        <td className="px-3 py-2.5 align-top whitespace-nowrap">
                                                             {cells.consumer}
                                                         </td>
-                                                        <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)]">
+                                                        <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)] align-top">
                                                             {cells.description}
                                                         </td>
                                                     </tr>
