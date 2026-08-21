@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import type {ReactNode} from 'react';
+import {useBreakpoint} from '@/src/hooks/useBreakpoint';
 
 interface SettingRowProps {
     label: string;
@@ -22,6 +23,8 @@ export default function SettingRow({
     control,
     children,
 }: SettingRowProps) {
+    const bp = useBreakpoint();
+    const stackedControl = bp === 'mobile' || bp === 'tablet';
     return (
         <div
             className={clsx(
@@ -30,7 +33,12 @@ export default function SettingRow({
                 disabled && 'opacity-50 pointer-events-none',
             )}
         >
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div
+                className={clsx(
+                    'gap-x-4 gap-y-2',
+                    stackedControl ? 'flex flex-col items-stretch' : 'flex flex-wrap items-center justify-between',
+                )}
+            >
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                     {icon && <i className={clsx(icon, 'mt-[2px] shrink-0 text-[14px] text-[var(--primary)]')} />}
                     <div className="min-w-0">
@@ -42,7 +50,7 @@ export default function SettingRow({
                         )}
                     </div>
                 </div>
-                <div className="shrink-0">{control}</div>
+                <div className={clsx(stackedControl ? 'w-full pt-1' : 'shrink-0')}>{control}</div>
             </div>
             {children && <div className="mt-3">{children}</div>}
         </div>

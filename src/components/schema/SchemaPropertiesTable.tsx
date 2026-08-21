@@ -66,7 +66,7 @@ const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
 const STICKY_HEADER_CLASS =
-    'sticky top-0 z-10 h-10 border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-0 text-[10px] font-semibold uppercase tracking-wider leading-none text-[var(--text-heading)] align-middle';
+    'sticky top-0 z-10 h-[39px] border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-0 text-[10px] font-semibold uppercase tracking-wider leading-none text-[var(--text-heading)] align-middle';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -90,7 +90,8 @@ export default function SchemaPropertiesTable({
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
-    const sidebarOpen = isMobileLayout || !sidebarCollapsed;
+    const [expandedCardProperties, setExpandedCardProperties] = useState<Record<string, boolean>>({});
+    const sidebarOpen = !isMobileLayout && !sidebarCollapsed;
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -323,7 +324,7 @@ export default function SchemaPropertiesTable({
         name: string,
         kind: 'oneOf' | 'anyOf' | 'allOf',
         branches: any[],
-        controlScope: 'table' | 'sidebar' | 'details' = 'table',
+        controlScope: 'table' | 'sidebar' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
         if (!Array.isArray(branches) || branches.length === 0) return null;
         const selected = kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
@@ -369,7 +370,7 @@ export default function SchemaPropertiesTable({
     const renderStructureDetails = (
         name: string,
         prop: any,
-        controlScope: 'table' | 'sidebar' | 'details' = 'table',
+        controlScope: 'table' | 'sidebar' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
         if (!prop || prop === true || prop === false || prop.$ref) return null;
         const resolved = resolveReference(prop) || prop;
@@ -782,24 +783,33 @@ export default function SchemaPropertiesTable({
 
     const selectedProperty = displayProperties[selectedPropertyName];
     const selectedEffectiveProperty = effectiveProperties[selectedPropertyName];
-    const selectedRows = useMemo(() => {
-        if (!selectedPropertyName || !selectedProperty) return [] as Array<{label: string; value: React.ReactNode}>;
-        const facts = propertyFacts(selectedPropertyName, selectedProperty);
+
+    const buildPropertyRows = (
+        propertyName: string,
+        propertySchema: any,
+        controlScope: 'sidebar' | 'mobile' | 'details' = 'sidebar',
+        options: {includeName?: boolean; includeDescription?: boolean; includePatternRow?: boolean} = {},
+    ): Array<{label: string; value: React.ReactNode}> => {
+        if (!propertyName || !propertySchema) return [];
+        const {includeName = true, includeDescription = true, includePatternRow = true} = options;
+        const facts = propertyFacts(propertyName, propertySchema);
         const validationPills = renderValidationPills(facts);
         const statePills = renderStatePills(facts);
-        const structureNode = renderStructureDetails(selectedPropertyName, selectedProperty, 'sidebar');
-        const rows: Array<{label: string; value: React.ReactNode}> = [
-            {
+        const structureNode = renderStructureDetails(propertyName, propertySchema, controlScope);
+        const rows: Array<{label: string; value: React.ReactNode}> = [];
+
+        if (includeName)
+            rows.push({
                 label: 'Name',
                 value: (
                     <div className="flex min-w-0 items-center gap-1.5">
                         <ScrollableRow className="flex-1 font-mono select-all text-[10px] text-[var(--text)]">
-                            {selectedPropertyName}
+                            {propertyName}
                         </ScrollableRow>
                         <button
                             type="button"
                             onClick={() => {
-                                navigator.clipboard.writeText(selectedPropertyName);
+                                navigator.clipboard.writeText(propertyName);
                                 setCopiedPropertyName(true);
                                 setTimeout(() => setCopiedPropertyName(false), 1500);
                             }}
@@ -810,26 +820,25 @@ export default function SchemaPropertiesTable({
                         </button>
                     </div>
                 ),
-            },
-            {label: 'Type', value: displayType(selectedProperty)},
-            {label: 'Format', value: facts.format || '—'},
-            {
-                label: 'Required',
-                value: facts.isRequired ? (
-                    <span className="font-semibold text-[var(--method-delete)]">true</span>
-                ) : (
-                    'false'
-                ),
-            },
-            {
+            });
+
+        rows.push({label: 'Type', value: displayType(propertySchema)});
+        rows.push({label: 'Format', value: facts.format || '—'});
+        rows.push({
+            label: 'Required',
+            value: facts.isRequired ? <span className="font-semibold text-[var(--method-delete)]">true</span> : 'false',
+        });
+
+        if (includeDescription)
+            rows.push({
                 label: 'Description',
                 value: facts.resolved?.description ? (
                     <Markdown text={facts.resolved.description} className="text-[10px] leading-relaxed" />
                 ) : (
                     '—'
                 ),
-            },
-        ];
+            });
+
         if (facts.referenceNames.length > 0)
             rows.push({label: 'Reference', value: renderReferenceList(facts.referenceNames)});
         if (structureNode) rows.push({label: 'Structure', value: structureNode});
@@ -837,11 +846,35 @@ export default function SchemaPropertiesTable({
             rows.push({label: 'Validation', value: <div className="flex flex-wrap gap-1">{validationPills}</div>});
         if (statePills.length > 0)
             rows.push({label: 'Flags', value: <div className="flex flex-wrap gap-1">{statePills}</div>});
-        if (facts.pattern) rows.push({label: 'Pattern', value: <code className="mono">{facts.pattern}</code>});
+        if (includePatternRow && facts.pattern) rows.push({label: 'Pattern', value: renderPatternPill(facts.pattern)});
         if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
         if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
         return rows;
-    }, [selectedProperty, selectedPropertyName, branchSelections, selectionRevision, copiedPropertyName]);
+    };
+
+    const renderPropertyRowsGrid = (
+        rows: Array<{label: string; value: React.ReactNode}>,
+        prefix: string,
+        labelColumn = '104px',
+    ) => (
+        <div className="grid gap-px bg-[var(--border)]">
+            {rows.map(row => (
+                <div
+                    key={`${prefix}:${row.label}`}
+                    className="grid gap-2 bg-[var(--surface)] px-3 py-2"
+                    style={{gridTemplateColumns: `${labelColumn} minmax(0,1fr)`}}
+                >
+                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">{row.label}</div>
+                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
+                </div>
+            ))}
+        </div>
+    );
+
+    const selectedRows = useMemo(
+        () => buildPropertyRows(selectedPropertyName, selectedProperty, 'sidebar'),
+        [selectedProperty, selectedPropertyName, branchSelections, selectionRevision, copiedPropertyName],
+    );
 
     const buildDetailSections = (name: string, pVal: any): PropertyRowDetailsSection[] => {
         const facts = propertyFacts(name, pVal);
@@ -1004,6 +1037,14 @@ export default function SchemaPropertiesTable({
                             className="h-full min-h-0"
                             cards={() => (
                                 <>
+                                    {isMobileLayout && (
+                                        <section className="border-b border-[var(--border)] bg-[var(--surface)]">
+                                            <div className="flex h-[39px] items-center px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)] bg-[var(--surface-hover)] border-b border-[var(--border)]">
+                                                Schema-wide
+                                            </div>
+                                            {renderPropertyRowsGrid(schemaWideRows, 'mobile-schema')}
+                                        </section>
+                                    )}
                                     {useModal && (inspectName ?? schemaName) && (
                                         <div className="flex justify-end border-b px-3 py-2 border-[var(--border)] bg-[var(--surface-hover)]">
                                             <button
@@ -1019,29 +1060,87 @@ export default function SchemaPropertiesTable({
                                     <div className="space-y-2 p-2">
                                         {propertyEntries.map(([name, pVal]) => {
                                             const cells = propertyCells(name, pVal);
+                                            const expanded = !!expandedCardProperties[name];
+                                            const mobileRows = buildPropertyRows(name, pVal, 'mobile', {
+                                                includeName: false,
+                                                includeDescription: false,
+                                                includePatternRow: false,
+                                            });
                                             return (
-                                                <div
+                                                <DataCard
                                                     key={name}
                                                     onClick={() => setSelectedPropertyName(name)}
                                                     className={clsx(
-                                                        'rounded-lg transition-colors',
+                                                        'rounded-xl',
                                                         selectedPropertyName === name &&
-                                                            'ring-1 ring-[var(--primary)]/25',
+                                                            'ring-1 ring-[var(--primary)]/25 border-[var(--primary)]/30 shadow-[0_0_0_1px_rgba(79,70,229,0.12)]',
                                                     )}
-                                                >
-                                                    <DataCard
-                                                        title={
-                                                            <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                                {cells.name}
-                                                            </span>
-                                                        }
-                                                        facts={[
-                                                            {label: 'Type', value: cells.type},
-                                                            {label: 'Consumer notes', value: cells.consumer},
-                                                            {label: 'Details', value: cells.description, wide: true},
-                                                        ]}
-                                                    />
-                                                </div>
+                                                    title={
+                                                        <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                            {cells.name}
+                                                        </span>
+                                                    }
+                                                    facts={[
+                                                        {label: 'Type', value: cells.type},
+                                                        {label: 'Details', value: cells.description, wide: true},
+                                                    ]}
+                                                    footer={
+                                                        <div className="space-y-2">
+                                                            {expanded && (
+                                                                <>
+                                                                    {mobileRows.length > 0 &&
+                                                                        renderPropertyRowsGrid(
+                                                                            mobileRows,
+                                                                            `mobile-card:${name}`,
+                                                                            '92px',
+                                                                        )}
+                                                                    <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={event => {
+                                                                                event.stopPropagation();
+                                                                                setDetailsModalName(name);
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                                                        >
+                                                                            <i className="ph ph-eye text-[9px]" />
+                                                                            More / Example
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={event => {
+                                                                                event.stopPropagation();
+                                                                                setSerializerPropertyName(name);
+                                                                            }}
+                                                                            className={CHROME_BUTTON_CLASS}
+                                                                        >
+                                                                            <i className="ph ph-arrows-split text-[11px]"></i>
+                                                                            <span>Playground</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                            <div className="flex justify-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={event => {
+                                                                        event.stopPropagation();
+                                                                        setExpandedCardProperties(current => ({
+                                                                            ...current,
+                                                                            [name]: !current[name],
+                                                                        }));
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1 text-[10px] font-semibold text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
+                                                                >
+                                                                    <i
+                                                                        className={`ph ${expanded ? 'ph-caret-up' : 'ph-caret-down'} text-[10px]`}
+                                                                    />
+                                                                    <span>Property Info</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                />
                                             );
                                         })}
                                     </div>
@@ -1111,7 +1210,10 @@ export default function SchemaPropertiesTable({
                     </div>
 
                     {sidebarOpen && (
-                        <aside className="min-w-0 h-full min-h-0 bg-[var(--surface)] xl:sticky xl:top-0">
+                        <aside
+                            className="min-w-0 h-full min-h-0 bg-[var(--surface)] xl:sticky xl:top-0"
+                            style={{boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
+                        >
                             <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
                                 <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
                                     <section>
@@ -1130,19 +1232,7 @@ export default function SchemaPropertiesTable({
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="grid gap-px bg-[var(--border)]">
-                                            {schemaWideRows.map(row => (
-                                                <div
-                                                    key={`schema:${row.label}`}
-                                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
-                                                >
-                                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                                        {row.label}
-                                                    </div>
-                                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {renderPropertyRowsGrid(schemaWideRows, 'schema')}
                                     </section>
                                     <section>
                                         <div
@@ -1150,19 +1240,7 @@ export default function SchemaPropertiesTable({
                                         >
                                             <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
                                         </div>
-                                        <div className="grid gap-px bg-[var(--border)]">
-                                            {selectedRows.map(row => (
-                                                <div
-                                                    key={`selected:${row.label}`}
-                                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
-                                                >
-                                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                                        {row.label}
-                                                    </div>
-                                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {renderPropertyRowsGrid(selectedRows, 'selected')}
                                     </section>
                                 </div>
                                 {selectedPropertyName && selectedEffectiveProperty && (

@@ -16,6 +16,8 @@ interface DataCardProps {
     subtitle?: ReactNode;
     facts: DataCardFact[];
     className?: string;
+    footer?: ReactNode;
+    onClick?: () => void;
 }
 
 /**
@@ -23,10 +25,11 @@ interface DataCardProps {
  * Every card list in the application uses this shape, so a row reads the same
  * whether it came from a parameter table, a schema table or a report.
  */
-export default function DataCard({title, badge, subtitle, facts, className}: DataCardProps) {
+export default function DataCard({title, badge, subtitle, facts, className, footer, onClick}: DataCardProps) {
     const visible = facts.filter(fact => fact.value !== undefined && fact.value !== null && fact.value !== '');
     return (
         <div
+            onClick={onClick}
             className={clsx(
                 'rounded-xl border p-3 shadow-sm transition-colors border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/30',
                 className,
@@ -48,6 +51,10 @@ export default function DataCard({title, badge, subtitle, facts, className}: Dat
                         </div>
                     ))}
                 </dl>
+            )}
+
+            {footer !== undefined && footer !== null && footer !== '' && (
+                <div className="mt-2.5 border-t border-[var(--border)] pt-2.5">{footer}</div>
             )}
         </div>
     );
