@@ -54,22 +54,34 @@ const inlineMenusForCode = (
                 .at(-1)
                 ?.replace(/\[[^\]]+\]/g, '')
                 .replace(/\*/g, '') || path;
+        const escapedTail = tail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const probes = [
-            {text: `"${tail}"`, anchor: `"${tail}"`.length},
-            {text: `'${tail}'`, anchor: `'${tail}'`.length},
-            {text: `<${tail}>`, anchor: tail.length + 1},
-            {text: `<${tail} `, anchor: tail.length + 1},
-            {text: `${tail}:`, anchor: tail.length},
-            {text: tail, anchor: tail.length},
+            {
+                pattern: new RegExp(`(["'])${escapedTail}\\1\\s*:`),
+                anchor: (match: RegExpMatchArray) => match[0].indexOf(tail) + tail.length + 1,
+                tone: 'string',
+            },
+            {
+                pattern: new RegExp(`^\\s*${escapedTail}\\s*:`),
+                anchor: (match: RegExpMatchArray) => match[0].indexOf(tail) + tail.length,
+                tone: 'property',
+            },
+            {pattern: new RegExp(`<${escapedTail}(?:>|\\s)`), anchor: () => tail.length + 1, tone: 'xml'},
         ];
         for (let index = 0; index < lines.length; index += 1) {
             const line = lines[index];
             for (const probe of probes) {
-                const column = line.indexOf(probe.text);
-                if (probe.text && column >= 0) return {line: index + 1, column: column + probe.anchor};
+                const match = line.match(probe.pattern);
+                if (match && match.index !== undefined) {
+                    return {
+                        line: index + 1,
+                        column: match.index + probe.anchor(match),
+                        tone: probe.tone as 'string' | 'property' | 'xml',
+                    };
+                }
             }
         }
-        return {line: 1, column: 0};
+        return {line: 1, column: 0, tone: 'default' as const};
     };
     return choices.map(choice => {
         const position = lineAndColumnForPath(choice.path);
@@ -77,6 +89,7 @@ const inlineMenusForCode = (
             id: `${selectionKey}:${choice.path}`,
             line: position.line,
             column: position.column,
+            tone: position.tone,
             activeIndex: selections[choice.path] ?? 0,
             options: choice.options,
             onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),

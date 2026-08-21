@@ -27,6 +27,7 @@ export interface CodeInlineMenu {
     id: string;
     line: number;
     column?: number;
+    tone?: 'property' | 'string' | 'xml' | 'default';
     activeIndex: number;
     options: CodeInlineMenuOption[];
     onSelect: (index: number) => void;
@@ -379,7 +380,7 @@ export default function CodeViewer({
                                         {dot ? (
                                             <Tip content={dot.tip}>
                                                 <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center cursor-help text-[var(--method-delete)]">
-                                                    <i className="ph-fill ph-asterisk text-[8px] leading-none" />
+                                                    <i className="ph-bold ph-asterisk text-[8px] leading-none" />
                                                 </span>
                                             </Tip>
                                         ) : (
@@ -412,17 +413,28 @@ export default function CodeViewer({
                                             onClick={() =>
                                                 setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
                                             }
-                                            className="inline-flex items-center justify-center text-[var(--text-muted)] opacity-90 transition-opacity hover:opacity-100 cursor-pointer"
+                                            className={clsx(
+                                                'inline-flex items-center justify-center opacity-95 transition-opacity hover:opacity-100 cursor-pointer',
+                                                menu.tone === 'xml'
+                                                    ? 'text-[var(--accent)]'
+                                                    : menu.tone === 'string'
+                                                      ? 'text-[var(--method-get)]'
+                                                      : menu.tone === 'property'
+                                                        ? 'text-[var(--primary)]'
+                                                        : 'text-[var(--text)]',
+                                            )}
                                             aria-label={menu.ariaLabel || 'Select schema branch'}
                                             aria-haspopup="menu"
                                             aria-expanded={open}
                                         >
-                                            <i
-                                                className={clsx(
-                                                    'ph-fill ph-caret-circle-down text-[12px] transition-transform',
-                                                    open && 'rotate-180',
-                                                )}
-                                            />
+                                            <span className="inline-flex items-center rounded-sm bg-[var(--background)]/85 px-[1px]">
+                                                <i
+                                                    className={clsx(
+                                                        'ph-fill ph-caret-circle-down text-[12px] transition-transform',
+                                                        open && 'rotate-180',
+                                                    )}
+                                                />
+                                            </span>
                                         </button>
                                         {open && (
                                             <div className="absolute left-4 top-1/2 z-30 min-w-[220px] max-w-[280px] -translate-y-1/2 overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]">
