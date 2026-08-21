@@ -3,6 +3,21 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.2.3] — 2026-08-21
+
+Generated examples, named spec examples, and final schema-viewer polish.
+
+- extends schema-aware branching into generated examples and generated code, with inline oneOf
+  caret pickers inside code viewers and request/response example rendering that follows the active
+  branch and the selected media type;
+- adds dedicated request/response spec-example tabs for named OpenAPI `examples`, restores
+  view-schema actions in the schema tab row, and keeps example selection inside the active example
+  tab instead of crowding the surrounding controls;
+- tightens schema-viewer layout and affordances: more stable property-table column sizing,
+  icon-based oneOf radios, tablet overlay sidebar behavior, and required code-gutter markers that
+  keep their alignment through a preserved red asterisk slot;
+- bumps the package, lockfile, README, and release metadata to `0.2.3`.
+
 ## [0.2.2] — 2026-08-21
 
 Schema viewer redesign, branch-aware unification, and a practical property-grid sidebar.
