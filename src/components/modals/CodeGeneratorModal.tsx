@@ -1,15 +1,18 @@
 import {useMemo, useState} from 'react';
 import {ActiveAuth, OpenApiSpec} from '../../types';
-import CodeViewer from '../common/CodeViewer';
+import CodeViewer, {type CodeInlineMenu} from '../common/CodeViewer';
 import {Tip} from '../common/Tooltip';
 import {buildCodegenRequest, generateRequestSnippet, type CodeLanguage} from '../../utils/export/codeGeneration';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {getRefName, resolveReference as resolveOpenApiReference, resolveRequestBody} from '../../utils/openapi';
-import {applySchemaBranchSelections} from '../../utils/schema/branchSelections';
+import {
+    applySchemaBranchSelections,
+    readSchemaBranchSelections,
+    writeSchemaBranchSelection,
+} from '../../utils/schema/branchSelections';
 import {collectSchemaOneOfChoices} from '../../utils/schema/branchChoices';
-import SchemaOneOfMenuButton from '../schema/SchemaOneOfMenuButton';
 
 interface CodeGeneratorModalProps {
     isOpen: boolean;
@@ -35,6 +38,35 @@ const CODE_LANGUAGES: Array<{id: CodeLanguage; name: string}> = [
     {id: 'go', name: 'Go'},
     {id: 'csharp', name: 'C#'},
 ];
+
+const inlineMenusForCode = (
+    code: string,
+    selectionKey: string,
+    choices: ReturnType<typeof collectSchemaOneOfChoices>,
+): CodeInlineMenu[] => {
+    const selections = readSchemaBranchSelections(selectionKey);
+    const lines = code.split('\n');
+    const lineForPath = (path: string) => {
+        const tail =
+            path
+                .split('.')
+                .filter(Boolean)
+                .at(-1)
+                ?.replace(/\[[^\]]+\]/g, '')
+                .replace(/\*/g, '') || path;
+        const probes = [`"${tail}"`, `'${tail}'`, `${tail}:`, tail];
+        const index = lines.findIndex(line => probes.some(probe => probe && line.includes(probe)));
+        return index >= 0 ? index + 1 : 1;
+    };
+    return choices.map(choice => ({
+        id: `${selectionKey}:${choice.path}`,
+        line: lineForPath(choice.path),
+        activeIndex: selections[choice.path] ?? 0,
+        options: choice.options,
+        onSelect: index => writeSchemaBranchSelection(selectionKey, choice.path, index),
+        ariaLabel: `Select ${choice.title} schema`,
+    }));
+};
 
 export default function CodeGeneratorModal({
     isOpen,
@@ -110,6 +142,10 @@ export default function CodeGeneratorModal({
     const activeSnippet = useMemo(
         () => generateRequestSnippet(selectedLang, codegenRequest),
         [selectedLang, codegenRequest],
+    );
+    const inlineMenus = useMemo(
+        () => inlineMenusForCode(activeSnippet, selectionScopeKey, branchChoices),
+        [activeSnippet, selectionScopeKey, branchChoices],
     );
 
     const secretMarkers = useMemo<CodeLineMarker[]>(
@@ -204,8 +240,6 @@ export default function CodeGeneratorModal({
                                     ))}
                                 </div>
                             </div>
-
-                            <SchemaOneOfMenuButton selectionKey={selectionScopeKey} choices={branchChoices} />
                         </div>
 
                         <div className="p-1 bg-transparent">
@@ -214,6 +248,7 @@ export default function CodeGeneratorModal({
                                 language={getLanguageLabel(selectedLang)}
                                 maxHeight="420px"
                                 lineMarkers={secretMarkers}
+                                inlineMenus={inlineMenus}
                             />
                         </div>
                     </div>
