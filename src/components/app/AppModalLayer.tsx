@@ -116,6 +116,7 @@ export default function AppModalLayer({
                     isOpen
                     onClose={() => setCodeEndpoint(null)}
                     spec={spec}
+                    specKey={specKey}
                     path={codeEndpoint.path}
                     method={codeEndpoint.method}
                     operation={getOperation(spec, codeEndpoint.path, codeEndpoint.method) || {}}
