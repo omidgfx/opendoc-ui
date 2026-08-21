@@ -343,16 +343,21 @@ export default function SchemaPropertiesTable({
                                 className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
                             >
                                 {kind === 'oneOf' ? (
-                                    <span className="relative mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+                                    <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
                                         <input
                                             type="radio"
                                             name={`oneof-${selectionKey}-${controlScope}-${name}`}
                                             checked={active}
                                             onChange={() => updateBranchSelection(name, index)}
-                                            className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
+                                            className="absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
-                                        <span className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)]/10"></span>
-                                        <span className="absolute left-1/2 top-1/2 h-[4px] w-[4px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
+                                        <i
+                                            className={clsx(
+                                                active
+                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
+                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
+                                            )}
+                                        />
                                     </span>
                                 ) : (
                                     <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)]"></span>
