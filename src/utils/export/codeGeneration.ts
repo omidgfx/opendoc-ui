@@ -17,6 +17,11 @@ interface CodegenRequest {
     bodyKind?: 'raw' | 'urlencoded' | 'multipart' | 'binary' | 'none';
 }
 
+interface BodyPreviewOverrides {
+    schema?: any;
+    bodyType?: string;
+}
+
 const placeholder = (name: string) =>
     `YOUR_${
         String(name)
@@ -76,18 +81,36 @@ const firstExample = (parameter: any, spec: OpenApiSpec): unknown =>
     parameter.schema?.example ??
     parameter.schema?.default;
 
-const bodyPreview = (spec: OpenApiSpec, operation: Operation): {body?: string; bodyType?: string} => {
+const bodyPreview = (
+    spec: OpenApiSpec,
+    operation: Operation,
+    overrides: BodyPreviewOverrides = {},
+): {body?: string; bodyType?: string} => {
     const body = resolveRequestBody(operation.requestBody, spec);
-    const bodyType = Object.keys(body?.content || {})[0];
-    if (!bodyType) return {};
+    const bodyType = overrides.bodyType || Object.keys(body?.content || {})[0];
+    if (!bodyType || !body?.content?.[bodyType]) return {};
     const media = body.content[bodyType];
+    const schema = overrides.schema ?? media.schema;
+    if (overrides.schema !== undefined) {
+        const schemaExample =
+            schema?.example ?? exampleValueOf(Object.values(schema?.examples || {})[0], spec) ?? schema?.default;
+        if (schemaExample !== undefined) {
+            const redacted = redactExampleSecrets(schemaExample);
+            return {body: typeof redacted === 'string' ? redacted : JSON.stringify(redacted, null, 2), bodyType};
+        }
+        if (schema !== undefined) {
+            const generated = generateValidatedMock(schema, spec, 'request');
+            if (generated.ok) return {body: JSON.stringify(redactExampleSecrets(generated.value), null, 2), bodyType};
+        }
+        return {body: bodyType.includes('json') ? '{}' : '', bodyType};
+    }
     const explicit = media.example ?? exampleValueOf(Object.values(media.examples || {})[0], spec);
     if (explicit !== undefined) {
         const redacted = redactExampleSecrets(explicit);
         return {body: typeof redacted === 'string' ? redacted : JSON.stringify(redacted, null, 2), bodyType};
     }
-    if (media.schema !== undefined) {
-        const generated = generateValidatedMock(media.schema, spec, 'request');
+    if (schema !== undefined) {
+        const generated = generateValidatedMock(schema, spec, 'request');
         if (generated.ok) return {body: JSON.stringify(redactExampleSecrets(generated.value), null, 2), bodyType};
     }
     return {body: bodyType.includes('json') ? '{}' : '', bodyType};
@@ -101,6 +124,7 @@ export const buildCodegenRequest = (input: {
     selectedServer: string;
     serverVariables?: Record<string, string>;
     activeAuth: ActiveAuth;
+    requestBodyOverrides?: BodyPreviewOverrides;
 }): CodegenRequest => {
     const pathItem = input.spec.paths?.[input.path] || {};
     const parameterValues: Record<string, unknown> = {};
@@ -116,7 +140,7 @@ export const buildCodegenRequest = (input: {
         }
         parameterValues[parameterStateKey(parameter.in, parameter.name)] = value;
     });
-    const preview = bodyPreview(input.spec, input.operation);
+    const preview = bodyPreview(input.spec, input.operation, input.requestBodyOverrides);
     const plan = compileBrowserRequest({
         ...input,
         serverVariables: input.serverVariables,
