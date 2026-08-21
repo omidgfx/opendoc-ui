@@ -59,10 +59,12 @@ const formatExampleText = (value: unknown): string => {
 
 const CHROME_BUTTON_CLASS =
     'sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer';
-const GRID_TITLE_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]';
+const GRID_TITLE_CLASS = 'text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
 const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
+const STICKY_HEADER_CLASS =
+    'sticky top-0 z-10 bg-[var(--surface-hover)] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -82,6 +84,7 @@ export default function SchemaPropertiesTable({
     const [selectedPropertyName, setSelectedPropertyName] = useState('');
     const [detailsModalName, setDetailsModalName] = useState<string | null>(null);
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -116,10 +119,7 @@ export default function SchemaPropertiesTable({
         setSelectionRevision(current => current + 1);
     };
 
-    const sourceProperties = useMemo(
-        () => flattenSchemaProperties(schema, resolveReference),
-        [schema, resolveReference],
-    );
+    const sourceProperties = useMemo(() => properties || {}, [properties]);
     const effectiveSchema = useMemo(
         () => applySchemaBranchSelections(schema, selectionKey, resolveReference),
         [schema, selectionKey, branchSelections, selectionRevision, resolveReference],
@@ -317,6 +317,7 @@ export default function SchemaPropertiesTable({
         name: string,
         kind: 'oneOf' | 'anyOf' | 'allOf',
         branches: any[],
+        controlScope: 'table' | 'sidebar' | 'details' = 'table',
     ): React.ReactNode => {
         if (!Array.isArray(branches) || branches.length === 0) return null;
         const selected = kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
@@ -330,14 +331,14 @@ export default function SchemaPropertiesTable({
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
                         return (
                             <label
-                                key={`${name}:${kind}:${index}`}
-                                className="flex items-start gap-2 text-xs leading-relaxed text-[var(--text)]"
+                                key={`${name}:${kind}:${index}:${controlScope}`}
+                                className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
                             >
                                 {kind === 'oneOf' ? (
                                     <span className="relative mt-0.5 flex size-4 shrink-0 items-center justify-center">
                                         <input
                                             type="radio"
-                                            name={`oneof-${selectionKey}-${name}`}
+                                            name={`oneof-${selectionKey}-${controlScope}-${name}`}
                                             checked={active}
                                             onChange={() => updateBranchSelection(name, index)}
                                             className="peer absolute inset-0 m-0 cursor-pointer opacity-0"
@@ -346,7 +347,7 @@ export default function SchemaPropertiesTable({
                                         <span className="relative size-1.5 rounded-full bg-transparent transition-colors peer-checked:bg-[var(--primary)]"></span>
                                     </span>
                                 ) : (
-                                    <span className="mt-[3px] size-1.5 rounded-full bg-[var(--border)]"></span>
+                                    <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)]"></span>
                                 )}
                                 <span className="min-w-0 break-words">
                                     {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
@@ -359,26 +360,30 @@ export default function SchemaPropertiesTable({
         );
     };
 
-    const renderStructureDetails = (name: string, prop: any): React.ReactNode => {
+    const renderStructureDetails = (
+        name: string,
+        prop: any,
+        controlScope: 'table' | 'sidebar' | 'details' = 'table',
+    ): React.ReactNode => {
         if (!prop || prop === true || prop === false || prop.$ref) return null;
         const resolved = resolveReference(prop) || prop;
         const rows: React.ReactNode[] = [];
         if (Array.isArray(resolved?.oneOf) && resolved.oneOf.length > 0)
             rows.push(
                 <div key={`${name}:oneOf`} className="flex flex-col gap-1.5">
-                    {renderCombinatorOptions(name, 'oneOf', resolved.oneOf)}
+                    {renderCombinatorOptions(name, 'oneOf', resolved.oneOf, controlScope)}
                 </div>,
             );
         if (Array.isArray(resolved?.anyOf) && resolved.anyOf.length > 0)
             rows.push(
                 <div key={`${name}:anyOf`} className="flex flex-col gap-1.5">
-                    {renderCombinatorOptions(name, 'anyOf', resolved.anyOf)}
+                    {renderCombinatorOptions(name, 'anyOf', resolved.anyOf, controlScope)}
                 </div>,
             );
         if (Array.isArray(resolved?.allOf) && resolved.allOf.length > 0)
             rows.push(
                 <div key={`${name}:allOf`} className="flex flex-col gap-1.5">
-                    {renderCombinatorOptions(name, 'allOf', resolved.allOf)}
+                    {renderCombinatorOptions(name, 'allOf', resolved.allOf, controlScope)}
                 </div>,
             );
         if (
@@ -504,7 +509,7 @@ export default function SchemaPropertiesTable({
         return walk(effectiveSchema, 0);
     };
 
-    const renderFactPill = (
+    const renderFlagPill = (
         key: string,
         label: React.ReactNode,
         tone: 'neutral' | 'good' | 'danger' | 'warn' = 'neutral',
@@ -524,56 +529,24 @@ export default function SchemaPropertiesTable({
         );
     };
 
-    const renderValidationPills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
-        const pills: React.ReactNode[] = [];
-        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
-            pills.push(renderFactPill('enum', `enum ${facts.resolved.enum.length}`));
-        if (facts.resolved?.const !== undefined) pills.push(renderFactPill('const', 'const'));
-        if (facts.resolved?.minLength !== undefined)
-            pills.push(renderFactPill('minLength', `minLength ${facts.resolved.minLength}`));
-        if (facts.resolved?.maxLength !== undefined)
-            pills.push(renderFactPill('maxLength', `maxLength ${facts.resolved.maxLength}`));
-        if (facts.resolved?.minimum !== undefined)
-            pills.push(renderFactPill('minimum', `minimum ${facts.resolved.minimum}`));
-        if (facts.resolved?.maximum !== undefined)
-            pills.push(renderFactPill('maximum', `maximum ${facts.resolved.maximum}`));
-        if (facts.resolved?.exclusiveMinimum !== undefined)
-            pills.push(renderFactPill('exclusiveMinimum', `exclusiveMinimum ${facts.resolved.exclusiveMinimum}`));
-        if (facts.resolved?.exclusiveMaximum !== undefined)
-            pills.push(renderFactPill('exclusiveMaximum', `exclusiveMaximum ${facts.resolved.exclusiveMaximum}`));
-        if (facts.resolved?.multipleOf !== undefined)
-            pills.push(renderFactPill('multipleOf', `multipleOf ${facts.resolved.multipleOf}`));
-        if (facts.resolved?.minItems !== undefined)
-            pills.push(renderFactPill('minItems', `minItems ${facts.resolved.minItems}`));
-        if (facts.resolved?.maxItems !== undefined)
-            pills.push(renderFactPill('maxItems', `maxItems ${facts.resolved.maxItems}`));
-        if (facts.resolved?.uniqueItems === true) pills.push(renderFactPill('uniqueItems', 'uniqueItems'));
-        if (facts.resolved?.minProperties !== undefined)
-            pills.push(renderFactPill('minProperties', `minProperties ${facts.resolved.minProperties}`));
-        if (facts.resolved?.maxProperties !== undefined)
-            pills.push(renderFactPill('maxProperties', `maxProperties ${facts.resolved.maxProperties}`));
-        if (facts.pattern) pills.push(renderFactPill('pattern', 'pattern', 'warn'));
-        return pills;
-    };
+    const renderValuePill = (key: string, label: string, value: React.ReactNode) => (
+        <span key={key} className={`${FACT_PILL_BASE_CLASS} border-[var(--border)] bg-[var(--background)]`}>
+            <span className="text-[var(--text-muted)]">{label}:</span>
+            <span className="text-[var(--text)]">{value}</span>
+        </span>
+    );
 
-    const renderStatePills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
-        const pills: React.ReactNode[] = [];
-        if (facts.readOnly) pills.push(renderFactPill('readOnly', 'readOnly', 'good'));
-        if (facts.writeOnly) pills.push(renderFactPill('writeOnly', 'writeOnly'));
-        if (facts.deprecated) pills.push(renderFactPill('deprecated', 'deprecated', 'danger'));
-        if (facts.recursive)
-            pills.push(
-                renderFactPill(
-                    'recursive',
-                    <>
-                        <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px] text-[var(--method-delete)]`} /> recursive
-                    </>,
-                ),
-            );
-        if (facts.contentEncoding) pills.push(renderFactPill('contentEncoding', `encoding ${facts.contentEncoding}`));
-        if (facts.contentMediaType) pills.push(renderFactPill('contentMediaType', `media ${facts.contentMediaType}`));
-        return pills;
-    };
+    const renderPatternPill = (pattern: string) => (
+        <button
+            key={`pattern:${pattern}`}
+            type="button"
+            onClick={() => onTestPattern(pattern)}
+            className={`${FACT_PILL_BASE_CLASS} border-[var(--method-put)]/25 bg-[var(--method-put)]/10 text-[var(--text)] cursor-pointer transition-colors hover:bg-[var(--method-put)]/15`}
+        >
+            <i className="ph ph-dna text-[10px] text-[var(--method-put)]" />
+            <span>pattern (test)</span>
+        </button>
+    );
 
     const propertyFacts = (name: string, pVal: any) => {
         const resolved = resolveReference(pVal) || pVal;
@@ -601,8 +574,58 @@ export default function SchemaPropertiesTable({
             contentMediaType: typeof resolved?.contentMediaType === 'string' ? resolved.contentMediaType : '',
             format: typeof resolved?.format === 'string' ? resolved.format : '',
             referenceNames,
-            structureNode: renderStructureDetails(name, pVal),
         };
+    };
+
+    const renderValidationPills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
+        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
+            pills.push(renderValuePill('enum', 'enum', facts.resolved.enum.length));
+        if (facts.resolved?.const !== undefined) pills.push(renderFlagPill('const', 'const'));
+        if (facts.resolved?.minLength !== undefined)
+            pills.push(renderValuePill('minLength', 'minLength', facts.resolved.minLength));
+        if (facts.resolved?.maxLength !== undefined)
+            pills.push(renderValuePill('maxLength', 'maxLength', facts.resolved.maxLength));
+        if (facts.resolved?.minimum !== undefined)
+            pills.push(renderValuePill('minimum', 'minimum', facts.resolved.minimum));
+        if (facts.resolved?.maximum !== undefined)
+            pills.push(renderValuePill('maximum', 'maximum', facts.resolved.maximum));
+        if (facts.resolved?.exclusiveMinimum !== undefined)
+            pills.push(renderValuePill('exclusiveMinimum', 'exclusiveMinimum', facts.resolved.exclusiveMinimum));
+        if (facts.resolved?.exclusiveMaximum !== undefined)
+            pills.push(renderValuePill('exclusiveMaximum', 'exclusiveMaximum', facts.resolved.exclusiveMaximum));
+        if (facts.resolved?.multipleOf !== undefined)
+            pills.push(renderValuePill('multipleOf', 'multipleOf', facts.resolved.multipleOf));
+        if (facts.resolved?.minItems !== undefined)
+            pills.push(renderValuePill('minItems', 'minItems', facts.resolved.minItems));
+        if (facts.resolved?.maxItems !== undefined)
+            pills.push(renderValuePill('maxItems', 'maxItems', facts.resolved.maxItems));
+        if (facts.resolved?.uniqueItems === true) pills.push(renderFlagPill('uniqueItems', 'uniqueItems'));
+        if (facts.resolved?.minProperties !== undefined)
+            pills.push(renderValuePill('minProperties', 'minProperties', facts.resolved.minProperties));
+        if (facts.resolved?.maxProperties !== undefined)
+            pills.push(renderValuePill('maxProperties', 'maxProperties', facts.resolved.maxProperties));
+        if (facts.pattern) pills.push(renderPatternPill(facts.pattern));
+        return pills;
+    };
+
+    const renderStatePills = (facts: ReturnType<typeof propertyFacts>): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
+        if (facts.readOnly) pills.push(renderFlagPill('readOnly', 'readOnly', 'good'));
+        if (facts.writeOnly) pills.push(renderFlagPill('writeOnly', 'writeOnly'));
+        if (facts.deprecated) pills.push(renderFlagPill('deprecated', 'deprecated', 'danger'));
+        if (facts.recursive)
+            pills.push(
+                renderFlagPill(
+                    'recursive',
+                    <>
+                        <i className={`${RECURSIVE_SCHEMA_ICON} text-[10px] text-[var(--method-delete)]`} /> recursive
+                    </>,
+                ),
+            );
+        if (facts.contentEncoding) pills.push(renderValuePill('contentEncoding', 'encoding', facts.contentEncoding));
+        if (facts.contentMediaType) pills.push(renderValuePill('contentMediaType', 'media', facts.contentMediaType));
+        return pills;
     };
 
     const renderInlineFacts = (name: string, pVal: any) => {
@@ -619,9 +642,10 @@ export default function SchemaPropertiesTable({
                 onClick={() => setDetailsModalName(name)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
             >
-                <i className="ph ph-eye text-[9px]" /> View Example / More
+                <i className="ph ph-eye text-[9px]" /> View More / Example
             </button>
         );
+        const structureNode = renderStructureDetails(name, pVal, 'table');
         return {
             isRequired: facts.isRequired,
             name: (
@@ -647,7 +671,7 @@ export default function SchemaPropertiesTable({
                             </code>
                         </div>
                     )}
-                    {facts.structureNode}
+                    {structureNode}
                     {factPills.length > 0 && <div className="flex flex-wrap gap-1">{factPills}</div>}
                 </div>
             ),
@@ -757,6 +781,7 @@ export default function SchemaPropertiesTable({
         const facts = propertyFacts(selectedPropertyName, selectedProperty);
         const validationPills = renderValidationPills(facts);
         const statePills = renderStatePills(facts);
+        const structureNode = renderStructureDetails(selectedPropertyName, selectedProperty, 'sidebar');
         const rows: Array<{label: string; value: React.ReactNode}> = [
             {label: 'Name', value: <code className="mono">{selectedPropertyName}</code>},
             {label: 'Type', value: displayType(selectedProperty)},
@@ -773,7 +798,7 @@ export default function SchemaPropertiesTable({
         ];
         if (facts.referenceNames.length > 0)
             rows.push({label: 'Reference', value: renderReferenceList(facts.referenceNames)});
-        if (facts.structureNode) rows.push({label: 'Structure', value: facts.structureNode});
+        if (structureNode) rows.push({label: 'Structure', value: structureNode});
         if (validationPills.length > 0)
             rows.push({label: 'Validation', value: <div className="flex flex-wrap gap-1">{validationPills}</div>});
         if (statePills.length > 0)
@@ -928,13 +953,16 @@ export default function SchemaPropertiesTable({
     const activeDetails = detailsModalName
         ? buildDetailSections(detailsModalName, effectiveProperties[detailsModalName])
         : [];
-    const selectedPropertyFacts =
-        selectedPropertyName && selectedProperty ? propertyFacts(selectedPropertyName, selectedProperty) : null;
 
     return (
         <>
             <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in">
-                <div className="grid min-w-0 items-start xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-0">
+                <div
+                    className={clsx(
+                        'grid min-w-0 items-start xl:gap-0',
+                        sidebarCollapsed ? 'xl:grid-cols-[minmax(0,1fr)_46px]' : 'xl:grid-cols-[minmax(0,1fr)_320px]',
+                    )}
+                >
                     <div className="min-w-0 border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
@@ -989,19 +1017,10 @@ export default function SchemaPropertiesTable({
                                     <table className="w-full text-left border-collapse text-xs min-w-[860px]">
                                         <thead>
                                             <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
-                                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                                    Field Target
-                                                </th>
-                                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                                    Type/Structure
-                                                </th>
-                                                <th className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]">
-                                                    Consumer Notes
-                                                </th>
-                                                <th
-                                                    className="px-3 py-2.5 font-semibold text-[10px] uppercase tracking-wider text-[var(--text-heading)]"
-                                                    style={{width: '100%'}}
-                                                >
+                                                <th className={STICKY_HEADER_CLASS}>Field Target</th>
+                                                <th className={STICKY_HEADER_CLASS}>Type/Structure</th>
+                                                <th className={STICKY_HEADER_CLASS}>Consumer Notes</th>
+                                                <th className={STICKY_HEADER_CLASS} style={{width: '100%'}}>
                                                     Description
                                                 </th>
                                             </tr>
@@ -1039,67 +1058,86 @@ export default function SchemaPropertiesTable({
                     </div>
 
                     <aside className="min-w-0 self-start bg-[var(--surface)] xl:sticky xl:top-4 xl:max-h-[calc(100vh-10rem)] xl:overflow-auto scrollbar-thin">
-                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface-hover)]">
-                            <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
-                        </div>
-                        <div className="grid gap-px bg-[var(--border)]">
-                            {schemaWideRows.map(row => (
-                                <div
-                                    key={`schema:${row.label}`}
-                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
-                                >
-                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                        {row.label}
-                                    </div>
-                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="px-3 py-2 border-y border-[var(--border)] bg-[var(--surface-hover)]">
-                            <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
-                        </div>
-                        <div className="grid gap-px bg-[var(--border)]">
-                            {selectedRows.map(row => (
-                                <div
-                                    key={`selected:${row.label}`}
-                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
-                                >
-                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                        {row.label}
-                                    </div>
-                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                </div>
-                            ))}
-                        </div>
-                        {selectedPropertyName && selectedEffectiveProperty && (
-                            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2">
+                        {sidebarCollapsed ? (
+                            <div className="sticky top-0 flex justify-center border-l border-[var(--border)] bg-[var(--surface-hover)] px-2 py-2.5">
                                 <button
                                     type="button"
-                                    onClick={() => setDetailsModalName(selectedPropertyName)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                    onClick={() => setSidebarCollapsed(false)}
+                                    className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                    aria-label="Expand sidebar"
                                 >
-                                    <i className="ph ph-eye text-[9px]" />
-                                    View Example / More
-                                </button>
-                                {selectedPropertyFacts?.pattern && (
-                                    <button
-                                        type="button"
-                                        onClick={() => onTestPattern(selectedPropertyFacts.pattern || '')}
-                                        className={CHROME_BUTTON_CLASS}
-                                    >
-                                        <i className="ph ph-dna text-[11px]"></i>
-                                        <span>Test Pattern</span>
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={() => setSerializerPropertyName(selectedPropertyName)}
-                                    className={CHROME_BUTTON_CLASS}
-                                >
-                                    <i className="ph ph-arrows-split text-[11px]"></i>
-                                    <span>Playground</span>
+                                    <i className="ph ph-caret-left text-[12px]" />
                                 </button>
                             </div>
+                        ) : (
+                            <>
+                                <section>
+                                    <div
+                                        className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2 border-b border-[var(--border)]`}
+                                    >
+                                        <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSidebarCollapsed(true)}
+                                            className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                            aria-label="Collapse sidebar"
+                                        >
+                                            <i className="ph ph-caret-right text-[12px]" />
+                                        </button>
+                                    </div>
+                                    <div className="grid gap-px bg-[var(--border)]">
+                                        {schemaWideRows.map(row => (
+                                            <div
+                                                key={`schema:${row.label}`}
+                                                className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
+                                            >
+                                                <div className="font-semibold text-[var(--text-muted)] text-[10px]">
+                                                    {row.label}
+                                                </div>
+                                                <div className={GRID_TEXT_CLASS}>{row.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                                <section>
+                                    <div className={`${STICKY_HEADER_CLASS} border-y border-[var(--border)]`}>
+                                        <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
+                                    </div>
+                                    <div className="grid gap-px bg-[var(--border)]">
+                                        {selectedRows.map(row => (
+                                            <div
+                                                key={`selected:${row.label}`}
+                                                className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
+                                            >
+                                                <div className="font-semibold text-[var(--text-muted)] text-[10px]">
+                                                    {row.label}
+                                                </div>
+                                                <div className={GRID_TEXT_CLASS}>{row.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                                {selectedPropertyName && selectedEffectiveProperty && (
+                                    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailsModalName(selectedPropertyName)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                        >
+                                            <i className="ph ph-eye text-[9px]" />
+                                            View More / Example
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSerializerPropertyName(selectedPropertyName)}
+                                            className={CHROME_BUTTON_CLASS}
+                                        >
+                                            <i className="ph ph-arrows-split text-[11px]"></i>
+                                            <span>Playground</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </aside>
                 </div>
@@ -1196,9 +1234,10 @@ export default function SchemaPropertiesTable({
                                                 detailsTransition.requestClose();
                                                 onViewExample(activeName, activeProperty);
                                             }}
-                                            className="px-4 py-1.5 border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)] font-semibold text-xs rounded-lg cursor-pointer transition-colors select-none hover:bg-[var(--primary)]/15"
+                                            className="inline-flex items-center gap-1 px-4 py-1.5 border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)] font-semibold text-xs rounded-lg cursor-pointer transition-colors select-none hover:bg-[var(--primary)]/15"
                                         >
-                                            Open Example
+                                            <i className="ph ph-eye text-[9px]" />
+                                            View More / Example
                                         </button>
                                     )}
                                     <button
