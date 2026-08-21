@@ -4,6 +4,7 @@ import {usePreferences} from '../../contexts/PreferencesContext';
 import CardOrTable, {CARD_LAYOUT_WIDTH} from '../common/CardOrTable';
 import DataCard from '../common/DataCard';
 import Markdown from '../common/Markdown';
+import ScrollableRow from '../common/ScrollableRow';
 import {Tip} from '../common/Tooltip';
 import {
     describeNotConstraint,
@@ -64,7 +65,7 @@ const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold leading-none';
 const STICKY_HEADER_CLASS =
-    'sticky top-0 z-10 bg-[var(--surface-hover)] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
+    'sticky top-0 z-10 h-[39px] bg-[var(--surface-hover)] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
 
 export default function SchemaPropertiesTable({
     properties,
@@ -85,6 +86,7 @@ export default function SchemaPropertiesTable({
     const [detailsModalName, setDetailsModalName] = useState<string | null>(null);
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [copiedPropertyName, setCopiedPropertyName] = useState(false);
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -642,7 +644,7 @@ export default function SchemaPropertiesTable({
                 onClick={() => setDetailsModalName(name)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
             >
-                <i className="ph ph-eye text-[9px]" /> View More / Example
+                <i className="ph ph-eye text-[9px]" /> More / Example
             </button>
         );
         const structureNode = renderStructureDetails(name, pVal, 'table');
@@ -783,10 +785,38 @@ export default function SchemaPropertiesTable({
         const statePills = renderStatePills(facts);
         const structureNode = renderStructureDetails(selectedPropertyName, selectedProperty, 'sidebar');
         const rows: Array<{label: string; value: React.ReactNode}> = [
-            {label: 'Name', value: <code className="mono">{selectedPropertyName}</code>},
+            {
+                label: 'Name',
+                value: (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                        <ScrollableRow className="flex-1 font-mono select-all text-[10px] text-[var(--text)]">
+                            {selectedPropertyName}
+                        </ScrollableRow>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                navigator.clipboard.writeText(selectedPropertyName);
+                                setCopiedPropertyName(true);
+                                setTimeout(() => setCopiedPropertyName(false), 1500);
+                            }}
+                            className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--text-muted)] transition-colors hover:text-[var(--primary)] cursor-pointer"
+                            aria-label="Copy property name"
+                        >
+                            <i className={`ph ${copiedPropertyName ? 'ph-check' : 'ph-copy'} text-[11px]`}></i>
+                        </button>
+                    </div>
+                ),
+            },
             {label: 'Type', value: displayType(selectedProperty)},
             {label: 'Format', value: facts.format || '—'},
-            {label: 'Required', value: facts.isRequired ? 'true' : 'false'},
+            {
+                label: 'Required',
+                value: facts.isRequired ? (
+                    <span className="font-semibold text-[var(--method-delete)]">true</span>
+                ) : (
+                    'false'
+                ),
+            },
             {
                 label: 'Description',
                 value: facts.resolved?.description ? (
@@ -807,7 +837,7 @@ export default function SchemaPropertiesTable({
         if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
         if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
         return rows;
-    }, [selectedProperty, selectedPropertyName, branchSelections, selectionRevision]);
+    }, [selectedProperty, selectedPropertyName, branchSelections, selectionRevision, copiedPropertyName]);
 
     const buildDetailSections = (name: string, pVal: any): PropertyRowDetailsSection[] => {
         const facts = propertyFacts(name, pVal);
@@ -956,14 +986,14 @@ export default function SchemaPropertiesTable({
 
     return (
         <>
-            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
                 <div
                     className={clsx(
-                        'grid min-w-0 items-start xl:gap-0',
-                        sidebarCollapsed ? 'xl:grid-cols-[minmax(0,1fr)_46px]' : 'xl:grid-cols-[minmax(0,1fr)_320px]',
+                        'grid h-full min-w-0 xl:gap-0',
+                        sidebarCollapsed ? 'xl:grid-cols-[minmax(0,1fr)]' : 'xl:grid-cols-[minmax(0,1fr)_320px]',
                     )}
                 >
-                    <div className="min-w-0 border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
+                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] xl:border-b-0 xl:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
@@ -1013,7 +1043,7 @@ export default function SchemaPropertiesTable({
                                 </>
                             )}
                             table={() => (
-                                <div className="overflow-auto xl:max-h-[calc(100vh-10rem)] scrollbar-thin">
+                                <div className="h-full overflow-auto scrollbar-thin">
                                     <table className="w-full text-left border-collapse text-xs min-w-[860px]">
                                         <thead>
                                             <tr className={'whitespace-nowrap brightness-95 bg-[var(--surface-hover)]'}>
@@ -1021,7 +1051,20 @@ export default function SchemaPropertiesTable({
                                                 <th className={STICKY_HEADER_CLASS}>Type/Structure</th>
                                                 <th className={STICKY_HEADER_CLASS}>Consumer Notes</th>
                                                 <th className={STICKY_HEADER_CLASS} style={{width: '100%'}}>
-                                                    Description
+                                                    <div className="flex w-full items-center justify-between gap-2">
+                                                        <span>Description</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSidebarCollapsed(current => !current)}
+                                                            className={clsx(
+                                                                'inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer',
+                                                                !sidebarCollapsed && 'opacity-0 pointer-events-none',
+                                                            )}
+                                                            aria-label="Expand sidebar"
+                                                        >
+                                                            <i className="ph ph-caret-left text-[12px]" />
+                                                        </button>
+                                                    </div>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -1057,75 +1100,68 @@ export default function SchemaPropertiesTable({
                         />
                     </div>
 
-                    <aside className="min-w-0 self-start bg-[var(--surface)] xl:sticky xl:top-4 xl:max-h-[calc(100vh-10rem)] xl:overflow-auto scrollbar-thin">
-                        {sidebarCollapsed ? (
-                            <div className="sticky top-0 flex justify-center border-l border-[var(--border)] bg-[var(--surface-hover)] px-2 py-2.5">
-                                <button
-                                    type="button"
-                                    onClick={() => setSidebarCollapsed(false)}
-                                    className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                    aria-label="Expand sidebar"
-                                >
-                                    <i className="ph ph-caret-left text-[12px]" />
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <section>
-                                    <div
-                                        className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2 border-b border-[var(--border)]`}
-                                    >
-                                        <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSidebarCollapsed(true)}
-                                            className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                            aria-label="Collapse sidebar"
+                    {!sidebarCollapsed && (
+                        <aside className="min-w-0 h-full min-h-0 bg-[var(--surface)] xl:sticky xl:top-0">
+                            <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
+                                <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+                                    <section>
+                                        <div
+                                            className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2 border-b border-[var(--border)]`}
                                         >
-                                            <i className="ph ph-caret-right text-[12px]" />
-                                        </button>
-                                    </div>
-                                    <div className="grid gap-px bg-[var(--border)]">
-                                        {schemaWideRows.map(row => (
-                                            <div
-                                                key={`schema:${row.label}`}
-                                                className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
+                                            <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSidebarCollapsed(true)}
+                                                className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                                aria-label="Collapse sidebar"
                                             >
-                                                <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                                    {row.label}
+                                                <i className="ph ph-caret-right text-[12px]" />
+                                            </button>
+                                        </div>
+                                        <div className="grid gap-px bg-[var(--border)]">
+                                            {schemaWideRows.map(row => (
+                                                <div
+                                                    key={`schema:${row.label}`}
+                                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
+                                                >
+                                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
+                                                        {row.label}
+                                                    </div>
+                                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
                                                 </div>
-                                                <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                                <section>
-                                    <div className={`${STICKY_HEADER_CLASS} border-y border-[var(--border)]`}>
-                                        <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
-                                    </div>
-                                    <div className="grid gap-px bg-[var(--border)]">
-                                        {selectedRows.map(row => (
-                                            <div
-                                                key={`selected:${row.label}`}
-                                                className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
-                                            >
-                                                <div className="font-semibold text-[var(--text-muted)] text-[10px]">
-                                                    {row.label}
+                                            ))}
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <div
+                                            className={`${STICKY_HEADER_CLASS} flex items-center border-y border-[var(--border)]`}
+                                        >
+                                            <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
+                                        </div>
+                                        <div className="grid gap-px bg-[var(--border)]">
+                                            {selectedRows.map(row => (
+                                                <div
+                                                    key={`selected:${row.label}`}
+                                                    className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2"
+                                                >
+                                                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">
+                                                        {row.label}
+                                                    </div>
+                                                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
                                                 </div>
-                                                <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </div>
                                 {selectedPropertyName && selectedEffectiveProperty && (
-                                    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2">
+                                    <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2 shrink-0">
                                         <button
                                             type="button"
                                             onClick={() => setDetailsModalName(selectedPropertyName)}
                                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
                                         >
                                             <i className="ph ph-eye text-[9px]" />
-                                            View More / Example
+                                            More / Example
                                         </button>
                                         <button
                                             type="button"
@@ -1137,9 +1173,9 @@ export default function SchemaPropertiesTable({
                                         </button>
                                     </div>
                                 )}
-                            </>
-                        )}
-                    </aside>
+                            </div>
+                        </aside>
+                    )}
                 </div>
             </div>
 
@@ -1237,7 +1273,7 @@ export default function SchemaPropertiesTable({
                                             className="inline-flex items-center gap-1 px-4 py-1.5 border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)] font-semibold text-xs rounded-lg cursor-pointer transition-colors select-none hover:bg-[var(--primary)]/15"
                                         >
                                             <i className="ph ph-eye text-[9px]" />
-                                            View More / Example
+                                            More / Example
                                         </button>
                                     )}
                                     <button
