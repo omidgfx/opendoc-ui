@@ -92,7 +92,7 @@ export default function SchemaPropertiesTable({
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
     const [expandedCardProperties, setExpandedCardProperties] = useState<Record<string, boolean>>({});
-    const sidebarOpen = isTabletLayout ? !sidebarCollapsed : !isMobileLayout && !sidebarCollapsed;
+    const sidebarOpen = !isMobileLayout && !sidebarCollapsed;
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -1032,13 +1032,23 @@ export default function SchemaPropertiesTable({
             <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
                 <div
                     className={clsx(
-                        'relative grid h-full min-w-0 lg:gap-0',
-                        sidebarOpen && !isTabletLayout
-                            ? 'lg:grid-cols-[minmax(0,1fr)_296px]'
-                            : 'lg:grid-cols-[minmax(0,1fr)]',
+                        'relative grid h-full min-w-0 md:gap-0',
+                        sidebarOpen ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)]',
                     )}
                 >
-                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] lg:border-b-0 lg:border-r bg-[var(--surface)]">
+                    {!isMobileLayout && (
+                        <div className="pointer-events-none absolute right-2 top-2 z-40">
+                            <button
+                                type="button"
+                                onClick={() => setSidebarCollapsed(current => !current)}
+                                className="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)]/95 text-[var(--text-muted)] shadow-sm transition-colors hover:bg-[var(--background)] cursor-pointer"
+                                aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                            >
+                                <i className={`ph ${sidebarOpen ? 'ph-caret-right' : 'ph-caret-left'} text-[12px]`} />
+                            </button>
+                        </div>
+                    )}
+                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] md:border-b-0 md:border-r bg-[var(--surface)]">
                         <CardOrTable
                             preferCards={preferCards}
                             maxWidth={CARD_LAYOUT_WIDTH}
@@ -1177,16 +1187,6 @@ export default function SchemaPropertiesTable({
                                                 <th className={STICKY_HEADER_CLASS}>
                                                     <div className="flex h-full w-full items-center justify-between gap-2">
                                                         <span>Description</span>
-                                                        {!sidebarOpen && !isMobileLayout && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setSidebarCollapsed(false)}
-                                                                className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                                                aria-label="Expand sidebar"
-                                                            >
-                                                                <i className="ph ph-caret-left text-[12px]" />
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </th>
                                             </tr>
@@ -1225,13 +1225,8 @@ export default function SchemaPropertiesTable({
 
                     {sidebarOpen && (
                         <aside
-                            className={clsx(
-                                'min-w-0 h-full min-h-0 bg-[var(--surface)]',
-                                isTabletLayout
-                                    ? 'absolute inset-y-0 right-0 z-30 w-[296px] border-l border-[var(--border)] shadow-xl'
-                                    : 'lg:sticky lg:top-0',
-                            )}
-                            style={isTabletLayout ? undefined : {boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
+                            className="min-w-0 h-full min-h-0 bg-[var(--surface)] md:sticky md:top-0"
+                            style={{boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
                         >
                             <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
                                 <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
@@ -1240,16 +1235,6 @@ export default function SchemaPropertiesTable({
                                             className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2`}
                                         >
                                             <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
-                                            {!isMobileLayout && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSidebarCollapsed(true)}
-                                                    className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                                    aria-label="Collapse sidebar"
-                                                >
-                                                    <i className="ph ph-caret-right text-[12px]" />
-                                                </button>
-                                            )}
                                         </div>
                                         {renderPropertyRowsGrid(schemaWideRows, 'schema')}
                                     </section>
