@@ -436,41 +436,125 @@ export default function ModalsStack({
     }, [activeSchemaObj?.schema, resolveReference, getRefName, modalBranchRevision]);
 
     const schemaSpecExamples = useMemo(() => {
-        if (!resolvedSchema || typeof resolvedSchema !== 'object') return [];
         const list: Array<{key: string; label: string; value: unknown; summary?: string; description?: string}> = [];
-        if (resolvedSchema.examples && typeof resolvedSchema.examples === 'object') {
-            if (Array.isArray(resolvedSchema.examples)) {
-                resolvedSchema.examples.forEach((item: any, idx: number) => {
-                    const val = typeof item === 'object' && item !== null && 'value' in item ? item.value : item;
-                    list.push({
-                        key: `example-${idx}`,
-                        label: item?.summary || `Example ${idx + 1}`,
-                        summary: item?.summary,
-                        description: item?.description,
-                        value: exampleValueOf(item, spec),
+        const seen = new Set<string>();
+
+        const addExample = (key: string, label: string, val: any, summary?: string, desc?: string) => {
+            if (seen.has(key)) return;
+            seen.add(key);
+            list.push({
+                key,
+                label,
+                summary,
+                description: desc,
+                value: val,
+            });
+        };
+
+        const targetSchema = resolvedSchema || activeSchemaObj?.schema;
+        if (targetSchema && typeof targetSchema === 'object') {
+            if (targetSchema.examples && typeof targetSchema.examples === 'object') {
+                if (Array.isArray(targetSchema.examples)) {
+                    targetSchema.examples.forEach((item: any, idx: number) => {
+                        addExample(
+                            `example-${idx}`,
+                            item?.summary || `Example ${idx + 1}`,
+                            exampleValueOf(item, spec),
+                            item?.summary,
+                            item?.description,
+                        );
                     });
-                });
-            } else {
-                Object.entries(resolvedSchema.examples).forEach(([key, entry]: [string, any]) => {
-                    list.push({
-                        key,
-                        label: entry?.summary || key,
-                        summary: entry?.summary,
-                        description: entry?.description,
-                        value: exampleValueOf(entry, spec),
+                } else {
+                    Object.entries(targetSchema.examples).forEach(([key, entry]: [string, any]) => {
+                        addExample(
+                            key,
+                            entry?.summary || key,
+                            exampleValueOf(entry, spec),
+                            entry?.summary,
+                            entry?.description,
+                        );
                     });
-                });
+                }
+            }
+            if (targetSchema.example !== undefined) {
+                addExample('example', 'Example', targetSchema.example);
             }
         }
-        if (list.length === 0 && resolvedSchema.example !== undefined) {
-            list.push({
-                key: 'example',
-                label: 'Example',
-                value: resolvedSchema.example,
+
+        const schemaName = activeSchemaObj?.schemaName;
+        if (schemaName && spec?.paths) {
+            for (const pathItem of Object.values(spec.paths)) {
+                if (!pathItem || typeof pathItem !== 'object') continue;
+                for (const op of Object.values(pathItem)) {
+                    if (!op || typeof op !== 'object') continue;
+                    for (const resp of Object.values((op as any).responses || {})) {
+                        for (const content of Object.values((resp as any)?.content || {})) {
+                            const contentSchema = (content as any)?.schema;
+                            if (
+                                contentSchema?.$ref?.endsWith(`/${schemaName}`) ||
+                                contentSchema?.title === schemaName
+                            ) {
+                                if ((content as any).examples) {
+                                    for (const [exKey, exObj] of Object.entries((content as any).examples)) {
+                                        addExample(
+                                            exKey,
+                                            (exObj as any)?.summary || exKey,
+                                            exampleValueOf(exObj, spec),
+                                            (exObj as any)?.summary,
+                                            (exObj as any)?.description,
+                                        );
+                                    }
+                                }
+                                if ((content as any).example !== undefined) {
+                                    addExample('example', 'Example', (content as any).example);
+                                }
+                            }
+                        }
+                    }
+                    for (const content of Object.values((op as any).requestBody?.content || {})) {
+                        const contentSchema = (content as any)?.schema;
+                        if (contentSchema?.$ref?.endsWith(`/${schemaName}`) || contentSchema?.title === schemaName) {
+                            if ((content as any).examples) {
+                                for (const [exKey, exObj] of Object.entries((content as any).examples)) {
+                                    addExample(
+                                        exKey,
+                                        (exObj as any)?.summary || exKey,
+                                        exampleValueOf(exObj, spec),
+                                        (exObj as any)?.summary,
+                                        (exObj as any)?.description,
+                                    );
+                                }
+                            }
+                            if ((content as any).example !== undefined) {
+                                addExample('example', 'Example', (content as any).example);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (spec?.components?.examples && typeof spec.components.examples === 'object') {
+            const schemaNameLower = (schemaName || '').toLowerCase();
+            Object.entries(spec.components.examples).forEach(([key, entry]: [string, any]) => {
+                const keyLower = key.toLowerCase();
+                if (
+                    schemaNameLower &&
+                    (keyLower.includes(schemaNameLower) || schemaNameLower.includes(keyLower.replace(/example$/, '')))
+                ) {
+                    addExample(
+                        key,
+                        entry?.summary || key,
+                        exampleValueOf(entry, spec),
+                        entry?.summary,
+                        entry?.description,
+                    );
+                }
             });
         }
+
         return list;
-    }, [resolvedSchema, spec]);
+    }, [resolvedSchema, activeSchemaObj?.schema, activeSchemaObj?.schemaName, spec]);
 
     const activeModalSpecExample =
         schemaSpecExamples.find(ex => ex.key === (modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key)) ||

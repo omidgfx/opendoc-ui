@@ -1078,29 +1078,30 @@ export default function SchemaPropertiesTable({
         </div>
     );
 
-    const activeDetailsProperty = detailsModalName ? effectiveProperties[detailsModalName] : null;
-    const activePropertyDescription = activeDetailsProperty
-        ? (resolveReference(activeDetailsProperty) || activeDetailsProperty)?.description
+    const activeRawProperty = detailsModalName
+        ? sourceProperties[detailsModalName] || effectiveProperties[detailsModalName]
+        : null;
+    const activeDetailsProperty = detailsModalName
+        ? effectiveProperties[detailsModalName] || sourceProperties[detailsModalName]
+        : null;
+    const activePropertyDescription = activeRawProperty
+        ? (resolveReference(activeRawProperty) || activeRawProperty)?.description
         : null;
     const activeSpecRows =
-        detailsModalName && activeDetailsProperty
-            ? buildFieldSpecificationsRows(detailsModalName, activeDetailsProperty)
-            : [];
+        detailsModalName && activeRawProperty ? buildFieldSpecificationsRows(detailsModalName, activeRawProperty) : [];
     const activeValidationRows =
-        detailsModalName && activeDetailsProperty ? buildValidationRows(detailsModalName, activeDetailsProperty) : [];
+        detailsModalName && activeRawProperty ? buildValidationRows(detailsModalName, activeRawProperty) : [];
     const activeOneOfChoices = useMemo(() => {
-        return activeDetailsProperty
-            ? collectSchemaOneOfChoices(activeDetailsProperty, resolveReference, getRefName)
-            : [];
-    }, [activeDetailsProperty, resolveReference, getRefName, selectionRevision]);
+        return activeRawProperty ? collectSchemaOneOfChoices(activeRawProperty, resolveReference, getRefName) : [];
+    }, [activeRawProperty, resolveReference, getRefName, selectionRevision]);
     const activeMockExample = useMemo(() => {
         if (!detailsModalName || !activeDetailsProperty) return null;
         return getMockSnippetWithMarkers(activeDetailsProperty, null);
     }, [detailsModalName, activeDetailsProperty, selectionRevision]);
 
     const propertySpecExamples = useMemo(() => {
-        if (!activeDetailsProperty) return [];
-        const resolved = resolveReference(activeDetailsProperty) || activeDetailsProperty;
+        if (!activeRawProperty) return [];
+        const resolved = resolveReference(activeRawProperty) || activeRawProperty;
         if (resolved?.examples && typeof resolved.examples === 'object') {
             if (Array.isArray(resolved.examples)) {
                 return resolved.examples.map((item: any, idx: number) => ({
@@ -1119,7 +1120,7 @@ export default function SchemaPropertiesTable({
             return [{key: 'example', label: 'Example', value: resolved.example}];
         }
         return [];
-    }, [activeDetailsProperty, resolveReference]);
+    }, [activeRawProperty, resolveReference]);
 
     const activePropertySpecExample =
         propertySpecExamples.find(ex => ex.key === (modalSpecExampleKey || propertySpecExamples[0]?.key)) ||
@@ -1374,6 +1375,25 @@ export default function SchemaPropertiesTable({
                                                 </div>
                                             )}
                                         </div>
+                                        {modalExampleTab === 'generated' && activeOneOfChoices.length > 0 && (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                    oneOf:
+                                                </span>
+                                                <CustomDropdown
+                                                    value={String(branchSelections[detailsModalName] ?? 0)}
+                                                    onChange={val =>
+                                                        updateBranchSelection(detailsModalName, Number(val))
+                                                    }
+                                                    options={activeOneOfChoices[0].options.map(opt => ({
+                                                        value: String(opt.index),
+                                                        label: opt.label,
+                                                    }))}
+                                                    className="w-auto min-w-0 max-w-[200px]"
+                                                    ariaLabel="Select oneOf variant"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-3">
                                         {modalExampleTab === 'generated' && activeMockExample ? (

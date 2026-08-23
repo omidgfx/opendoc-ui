@@ -194,7 +194,7 @@ export default function CodeViewer({
         });
         let stripped = source;
         menus.forEach(menu => {
-            if (menu.token) stripped = stripped.split(menu.token).join('');
+            if (menu.token) stripped = stripped.split(menu.token).join('  ');
         });
         return {code: stripped, menus};
     }, [code, inlineMenus]);
@@ -210,7 +210,8 @@ export default function CodeViewer({
         } catch {}
     }
     const handleCopy = () => {
-        navigator.clipboard.writeText(finalCode);
+        const cleanCode = finalCode.replace(/  (?=:|=>|>)/g, '');
+        navigator.clipboard.writeText(cleanCode);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
