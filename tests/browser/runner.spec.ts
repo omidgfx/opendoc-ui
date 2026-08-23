@@ -471,6 +471,10 @@ test('renders cyclic OpenAPI schemas in documentation, Runner, and schema views 
     });
     await page.getByText('Create cyclic customer', {exact: true}).first().click();
     await expect(page.getByText('Endpoint documentation could not be rendered')).toHaveCount(0);
+    await page
+        .getByRole('button', {name: /Unified Schema/i})
+        .first()
+        .click();
     await expect(page.getByText('role.customer', {exact: true}).first()).toBeVisible();
 
     await page.getByRole('button', {name: /API Runner/i}).click();
@@ -1140,14 +1144,14 @@ test('selects response examples and the current inspect schema by default', asyn
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const responseCard = page.locator('#response-400');
     await responseCard.locator('> div').first().click();
-    const exampleTab = responseCard.getByRole('button', {name: /Example Representation/i});
+    const exampleTab = responseCard.getByRole('button', {name: /Generated Example/i});
     const schemaTab = responseCard.getByRole('button', {name: /Unified Schema/i});
     await expect(exampleTab).toHaveAttribute('aria-pressed', 'true');
     await expect(schemaTab).toHaveAttribute('aria-pressed', 'false');
     await expect(responseCard.getByRole('button', {name: /Problem/}).first()).toHaveAttribute('aria-pressed', 'true');
     const example = await responseCard.locator('pre code').last().textContent();
-    expect(example).toContain('\n    "error": "bad input"');
-    expect(example).toContain('\n        "field": "id"');
+    expect(example).toContain('\n    "error": "string"');
+    expect(example).toContain('\n        "field": "string"');
 });
 
 test('uses a scroll-aware desktop response navigator and behavior-aware tooltips', async ({page}) => {
@@ -1767,6 +1771,10 @@ test('keeps unresolved external references scoped and lets users add the missing
     await expect(page.getByText('Labels & Stamps API', {exact: true}).first()).toBeVisible();
 
     await page.getByText('Create a shipping label', {exact: true}).first().click();
+    await page
+        .getByRole('button', {name: /Unified Schema/i})
+        .first()
+        .click();
     await expect(page.getByText('shipmentId', {exact: true}).first()).toBeVisible();
     await expect(page.getByRole('heading', {name: 'OpenDoc UI needs to recover'})).toHaveCount(0);
 });
