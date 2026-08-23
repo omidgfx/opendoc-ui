@@ -1,5 +1,5 @@
 import type {ActiveAuth, OpenApiSpec} from '@/src/types';
-import {specStorage} from '@/src/utils/storage/index';
+import {specStorage, uiStorage} from '@/src/utils/storage/index';
 import {isOperationAuthenticated, isOperationProtected} from '@/src/utils/runner/auth';
 import {getPathItemOperations} from '@/src/utils/openapi/operations';
 
@@ -104,6 +104,7 @@ export const SIDEBAR_CONFIG_EVENT = 'opendoc:sidebar-config-changed';
 
 export function writeSidebarConfig(specKey: string, config: Partial<SidebarConfig>): SidebarConfig {
     const next = normalizeSidebarConfig(config);
+    uiStorage.setJSON('sidebar_config', next);
     if (specKey) specStorage.setJSON(specKey, 'sidebar_config', next);
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(SIDEBAR_CONFIG_EVENT, {detail: {specKey, config: next}}));
@@ -111,10 +112,14 @@ export function writeSidebarConfig(specKey: string, config: Partial<SidebarConfi
     return next;
 }
 
-export function readSidebarConfig(specKey: string): SidebarConfig {
-    if (!specKey) return DEFAULT_SIDEBAR_CONFIG;
-    const stored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);
-    return normalizeSidebarConfig(stored);
+export function readSidebarConfig(specKey: string = ''): SidebarConfig {
+    const stored = uiStorage.getJSON<Partial<SidebarConfig>>('sidebar_config', {}, isRecord);
+    if (Object.keys(stored).length > 0) return normalizeSidebarConfig(stored);
+    if (specKey) {
+        const specStored = specStorage.getJSON<Partial<SidebarConfig>>(specKey, 'sidebar_config', {}, isRecord);
+        if (Object.keys(specStored).length > 0) return normalizeSidebarConfig(specStored);
+    }
+    return DEFAULT_SIDEBAR_CONFIG;
 }
 
 export function buildTagTree(

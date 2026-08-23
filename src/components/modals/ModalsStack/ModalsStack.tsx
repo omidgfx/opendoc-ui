@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import CodeViewer from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import {RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../../utils/schemaProperties';
@@ -31,6 +31,9 @@ import {modalRepresentationOf} from '../../../utils/storage/preferences';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {COMBINATOR_META, schemaDeclaresNothing} from '../../../utils/schema/combinators';
 import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
+import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
+import {inlineMenusForCode} from '../../schema/inlineMenus';
+import {formatExample} from '../../../utils/endpoint/exampleFormatting';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -66,7 +69,7 @@ export default function ModalsStack({
     } | null>(null);
     const {preferences, setModalRepresentation} = usePreferences();
     const [activeTabs, setActiveTabs] = useState<{
-        [index: number]: 'table' | 'example' | 'enum';
+        [index: number]: 'table' | 'example' | 'enum' | 'spec-example';
     }>({});
     const [exampleEncodings, setExampleEncodings] = useState<Record<number, string>>({});
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
@@ -374,6 +377,8 @@ export default function ModalsStack({
     const activeResolution = resolveReferenceResult(activeSchemaObj.schema, spec);
     const resolvedSchema = activeResolution.value || activeSchemaObj.schema;
     const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
+    const [modalBranchRevision, setModalBranchRevision] = useState(0);
+    const [modalExampleKeys, setModalExampleKeys] = useState<Record<number, string>>({});
     const modalRepresentation = modalRepresentationOf(preferences, activeSchemaObj.schemaName);
     const activeTab = activeTabs[activeModalIndex] || (modalRepresentation === 'schema' ? 'table' : 'example');
     const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
@@ -402,11 +407,55 @@ export default function ModalsStack({
         setModalRepresentation(activeSchemaObj.schemaName, tab === 'table' ? 'schema' : 'example');
     };
     const modalSelectionScopeKey = `${parsableKey}:schema-modal:${activeSchemaObj.schemaName}`;
+
+    useEffect(() => {
+        const handler = (event: Event) => {
+            const detail = (event as CustomEvent<{key?: string}>).detail;
+            if (detail?.key === modalSelectionScopeKey) {
+                setModalBranchRevision(r => r + 1);
+            }
+        };
+        window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+        return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
+    }, [modalSelectionScopeKey]);
+
     const effectiveModalSchema = applySchemaBranchSelections(
         activeSchemaObj.schema,
         modalSelectionScopeKey,
         resolveReference,
     );
+    const modalOneOfChoices = useMemo(() => {
+        return effectiveModalSchema
+            ? collectSchemaOneOfChoices(effectiveModalSchema, resolveReference, getRefName)
+            : [];
+    }, [effectiveModalSchema, resolveReference, getRefName, modalBranchRevision]);
+
+    const schemaSpecExamples = useMemo(() => {
+        if (!resolvedSchema || typeof resolvedSchema !== 'object') return [];
+        if (resolvedSchema.examples && typeof resolvedSchema.examples === 'object') {
+            if (Array.isArray(resolvedSchema.examples)) {
+                return resolvedSchema.examples.map((item: any, idx: number) => ({
+                    key: `example-${idx}`,
+                    label: `Example ${idx + 1}`,
+                    value: typeof item === 'object' && item !== null && 'value' in item ? item.value : item,
+                }));
+            }
+            return Object.entries(resolvedSchema.examples).map(([key, entry]: [string, any]) => ({
+                key,
+                label: entry?.summary || key,
+                value: typeof entry === 'object' && entry !== null && 'value' in entry ? entry.value : entry,
+            }));
+        }
+        if (resolvedSchema.example !== undefined) {
+            return [{key: 'example', label: 'Example', value: resolvedSchema.example}];
+        }
+        return [];
+    }, [resolvedSchema]);
+
+    const activeModalSpecExample =
+        schemaSpecExamples.find(ex => ex.key === (modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key)) ||
+        schemaSpecExamples[0];
+
     const properties = traverseSchemaProperties(activeSchemaObj.schema);
     const schemaIsRecursiveView = schemaIsRecursive(effectiveModalSchema, resolveReference);
     return (
@@ -440,7 +489,7 @@ export default function ModalsStack({
                             </div>
                         )}
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
+                            <div className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5 flex-wrap items-center gap-1">
                                 <button
                                     onClick={() => setTab('table')}
                                     className={clsx(
@@ -476,9 +525,55 @@ export default function ModalsStack({
                                 >
                                     <i className="ph ph-dna mr-1 text-[10px]" /> Unified Simulation Example
                                 </button>
+                                {schemaSpecExamples.length > 0 && (
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() =>
+                                            setActiveTabs(prev => ({...prev, [activeModalIndex]: 'spec-example'}))
+                                        }
+                                        onKeyDown={event => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                setActiveTabs(prev => ({...prev, [activeModalIndex]: 'spec-example'}));
+                                            }
+                                        }}
+                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${
+                                            activeTab === 'spec-example'
+                                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
+                                                : 'hover:bg-[var(--surface-hover)]'
+                                        }`}
+                                    >
+                                        <span>Example:</span>
+                                        {schemaSpecExamples.length > 1 && activeTab === 'spec-example' ? (
+                                            <span className="inline-flex min-w-0 items-center gap-1">
+                                                <CustomDropdown
+                                                    value={
+                                                        modalExampleKeys[activeModalIndex] || schemaSpecExamples[0].key
+                                                    }
+                                                    onChange={val =>
+                                                        setModalExampleKeys(prev => ({
+                                                            ...prev,
+                                                            [activeModalIndex]: val,
+                                                        }))
+                                                    }
+                                                    options={schemaSpecExamples.map(example => ({
+                                                        value: example.key,
+                                                        label: example.label,
+                                                    }))}
+                                                    className="w-auto min-w-0 max-w-[180px]"
+                                                    ariaLabel="Schema examples"
+                                                    plainTrigger
+                                                />
+                                            </span>
+                                        ) : (
+                                            <span>{activeModalSpecExample?.label || 'Example'}</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
-                            {activeTab === 'example' && (
+                            {(activeTab === 'example' || activeTab === 'spec-example') && (
                                 <div className="flex min-w-[245px] items-center gap-2 animate-fade-in">
                                     <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                                         Encoding type
@@ -575,18 +670,40 @@ export default function ModalsStack({
                                         activeSchemaObj.schemaName,
                                         activeExampleEncoding,
                                     );
+                                    const inlineMenus = inlineMenusForCode(
+                                        simulation.code,
+                                        modalSelectionScopeKey,
+                                        modalOneOfChoices,
+                                    );
                                     return (
                                         <CodeViewer
-                                            code={simulation.code}
+                                            code={inlineMenus.code}
                                             language={simulationLanguage}
                                             maxHeight="none"
                                             lineMarkers={mockMarkersToLineMarkers(simulation.markers, {
                                                 onOpenSchema: onPushSchema,
                                                 onTestPattern: setPatternToTest,
                                             })}
+                                            inlineMenus={inlineMenus.menus}
                                         />
                                     );
                                 })()}
+                            </div>
+                        ) : activeTab === 'spec-example' ? (
+                            <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
+                                <CodeViewer
+                                    code={
+                                        typeof activeModalSpecExample?.value === 'object'
+                                            ? formatExample(
+                                                  activeModalSpecExample.value,
+                                                  activeExampleEncoding,
+                                                  activeSchemaObj.schemaName,
+                                              )
+                                            : String(activeModalSpecExample?.value ?? '')
+                                    }
+                                    language={simulationLanguage}
+                                    maxHeight="none"
+                                />
                             </div>
                         ) : activeTab === 'enum' && isEnum ? (
                             <div className="flex flex-wrap gap-2 p-3 rounded-xl border animate-in fade-in border-[var(--border)] bg-[var(--background)]">
@@ -623,23 +740,9 @@ export default function ModalsStack({
                                     getRefName={getRefName}
                                     onPushSchema={onPushSchema}
                                     useModal={true}
-                                    onViewExample={(name, subSchema) => {
-                                        const example = formatSimulationExample(subSchema, name, 'application/json');
-                                        setHelpModalContent({
-                                            title: `${name} Simulated Example`,
-                                            content: example.code,
-                                            isJson: true,
-                                            lineMarkers: mockMarkersToLineMarkers(example.markers, {
-                                                onOpenSchema: schemaName => {
-                                                    helpTransition.requestClose();
-                                                    onPushSchema(schemaName);
-                                                },
-                                                onTestPattern: setPatternToTest,
-                                            }),
-                                        });
-                                    }}
                                     onTestPattern={setPatternToTest}
                                     selectionScopeKey={modalSelectionScopeKey}
+                                    showSchemaWide={true}
                                 />
                             </div>
                         )}

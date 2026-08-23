@@ -442,7 +442,7 @@ export default function CodeViewer({
                                                 setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
                                             }
                                             className={clsx(
-                                                'inline-flex items-center justify-center opacity-95 transition-opacity hover:opacity-100 cursor-pointer',
+                                                'inline-flex items-center justify-center p-0 bg-transparent border-0 opacity-70 hover:opacity-100 cursor-pointer transition-opacity',
                                                 menu.tone === 'xml'
                                                     ? 'text-[var(--accent)]'
                                                     : menu.tone === 'string'
@@ -455,14 +455,7 @@ export default function CodeViewer({
                                             aria-haspopup="menu"
                                             aria-expanded={open}
                                         >
-                                            <span className="inline-flex items-center rounded-sm bg-[var(--background)]/85 px-[1px]">
-                                                <i
-                                                    className={clsx(
-                                                        'ph-fill ph-caret-circle-down text-[12px] transition-transform',
-                                                        open && 'rotate-180',
-                                                    )}
-                                                />
-                                            </span>
+                                            <i className="ph-fill ph-caret-down text-[11px]" />
                                         </button>
                                         {open && (
                                             <div className="absolute left-4 top-1/2 z-30 min-w-[220px] max-w-[280px] -translate-y-1/2 overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]">

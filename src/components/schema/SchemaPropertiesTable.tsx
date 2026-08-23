@@ -21,14 +21,17 @@ import {useModalTransition} from '../../hooks/useModalTransition';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import CodeViewer from '../common/CodeViewer';
 import SerializerPlaygroundModal from '../modals/SerializerPlaygroundModal';
+import CustomDropdown from '../common/CustomDropdown';
 import {
     applySchemaBranchSelections,
     readSchemaBranchSelections,
     SCHEMA_BRANCH_SELECTION_EVENT,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
+import {collectSchemaOneOfChoices} from '../../utils/schema/branchChoices';
 import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
 import {mockMarkersToLineMarkers} from '../../utils/lineMarkers';
+import {inlineMenusForCode} from './inlineMenus';
 
 interface SchemaPropertiesTableProps {
     properties: {
@@ -43,6 +46,7 @@ interface SchemaPropertiesTableProps {
     useModal?: boolean;
     inspectName?: string | null;
     selectionScopeKey?: string;
+    showSchemaWide?: boolean;
 }
 
 const KNOWN_SCHEMA_KEYS = new Set([
@@ -135,6 +139,7 @@ export default function SchemaPropertiesTable({
     useModal = false,
     inspectName = null,
     selectionScopeKey,
+    showSchemaWide = false,
 }: SchemaPropertiesTableProps) {
     const {preferences} = usePreferences();
     const bp = useBreakpoint();
@@ -145,7 +150,13 @@ export default function SchemaPropertiesTable({
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
     const [copiedPattern, setCopiedPattern] = useState(false);
-    const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
+    const [modalExampleTab, setModalExampleTab] = useState<'generated' | 'spec'>('generated');
+    const [modalSpecExampleKey, setModalSpecExampleKey] = useState('');
+    const detailsTransition = useModalTransition(!!detailsModalName, () => {
+        setDetailsModalName(null);
+        setModalExampleTab('generated');
+        setModalSpecExampleKey('');
+    });
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
     const getSchemaName = (): string | null => {
@@ -381,46 +392,34 @@ export default function SchemaPropertiesTable({
                         const active = kind === 'oneOf' ? selected === index : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
                         return (
-                            <div
+                            <label
                                 key={`${name}:${kind}:${index}:${controlScope}`}
-                                className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
+                                className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)] cursor-pointer"
                             >
-                                {controlScope !== 'details' && kind === 'oneOf' ? (
-                                    <label className="flex items-start gap-2 cursor-pointer">
-                                        <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
-                                            <input
-                                                type="radio"
-                                                name={`oneof-${selectionKey}-${controlScope}-${name}`}
-                                                checked={active}
-                                                onChange={() => updateBranchSelection(name, index)}
-                                                className="absolute inset-0 m-0 cursor-pointer opacity-0"
-                                            />
-                                            <i
-                                                className={clsx(
-                                                    active
-                                                        ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
-                                                        : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
-                                                )}
-                                            />
-                                        </span>
-                                        <span className="min-w-0 break-words">
-                                            {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
-                                        </span>
-                                    </label>
-                                ) : (
-                                    <>
-                                        <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)] shrink-0" />
-                                        <span className="min-w-0 break-words">
-                                            {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
-                                            {controlScope === 'details' && active && kind === 'oneOf' && (
-                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-[var(--primary)]/10 px-1.5 py-0.2 text-[8.5px] font-bold text-[var(--primary)]">
-                                                    active branch
-                                                </span>
+                                {kind === 'oneOf' ? (
+                                    <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                        <input
+                                            type="radio"
+                                            name={`oneof-${selectionKey}-${controlScope}-${name}`}
+                                            checked={active}
+                                            onChange={() => updateBranchSelection(name, index)}
+                                            className="absolute inset-0 m-0 cursor-pointer opacity-0"
+                                        />
+                                        <i
+                                            className={clsx(
+                                                active
+                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
+                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
                                             )}
-                                        </span>
-                                    </>
+                                        />
+                                    </span>
+                                ) : (
+                                    <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)] shrink-0" />
                                 )}
-                            </div>
+                                <span className="min-w-0 break-words">
+                                    {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
+                                </span>
+                            </label>
                         );
                     })}
                 </div>
@@ -526,11 +525,6 @@ export default function SchemaPropertiesTable({
     const schemaContentEncoding = (effectiveSchema as any)?.contentEncoding;
     const schemaContentMediaType = (effectiveSchema as any)?.contentMediaType;
     const notSchema = (effectiveSchema as any)?.not;
-    const isOpenObject =
-        (effectiveSchema as any)?.type === 'object' &&
-        !(effectiveSchema as any).properties &&
-        (effectiveSchema as any)?.additionalProperties !== undefined &&
-        (effectiveSchema as any)?.additionalProperties !== false;
     const hasSchemaNotes =
         tupleEntries.length > 0 ||
         dependentRequiredEntries.length > 0 ||
@@ -542,13 +536,53 @@ export default function SchemaPropertiesTable({
         !!schemaContentMediaType ||
         !!arrayItemsSchema;
 
-    if (
-        Object.keys(effectiveProperties).length === 0 &&
-        patternEntries.length === 0 &&
-        !notSchema &&
-        !isOpenObject &&
-        !hasSchemaNotes
-    ) {
+    const schemaWideRows = useMemo(() => {
+        const rows: Array<{label: string; value: React.ReactNode}> = [];
+        if ((effectiveSchema as any)?.title || inspectName || schemaName)
+            rows.push({
+                label: 'Name',
+                value: inspectName || schemaName || (effectiveSchema as any)?.title || 'Schema',
+            });
+        rows.push({label: 'Type', value: displayType(effectiveSchema)});
+        if (Array.isArray((effectiveSchema as any)?.required) && (effectiveSchema as any).required.length > 0)
+            rows.push({label: 'Required', value: (effectiveSchema as any).required.join(', ')});
+        if ((effectiveSchema as any)?.minProperties !== undefined)
+            rows.push({label: 'Min props', value: String((effectiveSchema as any).minProperties)});
+        if ((effectiveSchema as any)?.maxProperties !== undefined)
+            rows.push({label: 'Max props', value: String((effectiveSchema as any).maxProperties)});
+        if (Object.keys((effectiveSchema as any)?.patternProperties || {}).length > 0)
+            rows.push({
+                label: 'Pattern props',
+                value: `${Object.keys((effectiveSchema as any).patternProperties).length} patterns`,
+            });
+        if ((effectiveSchema as any)?.additionalProperties !== undefined)
+            rows.push({
+                label: 'Addl. props',
+                value:
+                    typeof (effectiveSchema as any).additionalProperties === 'boolean'
+                        ? String((effectiveSchema as any).additionalProperties)
+                        : typeSummary((effectiveSchema as any).additionalProperties),
+            });
+        if ((effectiveSchema as any)?.unevaluatedProperties !== undefined)
+            rows.push({
+                label: 'Unevaluated',
+                value:
+                    typeof (effectiveSchema as any).unevaluatedProperties === 'boolean'
+                        ? String((effectiveSchema as any).unevaluatedProperties)
+                        : typeSummary((effectiveSchema as any).unevaluatedProperties),
+            });
+        if (Array.isArray((effectiveSchema as any)?.allOf) && (effectiveSchema as any).allOf.length > 0)
+            rows.push({label: 'allOf', value: `${(effectiveSchema as any).allOf.length}`});
+        if (Array.isArray((effectiveSchema as any)?.anyOf) && (effectiveSchema as any).anyOf.length > 0)
+            rows.push({label: 'anyOf', value: `${(effectiveSchema as any).anyOf.length}`});
+        if (Array.isArray((effectiveSchema as any)?.oneOf) && (effectiveSchema as any).oneOf.length > 0)
+            rows.push({label: 'oneOf', value: `${(effectiveSchema as any).oneOf.length}`});
+        if ((effectiveSchema as any)?.discriminator?.propertyName)
+            rows.push({label: 'Discriminator', value: (effectiveSchema as any).discriminator.propertyName});
+        return rows;
+    }, [effectiveSchema, inspectName, schemaName]);
+
+    if (Object.keys(effectiveProperties).length === 0 && patternEntries.length === 0 && !notSchema && !hasSchemaNotes) {
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
     }
 
@@ -1034,7 +1068,7 @@ export default function SchemaPropertiesTable({
                     className="grid gap-2 bg-[var(--surface)] px-3 py-2 items-start text-[10px]"
                     style={{gridTemplateColumns: `${labelColumn} minmax(0,1fr)`}}
                 >
-                    <div className="font-semibold text-[var(--text-muted)]">{row.label}</div>
+                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">{row.label}</div>
                     <div className={GRID_TEXT_CLASS}>{row.value}</div>
                 </div>
             ))}
@@ -1051,15 +1085,70 @@ export default function SchemaPropertiesTable({
             : [];
     const activeValidationRows =
         detailsModalName && activeDetailsProperty ? buildValidationRows(detailsModalName, activeDetailsProperty) : [];
+    const activeOneOfChoices = useMemo(() => {
+        return activeDetailsProperty
+            ? collectSchemaOneOfChoices(activeDetailsProperty, resolveReference, getRefName)
+            : [];
+    }, [activeDetailsProperty, resolveReference, getRefName, selectionRevision]);
     const activeMockExample = useMemo(() => {
         if (!detailsModalName || !activeDetailsProperty) return null;
         return getMockSnippetWithMarkers(activeDetailsProperty, null);
-    }, [detailsModalName, activeDetailsProperty]);
+    }, [detailsModalName, activeDetailsProperty, selectionRevision]);
+
+    const propertySpecExamples = useMemo(() => {
+        if (!activeDetailsProperty) return [];
+        const resolved = resolveReference(activeDetailsProperty) || activeDetailsProperty;
+        if (resolved?.examples && typeof resolved.examples === 'object') {
+            if (Array.isArray(resolved.examples)) {
+                return resolved.examples.map((item: any, idx: number) => ({
+                    key: `example-${idx}`,
+                    label: `Example ${idx + 1}`,
+                    value: typeof item === 'object' && item !== null && 'value' in item ? item.value : item,
+                }));
+            }
+            return Object.entries(resolved.examples).map(([key, entry]: [string, any]) => ({
+                key,
+                label: entry?.summary || key,
+                value: typeof entry === 'object' && entry !== null && 'value' in entry ? entry.value : entry,
+            }));
+        }
+        if (resolved?.example !== undefined) {
+            return [{key: 'example', label: 'Example', value: resolved.example}];
+        }
+        return [];
+    }, [activeDetailsProperty, resolveReference]);
+
+    const activePropertySpecExample =
+        propertySpecExamples.find(ex => ex.key === (modalSpecExampleKey || propertySpecExamples[0]?.key)) ||
+        propertySpecExamples[0];
+
+    const inlineMockMenus = useMemo(() => {
+        if (!activeMockExample) return {code: '', menus: []};
+        return inlineMenusForCode(activeMockExample.code, selectionKey, activeOneOfChoices);
+    }, [activeMockExample, selectionKey, activeOneOfChoices]);
 
     return (
         <>
-            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
-                <div className="flex min-w-0 h-full min-h-0 flex-col bg-[var(--surface)]">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in max-h-[calc(100vh-12.5rem)] flex flex-col">
+                {showSchemaWide && schemaWideRows.length > 0 && (
+                    <div className="border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2 shrink-0">
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mr-1">
+                                Schema:
+                            </span>
+                            {schemaWideRows.map(row => (
+                                <div
+                                    key={row.label}
+                                    className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
+                                >
+                                    <span className="font-semibold text-[var(--text-muted)]">{row.label}:</span>
+                                    <span className="text-[var(--text)] font-medium">{row.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                <div className="flex min-w-0 max-h-full min-h-0 flex-col bg-[var(--surface)] flex-1">
                     <CardOrTable
                         preferCards={preferCards}
                         maxWidth={CARD_LAYOUT_WIDTH}
@@ -1107,7 +1196,7 @@ export default function SchemaPropertiesTable({
                             </div>
                         )}
                         table={() => (
-                            <div className="h-full min-h-0 overflow-auto scrollbar-thin">
+                            <div className="max-h-[calc(100vh-14rem)] overflow-auto scrollbar-thin">
                                 <table className="w-full min-w-[980px] text-left border-collapse text-xs">
                                     <colgroup>
                                         <col style={{width: '220px'}} />
@@ -1227,14 +1316,66 @@ export default function SchemaPropertiesTable({
                                     </section>
                                 </div>
 
-                                {activeMockExample && (
-                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between">
-                                            <h4 className={GRID_TITLE_CLASS}>Simulated Example</h4>
+                                <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                                    <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setModalExampleTab('generated')}
+                                                aria-pressed={modalExampleTab === 'generated'}
+                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                                                    modalExampleTab === 'generated'
+                                                        ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
+                                                        : 'hover:opacity-80 text-[var(--text-muted)]'
+                                                }`}
+                                            >
+                                                Generated Example
+                                            </button>
+                                            {propertySpecExamples.length > 0 && (
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => setModalExampleTab('spec')}
+                                                    onKeyDown={event => {
+                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                            event.preventDefault();
+                                                            setModalExampleTab('spec');
+                                                        }
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${
+                                                        modalExampleTab === 'spec'
+                                                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
+                                                            : 'hover:opacity-80 text-[var(--text-muted)]'
+                                                    }`}
+                                                >
+                                                    <span>Example:</span>
+                                                    {propertySpecExamples.length > 1 && modalExampleTab === 'spec' ? (
+                                                        <span className="inline-flex min-w-0 items-center gap-1">
+                                                            <CustomDropdown
+                                                                value={
+                                                                    modalSpecExampleKey || propertySpecExamples[0].key
+                                                                }
+                                                                onChange={setModalSpecExampleKey}
+                                                                options={propertySpecExamples.map(example => ({
+                                                                    value: example.key,
+                                                                    label: example.label,
+                                                                }))}
+                                                                className="w-auto min-w-0 max-w-[180px]"
+                                                                ariaLabel="Property examples"
+                                                                plainTrigger
+                                                            />
+                                                        </span>
+                                                    ) : (
+                                                        <span>{activePropertySpecExample?.label || 'Example'}</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="p-3">
+                                    </div>
+                                    <div className="p-3">
+                                        {modalExampleTab === 'generated' && activeMockExample ? (
                                             <CodeViewer
-                                                code={activeMockExample.code}
+                                                code={inlineMockMenus.code}
                                                 language="json"
                                                 maxHeight="340px"
                                                 lineMarkers={mockMarkersToLineMarkers(activeMockExample.markers, {
@@ -1244,10 +1385,21 @@ export default function SchemaPropertiesTable({
                                                     },
                                                     onTestPattern,
                                                 })}
+                                                inlineMenus={inlineMockMenus.menus}
                                             />
-                                        </div>
-                                    </section>
-                                )}
+                                        ) : (
+                                            <CodeViewer
+                                                code={
+                                                    typeof activePropertySpecExample?.value === 'object'
+                                                        ? JSON.stringify(activePropertySpecExample.value, null, 2)
+                                                        : String(activePropertySpecExample?.value ?? '')
+                                                }
+                                                language="json"
+                                                maxHeight="340px"
+                                            />
+                                        )}
+                                    </div>
+                                </section>
                             </div>
                             <footer className="px-4 sm:px-5 py-3 border-t border-[var(--border)] bg-[var(--background)] shrink-0 flex items-center justify-end gap-2">
                                 <button

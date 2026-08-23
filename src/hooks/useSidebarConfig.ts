@@ -13,7 +13,7 @@ export function useSidebarConfig(specKey: string) {
     useEffect(() => {
         const handler = (event: Event) => {
             const detail = (event as CustomEvent<{specKey: string; config: SidebarConfig}>).detail;
-            if (!detail || detail.specKey !== (specKey || '')) return;
+            if (!detail?.config) return;
             setConfig(detail.config);
         };
         window.addEventListener(SIDEBAR_CONFIG_EVENT, handler);
