@@ -22,7 +22,12 @@ import {
 } from '../../../utils/runner/mockGenerator';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '../../../utils/lineMarkers';
 import type {OpenApiSpec} from '../../../types';
-import {getRefName, resolveReference as resolveOpenApiReference, resolveReferenceResult} from '../../../utils/openapi';
+import {
+    exampleValueOf,
+    getRefName,
+    resolveReference as resolveOpenApiReference,
+    resolveReferenceResult,
+} from '../../../utils/openapi';
 import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';
 import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
 import {flattenSchemaProperties} from '../../../utils/schemaProperties';
@@ -425,32 +430,47 @@ export default function ModalsStack({
         resolveReference,
     );
     const modalOneOfChoices = useMemo(() => {
-        return effectiveModalSchema
-            ? collectSchemaOneOfChoices(effectiveModalSchema, resolveReference, getRefName)
+        return activeSchemaObj?.schema
+            ? collectSchemaOneOfChoices(activeSchemaObj.schema, resolveReference, getRefName)
             : [];
-    }, [effectiveModalSchema, resolveReference, getRefName, modalBranchRevision]);
+    }, [activeSchemaObj?.schema, resolveReference, getRefName, modalBranchRevision]);
 
     const schemaSpecExamples = useMemo(() => {
         if (!resolvedSchema || typeof resolvedSchema !== 'object') return [];
+        const list: Array<{key: string; label: string; value: unknown; summary?: string; description?: string}> = [];
         if (resolvedSchema.examples && typeof resolvedSchema.examples === 'object') {
             if (Array.isArray(resolvedSchema.examples)) {
-                return resolvedSchema.examples.map((item: any, idx: number) => ({
-                    key: `example-${idx}`,
-                    label: `Example ${idx + 1}`,
-                    value: typeof item === 'object' && item !== null && 'value' in item ? item.value : item,
-                }));
+                resolvedSchema.examples.forEach((item: any, idx: number) => {
+                    const val = typeof item === 'object' && item !== null && 'value' in item ? item.value : item;
+                    list.push({
+                        key: `example-${idx}`,
+                        label: item?.summary || `Example ${idx + 1}`,
+                        summary: item?.summary,
+                        description: item?.description,
+                        value: exampleValueOf(item, spec),
+                    });
+                });
+            } else {
+                Object.entries(resolvedSchema.examples).forEach(([key, entry]: [string, any]) => {
+                    list.push({
+                        key,
+                        label: entry?.summary || key,
+                        summary: entry?.summary,
+                        description: entry?.description,
+                        value: exampleValueOf(entry, spec),
+                    });
+                });
             }
-            return Object.entries(resolvedSchema.examples).map(([key, entry]: [string, any]) => ({
-                key,
-                label: entry?.summary || key,
-                value: typeof entry === 'object' && entry !== null && 'value' in entry ? entry.value : entry,
-            }));
         }
-        if (resolvedSchema.example !== undefined) {
-            return [{key: 'example', label: 'Example', value: resolvedSchema.example}];
+        if (list.length === 0 && resolvedSchema.example !== undefined) {
+            list.push({
+                key: 'example',
+                label: 'Example',
+                value: resolvedSchema.example,
+            });
         }
-        return [];
-    }, [resolvedSchema]);
+        return list;
+    }, [resolvedSchema, spec]);
 
     const activeModalSpecExample =
         schemaSpecExamples.find(ex => ex.key === (modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key)) ||

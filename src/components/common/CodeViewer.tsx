@@ -441,16 +441,7 @@ export default function CodeViewer({
                                             onClick={() =>
                                                 setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
                                             }
-                                            className={clsx(
-                                                'inline-flex items-center justify-center p-0 bg-transparent border-0 opacity-70 hover:opacity-100 cursor-pointer transition-opacity',
-                                                menu.tone === 'xml'
-                                                    ? 'text-[var(--accent)]'
-                                                    : menu.tone === 'string'
-                                                      ? 'text-[var(--method-get)]'
-                                                      : menu.tone === 'property'
-                                                        ? 'text-[var(--primary)]'
-                                                        : 'text-[var(--text)]',
-                                            )}
+                                            className="inline-flex items-center justify-center px-[2px] py-0 bg-transparent border-0 text-[var(--primary)] opacity-80 hover:opacity-100 cursor-pointer transition-opacity"
                                             aria-label={menu.ariaLabel || 'Select schema branch'}
                                             aria-haspopup="menu"
                                             aria-expanded={open}

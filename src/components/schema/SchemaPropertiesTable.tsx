@@ -1061,15 +1061,18 @@ export default function SchemaPropertiesTable({
         prefix: string,
         labelColumn = '120px',
     ) => (
-        <div className="grid gap-px bg-[var(--border)]">
-            {rows.map(row => (
+        <div className="flex flex-col flex-1 divide-y divide-[var(--border)]">
+            {rows.map((row, idx) => (
                 <div
                     key={`${prefix}:${row.label}`}
-                    className="grid gap-2 bg-[var(--surface)] px-3 py-2 items-start text-[10px]"
+                    className={clsx(
+                        'grid gap-2 px-3 py-1.5 items-start text-[10px] transition-colors',
+                        idx % 2 === 1 ? 'bg-[var(--background)]' : 'bg-[var(--surface)]',
+                    )}
                     style={{gridTemplateColumns: `${labelColumn} minmax(0,1fr)`}}
                 >
-                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">{row.label}</div>
-                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
+                    <div className="font-semibold text-[var(--text-muted)] shrink-0">{row.label}</div>
+                    <div className={clsx(GRID_TEXT_CLASS, 'min-w-0 break-words')}>{row.value}</div>
                 </div>
             ))}
         </div>
@@ -1300,16 +1303,16 @@ export default function SchemaPropertiesTable({
                                     </div>
                                 )}
 
-                                <div className="grid gap-3 md:grid-cols-2 items-start">
-                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+                                <div className="grid gap-3 md:grid-cols-2 items-stretch">
+                                    <section className="flex flex-col h-full rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                                        <div className="px-3 py-1.5 border-b border-[var(--border)] bg-[var(--surface-hover)] shrink-0">
                                             <h4 className={GRID_TITLE_CLASS}>Field Specifications</h4>
                                         </div>
                                         {renderPropertyRowsGrid(activeSpecRows, 'spec')}
                                     </section>
 
-                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+                                    <section className="flex flex-col h-full rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                                        <div className="px-3 py-1.5 border-b border-[var(--border)] bg-[var(--surface-hover)] shrink-0">
                                             <h4 className={GRID_TITLE_CLASS}>Validation</h4>
                                         </div>
                                         {renderPropertyRowsGrid(activeValidationRows, 'validation')}
