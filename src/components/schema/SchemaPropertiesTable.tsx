@@ -27,6 +27,8 @@ import {
     SCHEMA_BRANCH_SELECTION_EVENT,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
+import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
+import {mockMarkersToLineMarkers} from '../../utils/lineMarkers';
 
 interface SchemaPropertiesTableProps {
     properties: {
@@ -36,17 +38,74 @@ interface SchemaPropertiesTableProps {
     resolveReference: (item: any) => any;
     getRefName: (refStr: string) => string;
     onPushSchema: (schemaName: string) => void;
-    onViewExample: (name: string, schema: any) => void;
+    onViewExample?: (name: string, schema: any) => void;
     onTestPattern: (pattern: string) => void;
     useModal?: boolean;
     inspectName?: string | null;
     selectionScopeKey?: string;
 }
 
-interface PropertyRowDetailsSection {
-    title: string;
-    rows: Array<{label: string; value: React.ReactNode}>;
-}
+const KNOWN_SCHEMA_KEYS = new Set([
+    'type',
+    'format',
+    'description',
+    'title',
+    'default',
+    'example',
+    'examples',
+    'enum',
+    'const',
+    'pattern',
+    'minLength',
+    'maxLength',
+    'minimum',
+    'maximum',
+    'exclusiveMinimum',
+    'exclusiveMaximum',
+    'multipleOf',
+    'items',
+    'prefixItems',
+    'minItems',
+    'maxItems',
+    'uniqueItems',
+    'contains',
+    'minContains',
+    'maxContains',
+    'unevaluatedItems',
+    'properties',
+    'required',
+    'additionalProperties',
+    'unevaluatedProperties',
+    'minProperties',
+    'maxProperties',
+    'patternProperties',
+    'propertyNames',
+    'dependentRequired',
+    'dependentSchemas',
+    'oneOf',
+    'anyOf',
+    'allOf',
+    'not',
+    'discriminator',
+    'if',
+    'then',
+    'else',
+    'readOnly',
+    'writeOnly',
+    'deprecated',
+    'contentEncoding',
+    'contentMediaType',
+    'contentSchema',
+    'xml',
+    'externalDocs',
+    '$ref',
+    '$schema',
+    '$id',
+    '$anchor',
+    '$comment',
+    '$defs',
+    'definitions',
+]);
 
 const formatExampleText = (value: unknown): string => {
     if (value !== null && typeof value === 'object') {
@@ -59,8 +118,6 @@ const formatExampleText = (value: unknown): string => {
     return text.length > 60 ? `${text.slice(0, 60)}\u2026` : text;
 };
 
-const CHROME_BUTTON_CLASS =
-    'sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer';
 const GRID_TITLE_CLASS = 'text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)]';
 const GRID_TEXT_CLASS = 'text-[10px] text-[var(--text)] leading-relaxed';
 const FACT_PILL_BASE_CLASS =
@@ -74,7 +131,6 @@ export default function SchemaPropertiesTable({
     resolveReference,
     getRefName,
     onPushSchema,
-    onViewExample,
     onTestPattern,
     useModal = false,
     inspectName = null,
@@ -83,16 +139,12 @@ export default function SchemaPropertiesTable({
     const {preferences} = usePreferences();
     const bp = useBreakpoint();
     const isMobileLayout = bp === 'mobile';
-    const isTabletLayout = bp === 'tablet';
     const cardLayout = preferences.narrowTableLayout === 'cards';
     const preferCards = isMobileLayout || (!useModal && cardLayout);
-    const [selectedPropertyName, setSelectedPropertyName] = useState('');
     const [detailsModalName, setDetailsModalName] = useState<string | null>(null);
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
-    const [expandedCardProperties, setExpandedCardProperties] = useState<Record<string, boolean>>({});
-    const sidebarOpen = !isMobileLayout && !sidebarCollapsed;
+    const [copiedPattern, setCopiedPattern] = useState(false);
     const detailsTransition = useModalTransition(!!detailsModalName, () => setDetailsModalName(null));
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
 
@@ -148,15 +200,6 @@ export default function SchemaPropertiesTable({
     );
     const propertyEntries = useMemo(() => Object.entries(displayProperties || {}), [displayProperties]);
 
-    useEffect(() => {
-        if (propertyEntries.length === 0) {
-            setSelectedPropertyName('');
-            return;
-        }
-        if (selectedPropertyName && displayProperties[selectedPropertyName]) return;
-        setSelectedPropertyName(propertyEntries[0][0]);
-    }, [displayProperties, propertyEntries, selectedPropertyName]);
-
     const displayType = (prop: any): string => {
         if (prop === true) return 'any';
         if (prop === false) return 'never';
@@ -202,14 +245,14 @@ export default function SchemaPropertiesTable({
         return 'any';
     };
 
-    const renderSchemaLink = (schemaName: string, withIcon = true) => (
+    const renderSchemaLink = (targetSchemaName: string, withIcon = true) => (
         <button
             type="button"
-            onClick={() => onPushSchema(schemaName)}
+            onClick={() => onPushSchema(targetSchemaName)}
             className="inline-flex items-center gap-1 text-left font-semibold text-[var(--primary)] hover:underline cursor-pointer"
         >
             {withIcon && <i className="ph ph-diamonds-four text-[10px]"></i>}
-            <span className="break-all">{schemaName}</span>
+            <span className="break-all">{targetSchemaName}</span>
         </button>
     );
 
@@ -325,7 +368,7 @@ export default function SchemaPropertiesTable({
         name: string,
         kind: 'oneOf' | 'anyOf' | 'allOf',
         branches: any[],
-        controlScope: 'table' | 'sidebar' | 'details' | 'mobile' = 'table',
+        controlScope: 'table' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
         if (!Array.isArray(branches) || branches.length === 0) return null;
         const selected = kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
@@ -338,34 +381,46 @@ export default function SchemaPropertiesTable({
                         const active = kind === 'oneOf' ? selected === index : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
                         return (
-                            <label
+                            <div
                                 key={`${name}:${kind}:${index}:${controlScope}`}
                                 className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]"
                             >
-                                {kind === 'oneOf' ? (
-                                    <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
-                                        <input
-                                            type="radio"
-                                            name={`oneof-${selectionKey}-${controlScope}-${name}`}
-                                            checked={active}
-                                            onChange={() => updateBranchSelection(name, index)}
-                                            className="absolute inset-0 m-0 cursor-pointer opacity-0"
-                                        />
-                                        <i
-                                            className={clsx(
-                                                active
-                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
-                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
-                                            )}
-                                        />
-                                    </span>
+                                {controlScope !== 'details' && kind === 'oneOf' ? (
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                        <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                            <input
+                                                type="radio"
+                                                name={`oneof-${selectionKey}-${controlScope}-${name}`}
+                                                checked={active}
+                                                onChange={() => updateBranchSelection(name, index)}
+                                                className="absolute inset-0 m-0 cursor-pointer opacity-0"
+                                            />
+                                            <i
+                                                className={clsx(
+                                                    active
+                                                        ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
+                                                        : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
+                                                )}
+                                            />
+                                        </span>
+                                        <span className="min-w-0 break-words">
+                                            {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
+                                        </span>
+                                    </label>
                                 ) : (
-                                    <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)]"></span>
+                                    <>
+                                        <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)] shrink-0" />
+                                        <span className="min-w-0 break-words">
+                                            {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
+                                            {controlScope === 'details' && active && kind === 'oneOf' && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-[var(--primary)]/10 px-1.5 py-0.2 text-[8.5px] font-bold text-[var(--primary)]">
+                                                    active branch
+                                                </span>
+                                            )}
+                                        </span>
+                                    </>
                                 )}
-                                <span className="min-w-0 break-words">
-                                    {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}
-                                </span>
-                            </label>
+                            </div>
                         );
                     })}
                 </div>
@@ -376,7 +431,7 @@ export default function SchemaPropertiesTable({
     const renderStructureDetails = (
         name: string,
         prop: any,
-        controlScope: 'table' | 'sidebar' | 'details' | 'mobile' = 'table',
+        controlScope: 'table' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
         if (!prop || prop === true || prop === false || prop.$ref) return null;
         const resolved = resolveReference(prop) || prop;
@@ -471,7 +526,6 @@ export default function SchemaPropertiesTable({
     const schemaContentEncoding = (effectiveSchema as any)?.contentEncoding;
     const schemaContentMediaType = (effectiveSchema as any)?.contentMediaType;
     const notSchema = (effectiveSchema as any)?.not;
-    const additionalPropertiesSchema = (effectiveSchema as any)?.additionalProperties;
     const isOpenObject =
         (effectiveSchema as any)?.type === 'object' &&
         !(effectiveSchema as any).properties &&
@@ -662,7 +716,7 @@ export default function SchemaPropertiesTable({
         return {
             isRequired: facts.isRequired,
             name: (
-                <div className={'flex items-start gap-1'}>
+                <div className="flex items-start gap-1">
                     <span className="break-all">{name}</span>
                     {facts.isRequired && (
                         <Tip content="Required field">
@@ -703,130 +757,38 @@ export default function SchemaPropertiesTable({
         };
     };
 
-    const schemaWideRows = useMemo(() => {
-        const rows: Array<{label: string; value: React.ReactNode}> = [];
-        if ((effectiveSchema as any)?.title || inspectName || schemaName)
-            rows.push({
-                label: 'Name',
-                value: inspectName || schemaName || (effectiveSchema as any)?.title || 'Schema',
-            });
-        if ((effectiveSchema as any)?.description)
-            rows.push({
-                label: 'Description',
-                value: <Markdown text={(effectiveSchema as any).description} className="text-[10px] leading-relaxed" />,
-            });
-        rows.push({label: 'Type', value: displayType(effectiveSchema)});
-        if ((effectiveSchema as any)?.$schema)
-            rows.push({label: '$schema', value: <code className="mono">{(effectiveSchema as any).$schema}</code>});
-        if ((effectiveSchema as any)?.$id)
-            rows.push({label: '$id', value: <code className="mono">{(effectiveSchema as any).$id}</code>});
-        if ((effectiveSchema as any)?.$anchor)
-            rows.push({label: '$anchor', value: <code className="mono">{(effectiveSchema as any).$anchor}</code>});
-        if (Array.isArray((effectiveSchema as any)?.required) && (effectiveSchema as any).required.length > 0)
-            rows.push({label: 'Required', value: (effectiveSchema as any).required.join(', ')});
-        if ((effectiveSchema as any)?.minProperties !== undefined)
-            rows.push({label: 'Min props', value: String((effectiveSchema as any).minProperties)});
-        if ((effectiveSchema as any)?.maxProperties !== undefined)
-            rows.push({label: 'Max props', value: String((effectiveSchema as any).maxProperties)});
-        if (Object.keys((effectiveSchema as any)?.patternProperties || {}).length > 0)
-            rows.push({
-                label: 'Pattern props',
-                value: `${Object.keys((effectiveSchema as any).patternProperties).length} pattern${Object.keys((effectiveSchema as any).patternProperties).length === 1 ? '' : 's'}`,
-            });
-        if (propertyNamesSchema?.pattern)
-            rows.push({label: 'Property names', value: <code className="mono">{propertyNamesSchema.pattern}</code>});
-        if (additionalPropertiesSchema !== undefined)
-            rows.push({
-                label: 'Addl. props',
-                value:
-                    typeof additionalPropertiesSchema === 'boolean'
-                        ? String(additionalPropertiesSchema)
-                        : typeSummary(additionalPropertiesSchema),
-            });
-        if (unevaluatedProperties !== undefined)
-            rows.push({
-                label: 'Unevaluated',
-                value:
-                    typeof unevaluatedProperties === 'boolean'
-                        ? String(unevaluatedProperties)
-                        : typeSummary(unevaluatedProperties),
-            });
-        if (Array.isArray((effectiveSchema as any)?.allOf) && (effectiveSchema as any).allOf.length > 0)
-            rows.push({label: 'allOf', value: `${(effectiveSchema as any).allOf.length}`});
-        if (Array.isArray((effectiveSchema as any)?.anyOf) && (effectiveSchema as any).anyOf.length > 0)
-            rows.push({label: 'anyOf', value: `${(effectiveSchema as any).anyOf.length}`});
-        if (Array.isArray((effectiveSchema as any)?.oneOf) && (effectiveSchema as any).oneOf.length > 0)
-            rows.push({label: 'oneOf', value: `${(effectiveSchema as any).oneOf.length}`});
-        if (discriminator?.propertyName) rows.push({label: 'Discriminator', value: discriminator.propertyName});
-        if (ifSchema || thenSchema || elseSchema) rows.push({label: 'if/then/else', value: 'present'});
-        if (dependentRequiredEntries.length > 0)
-            rows.push({label: 'Dependent req', value: `${dependentRequiredEntries.length}`});
-        if ((effectiveSchema as any)?.example !== undefined)
-            rows.push({
-                label: 'Example',
-                value: <code className="mono">{formatExampleText((effectiveSchema as any).example)}</code>,
-            });
-        const extensionKeys = Object.keys(effectiveSchema || {}).filter(key => key.startsWith('x-'));
-        if (extensionKeys.length > 0)
-            rows.push({
-                label: 'Extensions',
-                value: `${extensionKeys.length} key${extensionKeys.length === 1 ? '' : 's'}`,
-            });
-        return rows;
-    }, [
-        additionalPropertiesSchema,
-        dependentRequiredEntries.length,
-        discriminator?.propertyName,
-        effectiveSchema,
-        elseSchema,
-        ifSchema,
-        inspectName,
-        propertyNamesSchema?.pattern,
-        schemaName,
-        thenSchema,
-        unevaluatedProperties,
-    ]);
-
-    const selectedProperty = displayProperties[selectedPropertyName];
-    const selectedEffectiveProperty = effectiveProperties[selectedPropertyName];
-
-    const buildPropertyRows = (
+    const buildFieldSpecificationsRows = (
         propertyName: string,
         propertySchema: any,
-        controlScope: 'sidebar' | 'mobile' | 'details' = 'sidebar',
-        options: {includeName?: boolean; includeDescription?: boolean; includePatternRow?: boolean} = {},
     ): Array<{label: string; value: React.ReactNode}> => {
         if (!propertyName || !propertySchema) return [];
-        const {includeName = true, includeDescription = true, includePatternRow = true} = options;
         const facts = propertyFacts(propertyName, propertySchema);
-        const validationPills = renderValidationPills(facts);
         const statePills = renderStatePills(facts);
-        const structureNode = renderStructureDetails(propertyName, propertySchema, controlScope);
+        const structureNode = renderStructureDetails(propertyName, propertySchema, 'details');
         const rows: Array<{label: string; value: React.ReactNode}> = [];
 
-        if (includeName)
-            rows.push({
-                label: 'Name',
-                value: (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                        <ScrollableRow className="flex-1 font-mono select-all text-[10px] text-[var(--text)]">
-                            {propertyName}
-                        </ScrollableRow>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                navigator.clipboard.writeText(propertyName);
-                                setCopiedPropertyName(true);
-                                setTimeout(() => setCopiedPropertyName(false), 1500);
-                            }}
-                            className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--text-muted)] transition-colors hover:text-[var(--primary)] cursor-pointer"
-                            aria-label="Copy property name"
-                        >
-                            <i className={`ph ${copiedPropertyName ? 'ph-check' : 'ph-copy'} text-[11px]`}></i>
-                        </button>
-                    </div>
-                ),
-            });
+        rows.push({
+            label: 'Name',
+            value: (
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <ScrollableRow className="flex-1 font-mono select-all text-[10px] text-[var(--text-heading)] font-bold">
+                        {propertyName}
+                    </ScrollableRow>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            navigator.clipboard.writeText(propertyName);
+                            setCopiedPropertyName(true);
+                            setTimeout(() => setCopiedPropertyName(false), 1500);
+                        }}
+                        className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--text-muted)] transition-colors hover:text-[var(--primary)] cursor-pointer"
+                        aria-label="Copy property name"
+                    >
+                        <i className={`ph ${copiedPropertyName ? 'ph-check' : 'ph-copy'} text-[11px]`}></i>
+                    </button>
+                </div>
+            ),
+        });
 
         rows.push({label: 'Type', value: displayType(propertySchema)});
         rows.push({label: 'Format', value: facts.format || '—'});
@@ -835,441 +797,368 @@ export default function SchemaPropertiesTable({
             value: facts.isRequired ? <span className="font-semibold text-[var(--method-delete)]">true</span> : 'false',
         });
 
-        if (includeDescription)
+        if (facts.resolved?.default !== undefined)
             rows.push({
-                label: 'Description',
-                value: facts.resolved?.description ? (
-                    <Markdown text={facts.resolved.description} className="text-[10px] leading-relaxed" />
-                ) : (
-                    '—'
-                ),
+                label: 'Default',
+                value: <code className="mono select-all">{JSON.stringify(facts.resolved.default)}</code>,
+            });
+
+        if (facts.resolved?.example !== undefined)
+            rows.push({
+                label: 'Example',
+                value: <code className="mono select-all">{formatExampleText(facts.resolved.example)}</code>,
             });
 
         if (facts.referenceNames.length > 0)
             rows.push({label: 'Reference', value: renderReferenceList(facts.referenceNames)});
+
         if (structureNode) rows.push({label: 'Structure', value: structureNode});
-        if (validationPills.length > 0)
-            rows.push({label: 'Validation', value: <div className="flex flex-wrap gap-1">{validationPills}</div>});
+
         if (statePills.length > 0)
             rows.push({label: 'Flags', value: <div className="flex flex-wrap gap-1">{statePills}</div>});
-        if (includePatternRow && facts.pattern) rows.push({label: 'Pattern', value: renderPatternPill(facts.pattern)});
-        if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
-        if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
-        return rows;
-    };
 
-    const renderPropertyRowsGrid = (
-        rows: Array<{label: string; value: React.ReactNode}>,
-        prefix: string,
-        labelColumn = '104px',
-    ) => (
-        <div className="grid gap-px bg-[var(--border)]">
-            {rows.map(row => (
-                <div
-                    key={`${prefix}:${row.label}`}
-                    className="grid gap-2 bg-[var(--surface)] px-3 py-2"
-                    style={{gridTemplateColumns: `${labelColumn} minmax(0,1fr)`}}
-                >
-                    <div className="font-semibold text-[var(--text-muted)] text-[10px]">{row.label}</div>
-                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
-                </div>
-            ))}
-        </div>
-    );
-
-    const selectedRows = useMemo(
-        () => buildPropertyRows(selectedPropertyName, selectedProperty, 'sidebar'),
-        [selectedProperty, selectedPropertyName, branchSelections, selectionRevision, copiedPropertyName],
-    );
-
-    const buildDetailSections = (name: string, pVal: any): PropertyRowDetailsSection[] => {
-        const facts = propertyFacts(name, pVal);
-        const sections: PropertyRowDetailsSection[] = [];
-        const generalRows: PropertyRowDetailsSection['rows'] = [
-            {label: 'Name', value: <code className="mono">{name}</code>},
-            {label: 'Type', value: displayType(pVal)},
-            {label: 'Format', value: facts.format || '—'},
-            {label: 'Required', value: facts.isRequired ? 'true' : 'false'},
-            {
-                label: 'Description',
-                value: facts.resolved?.description ? (
-                    <Markdown text={facts.resolved.description} className="text-[10px] leading-relaxed" />
-                ) : (
-                    '—'
-                ),
-            },
-        ];
-        sections.push({title: 'General', rows: generalRows});
-
-        const validationRows: PropertyRowDetailsSection['rows'] = [];
-        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
-            validationRows.push({label: 'Enum', value: facts.resolved.enum.join(', ')});
-        if (facts.resolved?.const !== undefined)
-            validationRows.push({label: 'Const', value: JSON.stringify(facts.resolved.const)});
-        if (facts.pattern)
-            validationRows.push({label: 'Pattern', value: <code className="mono">{facts.pattern}</code>});
-        if (facts.resolved?.minLength !== undefined)
-            validationRows.push({label: 'minLength', value: String(facts.resolved.minLength)});
-        if (facts.resolved?.maxLength !== undefined)
-            validationRows.push({label: 'maxLength', value: String(facts.resolved.maxLength)});
-        if (facts.resolved?.minimum !== undefined)
-            validationRows.push({label: 'minimum', value: String(facts.resolved.minimum)});
-        if (facts.resolved?.maximum !== undefined)
-            validationRows.push({label: 'maximum', value: String(facts.resolved.maximum)});
-        if (facts.resolved?.multipleOf !== undefined)
-            validationRows.push({label: 'multipleOf', value: String(facts.resolved.multipleOf)});
-        if (facts.resolved?.minItems !== undefined)
-            validationRows.push({label: 'minItems', value: String(facts.resolved.minItems)});
-        if (facts.resolved?.maxItems !== undefined)
-            validationRows.push({label: 'maxItems', value: String(facts.resolved.maxItems)});
-        if (facts.resolved?.uniqueItems === true) validationRows.push({label: 'uniqueItems', value: 'true'});
-        if (validationRows.length > 0) sections.push({title: 'Validation', rows: validationRows});
-
-        const compositionRows: PropertyRowDetailsSection['rows'] = [];
-        if (Array.isArray(facts.resolved?.oneOf))
-            compositionRows.push({label: 'oneOf', value: `ONE OF (${facts.resolved.oneOf.length})`});
-        if (Array.isArray(facts.resolved?.anyOf))
-            compositionRows.push({label: 'anyOf', value: `ANY OF (${facts.resolved.anyOf.length})`});
-        if (Array.isArray(facts.resolved?.allOf))
-            compositionRows.push({label: 'allOf', value: `ALL OF (${facts.resolved.allOf.length})`});
-        if (facts.resolved?.not)
-            compositionRows.push({label: 'Not', value: `Must not match ${describeNotConstraint(facts.resolved.not)}`});
-        if (facts.resolved?.discriminator?.propertyName)
-            compositionRows.push({label: 'Discriminator', value: facts.resolved.discriminator.propertyName});
-        if (compositionRows.length > 0) sections.push({title: 'Composition', rows: compositionRows});
-
-        const conditionalRows: PropertyRowDetailsSection['rows'] = [];
-        if (facts.resolved?.if) conditionalRows.push({label: 'if', value: 'present'});
-        if (facts.resolved?.then) conditionalRows.push({label: 'then', value: 'present'});
-        if (facts.resolved?.else) conditionalRows.push({label: 'else', value: 'present'});
-        if (facts.resolved?.dependentRequired) conditionalRows.push({label: 'dependentRequired', value: 'present'});
-        if (facts.resolved?.dependentSchemas) conditionalRows.push({label: 'dependentSchemas', value: 'present'});
-        if (conditionalRows.length > 0) sections.push({title: 'Conditional', rows: conditionalRows});
-
-        const objectRows: PropertyRowDetailsSection['rows'] = [];
-        if (facts.resolved?.minProperties !== undefined)
-            objectRows.push({label: 'minProperties', value: String(facts.resolved.minProperties)});
-        if (facts.resolved?.maxProperties !== undefined)
-            objectRows.push({label: 'maxProperties', value: String(facts.resolved.maxProperties)});
-        if (facts.resolved?.propertyNames?.pattern)
-            objectRows.push({
-                label: 'propertyNames',
-                value: <code className="mono">{facts.resolved.propertyNames.pattern}</code>,
-            });
         if (facts.resolved?.additionalProperties !== undefined)
-            objectRows.push({
-                label: 'additionalProperties',
+            rows.push({
+                label: 'Addl. props',
                 value:
                     typeof facts.resolved.additionalProperties === 'boolean'
                         ? String(facts.resolved.additionalProperties)
                         : typeSummary(facts.resolved.additionalProperties),
             });
+
         if (facts.resolved?.unevaluatedProperties !== undefined)
-            objectRows.push({
-                label: 'unevaluatedProperties',
+            rows.push({
+                label: 'Unevaluated',
                 value:
                     typeof facts.resolved.unevaluatedProperties === 'boolean'
                         ? String(facts.resolved.unevaluatedProperties)
                         : typeSummary(facts.resolved.unevaluatedProperties),
             });
+
+        if (facts.resolved?.propertyNames?.pattern)
+            rows.push({
+                label: 'Property names',
+                value: <code className="mono select-all">{facts.resolved.propertyNames.pattern}</code>,
+            });
+
         if (Object.keys(facts.resolved?.patternProperties || {}).length > 0)
-            objectRows.push({
-                label: 'patternProperties',
+            rows.push({
+                label: 'Pattern props',
                 value: `${Object.keys(facts.resolved.patternProperties).length} patterns`,
             });
-        if (objectRows.length > 0) sections.push({title: 'Object', rows: objectRows});
 
-        const arrayRows: PropertyRowDetailsSection['rows'] = [];
-        if (Array.isArray(facts.resolved?.prefixItems))
-            arrayRows.push({label: 'prefixItems', value: `${facts.resolved.prefixItems.length} slots`});
-        if (facts.resolved?.items !== undefined)
-            arrayRows.push({
-                label: 'items',
-                value: facts.resolved.items === false ? 'false' : typeSummary(facts.resolved.items),
-            });
-        if (facts.resolved?.contains) arrayRows.push({label: 'contains', value: typeSummary(facts.resolved.contains)});
-        if (facts.resolved?.minContains !== undefined)
-            arrayRows.push({label: 'minContains', value: String(facts.resolved.minContains)});
-        if (facts.resolved?.maxContains !== undefined)
-            arrayRows.push({label: 'maxContains', value: String(facts.resolved.maxContains)});
+        if (Array.isArray(facts.resolved?.prefixItems) && facts.resolved.prefixItems.length > 0)
+            rows.push({label: 'prefixItems', value: `${facts.resolved.prefixItems.length} slots`});
+
+        if (facts.resolved?.contains) rows.push({label: 'contains', value: typeSummary(facts.resolved.contains)});
+
         if (facts.resolved?.unevaluatedItems !== undefined)
-            arrayRows.push({
+            rows.push({
                 label: 'unevaluatedItems',
                 value:
                     typeof facts.resolved.unevaluatedItems === 'boolean'
                         ? String(facts.resolved.unevaluatedItems)
                         : typeSummary(facts.resolved.unevaluatedItems),
             });
-        if (arrayRows.length > 0) sections.push({title: 'Array', rows: arrayRows});
 
-        const referenceRows: PropertyRowDetailsSection['rows'] = [];
-        if (pVal?.$ref) referenceRows.push({label: '$ref', value: <code className="mono">{pVal.$ref}</code>});
-        if (facts.resolved?.externalDocs?.url)
-            referenceRows.push({label: 'externalDocs', value: facts.resolved.externalDocs.url});
-        if (referenceRows.length > 0) sections.push({title: 'References', rows: referenceRows});
+        if (facts.resolved?.discriminator?.propertyName)
+            rows.push({label: 'Discriminator', value: facts.resolved.discriminator.propertyName});
 
-        const contentRows: PropertyRowDetailsSection['rows'] = [];
-        if (facts.contentEncoding) contentRows.push({label: 'contentEncoding', value: facts.contentEncoding});
-        if (facts.contentMediaType) contentRows.push({label: 'contentMediaType', value: facts.contentMediaType});
+        if (facts.resolved?.not)
+            rows.push({label: 'Not', value: `Must not match ${describeNotConstraint(facts.resolved.not)}`});
+
+        if (facts.resolved?.if || facts.resolved?.then || facts.resolved?.else)
+            rows.push({label: 'if/then/else', value: 'present'});
+
+        if (facts.resolved?.dependentRequired) rows.push({label: 'dependentRequired', value: 'present'});
+
+        if (facts.resolved?.dependentSchemas) rows.push({label: 'dependentSchemas', value: 'present'});
+
+        if (facts.contentEncoding) rows.push({label: 'Encoding', value: facts.contentEncoding});
+        if (facts.contentMediaType) rows.push({label: 'Media', value: facts.contentMediaType});
         if (facts.resolved?.contentSchema)
-            contentRows.push({label: 'contentSchema', value: typeSummary(facts.resolved.contentSchema)});
-        if (facts.resolved?.xml) contentRows.push({label: 'xml', value: 'configured'});
-        if (contentRows.length > 0) sections.push({title: 'Content / OpenAPI', rows: contentRows});
+            rows.push({label: 'contentSchema', value: typeSummary(facts.resolved.contentSchema)});
+        if (facts.resolved?.xml) rows.push({label: 'XML', value: 'configured'});
+        if (propertySchema?.$ref)
+            rows.push({label: '$ref', value: <code className="mono select-all">{propertySchema.$ref}</code>});
+        if (facts.resolved?.externalDocs?.url)
+            rows.push({
+                label: 'externalDocs',
+                value: (
+                    <a
+                        href={facts.resolved.externalDocs.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--primary)] hover:underline"
+                    >
+                        {facts.resolved.externalDocs.description || facts.resolved.externalDocs.url}
+                    </a>
+                ),
+            });
 
-        const extensionKeys = Object.keys(facts.resolved || {}).filter(key => key.startsWith('x-'));
-        if (extensionKeys.length > 0)
-            sections.push({title: 'Extensions', rows: extensionKeys.map(key => ({label: key, value: 'present'}))});
+        // Unknown / extra properties placed into field specifications (Point 5)
+        if (facts.resolved && typeof facts.resolved === 'object') {
+            for (const [key, val] of Object.entries(facts.resolved)) {
+                if (!KNOWN_SCHEMA_KEYS.has(key)) {
+                    rows.push({
+                        label: key,
+                        value:
+                            typeof val === 'object' && val !== null ? (
+                                <code className="mono select-all text-[10px]">{JSON.stringify(val)}</code>
+                            ) : (
+                                String(val)
+                            ),
+                    });
+                }
+            }
+        }
 
-        return sections;
+        return rows;
     };
 
-    const activeDetails = detailsModalName
-        ? buildDetailSections(detailsModalName, effectiveProperties[detailsModalName])
-        : [];
+    const buildValidationRows = (
+        propertyName: string,
+        propertySchema: any,
+    ): Array<{label: string; value: React.ReactNode}> => {
+        if (!propertyName || !propertySchema) return [];
+        const facts = propertyFacts(propertyName, propertySchema);
+        const rows: Array<{label: string; value: React.ReactNode}> = [];
+
+        if (facts.pattern) {
+            rows.push({
+                label: 'Pattern',
+                value: (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <code className="mono select-all break-all text-[10px]">{facts.pattern}</code>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(facts.pattern!);
+                                    setCopiedPattern(true);
+                                    setTimeout(() => setCopiedPattern(false), 1500);
+                                }}
+                                className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--text-muted)] transition-colors hover:text-[var(--primary)] cursor-pointer"
+                                aria-label="Copy pattern"
+                            >
+                                <i className={`ph ${copiedPattern ? 'ph-check' : 'ph-copy'} text-[11px]`}></i>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onTestPattern(facts.pattern!)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-[var(--method-put)]/25 bg-[var(--method-put)]/10 text-[var(--text)] hover:bg-[var(--method-put)]/20 cursor-pointer transition-colors"
+                            >
+                                <i className="ph ph-dna text-[10px] text-[var(--method-put)]" />
+                                <span>Test</span>
+                            </button>
+                        </div>
+                    </div>
+                ),
+            });
+        }
+
+        rows.push({
+            label: 'Serializer',
+            value: (
+                <button
+                    type="button"
+                    onClick={() => setSerializerPropertyName(propertyName)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--background)] cursor-pointer transition-colors"
+                >
+                    <i className="ph ph-arrows-split text-[11px]" />
+                    <span>Open Playground</span>
+                </button>
+            ),
+        });
+
+        if (Array.isArray(facts.resolved?.enum) && facts.resolved.enum.length > 0)
+            rows.push({label: 'Enum', value: facts.resolved.enum.map((v: any) => JSON.stringify(v)).join(', ')});
+
+        if (facts.resolved?.const !== undefined)
+            rows.push({
+                label: 'Const',
+                value: <code className="mono select-all">{JSON.stringify(facts.resolved.const)}</code>,
+            });
+
+        if (facts.resolved?.minLength !== undefined)
+            rows.push({label: 'minLength', value: String(facts.resolved.minLength)});
+
+        if (facts.resolved?.maxLength !== undefined)
+            rows.push({label: 'maxLength', value: String(facts.resolved.maxLength)});
+
+        if (facts.resolved?.minimum !== undefined) rows.push({label: 'minimum', value: String(facts.resolved.minimum)});
+
+        if (facts.resolved?.maximum !== undefined) rows.push({label: 'maximum', value: String(facts.resolved.maximum)});
+
+        if (facts.resolved?.exclusiveMinimum !== undefined)
+            rows.push({label: 'exclusiveMinimum', value: String(facts.resolved.exclusiveMinimum)});
+
+        if (facts.resolved?.exclusiveMaximum !== undefined)
+            rows.push({label: 'exclusiveMaximum', value: String(facts.resolved.exclusiveMaximum)});
+
+        if (facts.resolved?.multipleOf !== undefined)
+            rows.push({label: 'multipleOf', value: String(facts.resolved.multipleOf)});
+
+        if (facts.resolved?.minItems !== undefined)
+            rows.push({label: 'minItems', value: String(facts.resolved.minItems)});
+
+        if (facts.resolved?.maxItems !== undefined)
+            rows.push({label: 'maxItems', value: String(facts.resolved.maxItems)});
+
+        if (facts.resolved?.uniqueItems === true) rows.push({label: 'uniqueItems', value: 'true'});
+
+        if (facts.resolved?.minContains !== undefined)
+            rows.push({label: 'minContains', value: String(facts.resolved.minContains)});
+
+        if (facts.resolved?.maxContains !== undefined)
+            rows.push({label: 'maxContains', value: String(facts.resolved.maxContains)});
+
+        if (facts.resolved?.minProperties !== undefined)
+            rows.push({label: 'minProperties', value: String(facts.resolved.minProperties)});
+
+        if (facts.resolved?.maxProperties !== undefined)
+            rows.push({label: 'maxProperties', value: String(facts.resolved.maxProperties)});
+
+        return rows;
+    };
+
+    const renderPropertyRowsGrid = (
+        rows: Array<{label: string; value: React.ReactNode}>,
+        prefix: string,
+        labelColumn = '120px',
+    ) => (
+        <div className="grid gap-px bg-[var(--border)]">
+            {rows.map(row => (
+                <div
+                    key={`${prefix}:${row.label}`}
+                    className="grid gap-2 bg-[var(--surface)] px-3 py-2 items-start text-[10px]"
+                    style={{gridTemplateColumns: `${labelColumn} minmax(0,1fr)`}}
+                >
+                    <div className="font-semibold text-[var(--text-muted)]">{row.label}</div>
+                    <div className={GRID_TEXT_CLASS}>{row.value}</div>
+                </div>
+            ))}
+        </div>
+    );
+
+    const activeDetailsProperty = detailsModalName ? effectiveProperties[detailsModalName] : null;
+    const activePropertyDescription = activeDetailsProperty
+        ? (resolveReference(activeDetailsProperty) || activeDetailsProperty)?.description
+        : null;
+    const activeSpecRows =
+        detailsModalName && activeDetailsProperty
+            ? buildFieldSpecificationsRows(detailsModalName, activeDetailsProperty)
+            : [];
+    const activeValidationRows =
+        detailsModalName && activeDetailsProperty ? buildValidationRows(detailsModalName, activeDetailsProperty) : [];
+    const activeMockExample = useMemo(() => {
+        if (!detailsModalName || !activeDetailsProperty) return null;
+        return getMockSnippetWithMarkers(activeDetailsProperty, null);
+    }, [detailsModalName, activeDetailsProperty]);
 
     return (
         <>
             <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in xl:h-[calc(100vh-12.5rem)]">
-                <div
-                    className={clsx(
-                        'relative grid h-full min-w-0 md:gap-0',
-                        sidebarOpen ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)]',
-                    )}
-                >
-                    {!isMobileLayout && (
-                        <div className="pointer-events-none absolute right-2 top-2 z-40">
-                            <button
-                                type="button"
-                                onClick={() => setSidebarCollapsed(current => !current)}
-                                className="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)]/95 text-[var(--text-muted)] shadow-sm transition-colors hover:bg-[var(--background)] cursor-pointer"
-                                aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-                            >
-                                <i className={`ph ${sidebarOpen ? 'ph-caret-right' : 'ph-caret-left'} text-[12px]`} />
-                            </button>
-                        </div>
-                    )}
-                    <div className="flex min-w-0 h-full min-h-0 flex-col border-b border-[var(--border)] md:border-b-0 md:border-r bg-[var(--surface)]">
-                        <CardOrTable
-                            preferCards={preferCards}
-                            maxWidth={CARD_LAYOUT_WIDTH}
-                            className="h-full min-h-0"
-                            cards={() => (
-                                <>
-                                    {isMobileLayout && (
-                                        <section className="border-b border-[var(--border)] bg-[var(--surface)]">
-                                            <div className="flex h-[39px] items-center px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-heading)] bg-[var(--surface-hover)] border-b border-[var(--border)]">
-                                                Schema-wide
-                                            </div>
-                                            {renderPropertyRowsGrid(schemaWideRows, 'mobile-schema')}
-                                        </section>
-                                    )}
-                                    {useModal && (inspectName ?? schemaName) && (
-                                        <div className="flex justify-end border-b px-3 py-2 border-[var(--border)] bg-[var(--surface-hover)]">
-                                            <button
-                                                type="button"
-                                                onClick={() => onPushSchema(inspectName ?? schemaName!)}
-                                                className={CHROME_BUTTON_CLASS}
-                                            >
-                                                <i className="ph ph-diamonds-four text-[11px]"></i>
-                                                <span className="whitespace-nowrap">Inspect Schema</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div className="space-y-2 p-2">
+                <div className="flex min-w-0 h-full min-h-0 flex-col bg-[var(--surface)]">
+                    <CardOrTable
+                        preferCards={preferCards}
+                        maxWidth={CARD_LAYOUT_WIDTH}
+                        className="h-full min-h-0"
+                        cards={() => (
+                            <div className="space-y-2 p-2">
+                                {propertyEntries.map(([name, pVal]) => {
+                                    const cells = propertyCells(name, pVal);
+                                    return (
+                                        <DataCard
+                                            key={name}
+                                            className="rounded-xl"
+                                            title={
+                                                <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                    {cells.name}
+                                                </span>
+                                            }
+                                            facts={[
+                                                {label: 'Type', value: cells.type},
+                                                {label: 'Details', value: cells.description, wide: true},
+                                            ]}
+                                            footer={
+                                                <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDetailsModalName(name)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                                    >
+                                                        <i className="ph ph-eye text-[9px]" />
+                                                        More / Example
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSerializerPropertyName(name)}
+                                                        className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer"
+                                                    >
+                                                        <i className="ph ph-arrows-split text-[11px]"></i>
+                                                        <span>Playground</span>
+                                                    </button>
+                                                </div>
+                                            }
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
+                        table={() => (
+                            <div className="h-full min-h-0 overflow-auto scrollbar-thin">
+                                <table className="w-full min-w-[980px] text-left border-collapse text-xs">
+                                    <colgroup>
+                                        <col style={{width: '220px'}} />
+                                        <col style={{width: '360px'}} />
+                                        <col style={{width: '156px'}} />
+                                        <col />
+                                    </colgroup>
+                                    <thead>
+                                        <tr className="whitespace-nowrap">
+                                            <th className={STICKY_HEADER_CLASS}>
+                                                <div className="flex h-full items-center">Field Target</div>
+                                            </th>
+                                            <th className={STICKY_HEADER_CLASS}>
+                                                <div className="flex h-full items-center">Type/Structure</div>
+                                            </th>
+                                            <th className={STICKY_HEADER_CLASS}>
+                                                <div className="flex h-full items-center">Consumer Notes</div>
+                                            </th>
+                                            <th className={STICKY_HEADER_CLASS}>
+                                                <div className="flex h-full w-full items-center justify-between gap-2">
+                                                    <span>Description</span>
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                         {propertyEntries.map(([name, pVal]) => {
                                             const cells = propertyCells(name, pVal);
-                                            const expanded = !!expandedCardProperties[name];
-                                            const mobileRows = buildPropertyRows(name, pVal, 'mobile', {
-                                                includeName: false,
-                                                includeDescription: false,
-                                                includePatternRow: false,
-                                            });
                                             return (
-                                                <DataCard
+                                                <tr
                                                     key={name}
-                                                    onClick={() => setSelectedPropertyName(name)}
-                                                    className={clsx(
-                                                        'rounded-xl',
-                                                        selectedPropertyName === name &&
-                                                            'ring-1 ring-[var(--primary)]/25 border-[var(--primary)]/30 shadow-[0_0_0_1px_rgba(79,70,229,0.12)]',
-                                                    )}
-                                                    title={
-                                                        <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                            {cells.name}
-                                                        </span>
-                                                    }
-                                                    facts={[
-                                                        {label: 'Type', value: cells.type},
-                                                        {label: 'Details', value: cells.description, wide: true},
-                                                    ]}
-                                                    footer={
-                                                        <div className="space-y-2">
-                                                            {expanded && (
-                                                                <>
-                                                                    {mobileRows.length > 0 &&
-                                                                        renderPropertyRowsGrid(
-                                                                            mobileRows,
-                                                                            `mobile-card:${name}`,
-                                                                            '92px',
-                                                                        )}
-                                                                    <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={event => {
-                                                                                event.stopPropagation();
-                                                                                setDetailsModalName(name);
-                                                                            }}
-                                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
-                                                                        >
-                                                                            <i className="ph ph-eye text-[9px]" />
-                                                                            More / Example
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={event => {
-                                                                                event.stopPropagation();
-                                                                                setSerializerPropertyName(name);
-                                                                            }}
-                                                                            className={CHROME_BUTTON_CLASS}
-                                                                        >
-                                                                            <i className="ph ph-arrows-split text-[11px]"></i>
-                                                                            <span>Playground</span>
-                                                                        </button>
-                                                                    </div>
-                                                                </>
-                                                            )}
-                                                            <div className="flex justify-center">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={event => {
-                                                                        event.stopPropagation();
-                                                                        setExpandedCardProperties(current => ({
-                                                                            ...current,
-                                                                            [name]: !current[name],
-                                                                        }));
-                                                                    }}
-                                                                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1 text-[10px] font-semibold text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] cursor-pointer"
-                                                                >
-                                                                    <i
-                                                                        className={`ph ${expanded ? 'ph-caret-up' : 'ph-caret-down'} text-[10px]`}
-                                                                    />
-                                                                    <span>Property Info</span>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                />
+                                                    className="align-top border-b last:border-b-0 border-b-[var(--border)] transition-colors hover:bg-[var(--text-muted)]/5"
+                                                >
+                                                    <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap align-top">
+                                                        {cells.name}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 align-top min-w-0">{cells.type}</td>
+                                                    <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                                                        {cells.consumer}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)] align-top">
+                                                        {cells.description}
+                                                    </td>
+                                                </tr>
                                             );
                                         })}
-                                    </div>
-                                </>
-                            )}
-                            table={() => (
-                                <div className="h-full min-h-0 overflow-auto scrollbar-thin">
-                                    <table className="w-full min-w-[980px] text-left border-collapse text-xs">
-                                        <colgroup>
-                                            <col style={{width: '220px'}} />
-                                            <col style={{width: '360px'}} />
-                                            <col style={{width: '156px'}} />
-                                            <col />
-                                        </colgroup>
-                                        <thead>
-                                            <tr className={'whitespace-nowrap'}>
-                                                <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Field Target</div>
-                                                </th>
-                                                <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Type/Structure</div>
-                                                </th>
-                                                <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full items-center">Consumer Notes</div>
-                                                </th>
-                                                <th className={STICKY_HEADER_CLASS}>
-                                                    <div className="flex h-full w-full items-center justify-between gap-2">
-                                                        <span>Description</span>
-                                                    </div>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {propertyEntries.map(([name, pVal]) => {
-                                                const cells = propertyCells(name, pVal);
-                                                return (
-                                                    <tr
-                                                        key={name}
-                                                        onClick={() => setSelectedPropertyName(name)}
-                                                        className={clsx(
-                                                            'align-top border-b last:border-b-0 border-b-[var(--border)] transition-colors hover:bg-[var(--text-muted)]/5',
-                                                            selectedPropertyName === name && 'bg-[var(--primary)]/4',
-                                                        )}
-                                                    >
-                                                        <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap align-top">
-                                                            {cells.name}
-                                                        </td>
-                                                        <td className="px-3 py-2.5 align-top min-w-0">{cells.type}</td>
-                                                        <td className="px-3 py-2.5 align-top whitespace-nowrap">
-                                                            {cells.consumer}
-                                                        </td>
-                                                        <td className="px-3 py-2.5 leading-relaxed font-sans text-[var(--text)] align-top">
-                                                            {cells.description}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    {sidebarOpen && (
-                        <aside
-                            className="min-w-0 h-full min-h-0 bg-[var(--surface)] md:sticky md:top-0"
-                            style={{boxShadow: '0 10px 24px -20px rgba(15, 23, 42, 0.28)'}}
-                        >
-                            <div className="flex h-full min-h-0 flex-col bg-[var(--surface)]">
-                                <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-                                    <section>
-                                        <div
-                                            className={`${STICKY_HEADER_CLASS} flex items-center justify-between gap-2`}
-                                        >
-                                            <h5 className={GRID_TITLE_CLASS}>Schema-wide</h5>
-                                        </div>
-                                        {renderPropertyRowsGrid(schemaWideRows, 'schema')}
-                                    </section>
-                                    <section>
-                                        <div
-                                            className={`${STICKY_HEADER_CLASS} flex items-center border-t border-[var(--border)]`}
-                                        >
-                                            <h5 className={GRID_TITLE_CLASS}>Selected Property</h5>
-                                        </div>
-                                        {renderPropertyRowsGrid(selectedRows, 'selected')}
-                                    </section>
-                                </div>
-                                {selectedPropertyName && selectedEffectiveProperty && (
-                                    <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--background)] px-3 py-2 shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => setDetailsModalName(selectedPropertyName)}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
-                                        >
-                                            <i className="ph ph-eye text-[9px]" />
-                                            More / Example
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSerializerPropertyName(selectedPropertyName)}
-                                            className={CHROME_BUTTON_CLASS}
-                                        >
-                                            <i className="ph ph-arrows-split text-[11px]"></i>
-                                            <span>Playground</span>
-                                        </button>
-                                    </div>
-                                )}
+                                    </tbody>
+                                </table>
                             </div>
-                        </aside>
-                    )}
+                        )}
+                    />
                 </div>
             </div>
 
@@ -1284,7 +1173,7 @@ export default function SchemaPropertiesTable({
                 />
             )}
 
-            {detailsTransition.shouldRender && detailsModalName && effectiveProperties[detailsModalName] && (
+            {detailsTransition.shouldRender && detailsModalName && activeDetailsProperty && (
                 <ModalPortal>
                     <div
                         className={`${detailsTransition.backdropClassName} fixed inset-0 z-[3000] bg-black/40 backdrop-blur-[1px]`}
@@ -1299,8 +1188,7 @@ export default function SchemaPropertiesTable({
                                         Property Details · {detailsModalName}
                                     </h3>
                                     <p className="mt-1 text-[10px] text-[var(--text-muted)]">
-                                        Advanced information for this schema property, with the current example action
-                                        kept here too.
+                                        Field specifications, validation constraints, and simulated example.
                                     </p>
                                 </div>
                                 <button
@@ -1312,72 +1200,63 @@ export default function SchemaPropertiesTable({
                                 </button>
                             </header>
                             <div className="modal-scroll-region p-4 sm:p-5 overflow-y-auto space-y-4 text-xs leading-relaxed scrollbar-thin text-[var(--text)]">
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    {activeDetails.map(section => (
-                                        <section
-                                            key={section.title}
-                                            className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden"
-                                        >
-                                            <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
-                                                <h4 className={GRID_TITLE_CLASS}>{section.title}</h4>
-                                            </div>
-                                            <div className="grid gap-px bg-[var(--border)]">
-                                                {section.rows.map(row => (
-                                                    <div
-                                                        key={row.label}
-                                                        className="grid grid-cols-[110px_minmax(0,1fr)] gap-2 bg-[var(--surface)] px-3 py-2 text-[10px]"
-                                                    >
-                                                        <div className="font-semibold text-[var(--text-muted)]">
-                                                            {row.label}
-                                                        </div>
-                                                        <div className="min-w-0 break-words text-[var(--text)]">
-                                                            {row.value}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    ))}
+                                {activePropertyDescription && (
+                                    <div className="rounded-lg border border-[var(--primary)]/15 bg-[var(--primary)]/5 p-3 text-xs leading-relaxed text-[var(--text)]">
+                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
+                                            Description:
+                                        </div>
+                                        <div className="markdown-body">
+                                            <Markdown text={activePropertyDescription} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid gap-3 md:grid-cols-2 items-start">
+                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+                                            <h4 className={GRID_TITLE_CLASS}>Field Specifications</h4>
+                                        </div>
+                                        {renderPropertyRowsGrid(activeSpecRows, 'spec')}
+                                    </section>
+
+                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
+                                            <h4 className={GRID_TITLE_CLASS}>Validation</h4>
+                                        </div>
+                                        {renderPropertyRowsGrid(activeValidationRows, 'validation')}
+                                    </section>
                                 </div>
 
-                                <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-                                    <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
-                                        <h4 className={GRID_TITLE_CLASS}>Raw Fragment</h4>
-                                    </div>
-                                    <div className="p-3">
-                                        <CodeViewer
-                                            code={JSON.stringify(effectiveProperties[detailsModalName], null, 2)}
-                                            language="json"
-                                            maxHeight="340px"
-                                        />
-                                    </div>
-                                </section>
+                                {activeMockExample && (
+                                    <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between">
+                                            <h4 className={GRID_TITLE_CLASS}>Simulated Example</h4>
+                                        </div>
+                                        <div className="p-3">
+                                            <CodeViewer
+                                                code={activeMockExample.code}
+                                                language="json"
+                                                maxHeight="340px"
+                                                lineMarkers={mockMarkersToLineMarkers(activeMockExample.markers, {
+                                                    onOpenSchema: schemaName => {
+                                                        detailsTransition.requestClose();
+                                                        onPushSchema(schemaName);
+                                                    },
+                                                    onTestPattern,
+                                                })}
+                                            />
+                                        </div>
+                                    </section>
+                                )}
                             </div>
-                            <footer className="px-4 sm:px-5 py-3 border-t border-[var(--border)] bg-[var(--background)] shrink-0">
-                                <div className="flex items-center justify-end gap-2">
-                                    {detailsModalName && effectiveProperties[detailsModalName] && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const activeName = detailsModalName;
-                                                const activeProperty = effectiveProperties[activeName];
-                                                detailsTransition.requestClose();
-                                                onViewExample(activeName, activeProperty);
-                                            }}
-                                            className="inline-flex items-center gap-1 px-4 py-1.5 border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)] font-semibold text-xs rounded-lg cursor-pointer transition-colors select-none hover:bg-[var(--primary)]/15"
-                                        >
-                                            <i className="ph ph-eye text-[9px]" />
-                                            More / Example
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={detailsTransition.requestClose}
-                                        className="px-4 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer transition-colors shadow-sm select-none"
-                                    >
-                                        Close Details
-                                    </button>
-                                </div>
+                            <footer className="px-4 sm:px-5 py-3 border-t border-[var(--border)] bg-[var(--background)] shrink-0 flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={detailsTransition.requestClose}
+                                    className="px-4 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-contrast)] font-semibold text-xs rounded-lg cursor-pointer transition-colors shadow-sm select-none"
+                                >
+                                    Close Details
+                                </button>
                             </footer>
                         </div>
                     </div>
