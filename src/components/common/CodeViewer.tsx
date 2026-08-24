@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import Prism from 'prismjs';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
@@ -53,6 +53,10 @@ interface CodeViewerProps {
     /** Line numbers render by default; pass false for chrome-less output.
      *  The reader can still switch the gutter off globally in the settings. */
     showLineNumbers?: boolean;
+    /** Optional controls rendered beside the copy button (schema viewer format picker). */
+    toolbarEnd?: React.ReactNode;
+    /** 1-based line numbers rendered at reduced opacity (allOf focus dimming). */
+    dimmedLines?: number[];
 }
 
 export function highlightCodeString(code: string, language: string): string {
@@ -161,6 +165,8 @@ export default function CodeViewer({
     lineMarkers,
     inlineMenus,
     showLineNumbers: showLineNumbersProp = true,
+    toolbarEnd,
+    dimmedLines,
 }: CodeViewerProps) {
     const {preferences} = usePreferences();
     const showLineNumbers = showLineNumbersProp && preferences.codeGutterEnabled;
@@ -217,6 +223,13 @@ export default function CodeViewer({
     };
     const highlightedHtml = highlightCodeString(finalCode, language);
     const lineCount = useMemo(() => Math.max(1, finalCode.split('\n').length), [finalCode]);
+    const dimmedLineSet = useMemo(() => new Set(dimmedLines || []), [dimmedLines]);
+    const highlightedLines = useMemo(() => {
+        // Split after highlight so each row can carry its own opacity for allOf focus.
+        const parts = highlightedHtml.split('\n');
+        while (parts.length < lineCount) parts.push('');
+        return parts.slice(0, lineCount);
+    }, [highlightedHtml, lineCount]);
     const markersByLine = useMemo(() => {
         const map = new Map<number, CodeLineMarker[]>();
         (visibleMarkers || []).forEach(marker => {
@@ -317,29 +330,32 @@ export default function CodeViewer({
             ref={viewerRef}
             className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
         >
-            <div className="px-4 py-1.5 border-b flex items-center justify-between bg-[var(--surface-hover)] border-[var(--border)]">
+            <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
                 <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
                     {language}
                 </span>
-                <button
-                    onClick={handleCopy}
-                    className={clsx(
-                        'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
-                        copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
-                    )}
-                >
-                    {copied ? (
-                        <>
-                            <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
-                            <span className="text-[var(--method-get)] font-bold">Copied!</span>
-                        </>
-                    ) : (
-                        <>
-                            <i className="ph ph-copy text-[14px]"></i>
-                            <span className="font-semibold">Copy</span>
-                        </>
-                    )}
-                </button>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    {toolbarEnd}
+                    <button
+                        onClick={handleCopy}
+                        className={clsx(
+                            'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
+                            copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
+                        )}
+                    >
+                        {copied ? (
+                            <>
+                                <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
+                                <span className="text-[var(--method-get)] font-bold">Copied!</span>
+                            </>
+                        ) : (
+                            <>
+                                <i className="ph ph-copy text-[14px]"></i>
+                                <span className="font-semibold">Copy</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             <div
@@ -497,7 +513,20 @@ export default function CodeViewer({
                                 </div>
                             );
                         })}
-                        <code ref={codeRef} dangerouslySetInnerHTML={{__html: highlightedHtml}} className="block" />
+                        <code ref={codeRef} className="block">
+                            {dimmedLineSet.size > 0
+                                ? highlightedLines.map((lineHtml, index) => (
+                                      <span
+                                          key={index}
+                                          className={clsx('block', dimmedLineSet.has(index + 1) && 'opacity-35')}
+                                          dangerouslySetInnerHTML={{
+                                              __html: lineHtml + (index < highlightedLines.length - 1 ? '\n' : ''),
+                                          }}
+                                      />
+                                  ))
+                                : null}
+                            {dimmedLineSet.size === 0 && <span dangerouslySetInnerHTML={{__html: highlightedHtml}} />}
+                        </code>
                     </pre>
                 </div>
             </div>

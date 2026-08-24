@@ -3,6 +3,7 @@ import {ActiveAuth, OpenApiSpec, Operation} from '../../../types';
 import Markdown from '../../common/Markdown';
 import CodeViewer, {type CodeInlineMenu} from '../../common/CodeViewer';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
+import SchemaViewer, {type SchemaViewerTab} from '../../schema/viewer/SchemaViewer';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import MethodBadge from '../../common/MethodBadge';
 import PatternPreview from '../../common/PatternPreview';
@@ -19,14 +20,11 @@ import {useVisibleResponseCode} from '@/src/hooks/useVisibleResponseCode';
 import {createResponseExampleHelpers} from '@/src/utils/endpoint/responseExamples';
 import {resolveRequestBodySource} from '@/src/utils/endpoint/requestBodySource';
 import {usePreferences} from '@/src/contexts/PreferencesContext';
-import AdaptiveTabStrip from '../../common/AdaptiveTabStrip';
 import ScrollableRow from '../../common/ScrollableRow';
 import OverflowActionsMenu from '../../common/OverflowActionsMenu';
 import CardOrTable, {CARD_LAYOUT_WIDTH, COMPACT_CARD_LAYOUT_WIDTH} from '../../common/CardOrTable';
 import DataCard, {RequiredBadge} from '../../common/DataCard';
-import CombinatorLabel from '../../common/CombinatorLabel';
 import {describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
-import AllOfCompositionNote from '@/src/components/schema/AllOfCompositionNote';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
@@ -55,18 +53,16 @@ import {
     resolveRequestBody,
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/runner/auth';
-import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
+import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import ResponseLinksPanel from './ResponseLinksPanel';
 import OperationCallbacksPanel from './OperationCallbacksPanel';
-import {
-    applySchemaBranchSelections,
-    readSchemaBranchSelections,
-    SCHEMA_BRANCH_SELECTION_EVENT,
-    writeSchemaBranchSelection,
-} from '../../../utils/schema/branchSelections';
+import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
 import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
 import SchemaOneOfMenuButton from '../../schema/SchemaOneOfMenuButton';
 import {inlineMenusForCode} from '../../schema/inlineMenus';
+// Legacy request-body panel kept in-tree (unused) for comparison while the
+// new SchemaViewer is evaluated on Request Body Context only.
+import '../../schema/legacy/LegacyRequestBodySchemaPanel';
 
 interface ViewTabProps {
     key: any;
@@ -139,11 +135,11 @@ export default function ViewTab({
     const [responseActiveTab, setResponseActiveTab] = useState<{
         [code: string]: 'example' | 'schema' | 'enum' | 'spec-example';
     }>({});
-    const [requestActiveTab, setRequestActiveTab] = useState<'example' | 'schema' | 'spec-example'>(
-        endpointRepresentation,
-    );
+    const [requestActiveTab, setRequestActiveTab] = useState<SchemaViewerTab>(endpointRepresentation);
     const [requestExampleKey, setRequestExampleKey] = useState('');
     const [responseExampleKeys, setResponseExampleKeys] = useState<Record<string, string>>({});
+    const [requestAnyOfSelected, setRequestAnyOfSelected] = useState<number[]>([]);
+    const [requestAllOfFocusIndex, setRequestAllOfFocusIndex] = useState<number | null>(null);
     // Enum is a peek at the values, not a representation the reader chose to
     // keep: it lasts for this visit only and never touches the preference.
     useEffect(() => {
@@ -151,6 +147,8 @@ export default function ViewTab({
         setRequestActiveTab(endpointRepresentation);
         setRequestExampleKey('');
         setResponseExampleKeys({});
+        setRequestAnyOfSelected([]);
+        setRequestAllOfFocusIndex(null);
     }, [representationKey, endpointRepresentation]);
     useEffect(() => {
         const handler = () => setSchemaBranchRevision(current => current + 1);
@@ -615,11 +613,45 @@ export default function ViewTab({
     const requestBodyBranchIndex = requestBodyChoice
         ? Math.min(requestBodyVariant, requestBodyChoice.branches.length - 1)
         : 0;
+    // anyOf may keep several branches selected; merge their properties so the
+    // table and generated example reflect every active alternative.
+    const requestBodyAnyOfSchema = (() => {
+        if (requestBodyChoice?.meta.kind !== 'anyOf') return null;
+        const branches = requestBodyChoice.branches;
+        const selected =
+            requestAnyOfSelected.length > 0
+                ? requestAnyOfSelected.filter(index => index >= 0 && index < branches.length)
+                : branches.map((_, index) => index);
+        if (selected.length === 0) return {type: 'object', properties: {}};
+        if (selected.length === 1) return branches[selected[0]];
+        const properties: Record<string, any> = {};
+        const required: string[] = [];
+        selected.forEach(index => {
+            const resolved = resolveReference(branches[index]) || branches[index];
+            if (resolved?.properties && typeof resolved.properties === 'object') {
+                Object.assign(properties, resolved.properties);
+            }
+            if (Array.isArray(resolved?.required)) {
+                resolved.required.forEach((name: string) => {
+                    if (!required.includes(name)) required.push(name);
+                });
+            }
+        });
+        return {
+            type: 'object',
+            title: resolvedRequestBodySchema?.title,
+            description: resolvedRequestBodySchema?.description,
+            properties,
+            ...(required.length > 0 ? {required} : {}),
+        };
+    })();
     const requestBodyMatrixSchema = requestBodyComposition
         ? requestBodyComposition.effective
-        : requestBodyChoice
-          ? requestBodyChoice.branches[requestBodyBranchIndex]
-          : requestBodySource.schema;
+        : requestBodyAnyOfSchema
+          ? requestBodyAnyOfSchema
+          : requestBodyChoice
+            ? requestBodyChoice.branches[requestBodyBranchIndex]
+            : requestBodySource.schema;
     const requestBodySelectionScopeKey = `${parsableKey || 'default'}:request:${method.toLowerCase()}:${path}`;
     const requestBodyEffectiveSchema = requestBodyMatrixSchema
         ? applySchemaBranchSelections(requestBodyMatrixSchema, requestBodySelectionScopeKey, resolveReference)
@@ -677,25 +709,55 @@ export default function ViewTab({
         );
         return extractMockLineMarkers(serialized, prepared);
     };
-    const requestNamedExamples = namedMediaExamples(selectedRequestBodyContent);
-    const requestSpecExamples =
-        requestNamedExamples.length > 0
-            ? requestNamedExamples
-            : requestBodyExample !== undefined
-              ? [{key: 'example', label: 'Example', value: requestBodyExample}]
-              : [];
-    const activeRequestSpecExample =
-        requestSpecExamples.find(example => example.key === (requestExampleKey || requestSpecExamples[0]?.key)) ||
-        requestSpecExamples[0];
+    // Gather examples across every request media type so the selector can
+    // section them by format instead of forcing a separate encoding switch.
+    const requestSpecExamples = useMemo(() => {
+        const list: Array<{key: string; label: string; value: unknown; mediaType?: string; group?: string}> = [];
+        const seen = new Set<string>();
+        requestBodyContentEntries.forEach(([contentType, content]) => {
+            const named = namedMediaExamples(content);
+            if (named.length > 0) {
+                named.forEach(example => {
+                    const key = `${contentType}::${example.key}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    list.push({
+                        key,
+                        label: example.label,
+                        value: example.value,
+                        mediaType: contentType,
+                        group: contentType,
+                    });
+                });
+                return;
+            }
+            const single = content?.example !== undefined ? content.example : undefined;
+            if (single !== undefined) {
+                const key = `${contentType}::example`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                list.push({
+                    key,
+                    label: 'Example',
+                    value: single,
+                    mediaType: contentType,
+                    group: contentType,
+                });
+            }
+        });
+        if (list.length === 0 && requestBodyExample !== undefined) {
+            list.push({
+                key: 'example',
+                label: 'Example',
+                value: requestBodyExample,
+                mediaType: selectedRequestBodyContentType,
+                group: selectedRequestBodyContentType,
+            });
+        }
+        return list;
+    }, [requestBodyContentEntries, requestBodyExample, selectedRequestBodyContentType, spec]);
 
     const requestBodyFormSnippet = formSkeletonSnippet(requestBodyFormFields, requestBodyShape.kind);
-    const requestBodyOneOfChoices = useMemo(
-        () =>
-            requestBodyMatrixSchema
-                ? collectSchemaOneOfChoices(requestBodyMatrixSchema, resolveReference, getRefName)
-                : [],
-        [requestBodyMatrixSchema, resolveReference],
-    );
     const openParameterSchemaExample = (param: any) => {
         const selectionKey = `${parsableKey || 'default'}:param:${method.toLowerCase()}:${path}:${param.in}:${param.name}`;
         const effectiveSchema = param.schema
@@ -1062,6 +1124,8 @@ export default function ViewTab({
                                     value={selectedRequestBodyContentType}
                                     onChange={contentType => {
                                         setRequestBodyVariant(0);
+                                        setRequestAnyOfSelected([]);
+                                        setRequestAllOfFocusIndex(null);
                                         setRequestBodyContentType(contentType);
                                     }}
                                     options={requestBodyContentEntries.map(([contentType]) => ({
@@ -1080,191 +1144,46 @@ export default function ViewTab({
                                 </p>
                             )}
                             <div key={selectedRequestBodyContentType} className="space-y-4 animate-fade-in">
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                                    <p className="text-xs font-mono select-none">
-                                        <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">
-                                            Encoding TYPE:
-                                        </span>
-                                        <span className="rounded bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] break-all">
-                                            {selectedRequestBodyContentType}
-                                        </span>
-                                    </p>
-                                    <Tip content={requestBodyShape.hint}>
-                                        <span className="inline-flex cursor-help items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]">
-                                            <i className={`${requestBodyShape.icon} text-[12px]`} />
-                                            {requestBodyShape.label}
-                                        </span>
-                                    </Tip>
-                                </div>
-                                {requestBodyComposition && (
-                                    <AllOfCompositionNote
-                                        composition={requestBodyComposition}
-                                        subject="request body"
-                                        onInspect={onOpenSchemaModal}
-                                    />
-                                )}
-                                {requestBodyChoice && (
-                                    <AdaptiveTabStrip
-                                        labelNode={<CombinatorLabel meta={requestBodyChoice.meta} />}
-                                        ariaLabel="Request body variants"
-                                        activeId={String(requestBodyBranchIndex)}
-                                        onSelect={id => setRequestBodyVariant(Number(id))}
-                                        items={requestBodyChoice.branches.map((sub, index) => ({
-                                            id: String(index),
-                                            label: schemaVariantLabel(sub, resolveReference, getRefName, index),
-                                            description: (resolveReference(sub) || sub)?.description,
-                                        }))}
-                                    />
-                                )}
-                                <div className="flex items-center justify-between gap-3 flex-wrap">
-                                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
-                                        <button
-                                            onClick={() => {
-                                                setRequestActiveTab('example');
-                                                setEndpointRepresentation(representationKey, 'example');
-                                            }}
-                                            aria-pressed={requestActiveTab === 'example'}
-                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${requestActiveTab === 'example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                        >
-                                            <span className="hidden sm:inline">Generated Example</span>
-                                            <span className="sm:hidden">Example</span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setRequestActiveTab('schema');
-                                                setEndpointRepresentation(representationKey, 'schema');
-                                            }}
-                                            aria-pressed={requestActiveTab === 'schema'}
-                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${requestActiveTab === 'schema' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                        >
-                                            <span className="hidden sm:inline">Unified Schema</span>
-                                            <span className="sm:hidden">Schema</span>
-                                        </button>
-                                        {requestSpecExamples.length > 0 && (
-                                            <div
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={() => setRequestActiveTab('spec-example')}
-                                                onKeyDown={event => {
-                                                    if (event.key === 'Enter' || event.key === ' ') {
-                                                        event.preventDefault();
-                                                        setRequestActiveTab('spec-example');
-                                                    }
-                                                }}
-                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${requestActiveTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                            >
-                                                <span>Example:</span>
-                                                {requestSpecExamples.length > 1 &&
-                                                requestActiveTab === 'spec-example' ? (
-                                                    <span className="inline-flex min-w-0 items-center gap-1">
-                                                        <CustomDropdown
-                                                            value={requestExampleKey || requestSpecExamples[0].key}
-                                                            onChange={setRequestExampleKey}
-                                                            options={requestSpecExamples.map(example => ({
-                                                                value: example.key,
-                                                                label: example.label,
-                                                            }))}
-                                                            className="w-auto min-w-0 max-w-[180px]"
-                                                            ariaLabel="Request examples"
-                                                            plainTrigger
-                                                        />
-                                                    </span>
-                                                ) : (
-                                                    <span>{activeRequestSpecExample?.label || 'Example'}</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                                        {renderViewSchemaButton(
-                                            schemaModalNameOf(
-                                                requestBodyMatrixSchema,
-                                                schemaModalNameOf(selectedRequestBodyContent?.schema),
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-                                {requestActiveTab === 'example' ? (
-                                    <div className="space-y-3 min-w-0">
-                                        <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                            <div className="mb-2 flex items-center justify-between gap-2">
-                                                <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                    Inspect Body Schema
-                                                </h4>
-                                            </div>
-                                            <div className="flex flex-col gap-2 min-w-0">
-                                                <div className="min-w-0 overflow-x-auto scrollbar-thin">
-                                                    {renderSchemaTypeExample(
-                                                        selectedRequestBodyContent.schema,
-                                                        requestBodySelectionScopeKey,
-                                                    )}
-                                                </div>
-                                                {requestBodyEffectiveSchema?.description && (
-                                                    <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
-                                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
-                                                            Schema Description:
-                                                        </div>
-                                                        <div className="markdown-body">
-                                                            <Markdown text={requestBodyEffectiveSchema.description} />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {(() => {
-                                            const example = buildSchemaRepresentationSnippet(
-                                                requestBodyEffectiveSchema || selectedRequestBodyContent.schema,
-                                                selectedRequestBodyContentType,
-                                                'request',
-                                            );
-                                            const inlineMenus = inlineMenusForCode(
-                                                example.code,
-                                                requestBodySelectionScopeKey,
-                                                requestBodyOneOfChoices,
-                                            );
-                                            return (
-                                                <CodeViewer
-                                                    code={inlineMenus.code}
-                                                    language={getLanguageForContentType(selectedRequestBodyContentType)}
-                                                    maxHeight="none"
-                                                    lineMarkers={mockMarkersToLineMarkers(example.markers, {
-                                                        onOpenSchema: onOpenSchemaModal,
-                                                        onTestPattern: setPatternToTest,
-                                                    })}
-                                                    inlineMenus={inlineMenus.menus}
-                                                />
-                                            );
-                                        })()}
-                                    </div>
-                                ) : requestActiveTab === 'spec-example' ? (
-                                    <div className="space-y-3 min-w-0">
-                                        <div className="border-t border-[var(--border)] pt-2">
-                                            <CodeViewer
-                                                code={formatExample(
-                                                    activeRequestSpecExample?.value,
-                                                    selectedRequestBodyContentType,
-                                                    requestBodyEffectiveSchema?.$ref
-                                                        ? getRefName(requestBodyEffectiveSchema.$ref)
-                                                        : requestBodyEffectiveSchema?.title || 'request',
-                                                )}
-                                                language={exampleLanguageFor(selectedRequestBodyContentType)}
-                                                maxHeight="320px"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3 min-w-0">
-                                        <div className="pt-1 min-w-0">
-                                            {renderSchemaPropertiesTable(
-                                                requestBodyMatrixSchema,
-                                                requestBodyMatrixSchema?.$ref
-                                                    ? getRefName(requestBodyMatrixSchema.$ref)
-                                                    : requestBodyMatrixSchema?.title || null,
-                                                requestBodySelectionScopeKey,
-                                                true,
-                                            )}
-                                        </div>
-                                        {requestBodyFormSnippet && (
+                                <SchemaViewer
+                                    spec={spec}
+                                    matrixSchema={requestBodyMatrixSchema}
+                                    effectiveSchema={requestBodyEffectiveSchema}
+                                    contentSchema={
+                                        // Prefer the unresolved content schema so the
+                                        // branch rail still sees oneOf/anyOf/allOf.
+                                        selectedRequestBodyContent?.schema || requestBodySource.schema
+                                    }
+                                    mediaType={selectedRequestBodyContentType}
+                                    selectionScopeKey={requestBodySelectionScopeKey}
+                                    activeTab={requestActiveTab}
+                                    onTabChange={setRequestActiveTab}
+                                    onPersistRepresentation={mode => setEndpointRepresentation(representationKey, mode)}
+                                    specExamples={requestSpecExamples}
+                                    activeSpecExampleKey={requestExampleKey}
+                                    onSpecExampleKeyChange={setRequestExampleKey}
+                                    branchIndex={requestBodyBranchIndex}
+                                    onBranchIndexChange={setRequestBodyVariant}
+                                    anyOfSelectedIndices={requestAnyOfSelected}
+                                    onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
+                                    allOfFocusIndex={requestAllOfFocusIndex}
+                                    onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
+                                    inspectName={
+                                        requestBodyMatrixSchema?.$ref
+                                            ? getRefName(requestBodyMatrixSchema.$ref)
+                                            : requestBodyMatrixSchema?.title || null
+                                    }
+                                    onOpenSchema={onOpenSchemaModal}
+                                    onTestPattern={setPatternToTest}
+                                    shapeInfo={requestBodyShape}
+                                    showSchemaWide={true}
+                                    headerActions={renderViewSchemaButton(
+                                        schemaModalNameOf(
+                                            requestBodyMatrixSchema,
+                                            schemaModalNameOf(selectedRequestBodyContent?.schema),
+                                        ),
+                                    )}
+                                    schemaFooter={
+                                        requestBodyFormSnippet ? (
                                             <div className="border-t border-[var(--border)] pt-2">
                                                 <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                                                     <i className={`${requestBodyShape.icon} text-[12px]`} />
@@ -1279,9 +1198,9 @@ export default function ViewTab({
                                                     maxHeight="260px"
                                                 />
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+                                        ) : null
+                                    }
+                                />
                             </div>
                         </div>
                     </div>

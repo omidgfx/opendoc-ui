@@ -1162,39 +1162,40 @@ export default function SchemaPropertiesTable({
                                 {propertyEntries.map(([name, pVal]) => {
                                     const cells = propertyCells(name, pVal);
                                     return (
-                                        <DataCard
-                                            key={name}
-                                            className="rounded-xl"
-                                            title={
-                                                <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                    {cells.name}
-                                                </span>
-                                            }
-                                            facts={[
-                                                {label: 'Type', value: cells.type},
-                                                {label: 'Details', value: cells.description, wide: true},
-                                            ]}
-                                            footer={
-                                                <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setDetailsModalName(name)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
-                                                    >
-                                                        <i className="ph ph-eye text-[9px]" />
-                                                        More / Example
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSerializerPropertyName(name)}
-                                                        className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer"
-                                                    >
-                                                        <i className="ph ph-arrows-split text-[11px]"></i>
-                                                        <span>Playground</span>
-                                                    </button>
-                                                </div>
-                                            }
-                                        />
+                                        <div key={name} data-field-name={name}>
+                                            <DataCard
+                                                className="rounded-xl"
+                                                title={
+                                                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                        {cells.name}
+                                                    </span>
+                                                }
+                                                facts={[
+                                                    {label: 'Type', value: cells.type},
+                                                    {label: 'Details', value: cells.description, wide: true},
+                                                ]}
+                                                footer={
+                                                    <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDetailsModalName(name)}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/20 text-[10px] transition-all select-none w-fit shrink-0 cursor-pointer"
+                                                        >
+                                                            <i className="ph ph-eye text-[9px]" />
+                                                            More / Example
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSerializerPropertyName(name)}
+                                                            className="sm:px-2 px-1.5 py-1 rounded-md text-[10px] font-sans flex items-center gap-1 transition-all border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] cursor-pointer"
+                                                        >
+                                                            <i className="ph ph-arrows-split text-[11px]"></i>
+                                                            <span>Playground</span>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            />
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -1232,6 +1233,7 @@ export default function SchemaPropertiesTable({
                                             return (
                                                 <tr
                                                     key={name}
+                                                    data-field-name={name}
                                                     className="align-top border-b last:border-b-0 border-b-[var(--border)] transition-colors hover:bg-[var(--text-muted)]/5"
                                                 >
                                                     <td className="px-3 py-2.5 font-mono font-bold text-[var(--text-heading)] whitespace-nowrap align-top">
