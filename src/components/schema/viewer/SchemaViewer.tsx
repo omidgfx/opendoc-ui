@@ -125,6 +125,32 @@ const propertyNamesOf = (schema: any, resolveReference: (item: any) => any): str
 
 const unique = (items: string[]) => Array.from(new Set(items));
 
+/** Safe label for a combinator branch, including pure-null / boolean schemas. */
+const branchLabelOf = (branch: any, resolveReference: (item: any) => any, index: number): string => {
+    if (branch === null || branch === undefined) return 'null';
+    if (branch === true) return 'any';
+    if (branch === false) return 'never';
+    if (typeof branch !== 'object') return String(branch);
+    try {
+        const label = schemaVariantLabel(branch, resolveReference, getRefName, index);
+        if (label && label !== `Variant ${index + 1}`) return label;
+        const resolved = resolveReference(branch) || branch;
+        if (
+            resolved?.type === 'null' ||
+            (Array.isArray(resolved?.type) && resolved.type.every((t: string) => t === 'null'))
+        )
+            return 'null';
+        if (resolved?.const === null) return 'null';
+        return label || `Option ${index + 1}`;
+    } catch {
+        return `Option ${index + 1}`;
+    }
+};
+
+/** Copy-button chrome so the format picker sits as a sibling control in the code bar. */
+const CODE_TOOLBAR_TRIGGER_CLASS =
+    'flex w-auto min-w-0 items-center justify-between gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-sans font-semibold cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60';
+
 export default function SchemaViewer({
     spec,
     matrixSchema,
@@ -317,34 +343,41 @@ export default function SchemaViewer({
         'request';
 
     const generated = useMemo(() => {
-        const mock = generateValidatedMock(effectiveForView, spec, 'request');
-        if (mock.value === undefined) {
+        const encoding = exampleEncodingOf(exampleEncodingId);
+        try {
+            const mock = generateValidatedMock(effectiveForView ?? {type: 'null'}, spec, 'request');
+            if (mock.value === undefined) {
+                return {
+                    value: undefined as unknown,
+                    code: `// Mock unavailable: ${mock.diagnostics.map(item => item.message).join('; ')}`,
+                    markers: [] as ReturnType<typeof extractMockLineMarkers>['markers'],
+                    language: encoding.language,
+                };
+            }
+            // prepareMockForAnnotation suffixes keys with __ODUI_KEY_n__ (and
+            // stubs with __ODUI_MARK_n__) so serializers carry line positions.
+            // extractMockLineMarkers must always run afterwards — otherwise the
+            // tokens leak into the reader-facing example (every format).
+            const prepared = prepareMockForAnnotation(mock.value);
+            const serialized =
+                encoding.id === 'json'
+                    ? JSON.stringify(prepared.value, null, 2)
+                    : encoding.format(prepared.value, rootName);
+            const marked = extractMockLineMarkers(serialized, prepared);
+            return {
+                value: mock.value,
+                code: marked.code,
+                markers: marked.markers,
+                language: encoding.language,
+            };
+        } catch (error) {
             return {
                 value: undefined as unknown,
-                code: `// Mock unavailable: ${mock.diagnostics.map(item => item.message).join('; ')}`,
+                code: `// Mock unavailable: ${error instanceof Error ? error.message : 'could not generate example'}`,
                 markers: [] as ReturnType<typeof extractMockLineMarkers>['markers'],
-                language: 'javascript',
+                language: encoding.language,
             };
         }
-        // prepareMockForAnnotation suffixes keys with __ODUI_KEY_n__ (and
-        // stubs with __ODUI_MARK_n__) so serializers carry line positions.
-        // extractMockLineMarkers must always run afterwards — otherwise the
-        // tokens leak into the reader-facing example (every format).
-        const prepared = prepareMockForAnnotation(mock.value);
-        const encoding = exampleEncodingOf(exampleEncodingId);
-        const serialized =
-            encoding.id === 'json'
-                ? JSON.stringify(prepared.value, null, 2)
-                : encoding.format(prepared.value, rootName);
-        const marked = extractMockLineMarkers(serialized, prepared);
-        return {
-            value: mock.value,
-            code: marked.code,
-            // Gutter icons are most reliable on structured wire forms; keep
-            // them everywhere the tokens still map cleanly onto a line.
-            markers: marked.markers,
-            language: encoding.language,
-        };
     }, [effectiveForView, spec, exampleEncodingId, rootName]);
 
     const dimmedCodeLines = useMemo(() => {
@@ -361,19 +394,14 @@ export default function SchemaViewer({
     }, [generated.code, selectionScopeKey, oneOfChoices, exampleEncodingId]);
 
     const formatToolbar = (
-        <div className="flex items-center gap-1.5">
-            <span className="hidden sm:inline text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                Format
-            </span>
-            <CustomDropdown
-                value={exampleEncodingId}
-                onChange={setExampleEncodingId}
-                options={encodingOptions}
-                className="w-auto min-w-[132px] max-w-[200px]"
-                ariaLabel="Generated example format"
-                plainTrigger
-            />
-        </div>
+        <CustomDropdown
+            value={exampleEncodingId}
+            onChange={setExampleEncodingId}
+            options={encodingOptions}
+            className="w-auto min-w-[7.5rem] max-w-[11rem]"
+            triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
+            ariaLabel="Generated example format"
+        />
     );
 
     const renderBranchRail = () => {
@@ -385,7 +413,7 @@ export default function SchemaViewer({
                         <div className="flex items-center gap-1.5">
                             {choiceBranches.map((branch, index) => {
                                 const active = branchIndex === index;
-                                const label = schemaVariantLabel(branch, resolveReference, getRefName, index);
+                                const label = branchLabelOf(branch, resolveReference, index);
                                 return (
                                     <button
                                         key={`oneof-${index}`}
@@ -403,7 +431,7 @@ export default function SchemaViewer({
                                                 )}
                                             />
                                         </span>
-                                        <span className="max-w-[160px] truncate">{label}</span>
+                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
                                     </button>
                                 );
                             })}
@@ -433,7 +461,7 @@ export default function SchemaViewer({
                             </button>
                             {choiceBranches.map((branch, index) => {
                                 const active = anyOfSelected.includes(index);
-                                const label = schemaVariantLabel(branch, resolveReference, getRefName, index);
+                                const label = branchLabelOf(branch, resolveReference, index);
                                 return (
                                     <button
                                         key={`anyof-${index}`}
@@ -457,7 +485,7 @@ export default function SchemaViewer({
                                                     : 'ph ph-square text-[12px] text-[var(--text-muted)]',
                                             )}
                                         />
-                                        <span className="max-w-[160px] truncate">{label}</span>
+                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
                                     </button>
                                 );
                             })}
@@ -484,7 +512,7 @@ export default function SchemaViewer({
                             </button>
                             {allOfBranches.map((branch: any, index: number) => {
                                 const active = allOfFocusIndex === index;
-                                const label = schemaVariantLabel(branch, resolveReference, getRefName, index);
+                                const label = branchLabelOf(branch, resolveReference, index);
                                 return (
                                     <button
                                         key={`allof-${index}`}
@@ -502,7 +530,7 @@ export default function SchemaViewer({
                                                 )}
                                             />
                                         </span>
-                                        <span className="max-w-[160px] truncate">{label}</span>
+                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
                                     </button>
                                 );
                             })}
@@ -770,22 +798,67 @@ export default function SchemaViewer({
 
             {activeTab === 'schema' && (
                 <div className="space-y-3 min-w-0">
-                    <div
-                        className={clsx('pt-1 min-w-0', dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus')}
-                        data-dimmed-fields={[...dimmedPropertyNames].join(',')}
-                    >
-                        <SchemaPropertiesTable
-                            properties={tableProperties}
-                            schema={matrixSchema}
-                            resolveReference={resolveReference}
-                            getRefName={getRefName}
-                            onPushSchema={name => onOpenSchema?.(name)}
-                            inspectName={schemaName}
-                            onTestPattern={pattern => onTestPattern?.(pattern)}
-                            selectionScopeKey={selectionScopeKey}
-                            showSchemaWide={showSchemaWide}
-                        />
-                    </div>
+                    {(() => {
+                        const pureNull =
+                            matrixSchema === null ||
+                            matrixSchema === undefined ||
+                            resolvedEffective?.type === 'null' ||
+                            (Array.isArray(resolvedEffective?.type) &&
+                                resolvedEffective.type.length > 0 &&
+                                resolvedEffective.type.every((item: string) => item === 'null'));
+                        if (pureNull) {
+                            return (
+                                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-xs leading-relaxed text-[var(--text-muted)]">
+                                    <strong className="text-[var(--text-heading)]">Null schema</strong>
+                                    <p className="mt-1">
+                                        This branch only accepts JSON <code className="font-mono">null</code> and
+                                        declares no properties.
+                                    </p>
+                                </div>
+                            );
+                        }
+                        if (matrixSchema === true) {
+                            return (
+                                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
+                                    <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+                                    <p className="mt-1 text-[var(--text-muted)]">
+                                        Any JSON value satisfies this boolean schema.
+                                    </p>
+                                </div>
+                            );
+                        }
+                        if (matrixSchema === false) {
+                            return (
+                                <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
+                                    <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+                                    <p className="mt-1 text-[var(--text-muted)]">
+                                        No JSON value satisfies this boolean schema.
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return (
+                            <div
+                                className={clsx(
+                                    'pt-1 min-w-0',
+                                    dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus',
+                                )}
+                                data-dimmed-fields={[...dimmedPropertyNames].join(',')}
+                            >
+                                <SchemaPropertiesTable
+                                    properties={tableProperties}
+                                    schema={matrixSchema ?? {type: 'null'}}
+                                    resolveReference={resolveReference}
+                                    getRefName={getRefName}
+                                    onPushSchema={name => onOpenSchema?.(name)}
+                                    inspectName={schemaName}
+                                    onTestPattern={pattern => onTestPattern?.(pattern)}
+                                    selectionScopeKey={selectionScopeKey}
+                                    showSchemaWide={showSchemaWide}
+                                />
+                            </div>
+                        );
+                    })()}
                     {schemaFooter}
                 </div>
             )}

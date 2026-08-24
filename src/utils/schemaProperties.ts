@@ -44,11 +44,21 @@ export const schemaVariantLabel = (
     getRefName: (refStr: string) => string,
     index: number,
 ): string => {
-    if (!variant || typeof variant !== 'object') return `Variant ${index + 1}`;
+    // Pure JSON null is a valid oneOf/anyOf branch in OAS 3.1; keep the label
+    // stable so branch rails never fall through to a generic "Variant n".
+    if (variant === null || variant === undefined) return 'null';
+    if (variant === true) return 'any';
+    if (variant === false) return 'never';
+    if (typeof variant !== 'object') return String(variant);
     if (typeof variant.$ref === 'string' && variant.$ref.startsWith('#/components/schemas/'))
         return getRefName(variant.$ref);
     if (variant.title) return variant.title;
-    const resolved = resolveReference(variant) || variant;
+    let resolved: any = variant;
+    try {
+        resolved = resolveReference(variant) || variant;
+    } catch {
+        resolved = variant;
+    }
     if (resolved && typeof resolved === 'object') {
         if (typeof resolved.$ref === 'string') return getRefName(resolved.$ref);
         if (resolved.title) return resolved.title;

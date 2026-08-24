@@ -611,8 +611,16 @@ export default function ViewTab({
             : null;
     const requestBodyChoice = requestBodyComposition ? null : requestBodyCombinator;
     const requestBodyBranchIndex = requestBodyChoice
-        ? Math.min(requestBodyVariant, requestBodyChoice.branches.length - 1)
+        ? Math.min(requestBodyVariant, Math.max(0, requestBodyChoice.branches.length - 1))
         : 0;
+    // OAS 3.1 allows a pure-null combinator branch (`type: null` or a literal
+    // null). Coerce bare nulls so downstream table/mock code always sees a
+    // schema object instead of throwing on property access.
+    const asBranchSchema = (branch: any): any => {
+        if (branch === null || branch === undefined) return {type: 'null'};
+        if (branch === true || branch === false) return branch;
+        return branch;
+    };
     // anyOf may keep several branches selected; merge their properties so the
     // table and generated example reflect every active alternative.
     const requestBodyAnyOfSchema = (() => {
@@ -623,15 +631,18 @@ export default function ViewTab({
                 ? requestAnyOfSelected.filter(index => index >= 0 && index < branches.length)
                 : branches.map((_, index) => index);
         if (selected.length === 0) return {type: 'object', properties: {}};
-        if (selected.length === 1) return branches[selected[0]];
+        if (selected.length === 1) return asBranchSchema(branches[selected[0]]);
         const properties: Record<string, any> = {};
         const required: string[] = [];
         selected.forEach(index => {
-            const resolved = resolveReference(branches[index]) || branches[index];
-            if (resolved?.properties && typeof resolved.properties === 'object') {
+            const branch = asBranchSchema(branches[index]);
+            if (!branch || typeof branch !== 'object' || branch === true || branch === false) return;
+            const resolved = resolveReference(branch) || branch;
+            if (!resolved || typeof resolved !== 'object') return;
+            if (resolved.properties && typeof resolved.properties === 'object') {
                 Object.assign(properties, resolved.properties);
             }
-            if (Array.isArray(resolved?.required)) {
+            if (Array.isArray(resolved.required)) {
                 resolved.required.forEach((name: string) => {
                     if (!required.includes(name)) required.push(name);
                 });
@@ -650,7 +661,7 @@ export default function ViewTab({
         : requestBodyAnyOfSchema
           ? requestBodyAnyOfSchema
           : requestBodyChoice
-            ? requestBodyChoice.branches[requestBodyBranchIndex]
+            ? asBranchSchema(requestBodyChoice.branches[requestBodyBranchIndex])
             : requestBodySource.schema;
     const requestBodySelectionScopeKey = `${parsableKey || 'default'}:request:${method.toLowerCase()}:${path}`;
     const requestBodyEffectiveSchema = requestBodyMatrixSchema

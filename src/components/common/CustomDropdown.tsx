@@ -9,6 +9,8 @@ interface CustomDropdownProps {
     options: CustomDropdownOption[];
     icon?: string;
     className?: string;
+    /** Replaces the default trigger chrome when set (e.g. match a neighbouring button). */
+    triggerClassName?: string;
     placeholder?: string;
     disabled?: boolean;
     ariaLabel?: string;
@@ -21,6 +23,7 @@ export default function CustomDropdown({
     options,
     icon,
     className = '',
+    triggerClassName,
     placeholder = 'Select...',
     disabled = false,
     ariaLabel,
@@ -214,9 +217,11 @@ export default function CustomDropdown({
                     }
                 }}
                 className={
-                    plainTrigger
-                        ? 'flex w-full min-w-0 items-center justify-between gap-1 bg-transparent px-0 py-0 text-inherit font-inherit cursor-pointer transition-all select-none focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
-                        : 'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 disabled:cursor-not-allowed disabled:opacity-60'
+                    triggerClassName
+                        ? triggerClassName
+                        : plainTrigger
+                          ? 'flex w-full min-w-0 items-center justify-between gap-1 bg-transparent px-0 py-0 text-inherit font-inherit cursor-pointer transition-all select-none focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                          : 'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg border bg-[var(--background)] border-[var(--border)] cursor-pointer hover:border-[var(--primary)]/50 transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 disabled:cursor-not-allowed disabled:opacity-60'
                 }
             >
                 <span className="flex min-w-0 items-center gap-2 truncate">
