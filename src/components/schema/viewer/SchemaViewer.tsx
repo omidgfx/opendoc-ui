@@ -326,26 +326,23 @@ export default function SchemaViewer({
                 language: 'javascript',
             };
         }
+        // prepareMockForAnnotation suffixes keys with __ODUI_KEY_n__ (and
+        // stubs with __ODUI_MARK_n__) so serializers carry line positions.
+        // extractMockLineMarkers must always run afterwards — otherwise the
+        // tokens leak into the reader-facing example (every format).
         const prepared = prepareMockForAnnotation(mock.value);
         const encoding = exampleEncodingOf(exampleEncodingId);
-        // Markers only track JSON-like wire forms reliably.
-        if (encoding.id === 'json' || encoding.id === 'yaml' || encoding.id === 'xml') {
-            const serialized =
-                encoding.id === 'json'
-                    ? JSON.stringify(prepared.value, null, 2)
-                    : encoding.format(prepared.value, rootName);
-            const marked = extractMockLineMarkers(serialized, prepared);
-            return {
-                value: prepared.value,
-                code: marked.code,
-                markers: marked.markers,
-                language: encoding.language,
-            };
-        }
+        const serialized =
+            encoding.id === 'json'
+                ? JSON.stringify(prepared.value, null, 2)
+                : encoding.format(prepared.value, rootName);
+        const marked = extractMockLineMarkers(serialized, prepared);
         return {
-            value: prepared.value,
-            code: encoding.format(prepared.value, rootName),
-            markers: [],
+            value: mock.value,
+            code: marked.code,
+            // Gutter icons are most reliable on structured wire forms; keep
+            // them everywhere the tokens still map cleanly onto a line.
+            markers: marked.markers,
             language: encoding.language,
         };
     }, [effectiveForView, spec, exampleEncodingId, rootName]);
