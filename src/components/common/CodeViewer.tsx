@@ -101,13 +101,19 @@ const HANDLE_PAD_X_PX = 3; /* soft hover padding before/after the field name */
 const CARET_GAP_TOKEN = '\uE000';
 /**
  * Whole slot after the field (and any closing quote): leading air + caret + trailing air.
- * Sized so both sides stay visibly open once the ~11px phosphor caret is centered.
+ * Kept tight — about half a character of air on each side of the phosphor caret.
  */
-const CARET_SLOT_CH = 4.5;
-/** Reserved width for the caret glyph inside the slot (matches ph-caret-down @ 11px ≈ 1.6ch). */
-const CARET_ICON_CH = 1.6;
+const CARET_SLOT_CH = 3;
+/** Reserved width for the caret glyph inside the slot (ph-caret-down @ 11px ≈ 1.5ch). */
+const CARET_ICON_CH = 1.5;
 /** Air before the caret inside the slot (= air after, by symmetry). */
 const CARET_SIDE_CH = (CARET_SLOT_CH - CARET_ICON_CH) / 2;
+/**
+ * Must match the CSS `tab-size` on the code surface. Absolute handles measure in `ch`,
+ * so a literal `\t` (common in Go map / language encodings) has to expand the same way
+ * the browser paints it or the caret drifts left of the field name.
+ */
+const TAB_SIZE_CH = 4;
 
 /**
  * Column to insert the caret layout slot. Field hits cover only the bare name;
@@ -118,6 +124,17 @@ const caretSlotColumn = (line: string, endColumn: number): number => {
     let at = Math.max(0, Math.min(endColumn, line.length));
     if (at < line.length && (line[at] === '"' || line[at] === "'")) at += 1;
     return at;
+};
+
+/** Source column → visual `ch` column, expanding tabs like CSS `tab-size`. */
+const visualColumnCh = (line: string, column: number): number => {
+    const limit = Math.max(0, Math.min(column, line.length));
+    let visual = 0;
+    for (let index = 0; index < limit; index += 1) {
+        if (line[index] === '\t') visual += TAB_SIZE_CH - (visual % TAB_SIZE_CH);
+        else visual += 1;
+    }
+    return visual;
 };
 
 /* subtle odd/even striping, aligned to the text rows */
@@ -411,8 +428,14 @@ export default function CodeViewer({
         if (!openInlineMenuId) return;
         const handlePointerDown = (event: MouseEvent) => {
             const target = event.target as Node;
-            if (viewerRef.current?.contains(target)) return;
+            // Portaled menu is outside the viewer; keep it open when pressing inside.
             if (menuRef.current?.contains(target)) return;
+            // Let the field handle's own onClick toggle — don't pre-dismiss here or the
+            // subsequent click would reopen the menu and make it feel stuck.
+            for (const handle of handleRefs.current.values()) {
+                if (handle.contains(target)) return;
+            }
+            // Any other press — including empty code surface inside the viewer — dismisses.
             setOpenInlineMenuId(null);
         };
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -599,7 +622,7 @@ export default function CodeViewer({
                             })}
                         </div>
                     )}
-                    <pre className="relative z-0 p-4 flex-1">
+                    <pre className="relative z-0 p-4 flex-1" style={{tabSize: TAB_SIZE_CH}}>
                         {visibleInlineMenus.map(menu => {
                             const open = openInlineMenuId === menu.id;
                             const start = Math.max(0, menu.column ?? 0);
@@ -611,6 +634,9 @@ export default function CodeViewer({
                             const sourceLine = preparedInlineMenus.copyCode.split('\n')[(menu.line || 1) - 1] || '';
                             const closingQuoteCh =
                                 end < sourceLine.length && (sourceLine[end] === '"' || sourceLine[end] === "'") ? 1 : 0;
+                            // Tabs (Go map, etc.) are one source column but many painted `ch` —
+                            // place the handle with the expanded visual column.
+                            const visualStartCh = visualColumnCh(sourceLine, start);
                             // Hover covers the field name + closing quote (with soft side pads).
                             // The caret sits inside the non-selectable layout slot after that,
                             // with equal air before and after the glyph.
@@ -620,7 +646,7 @@ export default function CodeViewer({
                                     className="absolute z-20 select-none"
                                     style={{
                                         top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
-                                        left: `calc(${PAD_LEFT_PX}px + ${start}ch - ${HANDLE_PAD_X_PX}px)`,
+                                        left: `calc(${PAD_LEFT_PX}px + ${visualStartCh}ch - ${HANDLE_PAD_X_PX}px)`,
                                         height: `${LINE_HEIGHT_PX}px`,
                                     }}
                                 >
