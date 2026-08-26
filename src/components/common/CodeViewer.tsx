@@ -95,7 +95,8 @@ export function highlightCodeString(code: string, language: string): string {
 
 const LINE_HEIGHT_PX = 18; /* text-xs (12px) x leading-normal (1.5) */
 const PAD_TOP_PX = 16; /* p-4 / py-4 */
-const CARET_RESERVE_CH = 1.4; /* invisible room for the non-selectable caret */
+const PAD_LEFT_PX = 16; /* p-4 / px-4 — absolute handles sit on the padding edge */
+const CARET_RESERVE_CH = 1.4; /* painted caret width after the field name */
 
 /* subtle odd/even striping, aligned to the text rows */
 const stripeBackground = (color: string) => ({
@@ -561,7 +562,9 @@ export default function CodeViewer({
                                     className="absolute z-20"
                                     style={{
                                         top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
-                                        left: `calc(${start}ch + 1px)`,
+                                        // left is relative to the pre padding edge, so include
+                                        // the same horizontal inset the text content has.
+                                        left: `calc(${PAD_LEFT_PX}px + ${start}ch)`,
                                         height: `${LINE_HEIGHT_PX}px`,
                                     }}
                                 >
