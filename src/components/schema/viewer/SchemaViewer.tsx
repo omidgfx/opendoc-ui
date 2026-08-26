@@ -398,7 +398,7 @@ export default function SchemaViewer({
             value={exampleEncodingId}
             onChange={setExampleEncodingId}
             options={encodingOptions}
-            className="w-auto min-w-[7.5rem] max-w-[11rem]"
+            className="w-auto max-w-[11rem]"
             triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
             ariaLabel="Generated example format"
         />
