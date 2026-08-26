@@ -386,12 +386,16 @@ export default function SchemaViewer({
         return dimmedLinesForObjectCode(generated.code, allOfActiveKeys);
     }, [allOfActiveKeys, exampleEncodingId, generated.code]);
 
-    const inlineMenus = useMemo(() => {
-        if (exampleEncodingId !== 'json' && exampleEncodingId !== 'yaml' && exampleEncodingId !== 'xml') {
-            return {code: generated.code, menus: []};
-        }
-        return inlineMenusForCode(generated.code, selectionScopeKey, oneOfChoices);
-    }, [generated.code, selectionScopeKey, oneOfChoices, exampleEncodingId]);
+    const inlineMenus = useMemo(
+        () =>
+            inlineMenusForCode(
+                generated.code,
+                selectionScopeKey,
+                oneOfChoices,
+                exampleEncodingId || generated.language,
+            ),
+        [generated.code, generated.language, selectionScopeKey, oneOfChoices, exampleEncodingId],
+    );
 
     const formatToolbar = (
         <CustomDropdown
