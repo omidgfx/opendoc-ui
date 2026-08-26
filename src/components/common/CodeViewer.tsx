@@ -96,7 +96,9 @@ export function highlightCodeString(code: string, language: string): string {
 const LINE_HEIGHT_PX = 18; /* text-xs (12px) x leading-normal (1.5) */
 const PAD_TOP_PX = 16; /* p-4 / py-4 */
 const PAD_LEFT_PX = 16; /* p-4 / px-4 — absolute handles sit on the padding edge */
-const CARET_RESERVE_CH = 1.4; /* painted caret width after the field name */
+const HANDLE_PAD_X_PX = 4; /* soft hover padding before/after the field name */
+const CARET_GAP_PX = 3; /* air between the field name and the caret icon */
+const CARET_RESERVE_CH = 1.25; /* painted caret width after the field name */
 
 /* subtle odd/even striping, aligned to the text rows */
 const stripeBackground = (color: string) => ({
@@ -562,9 +564,9 @@ export default function CodeViewer({
                                     className="absolute z-20"
                                     style={{
                                         top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
-                                        // left is relative to the pre padding edge, so include
-                                        // the same horizontal inset the text content has.
-                                        left: `calc(${PAD_LEFT_PX}px + ${start}ch)`,
+                                        // Start a few px before the field name so hover has end padding,
+                                        // then the name span, a gap, the caret, and matching end padding.
+                                        left: `calc(${PAD_LEFT_PX}px + ${start}ch - ${HANDLE_PAD_X_PX}px)`,
                                         height: `${LINE_HEIGHT_PX}px`,
                                     }}
                                 >
@@ -588,22 +590,27 @@ export default function CodeViewer({
                                             setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
                                         }
                                         className={clsx(
-                                            'group/handle relative inline-flex h-full items-center rounded-sm border-0 bg-transparent p-0 text-left cursor-pointer select-none',
+                                            'group/handle relative inline-flex h-full items-center rounded-sm border-0 bg-transparent py-0 text-left cursor-pointer select-none',
                                             'hover:bg-[var(--primary)]/10 focus-visible:bg-[var(--primary)]/10 focus-visible:outline-none',
                                             open && 'bg-[var(--primary)]/10',
                                         )}
+                                        style={{
+                                            paddingLeft: HANDLE_PAD_X_PX,
+                                            paddingRight: HANDLE_PAD_X_PX,
+                                            gap: CARET_GAP_PX,
+                                        }}
                                         aria-label={menu.ariaLabel || 'Select schema branch'}
                                         aria-haspopup="menu"
                                         aria-expanded={open}
                                     >
                                         <span
                                             aria-hidden="true"
-                                            className="block h-full"
+                                            className="block h-full shrink-0"
                                             style={{width: `calc(${nameWidthCh}ch)`}}
                                         />
                                         <span
                                             aria-hidden="true"
-                                            className="pointer-events-none -ml-[1px] inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
+                                            className="pointer-events-none inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
                                             style={{width: `calc(${CARET_RESERVE_CH}ch)`}}
                                         >
                                             <i className="ph-fill ph-caret-down text-[11px] leading-none" />
