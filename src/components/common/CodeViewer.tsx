@@ -96,9 +96,29 @@ export function highlightCodeString(code: string, language: string): string {
 const LINE_HEIGHT_PX = 18; /* text-xs (12px) x leading-normal (1.5) */
 const PAD_TOP_PX = 16; /* p-4 / py-4 */
 const PAD_LEFT_PX = 16; /* p-4 / px-4 — absolute handles sit on the padding edge */
-const HANDLE_PAD_X_PX = 4; /* soft hover padding before/after the field name */
-const CARET_GAP_PX = 3; /* air between the field name and the caret icon */
-const CARET_RESERVE_CH = 1.25; /* painted caret width after the field name */
+const HANDLE_PAD_X_PX = 3; /* soft hover padding before/after the field name */
+/** Private-use marker expanded to a non-selectable layout slot after field names. */
+const CARET_GAP_TOKEN = '\uE000';
+/**
+ * Whole slot after the field (and any closing quote): leading air + caret + trailing air.
+ * Sized so both sides stay visibly open once the ~11px phosphor caret is centered.
+ */
+const CARET_SLOT_CH = 4.5;
+/** Reserved width for the caret glyph inside the slot (matches ph-caret-down @ 11px ≈ 1.6ch). */
+const CARET_ICON_CH = 1.6;
+/** Air before the caret inside the slot (= air after, by symmetry). */
+const CARET_SIDE_CH = (CARET_SLOT_CH - CARET_ICON_CH) / 2;
+
+/**
+ * Column to insert the caret layout slot. Field hits cover only the bare name;
+ * JSON/YAML/etc. still have a closing quote (and no more) that must stay with
+ * the name so the slot — and the caret air — sit between the key and `:`.
+ */
+const caretSlotColumn = (line: string, endColumn: number): number => {
+    let at = Math.max(0, Math.min(endColumn, line.length));
+    if (at < line.length && (line[at] === '"' || line[at] === "'")) at += 1;
+    return at;
+};
 
 /* subtle odd/even striping, aligned to the text rows */
 const stripeBackground = (color: string) => ({
@@ -217,34 +237,61 @@ export default function CodeViewer({
                 }
             }
         });
-        let stripped = source;
+        let clean = source;
         menus.forEach(menu => {
-            if (menu.token) stripped = stripped.split(menu.token).join('');
+            if (menu.token) clean = clean.split(menu.token).join('');
         });
-        // Source text is never rewritten for the new field-span path: the
-        // handle + caret are painted on top so Prism style and copy stay pure.
-        return {code: stripped, menus};
+        // Reserve a real layout slot after each interactive field so the caret
+        // has air on both sides. The slot is a private-use token in the display
+        // stream (one character → CARET_SLOT_CH via CSS), never selectable and
+        // stripped from copy so the clipboard stays pure source.
+        const lines = clean.split('\n');
+        const byLine = new Map<number, typeof menus>();
+        menus.forEach(menu => {
+            if (!Number.isInteger(menu.line) || typeof menu.endColumn !== 'number') return;
+            const bucket = byLine.get(menu.line) || [];
+            bucket.push(menu);
+            byLine.set(menu.line, bucket);
+        });
+        byLine.forEach((bucket, line) => {
+            const lineIndex = line - 1;
+            if (lineIndex < 0 || lineIndex >= lines.length) return;
+            // Right-to-left so earlier columns stay valid as we insert.
+            const ordered = [...bucket].sort((a, b) => (b.endColumn ?? 0) - (a.endColumn ?? 0));
+            let text = lines[lineIndex];
+            ordered.forEach(menu => {
+                const at = caretSlotColumn(text, menu.endColumn ?? 0);
+                if (at < 0 || at > text.length) return;
+                text = `${text.slice(0, at)}${CARET_GAP_TOKEN}${text.slice(at)}`;
+            });
+            lines[lineIndex] = text;
+        });
+        return {displayCode: lines.join('\n'), copyCode: clean, menus};
     }, [code, inlineMenus]);
 
-    let finalCode = preparedInlineMenus.code;
+    let displayCode = preparedInlineMenus.displayCode;
+    let copyCode = preparedInlineMenus.copyCode;
     // Inline menu columns are measured against the source as given. Re-indenting
     // JSON would shift every field and leave the handles stranded.
     if (language.toLowerCase() === 'json' && lineMarkers === undefined && preparedInlineMenus.menus.length === 0) {
         try {
-            const obj =
-                typeof preparedInlineMenus.code === 'string'
-                    ? JSON.parse(preparedInlineMenus.code)
-                    : preparedInlineMenus.code;
-            finalCode = JSON.stringify(obj, null, 4);
+            const obj = typeof copyCode === 'string' ? JSON.parse(copyCode) : copyCode;
+            displayCode = JSON.stringify(obj, null, 4);
+            copyCode = displayCode;
         } catch {}
     }
     const handleCopy = () => {
-        navigator.clipboard.writeText(finalCode);
+        navigator.clipboard.writeText(copyCode);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-    const highlightedHtml = highlightCodeString(finalCode, language);
-    const lineCount = useMemo(() => Math.max(1, finalCode.split('\n').length), [finalCode]);
+    const highlightedHtml = useMemo(() => {
+        const raw = highlightCodeString(displayCode, language);
+        // Expand caret slots after Prism so the marker is never tokenised as code.
+        const gapHtml = `<span class="odui-caret-gap" aria-hidden="true" style="display:inline-block;width:${CARET_SLOT_CH}ch;user-select:none;-webkit-user-select:none;vertical-align:baseline"></span>`;
+        return raw.split(CARET_GAP_TOKEN).join(gapHtml);
+    }, [displayCode, language]);
+    const lineCount = useMemo(() => Math.max(1, displayCode.split('\n').length), [displayCode]);
     const dimmedLineSet = useMemo(() => new Set(dimmedLines || []), [dimmedLines]);
     const highlightedLines = useMemo(() => {
         // Split after highlight so each row can carry its own opacity for allOf focus.
@@ -558,24 +605,25 @@ export default function CodeViewer({
                             const start = Math.max(0, menu.column ?? 0);
                             const end = Math.max(start, menu.endColumn ?? start);
                             const nameWidthCh = Math.max(1, end - start);
+                            // Include a closing quote when the source has one so the handle's
+                            // caret slot lines up with the non-selectable layout gap (which is
+                            // inserted after that quote, not between name and quote).
+                            const sourceLine = preparedInlineMenus.copyCode.split('\n')[(menu.line || 1) - 1] || '';
+                            const closingQuoteCh =
+                                end < sourceLine.length && (sourceLine[end] === '"' || sourceLine[end] === "'") ? 1 : 0;
+                            // Hover covers the field name + closing quote (with soft side pads).
+                            // The caret sits inside the non-selectable layout slot after that,
+                            // with equal air before and after the glyph.
                             return (
                                 <div
                                     key={menu.id}
-                                    className="absolute z-20"
+                                    className="absolute z-20 select-none"
                                     style={{
                                         top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
-                                        // Start a few px before the field name so hover has end padding,
-                                        // then the name span, a gap, the caret, and matching end padding.
                                         left: `calc(${PAD_LEFT_PX}px + ${start}ch - ${HANDLE_PAD_X_PX}px)`,
                                         height: `${LINE_HEIGHT_PX}px`,
                                     }}
                                 >
-                                    {/*
-                                      One handle covers field name + caret. The name zone uses
-                                      pointer-events so a click opens the menu, while the
-                                      underlying Prism glyphs stay the selectable text (the
-                                      overlay itself is select-none and caret is never in the DOM text).
-                                    */}
                                     <button
                                         ref={node => {
                                             if (node) handleRefs.current.set(menu.id, node);
@@ -594,27 +642,40 @@ export default function CodeViewer({
                                             'hover:bg-[var(--primary)]/10 focus-visible:bg-[var(--primary)]/10 focus-visible:outline-none',
                                             open && 'bg-[var(--primary)]/10',
                                         )}
-                                        style={{
-                                            paddingLeft: HANDLE_PAD_X_PX,
-                                            paddingRight: HANDLE_PAD_X_PX,
-                                            gap: CARET_GAP_PX,
-                                        }}
+                                        style={{paddingLeft: HANDLE_PAD_X_PX, paddingRight: 0}}
                                         aria-label={menu.ariaLabel || 'Select schema branch'}
                                         aria-haspopup="menu"
                                         aria-expanded={open}
                                     >
+                                        {/* Field name (+ closing quote). Soft hover pad is paddingLeft only —
+                                            the caret slot supplies the air after the name, so this span
+                                            must end exactly on the quote. */}
                                         <span
                                             aria-hidden="true"
                                             className="block h-full shrink-0"
-                                            style={{width: `calc(${nameWidthCh}ch)`}}
+                                            style={{
+                                                width: `calc(${nameWidthCh + closingQuoteCh}ch)`,
+                                            }}
+                                        />
+                                        {/* Leading air inside the reserved slot (matches trailing air after caret). */}
+                                        <span
+                                            aria-hidden="true"
+                                            className="block h-full shrink-0"
+                                            style={{width: `calc(${CARET_SIDE_CH}ch)`}}
                                         />
                                         <span
                                             aria-hidden="true"
                                             className="pointer-events-none inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
-                                            style={{width: `calc(${CARET_RESERVE_CH}ch)`}}
+                                            style={{width: `calc(${CARET_ICON_CH}ch)`}}
                                         >
                                             <i className="ph-fill ph-caret-down text-[11px] leading-none" />
                                         </span>
+                                        {/* Trailing slot air + soft hover pad past the layout gap. */}
+                                        <span
+                                            aria-hidden="true"
+                                            className="block h-full shrink-0"
+                                            style={{width: `calc(${CARET_SIDE_CH}ch + ${HANDLE_PAD_X_PX}px)`}}
+                                        />
                                     </button>
                                 </div>
                             );
