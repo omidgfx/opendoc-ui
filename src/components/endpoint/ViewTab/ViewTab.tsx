@@ -25,7 +25,12 @@ import ScrollableRow from '../../common/ScrollableRow';
 import OverflowActionsMenu from '../../common/OverflowActionsMenu';
 import CardOrTable, {CARD_LAYOUT_WIDTH, COMPACT_CARD_LAYOUT_WIDTH} from '../../common/CardOrTable';
 import DataCard, {RequiredBadge} from '../../common/DataCard';
-import {describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import {
+    describeAllOfComposition,
+    detectSchemaCombinator,
+    effectiveBranchSchema,
+    mergeAnyOfBranchSchemas,
+} from '@/src/utils/schema/combinators';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
 import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
@@ -622,47 +627,25 @@ export default function ViewTab({
         if (branch === true || branch === false) return branch;
         return branch;
     };
-    // anyOf may keep several branches selected; merge their properties so the
-    // table and generated example reflect every active alternative.
-    const requestBodyAnyOfSchema = (() => {
-        if (requestBodyChoice?.meta.kind !== 'anyOf') return null;
-        const branches = requestBodyChoice.branches;
-        const selected =
-            requestAnyOfSelected.length > 0
-                ? requestAnyOfSelected.filter(index => index >= 0 && index < branches.length)
-                : branches.map((_, index) => index);
-        if (selected.length === 0) return {type: 'object', properties: {}};
-        if (selected.length === 1) return asBranchSchema(branches[selected[0]]);
-        const properties: Record<string, any> = {};
-        const required: string[] = [];
-        selected.forEach(index => {
-            const branch = asBranchSchema(branches[index]);
-            if (!branch || typeof branch !== 'object' || branch === true || branch === false) return;
-            const resolved = resolveReference(branch) || branch;
-            if (!resolved || typeof resolved !== 'object') return;
-            if (resolved.properties && typeof resolved.properties === 'object') {
-                Object.assign(properties, resolved.properties);
-            }
-            if (Array.isArray(resolved.required)) {
-                resolved.required.forEach((name: string) => {
-                    if (!required.includes(name)) required.push(name);
-                });
-            }
-        });
-        return {
-            type: 'object',
-            title: resolvedRequestBodySchema?.title,
-            description: resolvedRequestBodySchema?.description,
-            properties,
-            ...(required.length > 0 ? {required} : {}),
-        };
-    })();
+    // anyOf may keep several branches selected. Branches are often $refs to
+    // allOf compositions — merge via effective shapes, not top-level properties
+    // alone, or the table and generated example collapse to {}.
+    const requestBodyAnyOfSchema =
+        requestBodyChoice?.meta.kind === 'anyOf'
+            ? mergeAnyOfBranchSchemas(requestBodyChoice.branches, requestAnyOfSelected, resolveReference, {
+                  title: resolvedRequestBodySchema?.title,
+                  description: resolvedRequestBodySchema?.description,
+              })
+            : null;
     const requestBodyMatrixSchema = requestBodyComposition
         ? requestBodyComposition.effective
         : requestBodyAnyOfSchema
           ? requestBodyAnyOfSchema
           : requestBodyChoice
-            ? asBranchSchema(requestBodyChoice.branches[requestBodyBranchIndex])
+            ? effectiveBranchSchema(
+                  asBranchSchema(requestBodyChoice.branches[requestBodyBranchIndex]),
+                  resolveReference,
+              )
             : requestBodySource.schema;
     const requestBodySelectionScopeKey = `${parsableKey || 'default'}:request:${method.toLowerCase()}:${path}`;
     const requestBodyEffectiveSchema = requestBodyMatrixSchema

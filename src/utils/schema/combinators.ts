@@ -204,9 +204,91 @@ export const describeAllOfComposition = (
     };
 };
 
-/** The polymorphism keyword a schema declares, if any, with its branches. */
+/**
+ * Expand one anyOf/oneOf branch into the object shape a table or mock can use.
+ * Branches are often `$ref`s to `allOf` compositions (no top-level `properties`);
+ * walking only `resolved.properties` would yield an empty object.
+ */
+export const effectiveBranchSchema = (branch: any, resolve: SchemaBranchResolver = value => value): any => {
+    if (branch === null || branch === undefined) return {type: 'null'};
+    if (branch === true || branch === false) return branch;
+    if (typeof branch !== 'object') return branch;
+    const resolved = resolve(branch) || branch;
+    if (!resolved || typeof resolved !== 'object') return resolved;
+    if (Array.isArray(resolved.allOf) && resolved.allOf.length) {
+        return effectiveAllOfSchema(resolved, resolve) || resolved;
+    }
+    return resolved;
+};
+
+/**
+ * anyOf may keep several branches selected. Merge their effective object shapes
+ * (including allOf-wrapped `$ref`s) so the matrix and generated example still
+ * show fields instead of an empty `{}`.
+ */
+export const mergeAnyOfBranchSchemas = (
+    branches: any[],
+    selectedIndices: number[],
+    resolve: SchemaBranchResolver = value => value,
+    meta?: {title?: string; description?: string},
+): any => {
+    if (!Array.isArray(branches) || branches.length === 0) return {type: 'object', properties: {}};
+    const selected =
+        selectedIndices.length > 0
+            ? selectedIndices.filter(index => index >= 0 && index < branches.length)
+            : branches.map((_, index) => index);
+    if (selected.length === 0) return {type: 'object', properties: {}};
+    if (selected.length === 1) return effectiveBranchSchema(branches[selected[0]], resolve);
+
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
+    let additionalProperties: any;
+    let sawObject = false;
+
+    selected.forEach(index => {
+        const effective = effectiveBranchSchema(branches[index], resolve);
+        if (!effective || typeof effective !== 'object' || effective === true || effective === false) return;
+        if (effective.properties && typeof effective.properties === 'object') {
+            sawObject = true;
+            Object.assign(properties, effective.properties);
+        }
+        if (Array.isArray(effective.required)) {
+            effective.required.forEach((name: string) => {
+                if (!required.includes(name)) required.push(name);
+            });
+        }
+        if (effective.additionalProperties !== undefined && additionalProperties === undefined) {
+            additionalProperties = effective.additionalProperties;
+        }
+        // Non-object branches (string | null unions, etc.) contribute no properties.
+        if (effective.type && effective.type !== 'object' && !effective.properties) return;
+        if (effective.type === 'object' || effective.properties) sawObject = true;
+    });
+
+    if (!sawObject && Object.keys(properties).length === 0) {
+        // Fall back to the first selected branch as-is (e.g. pure scalar anyOf).
+        return effectiveBranchSchema(branches[selected[0]], resolve);
+    }
+
+    return {
+        type: 'object',
+        ...(meta?.title ? {title: meta.title} : {}),
+        ...(meta?.description ? {description: meta.description} : {}),
+        properties,
+        ...(required.length > 0 ? {required} : {}),
+        ...(additionalProperties !== undefined ? {additionalProperties} : {}),
+    };
+};
+
+/**
+ * The polymorphism keyword declared on this schema node itself — never walks
+ * into `properties` / `items`. Nested oneOf/anyOf/allOf belong on the field
+ * row, not on the body-level branch rail.
+ */
 export const detectSchemaCombinator = (schema: any, _resolve?: SchemaBranchResolver): SchemaCombinator | null => {
-    if (!schema || typeof schema !== 'object') return null;
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
+    // Own keywords only — do not resolve $ref here: the caller decides whether
+    // to resolve, so a body `$ref` wrapper is handled upstream.
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
         return {meta: COMBINATOR_META.oneOf, branches: schema.oneOf};
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)

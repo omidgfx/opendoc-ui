@@ -199,9 +199,15 @@ export default function SchemaViewer({
     }, [selectionScopeKey]);
 
     const resolvedMatrix = matrixSchema ? resolveReference(matrixSchema) || matrixSchema : null;
-    // Host often narrows oneOf/anyOf/allOf into matrixSchema already; the rail
-    // always reads the original content schema so the keywords stay visible.
-    const resolvedContent = contentSchema ? resolveReference(contentSchema) || contentSchema : resolvedMatrix;
+    // Branch rail must reflect ONLY the body schema's own oneOf/anyOf/allOf.
+    // Prefer contentSchema (the unresolved media-type schema). Never fall back
+    // to matrixSchema when contentSchema is present: matrix is often a narrowed
+    // branch or a merged object whose nested field combinators must not surface
+    // as a top-level rail.
+    const resolvedContent =
+        contentSchema !== undefined && contentSchema !== null
+            ? resolveReference(contentSchema) || contentSchema
+            : resolvedMatrix;
     const rootCombinator = detectSchemaCombinator(resolvedContent);
     const composition =
         rootCombinator?.meta.kind === 'allOf'
@@ -210,9 +216,10 @@ export default function SchemaViewer({
     const choiceKind: CombinatorKind | null =
         rootCombinator && rootCombinator.meta.kind !== 'allOf' ? rootCombinator.meta.kind : null;
     const choiceBranches = choiceKind && rootCombinator ? rootCombinator.branches : [];
-    const allOfBranches = Array.isArray((resolvedContent as any)?.allOf)
-        ? ((resolvedContent as any).allOf as any[])
-        : [];
+    const allOfBranches =
+        rootCombinator?.meta.kind === 'allOf' && Array.isArray((resolvedContent as any)?.allOf)
+            ? ((resolvedContent as any).allOf as any[])
+            : [];
 
     const anyOfSelected =
         anyOfSelectedIndices ??
