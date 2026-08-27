@@ -5,9 +5,13 @@ import clsx from 'clsx';
 /**
  * Temporary DEV-ONLY code-name tooltips for chat feedback.
  *
- * The tip opens **under the pointer** so the cursor is already on Copy —
- * no mouse travel across a gap. Click the red mark to pin until Copy / ✕ /
- * Escape. Copy writes `` `Name` `` to the clipboard.
+ * Non-intrusive harness:
+ * - The app UI stays fully clickable (no host hover handlers).
+ * - Only the small red mark is interactive.
+ * - Hover the mark → tip appears after a short delay, fixed to the mark
+ *   (does not follow the mouse).
+ * - Click the mark → pin until Copy / ✕ / Escape / outside click.
+ * - Copy writes `` `Name` `` to the clipboard.
  *
  * - Production: `import.meta.env.DEV` is false → children only.
  * - Kill switch: `DEV_TOOLTIPS_ENABLED = false`.
@@ -15,6 +19,11 @@ import clsx from 'clsx';
  */
 
 export const DEV_TOOLTIPS_ENABLED = true;
+
+/** Hover must stay on the mark this long before the tip opens. */
+const OPEN_DELAY_MS = 450;
+/** Grace period when leaving mark → tip so Copy stays reachable. */
+const CLOSE_DELAY_MS = 280;
 
 const showDevTooltips = (): boolean => Boolean(import.meta.env.DEV) && DEV_TOOLTIPS_ENABLED;
 
@@ -65,17 +74,14 @@ const copyCitedName = async (name: string): Promise<boolean> => {
     }
 };
 
-const deepestHost = (node: EventTarget | null): Element | null => {
-    if (!(node instanceof Element)) return null;
-    return node.closest('[data-dev-tooltip-host]');
-};
-
-/** Place tip so (x,y) lands inside it — cursor never has to "reach" the tip. */
-const posUnderPoint = (x: number, y: number, tipW: number, tipH: number): TipPos => {
+/** Fixed position near the mark — never tracks the cursor. */
+const posNearMark = (mark: DOMRect, tipW: number, tipH: number): TipPos => {
     const pad = 8;
-    // Cursor sits in the left half of the tip, vertically centered on the row.
-    let left = x - 12;
-    let top = y - Math.min(14, tipH / 2);
+    const gap = 6;
+    // Prefer above the mark; flip below if needed.
+    let top = mark.top - tipH - gap;
+    let left = mark.left;
+    if (top < pad) top = mark.bottom + gap;
     if (left + tipW > window.innerWidth - pad) left = window.innerWidth - tipW - pad;
     if (left < pad) left = pad;
     if (top + tipH > window.innerHeight - pad) top = window.innerHeight - tipH - pad;
@@ -92,18 +98,25 @@ export default function DevTooltip({
 }: DevTooltipProps) {
     const reactId = useId();
     const instanceId = useRef(`devtip-${reactId}`).current;
-    const hostRef = useRef<HTMLElement | null>(null);
-    const tipRef = useRef<HTMLDivElement | null>(null);
     const markRef = useRef<HTMLElement | null>(null);
+    const tipRef = useRef<HTMLDivElement | null>(null);
+    const openTimer = useRef<number | null>(null);
     const closeTimer = useRef<number | null>(null);
-    const pointRef = useRef({x: 0, y: 0});
     const pinnedRef = useRef(false);
     const overTipRef = useRef(false);
+    const overMarkRef = useRef(false);
 
     const [open, setOpen] = useState(false);
     const [pinned, setPinned] = useState(false);
     const [pos, setPos] = useState<TipPos | null>(null);
     const [copied, setCopied] = useState(false);
+
+    const clearOpen = useCallback(() => {
+        if (openTimer.current !== null) {
+            window.clearTimeout(openTimer.current);
+            openTimer.current = null;
+        }
+    }, []);
 
     const clearClose = useCallback(() => {
         if (closeTimer.current !== null) {
@@ -113,29 +126,31 @@ export default function DevTooltip({
     }, []);
 
     const closeNow = useCallback(() => {
+        clearOpen();
         clearClose();
         releaseTip(instanceId);
         pinnedRef.current = false;
         overTipRef.current = false;
+        overMarkRef.current = false;
         setPinned(false);
         setOpen(false);
         setPos(null);
         setCopied(false);
-    }, [clearClose, instanceId]);
+    }, [clearClose, clearOpen, instanceId]);
 
     const scheduleClose = useCallback(() => {
-        if (pinnedRef.current || overTipRef.current) return;
+        if (pinnedRef.current) return;
         clearClose();
         closeTimer.current = window.setTimeout(() => {
-            if (pinnedRef.current || overTipRef.current) return;
+            if (pinnedRef.current || overTipRef.current || overMarkRef.current) return;
             closeNow();
-        }, 400);
+        }, CLOSE_DELAY_MS);
     }, [clearClose, closeNow]);
 
-    const openAt = useCallback(
-        (x: number, y: number, pin = false) => {
+    const openNow = useCallback(
+        (pin = false) => {
+            clearOpen();
             clearClose();
-            pointRef.current = {x, y};
             claimTip(instanceId, closeNow);
             if (pin) {
                 pinnedRef.current = true;
@@ -143,14 +158,29 @@ export default function DevTooltip({
             }
             setOpen(true);
         },
-        [clearClose, closeNow, instanceId],
+        [clearClose, clearOpen, closeNow, instanceId],
     );
 
+    const scheduleOpen = useCallback(() => {
+        if (pinnedRef.current || open) {
+            clearClose();
+            return;
+        }
+        clearOpen();
+        openTimer.current = window.setTimeout(() => {
+            openTimer.current = null;
+            if (!overMarkRef.current && !pinnedRef.current) return;
+            openNow(false);
+        }, OPEN_DELAY_MS);
+    }, [clearClose, clearOpen, open, openNow]);
+
     const updatePos = useCallback(() => {
+        const mark = markRef.current?.getBoundingClientRect();
+        if (!mark) return;
         const tip = tipRef.current;
         const w = tip?.offsetWidth || 220;
         const h = tip?.offsetHeight || 32;
-        setPos(posUnderPoint(pointRef.current.x, pointRef.current.y, w, h));
+        setPos(posNearMark(mark, w, h));
     }, []);
 
     useLayoutEffect(() => {
@@ -164,61 +194,60 @@ export default function DevTooltip({
             if (event.key === 'Escape') closeNow();
         };
         const onDown = (event: MouseEvent) => {
-            if (!pinnedRef.current) return;
             const t = event.target as Node;
             if (tipRef.current?.contains(t)) return;
             if (markRef.current?.contains(t)) return;
+            // Any outside press dismisses (pinned or not) so the app never feels stuck.
             closeNow();
         };
-        const onScroll = () => updatePos();
+        const onScrollOrResize = () => updatePos();
         document.addEventListener('keydown', onKey);
         document.addEventListener('mousedown', onDown, true);
-        window.addEventListener('scroll', onScroll, true);
-        window.addEventListener('resize', onScroll);
+        window.addEventListener('scroll', onScrollOrResize, true);
+        window.addEventListener('resize', onScrollOrResize);
         return () => {
             document.removeEventListener('keydown', onKey);
             document.removeEventListener('mousedown', onDown, true);
-            window.removeEventListener('scroll', onScroll, true);
-            window.removeEventListener('resize', onScroll);
+            window.removeEventListener('scroll', onScrollOrResize, true);
+            window.removeEventListener('resize', onScrollOrResize);
         };
     }, [open, closeNow, updatePos]);
 
     useEffect(
         () => () => {
+            clearOpen();
             clearClose();
             releaseTip(instanceId);
         },
-        [clearClose, instanceId],
+        [clearClose, clearOpen, instanceId],
     );
 
-    const onHostMouseOver = (event: React.MouseEvent) => {
-        if (deepestHost(event.target) !== hostRef.current) return;
-        openAt(event.clientX, event.clientY, false);
+    const onMarkEnter = () => {
+        overMarkRef.current = true;
+        clearClose();
+        scheduleOpen();
     };
 
-    const onHostMouseMove = (event: React.MouseEvent) => {
-        if (!open || pinnedRef.current || overTipRef.current) return;
-        if (deepestHost(event.target) !== hostRef.current) return;
-        pointRef.current = {x: event.clientX, y: event.clientY};
-        updatePos();
-    };
-
-    const onHostMouseOut = (event: React.MouseEvent) => {
-        if (pinnedRef.current) return;
+    const onMarkLeave = (event: React.MouseEvent) => {
+        overMarkRef.current = false;
+        clearOpen();
         const related = event.relatedTarget as Node | null;
         if (related && tipRef.current?.contains(related)) {
             overTipRef.current = true;
-            clearClose();
             return;
         }
-        if (related && hostRef.current?.contains(related)) return;
         scheduleClose();
     };
 
-    const pinAtEvent = (event: React.MouseEvent) => {
+    const onMarkClick = (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        openAt(event.clientX, event.clientY, true);
+        clearOpen();
+        if (open && pinnedRef.current) {
+            closeNow();
+            return;
+        }
+        openNow(true);
     };
 
     const onCopy = async (event: React.MouseEvent) => {
@@ -248,6 +277,7 @@ export default function DevTooltip({
                       onMouseEnter={() => {
                           overTipRef.current = true;
                           clearClose();
+                          clearOpen();
                       }}
                       onMouseLeave={() => {
                           overTipRef.current = false;
@@ -265,7 +295,7 @@ export default function DevTooltip({
                           visibility: pos ? 'visible' : 'hidden',
                       }}
                   >
-                      <span className="min-w-0 truncate select-all">`{name}`</span>
+                      <span className="min-w-0 truncate select-all">{`{name}`}</span>
                       <button
                           type="button"
                           onMouseDown={event => {
@@ -285,32 +315,30 @@ export default function DevTooltip({
                           <i className={clsx('ph text-[13px]', copied ? 'ph-check-bold' : 'ph-copy')} />
                           {copied ? 'Copied' : 'Copy'}
                       </button>
-                      {pinned && (
-                          <button
-                              type="button"
-                              onMouseDown={event => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                              }}
-                              onClick={event => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  closeNow();
-                              }}
-                              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded border border-red-950 bg-red-800 text-white hover:bg-red-950"
-                              aria-label="Close"
-                          >
-                              <i className="ph ph-x text-[12px]" />
-                          </button>
-                      )}
+                      <button
+                          type="button"
+                          onMouseDown={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                          }}
+                          onClick={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              closeNow();
+                          }}
+                          className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded border border-red-950 bg-red-800 text-white hover:bg-red-950"
+                          aria-label="Close"
+                      >
+                          <i className="ph ph-x text-[12px]" />
+                      </button>
                   </div>,
                   document.body,
               )
             : null;
 
     const markClass = clsx(
-        // 30% transparent + compact so labels don't fight the UI.
-        'absolute z-[6] size-1.5 cursor-pointer rounded-[2px] bg-red-600/70',
+        // 30% transparent + compact. Only this mark captures pointer events.
+        'absolute z-[6] size-1.5 cursor-help rounded-[2px] bg-red-600/70',
         'ring-1 ring-white/50 shadow-none',
         'hover:scale-150 hover:bg-red-500/80 transition-transform',
         placement === 'start' && 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2',
@@ -323,23 +351,23 @@ export default function DevTooltip({
             <>
                 <span
                     ref={node => {
-                        hostRef.current = node;
+                        markRef.current = node;
                     }}
                     data-dev-tooltip-host={name}
-                    onMouseOver={onHostMouseOver}
-                    onMouseMove={onHostMouseMove}
-                    onMouseOut={onHostMouseOut}
-                    onClick={pinAtEvent}
-                    className={clsx('relative inline-flex size-1.5 shrink-0 cursor-pointer align-middle', className)}
-                    title={`Click to pin \`${name}\``}
+                    onMouseEnter={onMarkEnter}
+                    onMouseLeave={onMarkLeave}
+                    onClick={onMarkClick}
+                    onMouseDown={event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }}
+                    className={clsx('relative inline-flex size-1.5 shrink-0 cursor-help align-middle', className)}
+                    title={`Hover for \`${name}\` · click to pin`}
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={`Dev label ${name}`}
                 >
-                    <span
-                        ref={node => {
-                            markRef.current = node;
-                        }}
-                        aria-hidden
-                        className="absolute inset-0 rounded-[2px] bg-red-600/70 ring-1 ring-white/50"
-                    />
+                    <span aria-hidden className="absolute inset-0 rounded-[2px] bg-red-600/70 ring-1 ring-white/50" />
                 </span>
                 {tip}
             </>
@@ -348,26 +376,21 @@ export default function DevTooltip({
 
     return (
         <>
-            <div
-                ref={node => {
-                    hostRef.current = node;
-                }}
-                data-dev-tooltip-host={name}
-                onMouseOver={onHostMouseOver}
-                onMouseMove={onHostMouseMove}
-                onMouseOut={onHostMouseOut}
-                className={clsx('relative', className)}
-            >
+            {/* Host is layout-only — no mouse handlers, so children stay fully clickable. */}
+            <div className={clsx('relative', className)} data-dev-tooltip-wrap={name}>
                 <span
                     ref={node => {
                         markRef.current = node;
                     }}
+                    data-dev-tooltip-host={name}
                     role="button"
                     tabIndex={-1}
                     aria-label={`Dev label ${name}`}
-                    title={`Click to pin \`${name}\``}
+                    title={`Hover for \`${name}\` · click to pin`}
                     className={markClass}
-                    onClick={pinAtEvent}
+                    onMouseEnter={onMarkEnter}
+                    onMouseLeave={onMarkLeave}
+                    onClick={onMarkClick}
                     onMouseDown={event => {
                         event.preventDefault();
                         event.stopPropagation();
