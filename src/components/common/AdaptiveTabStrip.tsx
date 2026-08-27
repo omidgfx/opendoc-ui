@@ -50,7 +50,7 @@ export default function AdaptiveTabStrip({
     const [hiddenIds, setHiddenIds] = useState<string[]>([]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [menuPosition, setMenuPosition] = useState({top: 0, left: 0, width: 240, openAbove: false, maxHeight: 288});
-    const {edges, overflows, hovered, dragging, onScroll, onHoverEnter, onHoverLeave, scrollStart, scrollEnd, measure} =
+    const {edges, overflows, hovered, onHoverEnter, onHoverLeave, scrollStart, scrollEnd, measure} =
         useHorizontalStrip(railRef);
 
     const measureHidden = useCallback(() => {
@@ -158,6 +158,14 @@ export default function AdaptiveTabStrip({
 
     const showStart = hovered && overflows && edges.start;
     const showEnd = hovered && overflows && edges.end;
+    const endButtonClass = (visible: boolean) =>
+        clsx(
+            'absolute top-1/2 z-[2] flex size-6 -translate-y-1/2 items-center justify-center rounded-full',
+            'border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] shadow-sm',
+            'hover:bg-[var(--surface-hover)] cursor-pointer',
+            'transition-opacity duration-200 ease-out',
+            visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        );
 
     return (
         <div className="min-w-0 space-y-1.5">
@@ -173,14 +181,8 @@ export default function AdaptiveTabStrip({
                         ref={railRef}
                         role="tablist"
                         aria-label={ariaLabel}
-                        onScroll={() => {
-                            onScroll();
-                            measureHidden();
-                        }}
-                        className={clsx(
-                            'flex min-w-0 items-center gap-1.5 overflow-x-auto scrollbar-none',
-                            overflows && (dragging ? 'cursor-grabbing select-none' : 'cursor-grab'),
-                        )}
+                        onScroll={measureHidden}
+                        className="flex min-w-0 items-center gap-1.5 overflow-x-auto scrollbar-none"
                     >
                         {items.map(item => {
                             const isActive = item.id === activeId;
@@ -214,33 +216,35 @@ export default function AdaptiveTabStrip({
                             );
                         })}
                     </div>
-                    {showStart && (
-                        <button
-                            type="button"
-                            aria-label="Scroll left"
-                            onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                scrollStart();
-                            }}
-                            className="absolute left-0 top-1/2 z-[2] flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] shadow-sm hover:bg-[var(--surface-hover)] cursor-pointer"
-                        >
-                            <i className="ph ph-caret-left text-[12px]" />
-                        </button>
-                    )}
-                    {showEnd && (
-                        <button
-                            type="button"
-                            aria-label="Scroll right"
-                            onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                scrollEnd();
-                            }}
-                            className="absolute right-0 top-1/2 z-[2] flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] shadow-sm hover:bg-[var(--surface-hover)] cursor-pointer"
-                        >
-                            <i className="ph ph-caret-right text-[12px]" />
-                        </button>
+                    {overflows && (
+                        <>
+                            <button
+                                type="button"
+                                aria-label="Scroll left"
+                                tabIndex={showStart ? 0 : -1}
+                                onClick={event => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    scrollStart();
+                                }}
+                                className={clsx(endButtonClass(showStart), 'left-0')}
+                            >
+                                <i className="ph ph-caret-left text-[12px]" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Scroll right"
+                                tabIndex={showEnd ? 0 : -1}
+                                onClick={event => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    scrollEnd();
+                                }}
+                                className={clsx(endButtonClass(showEnd), 'right-0')}
+                            >
+                                <i className="ph ph-caret-right text-[12px]" />
+                            </button>
+                        </>
                     )}
                 </div>
                 {hiddenIds.length > 0 && (

@@ -1,42 +1,61 @@
 import {useCallback, useEffect, useRef, useState, type RefObject} from 'react';
 
-/** A strip counts as scrolled to an edge within this many pixels. */
-const EDGE_TOLERANCE = 2;
-/** Wheel deltas are eased toward this target over a few frames. */
-const WHEEL_LERP = 0.35;
+/** Treat the strip as non-overflowing below this leftover width. */
+const EDGE_TOLERANCE = 1;
+/** Wheel / button motion eases toward the target over a few frames. */
+const WHEEL_LERP = 0.28;
+/** Near either end, snap fully so content is never clipped by 1–2px. */
+const END_SNAP_PX = 6;
 /** Clicking an end button moves by this fraction of the visible width. */
 const BUTTON_STEP_RATIO = 0.75;
 
 export type HorizontalStripEdges = {start: boolean; end: boolean};
 
+const maxScrollOf = (element: HTMLElement): number =>
+    Math.max(0, Math.round(element.scrollWidth) - Math.round(element.clientWidth));
+
+const clampScroll = (left: number, maxScroll: number): number => {
+    if (maxScroll <= 0) return 0;
+    let next = left;
+    if (next <= END_SNAP_PX) next = 0;
+    else if (next >= maxScroll - END_SNAP_PX) next = maxScroll;
+    return Math.max(0, Math.min(maxScroll, next));
+};
+
 /**
  * Shared horizontal-strip behaviour for ScrollableRow and AdaptiveTabStrip:
  * - wheel / trackpad scrolls the strip and blocks page scroll only when the
  *   strip actually overflows
- * - wheel motion is eased (not a hard jump)
- * - pointer drag pans the strip
- * - start/end affordances are derived from scroll position
+ * - wheel motion is eased; ends snap fully so content is never clipped
+ * - start/end affordances are derived from scroll position (no drag pan)
  */
 export function useHorizontalStrip(ref: RefObject<HTMLElement | null>) {
     const [edges, setEdges] = useState<HorizontalStripEdges>({start: false, end: false});
     const [overflows, setOverflows] = useState(false);
     const [hovered, setHovered] = useState(false);
-    const [dragging, setDragging] = useState(false);
 
     const targetLeft = useRef(0);
     const animating = useRef(false);
-    const dragOrigin = useRef<{x: number; scroll: number} | null>(null);
-    const movedDuringDrag = useRef(false);
+    const rafId = useRef<number | null>(null);
+
+    const cancelAnim = useCallback(() => {
+        if (rafId.current !== null) {
+            cancelAnimationFrame(rafId.current);
+            rafId.current = null;
+        }
+        animating.current = false;
+    }, []);
 
     const measure = useCallback(() => {
         const element = ref.current;
         if (!element) return;
-        const maxScroll = element.scrollWidth - element.clientWidth;
+        const maxScroll = maxScrollOf(element);
         const nextOverflows = maxScroll > EDGE_TOLERANCE;
         setOverflows(nextOverflows);
+        const left = element.scrollLeft;
         const next = {
-            start: element.scrollLeft > EDGE_TOLERANCE,
-            end: nextOverflows && element.scrollLeft < maxScroll - EDGE_TOLERANCE,
+            start: nextOverflows && left > EDGE_TOLERANCE,
+            end: nextOverflows && left < maxScroll - EDGE_TOLERANCE,
         };
         setEdges(current => (current.start === next.start && current.end === next.end ? current : next));
     }, [ref]);
@@ -44,149 +63,96 @@ export function useHorizontalStrip(ref: RefObject<HTMLElement | null>) {
     const tick = useCallback(() => {
         const element = ref.current;
         if (!element) {
-            animating.current = false;
+            cancelAnim();
             return;
         }
-        const maxScroll = Math.max(0, element.scrollWidth - element.clientWidth);
-        targetLeft.current = Math.max(0, Math.min(maxScroll, targetLeft.current));
+        const maxScroll = maxScrollOf(element);
+        targetLeft.current = clampScroll(targetLeft.current, maxScroll);
         const current = element.scrollLeft;
         const delta = targetLeft.current - current;
-        if (Math.abs(delta) < 0.5) {
+        if (Math.abs(delta) < 0.4) {
             element.scrollLeft = targetLeft.current;
-            animating.current = false;
+            cancelAnim();
             measure();
             return;
         }
-        element.scrollLeft = current + delta * WHEEL_LERP;
+        // Ease; finish hard when very close so ends never leave a 1–2px gap.
+        const stepped = current + delta * WHEEL_LERP;
+        element.scrollLeft = Math.abs(targetLeft.current - stepped) < 1 ? targetLeft.current : stepped;
         measure();
-        requestAnimationFrame(tick);
-    }, [measure, ref]);
+        rafId.current = requestAnimationFrame(tick);
+    }, [cancelAnim, measure, ref]);
 
     const animateTo = useCallback(
-        (left: number, behavior: ScrollBehavior = 'auto') => {
+        (left: number) => {
             const element = ref.current;
             if (!element) return;
-            const maxScroll = Math.max(0, element.scrollWidth - element.clientWidth);
-            const clamped = Math.max(0, Math.min(maxScroll, left));
-            if (behavior === 'smooth') {
-                animating.current = false;
-                element.scrollTo({left: clamped, behavior: 'smooth'});
-                // measure after the smooth scroll settles
-                window.setTimeout(measure, 320);
-                return;
-            }
-            targetLeft.current = clamped;
+            const maxScroll = maxScrollOf(element);
+            targetLeft.current = clampScroll(left, maxScroll);
             if (!animating.current) {
                 animating.current = true;
-                requestAnimationFrame(tick);
+                rafId.current = requestAnimationFrame(tick);
             }
         },
-        [measure, ref, tick],
+        [ref, tick],
     );
 
     const scrollByStep = useCallback(
         (direction: -1 | 1) => {
             const element = ref.current;
             if (!element) return;
+            const maxScroll = maxScrollOf(element);
+            if (maxScroll <= EDGE_TOLERANCE) return;
+            // Prefer the live target so repeated clicks chain correctly mid-ease.
+            const base = animating.current ? targetLeft.current : element.scrollLeft;
             const step = Math.max(80, element.clientWidth * BUTTON_STEP_RATIO);
-            animateTo(element.scrollLeft + direction * step, 'smooth');
+            animateTo(base + direction * step);
         },
         [animateTo, ref],
     );
 
-    // Wheel: take over only when the strip overflows; ease the motion.
+    // Wheel: take over only when the strip overflows; ease + end-snap.
     useEffect(() => {
         const element = ref.current;
         if (!element) return;
         const onWheel = (event: WheelEvent) => {
-            const maxScroll = element.scrollWidth - element.clientWidth;
+            const maxScroll = maxScrollOf(element);
             if (maxScroll <= EDGE_TOLERANCE) return;
             // Strip can scroll — always consume the gesture so the page does not move.
             event.preventDefault();
             const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
             if (!delta) return;
             const base = animating.current ? targetLeft.current : element.scrollLeft;
-            targetLeft.current = Math.max(0, Math.min(maxScroll, base + delta));
-            if (!animating.current) {
-                animating.current = true;
-                requestAnimationFrame(tick);
-            }
+            animateTo(base + delta);
         };
         element.addEventListener('wheel', onWheel, {passive: false});
         return () => element.removeEventListener('wheel', onWheel);
-    }, [ref, tick]);
-
-    // Pointer drag to pan.
-    useEffect(() => {
-        const element = ref.current;
-        if (!element) return;
-
-        const onPointerDown = (event: PointerEvent) => {
-            if (event.button !== 0) return;
-            const maxScroll = element.scrollWidth - element.clientWidth;
-            if (maxScroll <= EDGE_TOLERANCE) return;
-            // Ignore drag starts on interactive controls so chips/tabs still click.
-            const target = event.target as HTMLElement | null;
-            if (target?.closest('button, a, input, textarea, select, [role="button"], [role="tab"]')) return;
-            dragOrigin.current = {x: event.clientX, scroll: element.scrollLeft};
-            movedDuringDrag.current = false;
-            animating.current = false;
-            try {
-                element.setPointerCapture(event.pointerId);
-            } catch {
-                /* ignore */
-            }
-        };
-
-        const onPointerMove = (event: PointerEvent) => {
-            const origin = dragOrigin.current;
-            if (!origin) return;
-            const dx = event.clientX - origin.x;
-            if (Math.abs(dx) > 3) movedDuringDrag.current = true;
-            if (!movedDuringDrag.current) return;
-            event.preventDefault();
-            setDragging(true);
-            const maxScroll = element.scrollWidth - element.clientWidth;
-            element.scrollLeft = Math.max(0, Math.min(maxScroll, origin.scroll - dx));
-            targetLeft.current = element.scrollLeft;
-            measure();
-        };
-
-        const onPointerUp = (event: PointerEvent) => {
-            if (!dragOrigin.current) return;
-            dragOrigin.current = null;
-            setDragging(false);
-            try {
-                element.releasePointerCapture(event.pointerId);
-            } catch {
-                /* ignore */
-            }
-            measure();
-        };
-
-        element.addEventListener('pointerdown', onPointerDown);
-        element.addEventListener('pointermove', onPointerMove);
-        element.addEventListener('pointerup', onPointerUp);
-        element.addEventListener('pointercancel', onPointerUp);
-        return () => {
-            element.removeEventListener('pointerdown', onPointerDown);
-            element.removeEventListener('pointermove', onPointerMove);
-            element.removeEventListener('pointerup', onPointerUp);
-            element.removeEventListener('pointercancel', onPointerUp);
-        };
-    }, [measure, ref]);
+    }, [animateTo, ref]);
 
     useEffect(() => {
         const element = ref.current;
         if (!element) return;
+        // Keep the eased target aligned with any external scroll (e.g. scrollTo).
+        const onScroll = () => {
+            if (!animating.current) targetLeft.current = element.scrollLeft;
+            measure();
+        };
         measure();
-        const observer = new ResizeObserver(measure);
+        const observer = new ResizeObserver(() => {
+            const maxScroll = maxScrollOf(element);
+            targetLeft.current = clampScroll(targetLeft.current, maxScroll);
+            if (element.scrollLeft > maxScroll) element.scrollLeft = maxScroll;
+            measure();
+        });
         observer.observe(element);
         Array.from(element.children).forEach(child => observer.observe(child));
-        return () => observer.disconnect();
-    }, [measure, ref]);
-
-    const onScroll = measure;
+        element.addEventListener('scroll', onScroll, {passive: true});
+        return () => {
+            observer.disconnect();
+            element.removeEventListener('scroll', onScroll);
+            cancelAnim();
+        };
+    }, [cancelAnim, measure, ref]);
 
     const onHoverEnter = useCallback(() => setHovered(true), []);
     const onHoverLeave = useCallback(() => setHovered(false), []);
@@ -195,9 +161,7 @@ export function useHorizontalStrip(ref: RefObject<HTMLElement | null>) {
         edges,
         overflows,
         hovered,
-        dragging,
         measure,
-        onScroll,
         onHoverEnter,
         onHoverLeave,
         scrollByStep,

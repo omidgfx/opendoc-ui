@@ -180,7 +180,6 @@ export default function SchemaViewer({
     className,
 }: SchemaViewerProps) {
     const resolveReference = (item: any) => resolveOpenApiReference(item, spec);
-    const [headerExpanded, setHeaderExpanded] = useState(false);
     const [exampleEncodingId, setExampleEncodingId] = useState(() => defaultExampleEncodingId(mediaType));
     const [internalAnyOf, setInternalAnyOf] = useState<number[]>([]);
     const [branchRevision, setBranchRevision] = useState(0);
@@ -616,11 +615,8 @@ export default function SchemaViewer({
         return <div className="flex flex-wrap items-center gap-1.5">{extras}</div>;
     };
 
-    // Expanded panel only carries the branch rail and/or description — encoding
-    // / body-shape already live on the collapsed bar. Compute the rail once so
-    // sticky + expanded + expand-affordance stay in sync.
+    // Meta header is always open: summary bar + branch rail / description when present.
     const branchRailNode = renderBranchRail();
-    const canExpandHeader = Boolean(branchRailNode || resolvedEffective?.description);
 
     const metaHeader = (
         <DevTooltip name="SchemaViewer.metaHeader">
@@ -672,53 +668,33 @@ export default function SchemaViewer({
                                 )}
                             </div>
                         </DevTooltip>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                            {composition && (
-                                <DevTooltip name="SchemaViewer.metaHeaderFieldCount" className="inline-flex">
-                                    <Tip
-                                        content={
-                                            composition.requiredCount > 0
-                                                ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'}, ${composition.requiredCount} required (allOf assembly)`
-                                                : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} (allOf assembly)`
-                                        }
-                                    >
-                                        <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)]">
-                                            <i className="ph ph-stack-simple text-[11px]" />
-                                            {composition.fieldCount} field
-                                            {composition.fieldCount === 1 ? '' : 's'}
-                                            {composition.requiredCount > 0 && (
-                                                <span className="font-mono opacity-80">
-                                                    · {composition.requiredCount} req
-                                                </span>
-                                            )}
-                                        </span>
-                                    </Tip>
-                                </DevTooltip>
-                            )}
-                            {canExpandHeader && (
-                                <DevTooltip name="SchemaViewer.metaHeaderExpandButton">
-                                    <button
-                                        type="button"
-                                        onClick={() => setHeaderExpanded(current => !current)}
-                                        aria-expanded={headerExpanded}
-                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-heading)] cursor-pointer"
-                                        aria-label={headerExpanded ? 'Collapse schema header' : 'Expand schema header'}
-                                    >
-                                        <i
-                                            className={clsx(
-                                                'ph text-[14px]',
-                                                headerExpanded ? 'ph-caret-up' : 'ph-caret-down',
-                                            )}
-                                        />
-                                    </button>
-                                </DevTooltip>
-                            )}
-                        </div>
+                        {composition && (
+                            <DevTooltip name="SchemaViewer.metaHeaderFieldCount" className="inline-flex shrink-0">
+                                <Tip
+                                    content={
+                                        composition.requiredCount > 0
+                                            ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'}, ${composition.requiredCount} required (allOf assembly)`
+                                            : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} (allOf assembly)`
+                                    }
+                                >
+                                    <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)]">
+                                        <i className="ph ph-stack-simple text-[11px]" />
+                                        {composition.fieldCount} field
+                                        {composition.fieldCount === 1 ? '' : 's'}
+                                        {composition.requiredCount > 0 && (
+                                            <span className="font-mono opacity-80">
+                                                · {composition.requiredCount} req
+                                            </span>
+                                        )}
+                                    </span>
+                                </Tip>
+                            </DevTooltip>
+                        )}
                     </div>
                 </DevTooltip>
-                {headerExpanded && (branchRailNode || resolvedEffective?.description) && (
-                    <DevTooltip name="SchemaViewer.metaHeaderExpanded" className="min-w-0">
-                        <div className="space-y-3 border-t border-[var(--border)] px-3 py-3 animate-in fade-in">
+                {(branchRailNode || resolvedEffective?.description) && (
+                    <DevTooltip name="SchemaViewer.metaHeaderBody" className="min-w-0">
+                        <div className="space-y-3 border-t border-[var(--border)] px-3 py-3">
                             {branchRailNode ? (
                                 <DevTooltip name="SchemaViewer.metaHeaderBranchRail" className="min-w-0">
                                     {branchRailNode}
@@ -817,18 +793,10 @@ export default function SchemaViewer({
         </DevTooltip>
     );
 
-    // Always keep the branch rail reachable even when the meta header is collapsed.
-    const stickyBranch = !headerExpanded ? branchRailNode : null;
-
     return (
         <DevTooltip name="SchemaViewer.root" className={clsx('min-w-0', className)}>
             <div className={clsx('space-y-3 min-w-0', className)}>
                 {metaHeader}
-                {stickyBranch ? (
-                    <DevTooltip name="SchemaViewer.stickyBranchRail" className="min-w-0">
-                        {stickyBranch}
-                    </DevTooltip>
-                ) : null}
                 {tabStrip}
 
                 {activeTab === 'example' && (
