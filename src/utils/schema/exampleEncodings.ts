@@ -251,13 +251,19 @@ const rustLiteral = (value: any, indentLevel = 0): string => {
     return 'Value::Null';
 };
 
+const formUrlEncodedValue = (item: unknown): string => {
+    // application/x-www-form-urlencoded has no null token — omit the value
+    // (key=) rather than the literal string "null".
+    if (item === null || item === undefined) return '';
+    if (typeof item === 'object') return encodeURIComponent(JSON.stringify(item));
+    return encodeURIComponent(String(item));
+};
+
 const formUrlEncoded = (value: any): string => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return String(value ?? '');
+    if (value === null || value === undefined) return '';
+    if (typeof value !== 'object' || Array.isArray(value)) return formUrlEncodedValue(value);
     return Object.entries(value)
-        .map(
-            ([key, item]) =>
-                `${key}=${encodeURIComponent(typeof item === 'object' ? JSON.stringify(item) : String(item ?? ''))}`,
-        )
+        .map(([key, item]) => `${key}=${formUrlEncodedValue(item)}`)
         .join('&\n');
 };
 

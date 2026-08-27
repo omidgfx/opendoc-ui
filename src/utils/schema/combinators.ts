@@ -383,10 +383,10 @@ export const mergeAnyOfBranchSchemas = (
     meta?: {title?: string; description?: string},
 ): any => {
     if (!Array.isArray(branches) || branches.length === 0) return {type: 'object', properties: {}};
-    const selected =
-        selectedIndices.length > 0
-            ? selectedIndices.filter(index => index >= 0 && index < branches.length)
-            : branches.map((_, index) => index);
+    // Empty selection is intentional "none" (All unchecked). Callers that want
+    // every branch (default All) must pass every index explicitly — field-level
+    // apply does that when the stored list is missing/empty.
+    const selected = selectedIndices.filter(index => index >= 0 && index < branches.length);
     if (selected.length === 0) return {type: 'object', properties: {}};
     if (selected.length === 1) return effectiveBranchSchema(branches[selected[0]], resolve);
 

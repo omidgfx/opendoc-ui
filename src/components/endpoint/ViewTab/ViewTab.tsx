@@ -128,9 +128,11 @@ export default function ViewTab({
     const [requestExampleKey, setRequestExampleKey] = useState('');
     const [responseExampleKeys, setResponseExampleKeys] = useState<Record<string, string>>({});
     const [requestAnyOfSelected, setRequestAnyOfSelected] = useState<number[]>([]);
+    const [requestAnyOfTouched, setRequestAnyOfTouched] = useState(false);
     const [requestAllOfFocusIndex, setRequestAllOfFocusIndex] = useState<number | null>(null);
     const [responseBranchIndex, setResponseBranchIndex] = useState<Record<string, number>>({});
     const [responseAnyOfSelected, setResponseAnyOfSelected] = useState<Record<string, number[]>>({});
+    const [responseAnyOfTouched, setResponseAnyOfTouched] = useState<Record<string, boolean>>({});
     const [responseAllOfFocusIndex, setResponseAllOfFocusIndex] = useState<Record<string, number | null>>({});
     // Enum is a peek at the values, not a representation the reader chose to
     // keep: it lasts for this visit only and never touches the preference.
@@ -140,9 +142,11 @@ export default function ViewTab({
         setRequestExampleKey('');
         setResponseExampleKeys({});
         setRequestAnyOfSelected([]);
+        setRequestAnyOfTouched(false);
         setRequestAllOfFocusIndex(null);
         setResponseBranchIndex({});
         setResponseAnyOfSelected({});
+        setResponseAnyOfTouched({});
         setResponseAllOfFocusIndex({});
     }, [
         representationKey,
@@ -588,9 +592,17 @@ export default function ViewTab({
     // anyOf may keep several branches selected. Branches are often $refs to
     // allOf compositions — merge via effective shapes, not top-level properties
     // alone, or the table and generated example collapse to {}.
+    // Empty array means "none" once the reader has toggled; until then default
+    // to every branch so All starts checked and the matrix is fully merged.
+    const requestAnyOfEffective =
+        requestBodyChoice?.meta.kind === 'anyOf'
+            ? requestAnyOfSelected.length > 0 || requestAnyOfTouched
+                ? requestAnyOfSelected
+                : requestBodyChoice.branches.map((_: any, index: number) => index)
+            : requestAnyOfSelected;
     const requestBodyAnyOfSchema =
         requestBodyChoice?.meta.kind === 'anyOf'
-            ? mergeAnyOfBranchSchemas(requestBodyChoice.branches, requestAnyOfSelected, resolveReference, {
+            ? mergeAnyOfBranchSchemas(requestBodyChoice.branches, requestAnyOfEffective, resolveReference, {
                   title: resolvedRequestBodySchema?.title,
                   description: resolvedRequestBodySchema?.description,
               })
@@ -1082,6 +1094,7 @@ export default function ViewTab({
                                                 onChange={contentType => {
                                                     setRequestBodyVariant(0);
                                                     setRequestAnyOfSelected([]);
+                                                    setRequestAnyOfTouched(false);
                                                     setRequestAllOfFocusIndex(null);
                                                     setRequestBodyContentType(contentType);
                                                 }}
@@ -1147,8 +1160,11 @@ export default function ViewTab({
                                                             onSpecExampleKeyChange={setRequestExampleKey}
                                                             branchIndex={requestBodyBranchIndex}
                                                             onBranchIndexChange={setRequestBodyVariant}
-                                                            anyOfSelectedIndices={requestAnyOfSelected}
-                                                            onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
+                                                            anyOfSelectedIndices={requestAnyOfEffective}
+                                                            onAnyOfSelectedIndicesChange={indices => {
+                                                                setRequestAnyOfTouched(true);
+                                                                setRequestAnyOfSelected(indices);
+                                                            }}
                                                             allOfFocusIndex={requestAllOfFocusIndex}
                                                             onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
                                                             inspectName={
@@ -1289,11 +1305,18 @@ export default function ViewTab({
                                                   Math.max(0, responseChoice.branches.length - 1),
                                               )
                                             : 0;
+                                        const responseAnyOfStored = responseAnyOfSelected[code] || [];
+                                        const responseAnyOfEffective =
+                                            responseChoice?.meta.kind === 'anyOf'
+                                                ? responseAnyOfStored.length > 0 || responseAnyOfTouched[code]
+                                                    ? responseAnyOfStored
+                                                    : responseChoice.branches.map((_: any, index: number) => index)
+                                                : responseAnyOfStored;
                                         const responseAnyOfSchema =
                                             responseChoice?.meta.kind === 'anyOf'
                                                 ? mergeAnyOfBranchSchemas(
                                                       responseChoice.branches,
-                                                      responseAnyOfSelected[code] || [],
+                                                      responseAnyOfEffective,
                                                       resolveReference,
                                                       {
                                                           title: resolvedResponseSchema?.title,
@@ -1629,17 +1652,22 @@ export default function ViewTab({
                                                                                         )
                                                                                     }
                                                                                     anyOfSelectedIndices={
-                                                                                        responseAnyOfSelected[code] ||
-                                                                                        []
+                                                                                        responseAnyOfEffective
                                                                                     }
-                                                                                    onAnyOfSelectedIndicesChange={indices =>
+                                                                                    onAnyOfSelectedIndicesChange={indices => {
+                                                                                        setResponseAnyOfTouched(
+                                                                                            previous => ({
+                                                                                                ...previous,
+                                                                                                [code]: true,
+                                                                                            }),
+                                                                                        );
                                                                                         setResponseAnyOfSelected(
                                                                                             previous => ({
                                                                                                 ...previous,
                                                                                                 [code]: indices,
                                                                                             }),
-                                                                                        )
-                                                                                    }
+                                                                                        );
+                                                                                    }}
                                                                                     allOfFocusIndex={
                                                                                         responseAllOfFocusIndex[code] ??
                                                                                         null

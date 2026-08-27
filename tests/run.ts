@@ -64,8 +64,13 @@ import {
     describeAllOfComposition,
     detectSchemaCombinator,
     COMBINATOR_META,
+    mergeAnyOfBranchSchemas,
 } from '@/src/utils/schema/combinators';
-import {dimmedLinesForObjectCode, dimmedLinesForFieldAllOfFocus} from '@/src/utils/schema/exampleEncodings';
+import {
+    dimmedLinesForObjectCode,
+    dimmedLinesForFieldAllOfFocus,
+    exampleEncodingOf,
+} from '@/src/utils/schema/exampleEncodings';
 import {DEFAULT_APP_PREFERENCES, normalizeAppPreferences} from '@/src/utils/storage/preferences';
 import {
     applySchemaBranchSelections,
@@ -1247,6 +1252,28 @@ test('defaults documentation switches to per-schema and schema modal to per-sche
     const normalized = normalizeAppPreferences({});
     assert.equal(normalized.endpointRepresentationScope, 'schema');
     assert.equal(normalized.modalRepresentationScope, 'schema');
+});
+
+test('body-level anyOf All off yields empty merge while All on merges every branch', () => {
+    const branches = [
+        {type: 'object', properties: {a: {type: 'string'}}},
+        {type: 'object', properties: {b: {type: 'integer'}}},
+    ];
+    const resolve = (x: any) => x;
+    const all = mergeAnyOfBranchSchemas(branches, [0, 1], resolve);
+    assert.ok(all.properties.a);
+    assert.ok(all.properties.b);
+    const none = mergeAnyOfBranchSchemas(branches, [], resolve);
+    assert.deepEqual(none.properties || {}, {});
+});
+
+test('form URL-encoded examples omit null as an empty value, not the word null', () => {
+    const form = exampleEncodingOf('form');
+    const out = form.format({name: 'Ada', note: null, age: 1}, 'root');
+    assert.match(out, /name=Ada/);
+    assert.match(out, /note=/);
+    assert.doesNotMatch(out, /note=null/);
+    assert.match(out, /age=1/);
 });
 
 test('locks oneOf/anyOf/allOf/not to distinct method colors and selection controls', () => {

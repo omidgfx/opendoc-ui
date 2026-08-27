@@ -199,6 +199,7 @@ export default function SchemaViewer({
     const resolveReference = (item: any) => resolveOpenApiReference(item, spec);
     const [exampleEncodingId, setExampleEncodingId] = useState(() => defaultExampleEncodingId(mediaType));
     const [internalAnyOf, setInternalAnyOf] = useState<number[]>([]);
+    const [internalAnyOfTouched, setInternalAnyOfTouched] = useState(false);
     const [branchRevision, setBranchRevision] = useState(0);
 
     useEffect(() => {
@@ -240,17 +241,23 @@ export default function SchemaViewer({
     const allOfBranches =
         rootCombinator?.meta.kind === 'allOf' && rootCombinator.branches.length > 0 ? rootCombinator.branches : [];
 
+    // Controlled: host owns the list (empty = none selected). Uncontrolled:
+    // default to every branch until the reader toggles All off.
     const anyOfSelected =
-        anyOfSelectedIndices ??
-        (internalAnyOf.length > 0
-            ? internalAnyOf
-            : choiceKind === 'anyOf'
-              ? choiceBranches.map((_, index) => index)
-              : []);
+        anyOfSelectedIndices !== undefined
+            ? anyOfSelectedIndices
+            : internalAnyOf.length > 0 || internalAnyOfTouched
+              ? internalAnyOf
+              : choiceKind === 'anyOf'
+                ? choiceBranches.map((_, index) => index)
+                : [];
 
     const setAnyOfSelected = (indices: number[]) => {
         if (onAnyOfSelectedIndicesChange) onAnyOfSelectedIndicesChange(indices);
-        else setInternalAnyOf(indices);
+        else {
+            setInternalAnyOfTouched(true);
+            setInternalAnyOf(indices);
+        }
     };
 
     const effectiveForView = useMemo(() => {

@@ -1,26 +1,12 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import CodeViewer from '../../common/CodeViewer';
-import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
-import {RECURSIVE_SCHEMA_ICON, schemaIsRecursive} from '../../../utils/schemaProperties';
-import Markdown from '../../common/Markdown';
 import PatternTesterModal from '../PatternTesterModal';
-import CustomDropdown from '../../common/CustomDropdown';
 import ShareModal from '../ShareModal';
-import * as jsYaml from 'js-yaml';
-import clsx from 'clsx';
 import {useModalTransition} from '../../../hooks/useModalTransition';
-import {useEscStack} from '../../../hooks/useEscClose';
 import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import SchemaViewerHeader from './SchemaViewerHeader';
 import SchemaExampleModal from './SchemaExampleModal';
-import {
-    getMockSnippet as generateMockSnippet,
-    generateValidatedMock,
-    prepareMockForAnnotation,
-    extractMockLineMarkers,
-    type MockLineMarker,
-} from '../../../utils/runner/mockGenerator';
-import {mockMarkersToLineMarkers, type CodeLineMarker} from '../../../utils/lineMarkers';
+import SchemaViewer, {type SchemaViewerTab} from '../../schema/viewer/SchemaViewer';
+import type {CodeLineMarker} from '../../../utils/lineMarkers';
 import type {OpenApiSpec} from '../../../types';
 import {
     exampleValueOf,
@@ -30,15 +16,16 @@ import {
 } from '../../../utils/openapi';
 import {absoluteRouteHref, toCleanRouteHref} from '../../../utils/routing';
 import ReferenceStatusNotice from '../../common/ReferenceStatusNotice';
-import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import {usePreferences} from '../../../contexts/PreferencesContext';
 import {modalRepresentationOf} from '../../../utils/storage/preferences';
-import CombinatorLabel from '../../common/CombinatorLabel';
-import {COMBINATOR_META, schemaDeclaresNothing} from '../../../utils/schema/combinators';
-import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
-import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
-import {inlineMenusForCode} from '../../schema/inlineMenus';
-import {formatExample} from '../../../utils/endpoint/exampleFormatting';
+import {
+    detectSchemaCombinator,
+    describeAllOfComposition,
+    effectiveBranchSchema,
+    mergeAnyOfBranchSchemas,
+    schemaDeclaresNothing,
+} from '../../../utils/schema/combinators';
+import {applySchemaBranchSelections} from '../../../utils/schema/branchSelections';
 
 interface ModalsStackProps {
     spec: OpenApiSpec;
@@ -74,11 +61,13 @@ export default function ModalsStack({
     } | null>(null);
     const {preferences, setModalRepresentation} = usePreferences();
     const [activeTabs, setActiveTabs] = useState<{
-        [index: number]: 'table' | 'example' | 'enum' | 'spec-example';
+        [index: number]: SchemaViewerTab;
     }>({});
-    const [exampleEncodings, setExampleEncodings] = useState<Record<number, string>>({});
+    const [modalAnyOfSelected, setModalAnyOfSelected] = useState<Record<string, number[]>>({});
+    const [modalAnyOfTouched, setModalAnyOfTouched] = useState<Record<string, boolean>>({});
+    const [modalOneOfIndex, setModalOneOfIndex] = useState<Record<string, number>>({});
+    const [modalAllOfFocus, setModalAllOfFocus] = useState<Record<string, number | null>>({});
     const [patternToTest, setPatternToTest] = useState<string | null>(null);
-    const [schemaBranchRevision, setSchemaBranchRevision] = useState(0);
     const [shareModal, setShareModal] = useState<{
         url: string;
         title: string;
@@ -149,11 +138,6 @@ export default function ModalsStack({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [shareModal]);
-    useEffect(() => {
-        const handler = () => setSchemaBranchRevision(current => current + 1);
-        window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
-        return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
-    }, []);
     // ModalsStack stays mounted while a spec has schemas, so hooks below must
     // run even when the stack is empty — never return before them.
     const activeIndex = Math.max(0, modals.length - 1);
@@ -172,275 +156,40 @@ export default function ModalsStack({
             description: `Check out ${schemaName} schema in ${parsableKey} - ${componentsSchemas?.[schemaName]?.description?.slice(0, 140) || 'OpenAPI schema model'}`,
         });
     };
-    const traverseSchemaProperties = (schema: any): Record<string, any> =>
-        flattenSchemaProperties(schema, resolveReference);
-    const renderSchemaType = (prop: any): React.ReactNode => {
-        if (!prop) {
-            return <span className="text-xs font-mono opacity-50">any</span>;
-        }
-        const renderTypeName = (tValue: any, format?: string) => {
-            if (Array.isArray(tValue)) {
-                return tValue.map(t => `${t}${format ? ` (${format})` : ''}`).join(' | ');
-            }
-            return `${tValue || 'any'}${format ? ` (${format})` : ''}`;
-        };
-        if (prop.$ref) {
-            const refName = getRefName(prop.$ref);
-            return (
-                <button
-                    onClick={() => onPushSchema(refName)}
-                    className="text-[var(--primary)] hover:underline font-semibold text-xs text-left inline-flex items-center gap-1 cursor-pointer"
-                >
-                    <i className="ph ph-diamonds-four text-[10px]"></i> {refName}
-                </button>
-            );
-        }
-        if (prop.oneOf && Array.isArray(prop.oneOf)) {
-            return (
-                <div className="flex flex-col gap-1 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.oneOf} variant="inline" />
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.oneOf.map((sub: any, sIdx: number) => (
-                            <React.Fragment key={sIdx}>
-                                {sIdx > 0 && (
-                                    <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>
-                                )}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-        if (prop.anyOf && Array.isArray(prop.anyOf)) {
-            return (
-                <div className="flex flex-col gap-1 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.anyOf} variant="inline" />
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.anyOf.map((sub: any, sIdx: number) => (
-                            <React.Fragment key={sIdx}>
-                                {sIdx > 0 && (
-                                    <span className="text-[var(--text-muted)] font-mono text-xs select-none">|</span>
-                                )}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-        if (prop.allOf && Array.isArray(prop.allOf)) {
-            return (
-                <div className="flex flex-col gap-1 items-start">
-                    <CombinatorLabel meta={COMBINATOR_META.allOf} variant="inline" />
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        {prop.allOf.map((sub: any, sIdx: number) => (
-                            <React.Fragment key={sIdx}>
-                                {sIdx > 0 && (
-                                    <span className="text-[var(--text-muted)] font-mono text-xs select-none">
-                                        &amp;
-                                    </span>
-                                )}
-                                {renderSchemaType(sub)}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-        if (prop.type === 'array' && prop.items) {
-            if (prop.items.$ref) {
-                const refName = getRefName(prop.items.$ref);
-                return (
-                    <span className="text-xs font-sans">
-                        Array&lt;
-                        <button
-                            onClick={() => onPushSchema(refName)}
-                            className="text-[var(--primary)] hover:underline font-semibold cursor-pointer"
-                        >
-                            {refName}
-                        </button>
-                        &gt;
-                    </span>
-                );
-            }
-            if (prop.items.oneOf || prop.items.anyOf) {
-                return <span className="text-xs font-sans">Array&lt;{renderSchemaType(prop.items)}&gt;</span>;
-            }
-            const resolvedItemsType = Array.isArray(prop.items.type)
-                ? prop.items.type.join(' | ')
-                : prop.items.type || 'any';
-            return <span className="text-xs font-mono text-[var(--text-muted)]">Array&lt;{resolvedItemsType}&gt;</span>;
-        }
-        return <span className="font-mono text-xs text-[var(--text)]">{renderTypeName(prop.type, prop.format)}</span>;
-    };
-    const viewerSpec = {
-        openapi: '3.1.1',
-        info: {title: 'Schema viewer', version: '1'},
-        paths: {},
-        components: {schemas: componentsSchemas || {}},
-    };
-    const getMockSnippet = (schema: any): string => generateMockSnippet(schema, viewerSpec);
-    const escapeXml = (value: unknown) =>
-        String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&apos;');
-    const toXml = (value: any, nodeName = 'root', depth = 0): string => {
-        const indent = '  '.repeat(depth);
-        const safeName = String(nodeName || 'item').replace(/[^A-Za-z0-9_.:-]/g, '_') || 'item';
-        if (value === null || value === undefined) return `${indent}<${safeName} />`;
-        if (Array.isArray(value)) {
-            return value.map(item => toXml(item, 'item', depth)).join('\n');
-        }
-        if (typeof value === 'object') {
-            const children = Object.entries(value)
-                .map(([key, child]) => toXml(child, key, depth + 1))
-                .join('\n');
-            return children
-                ? `${indent}<${safeName}>\n${children}\n${indent}</${safeName}>`
-                : `${indent}<${safeName}></${safeName}>`;
-        }
-        return `${indent}<${safeName}>${escapeXml(value)}</${safeName}>`;
-    };
-    const toPhpArray = (value: any, indentLevel = 0): string => {
-        const pad = (n: number) => '    '.repeat(n);
-        if (value === null || value === undefined) return 'null';
-        if (typeof value === 'string') {
-            const escaped = value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            return `'${escaped}'`;
-        }
-        if (typeof value === 'boolean') return value ? 'true' : 'false';
-        if (typeof value === 'number') return String(value);
-        if (typeof value === 'bigint') return String(value);
-        if (Array.isArray(value)) {
-            if (value.length === 0) return '[]';
-            const items = value.map(v => `${pad(indentLevel + 1)}${toPhpArray(v, indentLevel + 1)}`);
-            return `[\n${items.join(',\n')}\n${pad(indentLevel)}]`;
-        }
-        if (typeof value === 'object') {
-            const keys = Object.keys(value);
-            if (keys.length === 0) return '[]';
-            const items = keys.map(k => {
-                const escapedKey = k.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                return `${pad(indentLevel + 1)}'${escapedKey}' => ${toPhpArray(value[k], indentLevel + 1)}`;
-            });
-            return `[\n${items.join(',\n')}\n${pad(indentLevel)}]`;
-        }
-        return 'null';
-    };
-    const formatSimulationExample = (
-        schema: any,
-        schemaName: string,
-        encoding: string,
-    ): {code: string; markers: MockLineMarker[]} => {
-        const plain = (): {code: string; markers: MockLineMarker[]} => {
-            const json = getMockSnippet(schema);
-            let value: any;
-            try {
-                value = JSON.parse(json);
-            } catch {
-                value = json;
-            }
-            if (encoding === 'application/xml') {
-                return {
-                    code: `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`,
-                    markers: [],
-                };
-            }
-            if (encoding === 'application/yaml')
-                return {code: jsYaml.dump(value, {noRefs: true, lineWidth: 100}), markers: []};
-            if (encoding === 'application/x-php-array') return {code: toPhpArray(value), markers: []};
-            return {code: JSON.stringify(value, null, 2), markers: []};
-        };
-        const generated = generateValidatedMock(schema, viewerSpec);
-        if (generated.value === undefined) return plain();
-        try {
-            const prepared = prepareMockForAnnotation(generated.value);
-            const value: any = prepared.value;
-            let raw: string;
-            if (encoding === 'application/xml') {
-                raw = `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(value, schemaName || 'root')}`;
-            } else if (encoding === 'application/yaml') {
-                raw = jsYaml.dump(value, {noRefs: true, lineWidth: 100});
-            } else if (encoding === 'application/x-php-array') {
-                raw = toPhpArray(value);
-            } else {
-                raw = JSON.stringify(value, null, 2);
-            }
-            return extractMockLineMarkers(raw, prepared);
-        } catch {
-            return plain();
-        }
-    };
     const activeSchemaObj = modals.length > 0 ? modals[modals.length - 1] : null;
     const activeModal = activeSchemaObj;
     const activeModalIndex = activeIndex;
     const activeResolution = activeSchemaObj ? resolveReferenceResult(activeSchemaObj.schema, spec) : null;
     const resolvedSchema = activeResolution?.value || activeSchemaObj?.schema;
-    const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
-    const [modalBranchRevision, setModalBranchRevision] = useState(0);
     const [modalExampleKeys, setModalExampleKeys] = useState<Record<number, string>>({});
     const modalRepresentation = activeSchemaObj
         ? modalRepresentationOf(preferences, activeSchemaObj.schemaName)
         : 'example';
-    const activeTab = activeTabs[activeModalIndex] || (modalRepresentation === 'schema' ? 'table' : 'example');
-    const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
-    const simulationLanguage =
-        activeExampleEncoding === 'application/xml'
-            ? 'xml'
-            : activeExampleEncoding === 'application/yaml'
-              ? 'yaml'
-              : activeExampleEncoding === 'application/x-php-array'
-                ? 'php'
-                : 'json';
+    const activeTab: SchemaViewerTab =
+        activeTabs[activeModalIndex] || (modalRepresentation === 'schema' ? 'schema' : 'example');
     useEffect(() => {
         // Same rule as the documentation: the enum view is a one-off peek and
         // never survives a schema change or a preference change.
         if (!activeSchemaObj) return;
         setActiveTabs({});
     }, [activeSchemaObj?.schemaName, modalRepresentation]);
-    const setTab = (tab: 'table' | 'example' | 'enum') => {
+    const setTab = (tab: SchemaViewerTab) => {
         if (!activeSchemaObj) return;
-        if (tab === 'enum') {
+        if (tab === 'enum' || tab === 'spec-example') {
             setActiveTabs(prev => ({...prev, [activeModalIndex]: tab}));
             return;
         }
-        // The modal keeps its own representation preference, apart from the
-        // endpoints; its scope decides whether it belongs to this schema or to
-        // every schema.
+        // Durable example | schema preference; enum/spec-example stay visit-only.
         setActiveTabs({});
-        setModalRepresentation(activeSchemaObj.schemaName, tab === 'table' ? 'schema' : 'example');
+        setModalRepresentation(activeSchemaObj.schemaName, tab === 'schema' ? 'schema' : 'example');
     };
     const modalSelectionScopeKey = activeSchemaObj
         ? `${parsableKey}:schema-modal:${activeSchemaObj.schemaName}`
         : `${parsableKey}:schema-modal:`;
 
-    useEffect(() => {
-        if (!activeSchemaObj) return;
-        const handler = (event: Event) => {
-            const detail = (event as CustomEvent<{key?: string}>).detail;
-            if (detail?.key === modalSelectionScopeKey) {
-                setModalBranchRevision(r => r + 1);
-            }
-        };
-        window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
-        return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
-    }, [modalSelectionScopeKey, activeSchemaObj]);
-
     const effectiveModalSchema = activeSchemaObj
         ? applySchemaBranchSelections(activeSchemaObj.schema, modalSelectionScopeKey, resolveReference)
         : null;
-    const modalOneOfChoices = useMemo(() => {
-        return activeSchemaObj?.schema
-            ? collectSchemaBranchChoices(activeSchemaObj.schema, resolveReference, getRefName)
-            : [];
-        // resolveReference is recreated each render; schema + branch revision drive work.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeSchemaObj?.schema, modalBranchRevision]);
-
     const schemaSpecExamples = useMemo(() => {
         const list: Array<{key: string; label: string; value: unknown; summary?: string; description?: string}> = [];
         if (!activeSchemaObj) return list;
@@ -567,13 +316,55 @@ export default function ModalsStack({
         schemaSpecExamples.find(ex => ex.key === (modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key)) ||
         schemaSpecExamples[0];
 
+    const modalResolvedRoot = activeSchemaObj
+        ? resolveReference(activeSchemaObj.schema) || activeSchemaObj.schema
+        : null;
+    const modalRootCombinator = modalResolvedRoot ? detectSchemaCombinator(modalResolvedRoot, resolveReference) : null;
+    const modalComposition =
+        modalRootCombinator?.meta.kind === 'allOf'
+            ? describeAllOfComposition(modalResolvedRoot, resolveReference, getRefName)
+            : null;
+    const modalChoice = modalComposition ? null : modalRootCombinator;
+    const modalSchemaKey = activeSchemaObj?.schemaName || '';
+    const modalBranchCount = modalChoice?.branches?.length || 0;
+    const modalOneOfIdx = Math.min(modalOneOfIndex[modalSchemaKey] ?? 0, Math.max(0, modalBranchCount - 1));
+    const modalAnyOfStored = modalAnyOfSelected[modalSchemaKey] || [];
+    const modalAnyOfEffective =
+        modalChoice?.meta.kind === 'anyOf'
+            ? modalAnyOfStored.length > 0 || modalAnyOfTouched[modalSchemaKey]
+                ? modalAnyOfStored
+                : modalChoice.branches.map((_: any, index: number) => index)
+            : modalAnyOfStored;
+    const asBranchSchema = (branch: any): any => {
+        if (branch === null || branch === undefined) return {type: 'null'};
+        if (branch === true || branch === false) return branch;
+        return branch;
+    };
+    const modalAnyOfSchema =
+        modalChoice?.meta.kind === 'anyOf'
+            ? mergeAnyOfBranchSchemas(modalChoice.branches, modalAnyOfEffective, resolveReference, {
+                  title: modalResolvedRoot?.title,
+                  description: modalResolvedRoot?.description,
+              })
+            : null;
+    const modalMatrixSchema = !activeSchemaObj
+        ? null
+        : modalComposition
+          ? modalComposition.effective
+          : modalAnyOfSchema
+            ? modalAnyOfSchema
+            : modalChoice?.meta.kind === 'oneOf'
+              ? effectiveBranchSchema(asBranchSchema(modalChoice.branches[modalOneOfIdx]), resolveReference)
+              : activeSchemaObj.schema;
+    const modalEffectiveForViewer = modalMatrixSchema
+        ? applySchemaBranchSelections(modalMatrixSchema, modalSelectionScopeKey, resolveReference)
+        : modalMatrixSchema;
+
     // Hooks above this line must always run; empty stack has nothing to paint.
     if (!activeSchemaObj || !activeResolution) {
         return null;
     }
 
-    const properties = traverseSchemaProperties(activeSchemaObj.schema);
-    const schemaIsRecursiveView = schemaIsRecursive(effectiveModalSchema, resolveReference);
     return (
         <>
             <div
@@ -604,116 +395,6 @@ export default function ModalsStack({
                                 <ReferenceStatusNotice resolution={activeResolution} />
                             </div>
                         )}
-                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex w-fit rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5 flex-wrap items-center gap-1">
-                                <button
-                                    onClick={() => setTab('table')}
-                                    className={clsx(
-                                        'rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer',
-                                        activeTab === 'table'
-                                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                            : 'hover:bg-[var(--surface-hover)]',
-                                    )}
-                                >
-                                    <i className="ph ph-table mr-1 text-[10px]" /> Scope Table
-                                </button>
-                                {isEnum && (
-                                    <button
-                                        onClick={() => setTab('enum')}
-                                        className={clsx(
-                                            'rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer',
-                                            activeTab === 'enum'
-                                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                                : 'hover:bg-[var(--surface-hover)]',
-                                        )}
-                                    >
-                                        <i className="ph ph-list-numbers mr-1 text-[10px]" /> Enum Values
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => setTab('example')}
-                                    className={clsx(
-                                        'rounded-md px-3 py-1 text-xs font-semibold transition-all cursor-pointer',
-                                        activeTab === 'example'
-                                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                            : 'hover:bg-[var(--surface-hover)]',
-                                    )}
-                                >
-                                    <i className="ph ph-dna mr-1 text-[10px]" /> Unified Simulation Example
-                                </button>
-                                {schemaSpecExamples.length > 0 && (
-                                    <div
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() =>
-                                            setActiveTabs(prev => ({...prev, [activeModalIndex]: 'spec-example'}))
-                                        }
-                                        onKeyDown={event => {
-                                            if (event.key === 'Enter' || event.key === ' ') {
-                                                event.preventDefault();
-                                                setActiveTabs(prev => ({...prev, [activeModalIndex]: 'spec-example'}));
-                                            }
-                                        }}
-                                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${
-                                            activeTab === 'spec-example'
-                                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                                : 'hover:bg-[var(--surface-hover)]'
-                                        }`}
-                                    >
-                                        <span>Example:</span>
-                                        {schemaSpecExamples.length > 1 && activeTab === 'spec-example' ? (
-                                            <span className="inline-flex min-w-0 items-center gap-1">
-                                                <CustomDropdown
-                                                    value={
-                                                        modalExampleKeys[activeModalIndex] || schemaSpecExamples[0].key
-                                                    }
-                                                    onChange={val =>
-                                                        setModalExampleKeys(prev => ({
-                                                            ...prev,
-                                                            [activeModalIndex]: val,
-                                                        }))
-                                                    }
-                                                    options={schemaSpecExamples.map(example => ({
-                                                        value: example.key,
-                                                        label: example.label,
-                                                    }))}
-                                                    className="w-auto min-w-0 max-w-[180px]"
-                                                    ariaLabel="Schema examples"
-                                                    plainTrigger
-                                                />
-                                            </span>
-                                        ) : (
-                                            <span>{activeModalSpecExample?.label || 'Example'}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {(activeTab === 'example' || activeTab === 'spec-example') && (
-                                <div className="flex min-w-[245px] items-center gap-2 animate-fade-in">
-                                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                                        Encoding type
-                                    </span>
-                                    <CustomDropdown
-                                        value={activeExampleEncoding}
-                                        onChange={encoding =>
-                                            setExampleEncodings(current => ({
-                                                ...current,
-                                                [activeModalIndex]: encoding,
-                                            }))
-                                        }
-                                        options={[
-                                            {value: 'application/json', label: 'application/json'},
-                                            {value: 'application/xml', label: 'application/xml'},
-                                            {value: 'application/yaml', label: 'application/yaml'},
-                                            {value: 'application/x-php-array', label: 'PHP array'},
-                                        ]}
-                                        icon="ph ph-code-block text-[13px]"
-                                        className="min-w-[170px]"
-                                    />
-                                </div>
-                            )}
-                        </div>
                         {schemaDeclaresNothing(effectiveModalSchema) && (
                             <div className="mb-4 flex items-start gap-2 rounded-lg border border-dashed p-3 text-xs leading-relaxed border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)]">
                                 <i className="ph ph-info mt-0.5 text-[13px] text-[var(--primary)]" />
@@ -723,38 +404,6 @@ export default function ModalsStack({
                                 </span>
                             </div>
                         )}
-                        {(effectiveModalSchema?.description || effectiveModalSchema?.externalDocs) && (
-                            <div className="mb-4 p-3 rounded-lg border text-xs leading-relaxed space-y-3 bg-[var(--background)] border-[var(--border)]">
-                                {effectiveModalSchema?.description && (
-                                    <div>
-                                        <p className="font-semibold mb-1 text-[var(--text-heading)]">Description:</p>
-                                        <div>
-                                            <Markdown text={effectiveModalSchema.description} />
-                                        </div>
-                                    </div>
-                                )}
-                                {effectiveModalSchema?.externalDocs && effectiveModalSchema.externalDocs.url && (
-                                    <div className="pt-2 border-t border-[var(--border)]">
-                                        <p className="font-semibold mb-1 text-[var(--text-heading)]">
-                                            External Reference Docs:
-                                        </p>
-                                        <a
-                                            href={effectiveModalSchema.externalDocs.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 rounded cursor-pointer transition-colors"
-                                        >
-                                            <i className="ph ph-arrow-square-out text-[8.5px]"></i>
-                                            <span>
-                                                {effectiveModalSchema.externalDocs.description ||
-                                                    'Open External Documentation'}
-                                            </span>
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         {effectiveModalSchema === true ? (
                             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 text-xs">
                                 <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
@@ -769,98 +418,54 @@ export default function ModalsStack({
                                     No JSON value satisfies this boolean schema.
                                 </p>
                             </div>
-                        ) : activeTab === 'example' ? (
-                            <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
-                                {schemaIsRecursiveView && (
-                                    <div className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                        <i className={`${RECURSIVE_SCHEMA_ICON} mt-0.5 shrink-0 text-[12px]`} />
-                                        <span>
-                                            This schema references itself recursively. The example is generated from the
-                                            guarded view — nested self-references stop at the first cycle.
-                                        </span>
-                                    </div>
-                                )}
-                                {(() => {
-                                    const simulation = formatSimulationExample(
-                                        effectiveModalSchema,
-                                        activeSchemaObj.schemaName,
-                                        activeExampleEncoding,
-                                    );
-                                    const inlineMenus = inlineMenusForCode(
-                                        simulation.code,
-                                        modalSelectionScopeKey,
-                                        modalOneOfChoices,
-                                    );
-                                    return (
-                                        <CodeViewer
-                                            code={inlineMenus.code}
-                                            language={simulationLanguage}
-                                            maxHeight="none"
-                                            lineMarkers={mockMarkersToLineMarkers(simulation.markers, {
-                                                onOpenSchema: onPushSchema,
-                                                onTestPattern: setPatternToTest,
-                                            })}
-                                            inlineMenus={inlineMenus.menus}
-                                        />
-                                    );
-                                })()}
-                            </div>
-                        ) : activeTab === 'spec-example' ? (
-                            <div className="space-y-2 animate-in fade-in" key={activeExampleEncoding}>
-                                <CodeViewer
-                                    code={
-                                        typeof activeModalSpecExample?.value === 'object'
-                                            ? formatExample(
-                                                  activeModalSpecExample.value,
-                                                  activeExampleEncoding,
-                                                  activeSchemaObj.schemaName,
-                                              )
-                                            : String(activeModalSpecExample?.value ?? '')
-                                    }
-                                    language={simulationLanguage}
-                                    maxHeight="none"
-                                />
-                            </div>
-                        ) : activeTab === 'enum' && isEnum ? (
-                            <div className="flex flex-wrap gap-2 p-3 rounded-xl border animate-in fade-in border-[var(--border)] bg-[var(--background)]">
-                                {resolvedSchema.enum.map((val: any) => (
-                                    <span
-                                        key={val}
-                                        className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
-                                    >
-                                        {JSON.stringify(val)}
-                                    </span>
-                                ))}
-                            </div>
                         ) : (
-                            <div className="space-y-4 animate-in fade-in">
-                                {effectiveModalSchema?.type && (
-                                    <div className="text-xs font-mono">
-                                        <span className="font-sans font-semibold mr-1 text-[var(--text-heading)]">
-                                            Base Type:
-                                        </span>
-                                        <span className="px-2 py-0.5 rounded text-[11px] border bg-[var(--background)] border-[var(--border)] text-[var(--text-heading)]">
-                                            {effectiveModalSchema.type}
-                                        </span>
-                                    </div>
-                                )}
-
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                    Properties
-                                </h4>
-                                <SchemaPropertiesTable
-                                    properties={properties}
-                                    schema={activeSchemaObj.schema}
-                                    inspectName={activeSchemaObj.schemaName}
-                                    resolveReference={resolveReference}
-                                    getRefName={getRefName}
-                                    onPushSchema={onPushSchema}
-                                    useModal={true}
-                                    onTestPattern={setPatternToTest}
-                                    selectionScopeKey={modalSelectionScopeKey}
-                                    showSchemaWide={true}
-                                />
-                            </div>
+                            <SchemaViewer
+                                spec={spec}
+                                matrixSchema={modalMatrixSchema}
+                                effectiveSchema={modalEffectiveForViewer}
+                                contentSchema={activeSchemaObj.schema}
+                                mediaType="application/json"
+                                selectionScopeKey={modalSelectionScopeKey}
+                                activeTab={activeTab}
+                                onTabChange={setTab}
+                                onPersistRepresentation={mode => {
+                                    setModalRepresentation(activeSchemaObj.schemaName, mode);
+                                    setActiveTabs({});
+                                }}
+                                specExamples={schemaSpecExamples.map(example => ({
+                                    key: example.key,
+                                    label: example.label,
+                                    value: example.value,
+                                    summary: example.summary,
+                                    description: example.description,
+                                }))}
+                                activeSpecExampleKey={
+                                    modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key || ''
+                                }
+                                onSpecExampleKeyChange={key =>
+                                    setModalExampleKeys(prev => ({...prev, [activeModalIndex]: key}))
+                                }
+                                branchIndex={modalOneOfIdx}
+                                onBranchIndexChange={index =>
+                                    setModalOneOfIndex(prev => ({...prev, [modalSchemaKey]: index}))
+                                }
+                                anyOfSelectedIndices={modalAnyOfEffective}
+                                onAnyOfSelectedIndicesChange={indices => {
+                                    setModalAnyOfTouched(prev => ({...prev, [modalSchemaKey]: true}));
+                                    setModalAnyOfSelected(prev => ({...prev, [modalSchemaKey]: indices}));
+                                }}
+                                allOfFocusIndex={
+                                    modalSchemaKey in modalAllOfFocus ? modalAllOfFocus[modalSchemaKey] : null
+                                }
+                                onAllOfFocusIndexChange={index =>
+                                    setModalAllOfFocus(prev => ({...prev, [modalSchemaKey]: index}))
+                                }
+                                inspectName={activeSchemaObj.schemaName}
+                                onOpenSchema={onPushSchema}
+                                onTestPattern={setPatternToTest}
+                                showSchemaWide
+                                usage="generic"
+                            />
                         )}
                     </div>
 
