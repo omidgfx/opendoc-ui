@@ -374,10 +374,15 @@ export default function DevTooltip({
         );
     }
 
+    // Keep layout wrappers transparent: never override absolute/fixed/sticky hosts
+    // (e.g. ResponseCodeNavigator rail) with a forced `relative`.
+    const hostPositioned = /(?:^|\s)(?:absolute|fixed|sticky)(?:\s|$)/.test(className || '');
+    const hostClassName = clsx(!hostPositioned && 'relative', className);
+
     return (
         <>
             {/* Host is layout-only — no mouse handlers, so children stay fully clickable. */}
-            <div className={clsx('relative', className)} data-dev-tooltip-wrap={name}>
+            <div className={hostClassName} data-dev-tooltip-wrap={name}>
                 <span
                     ref={node => {
                         markRef.current = node;

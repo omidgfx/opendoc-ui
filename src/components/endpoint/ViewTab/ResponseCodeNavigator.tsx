@@ -45,18 +45,23 @@ export default function ResponseCodeNavigator({
     const entries = Object.entries(responses);
     if (entries.length === 0) return null;
     return (
-        <DevTooltip name="ResponseCodeNavigator.root">
+        // sticky + sizing stay on the labeled host so DevTooltip cannot insert an
+        // extra relative box between the absolute rail slot and this navigator.
+        <DevTooltip
+            name="ResponseCodeNavigator.root"
+            className="sticky top-3 flex w-16 shrink-0 flex-col items-center gap-2.5 px-1 py-3"
+        >
             <nav
                 data-response-navigator="vertical"
                 aria-label="Response code navigator"
-                className="sticky top-3 flex w-16 shrink-0 flex-col items-center gap-2.5 px-1 py-3"
+                className="flex w-full flex-col items-center gap-2.5"
             >
                 {entries.map(([code, response]) => {
                     const active = code === activeCode;
                     const expanded = expandedCodes.has(code);
                     const tone = responseTone(code);
                     return (
-                        <DevTooltip key={code} name={`ResponseCodeNavigator.item[${code}]`}>
+                        <DevTooltip key={code} name={`ResponseCodeNavigator.item[${code}]`} className="w-full">
                             <Tip
                                 content={
                                     <span className="flex flex-col gap-0.5">
