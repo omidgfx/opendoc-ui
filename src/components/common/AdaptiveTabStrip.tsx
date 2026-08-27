@@ -3,7 +3,7 @@ import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
 import {readPortalThemeVariables} from '../../utils/theme/themeCss';
-import {useHorizontalWheelScroll} from '../../hooks/useHorizontalWheelScroll';
+import {useHorizontalStrip} from '../../hooks/useHorizontalStrip';
 
 export interface AdaptiveTabItem {
     id: string;
@@ -28,9 +28,10 @@ const VISIBLE_RATIO = 0.7;
 
 /**
  * One scrollable row of choices. Every alternative stays on the rail — it
- * scrolls with touch, trackpad and mouse wheel and hides its scrollbar — while
- * the ⋮ menu lists only the ones that are currently out of sight, and picking
- * one scrolls the rail to it. Used wherever a schema offers alternatives
+ * scrolls with touch, trackpad, mouse wheel and drag and hides its scrollbar —
+ * while the ⋮ menu lists only the ones that are currently out of sight, and
+ * picking one scrolls the rail to it. End chevrons appear on hover when that
+ * side can still scroll. Used wherever a schema offers alternatives
  * (oneOf / anyOf), which could otherwise throw an unbounded number of buttons
  * onto the page.
  */
@@ -49,7 +50,9 @@ export default function AdaptiveTabStrip({
     const [hiddenIds, setHiddenIds] = useState<string[]>([]);
     const [menuOpen, setMenuOpen] = useState(false);
     const [menuPosition, setMenuPosition] = useState({top: 0, left: 0, width: 240, openAbove: false, maxHeight: 288});
-    useHorizontalWheelScroll(railRef);
+    const {edges, overflows, hovered, dragging, onScroll, onHoverEnter, onHoverLeave, scrollStart, scrollEnd, measure} =
+        useHorizontalStrip(railRef);
+
     const measureHidden = useCallback(() => {
         const rail = railRef.current;
         if (!rail) return;
@@ -66,7 +69,9 @@ export default function AdaptiveTabStrip({
         setHiddenIds(current =>
             current.length === hidden.length && current.every((id, index) => id === hidden[index]) ? current : hidden,
         );
-    }, [items]);
+        measure();
+    }, [items, measure]);
+
     useLayoutEffect(() => {
         measureHidden();
         const rail = railRef.current;
@@ -76,6 +81,7 @@ export default function AdaptiveTabStrip({
         Array.from(rail.children).forEach(child => observer.observe(child));
         return () => observer.disconnect();
     }, [measureHidden]);
+
     const scrollTabIntoRail = useCallback((id: string, behavior: ScrollBehavior = 'auto') => {
         const rail = railRef.current;
         const tab = rail ? tabRefs.current.get(id) : null;
@@ -90,11 +96,13 @@ export default function AdaptiveTabStrip({
         const target = left < viewStart ? left - 8 : right - rail.clientWidth + 8;
         rail.scrollTo({left: Math.max(0, target), behavior});
     }, []);
+
     useEffect(() => {
         // Keep the selected branch reachable without hunting for it.
         scrollTabIntoRail(activeId);
         measureHidden();
     }, [activeId, measureHidden, scrollTabIntoRail]);
+
     const updateMenuPosition = useCallback((optionCount: number) => {
         const rect = buttonRef.current?.getBoundingClientRect();
         if (!rect || typeof window === 'undefined') return;
@@ -111,6 +119,7 @@ export default function AdaptiveTabStrip({
             maxHeight: Math.max(96, Math.min(288, openAbove ? spaceAbove : spaceBelow)),
         });
     }, []);
+
     useEffect(() => {
         if (!menuOpen) return;
         updateMenuPosition(hiddenIds.length);
@@ -134,9 +143,11 @@ export default function AdaptiveTabStrip({
             window.removeEventListener('scroll', onViewportChange, true);
         };
     }, [menuOpen, hiddenIds.length, updateMenuPosition]);
+
     useEffect(() => {
         if (hiddenIds.length === 0) setMenuOpen(false);
     }, [hiddenIds.length]);
+
     if (items.length === 0) return null;
     const hidden = new Set(hiddenIds);
     const reveal = (id: string) => {
@@ -144,6 +155,10 @@ export default function AdaptiveTabStrip({
         setMenuOpen(false);
         scrollTabIntoRail(id, 'smooth');
     };
+
+    const showStart = hovered && overflows && edges.start;
+    const showEnd = hovered && overflows && edges.end;
+
     return (
         <div className="min-w-0 space-y-1.5">
             {labelNode ||
@@ -152,45 +167,81 @@ export default function AdaptiveTabStrip({
                         {label}
                     </span>
                 ))}
-            <div className="flex min-w-0 items-center gap-1.5">
-                <div
-                    ref={railRef}
-                    role="tablist"
-                    aria-label={ariaLabel}
-                    onScroll={measureHidden}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none scroll-smooth"
-                >
-                    {items.map(item => {
-                        const isActive = item.id === activeId;
-                        const tab = (
-                            <button
-                                key={item.id}
-                                ref={node => {
-                                    if (node) tabRefs.current.set(item.id, node);
-                                    else tabRefs.current.delete(item.id);
-                                }}
-                                type="button"
-                                role="tab"
-                                aria-selected={isActive}
-                                onClick={() => onSelect(item.id)}
-                                className={clsx(
-                                    'shrink-0 cursor-pointer select-none rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150',
-                                    isActive
-                                        ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
-                                        : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15',
-                                )}
-                            >
-                                {item.label}
-                            </button>
-                        );
-                        return item.description ? (
-                            <Tip key={item.id} content={item.description}>
-                                {tab}
-                            </Tip>
-                        ) : (
-                            tab
-                        );
-                    })}
+            <div className="flex min-w-0 items-center gap-1.5" onMouseEnter={onHoverEnter} onMouseLeave={onHoverLeave}>
+                <div className="relative min-w-0 flex-1">
+                    <div
+                        ref={railRef}
+                        role="tablist"
+                        aria-label={ariaLabel}
+                        onScroll={() => {
+                            onScroll();
+                            measureHidden();
+                        }}
+                        className={clsx(
+                            'flex min-w-0 items-center gap-1.5 overflow-x-auto scrollbar-none',
+                            overflows && (dragging ? 'cursor-grabbing select-none' : 'cursor-grab'),
+                        )}
+                    >
+                        {items.map(item => {
+                            const isActive = item.id === activeId;
+                            const tab = (
+                                <button
+                                    key={item.id}
+                                    ref={node => {
+                                        if (node) tabRefs.current.set(item.id, node);
+                                        else tabRefs.current.delete(item.id);
+                                    }}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    onClick={() => onSelect(item.id)}
+                                    className={clsx(
+                                        'shrink-0 cursor-pointer select-none rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150',
+                                        isActive
+                                            ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                            : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15',
+                                    )}
+                                >
+                                    {item.label}
+                                </button>
+                            );
+                            return item.description ? (
+                                <Tip key={item.id} content={item.description}>
+                                    {tab}
+                                </Tip>
+                            ) : (
+                                tab
+                            );
+                        })}
+                    </div>
+                    {showStart && (
+                        <button
+                            type="button"
+                            aria-label="Scroll left"
+                            onClick={event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                scrollStart();
+                            }}
+                            className="absolute left-0 top-1/2 z-[2] flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] shadow-sm hover:bg-[var(--surface-hover)] cursor-pointer"
+                        >
+                            <i className="ph ph-caret-left text-[12px]" />
+                        </button>
+                    )}
+                    {showEnd && (
+                        <button
+                            type="button"
+                            aria-label="Scroll right"
+                            onClick={event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                scrollEnd();
+                            }}
+                            className="absolute right-0 top-1/2 z-[2] flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] shadow-sm hover:bg-[var(--surface-hover)] cursor-pointer"
+                        >
+                            <i className="ph ph-caret-right text-[12px]" />
+                        </button>
+                    )}
                 </div>
                 {hiddenIds.length > 0 && (
                     <Tip content={`${hiddenIds.length} more out of view`}>
