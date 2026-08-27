@@ -82,7 +82,8 @@ export default function ResponsePanel({
                 Response Outcome
             </label>
 
-            <div className="sticky -top-8 z-20 py-3 bg-[var(--background)]/95 backdrop-blur-sm">
+            {/* Above CodeViewer gutters (z-20) so line numbers never paint over Send. */}
+            <div className="sticky -top-8 z-30 py-3 bg-[var(--background)]/95 backdrop-blur-sm">
                 <div className="p-2 rounded-xl border font-mono text-xs w-full flex items-center justify-between gap-2 sm:gap-4 bg-[var(--surface)] border-[var(--border)] text-[var(--text-heading)] flex-wrap sm:flex-nowrap shadow-sm">
                     <div className="flex items-center grow gap-1.5 ps-2 min-w-0 overflow-hidden">
                         <span className="uppercase font-bold opacity-60 hidden sm:inline text-[9px] tracking-widest shrink-0">
