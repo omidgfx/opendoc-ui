@@ -2,7 +2,6 @@ import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import CodeViewer from '../../common/CodeViewer';
 import CustomDropdown from '../../common/CustomDropdown';
-import DevTooltip from '../../common/DevTooltip';
 import ScrollableRow from '../../common/ScrollableRow';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import Markdown from '../../common/Markdown';
@@ -489,7 +488,7 @@ export default function SchemaViewer({
     );
 
     const formatToolbar = (
-        <DevTooltip name="SchemaViewer.formatToolbar">
+        
             <CustomDropdown
                 value={exampleEncodingId}
                 onChange={setExampleEncodingId}
@@ -498,24 +497,24 @@ export default function SchemaViewer({
                 triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
                 ariaLabel="Generated example format"
             />
-        </DevTooltip>
+        
     );
 
     const renderBranchRail = () => {
         if (choiceKind === 'oneOf' && choiceBranches.length > 0) {
             return (
-                <DevTooltip name="SchemaViewer.oneOfBranchRail" className="min-w-0">
+                <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        <DevTooltip name="SchemaViewer.oneOfCombinatorLabel">
+                        
                             <CombinatorLabel meta={COMBINATOR_META.oneOf} />
-                        </DevTooltip>
+                        
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
                                 {choiceBranches.map((branch, index) => {
                                     const active = branchIndex === index;
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        <DevTooltip key={`oneof-${index}`} name={`SchemaViewer.oneOfChip[${index}]`}>
+                                        
                                             <button
                                                 type="button"
                                                 aria-pressed={active}
@@ -528,27 +527,27 @@ export default function SchemaViewer({
                                                 </span>
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
-                                        </DevTooltip>
+                                        
                                     );
                                 })}
                             </div>
                         </ScrollableRow>
                     </div>
-                </DevTooltip>
+                </div>
             );
         }
 
         if (choiceKind === 'anyOf' && choiceBranches.length > 0) {
             const allSelected = anyOfSelected.length === choiceBranches.length;
             return (
-                <DevTooltip name="SchemaViewer.anyOfBranchRail" className="min-w-0">
+                <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        <DevTooltip name="SchemaViewer.anyOfCombinatorLabel">
+                        
                             <CombinatorLabel meta={COMBINATOR_META.anyOf} />
-                        </DevTooltip>
+                        
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
-                                <DevTooltip name="SchemaViewer.anyOfChip[all]">
+                                
                                     <button
                                         type="button"
                                         aria-pressed={allSelected}
@@ -561,12 +560,12 @@ export default function SchemaViewer({
                                         {selectionGlyph('anyOf', allSelected)}
                                         All
                                     </button>
-                                </DevTooltip>
+                                
                                 {choiceBranches.map((branch, index) => {
                                     const active = anyOfSelected.includes(index);
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        <DevTooltip key={`anyof-${index}`} name={`SchemaViewer.anyOfChip[${index}]`}>
+                                        
                                             <button
                                                 type="button"
                                                 aria-pressed={active}
@@ -585,26 +584,26 @@ export default function SchemaViewer({
                                                 {selectionGlyph('anyOf', active)}
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
-                                        </DevTooltip>
+                                        
                                     );
                                 })}
                             </div>
                         </ScrollableRow>
                     </div>
-                </DevTooltip>
+                </div>
             );
         }
 
         if (composition && allOfBranches.length > 0) {
             return (
-                <DevTooltip name="SchemaViewer.allOfBranchRail" className="min-w-0">
+                <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        <DevTooltip name="SchemaViewer.allOfCombinatorLabel">
+                        
                             <CombinatorLabel meta={COMBINATOR_META.allOf} />
-                        </DevTooltip>
+                        
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
-                                <DevTooltip name="SchemaViewer.allOfChip[combined]">
+                                
                                     <button
                                         type="button"
                                         aria-pressed={allOfFocusIndex === null}
@@ -615,12 +614,12 @@ export default function SchemaViewer({
                                         {selectionGlyph('allOf', allOfFocusIndex === null)}
                                         Combined
                                     </button>
-                                </DevTooltip>
+                                
                                 {allOfBranches.map((branch: any, index: number) => {
                                     const active = allOfFocusIndex === index;
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        <DevTooltip key={`allof-${index}`} name={`SchemaViewer.allOfChip[${index}]`}>
+                                        
                                             <button
                                                 type="button"
                                                 aria-pressed={active}
@@ -633,19 +632,19 @@ export default function SchemaViewer({
                                                 </span>
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
-                                        </DevTooltip>
+                                        
                                     );
                                 })}
                             </div>
                         </ScrollableRow>
                     </div>
-                </DevTooltip>
+                </div>
             );
         }
 
         if (rootCombinator?.meta.kind === 'not') {
             return (
-                <DevTooltip name="SchemaViewer.notBranchRail">
+                
                     <div className="flex flex-wrap items-center gap-2">
                         <CombinatorLabel meta={COMBINATOR_META.not} />
                         <span className="text-[10px] text-[var(--text-muted)]">
@@ -662,7 +661,7 @@ export default function SchemaViewer({
                             </button>
                         )}
                     </div>
-                </DevTooltip>
+                
             );
         }
 
@@ -717,18 +716,18 @@ export default function SchemaViewer({
             </span>
         );
         return (
-            <DevTooltip key={opts.name} name={opts.name} className="inline-flex min-w-0 max-w-full">
+            <div className="inline-flex min-w-0 max-w-full">
                 {opts.tip ? <Tip content={opts.tip}>{chip}</Tip> : chip}
-            </DevTooltip>
+            </div>
         );
     };
 
     const metaHeader = (
-        <DevTooltip name="SchemaViewer.metaHeader">
+        
             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden shadow-sm">
-                <DevTooltip name="SchemaViewer.metaHeaderBar">
+                
                     <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <DevTooltip name="SchemaViewer.metaHeaderSummary" className="min-w-0">
+                        <div className="min-w-0">
                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                                 <span className="mr-0.5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
                                     <i className="ph ph-diamonds-four text-[12px] text-[var(--primary)]" />
@@ -774,7 +773,7 @@ export default function SchemaViewer({
                                       })
                                     : null}
                             </div>
-                        </DevTooltip>
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
                             {composition
                                 ? metaStat({
@@ -817,33 +816,33 @@ export default function SchemaViewer({
                                 : null}
                         </div>
                     </div>
-                </DevTooltip>
+                
                 {(branchRailNode || resolvedEffective?.description) && (
-                    <DevTooltip name="SchemaViewer.metaHeaderBody" className="min-w-0">
+                    <div className="min-w-0">
                         <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
                             {branchRailNode ? (
-                                <DevTooltip name="SchemaViewer.metaHeaderBranchRail" className="min-w-0">
+                                <div className="min-w-0">
                                     {branchRailNode}
-                                </DevTooltip>
+                                </div>
                             ) : null}
                             {resolvedEffective?.description && (
-                                <DevTooltip name="SchemaViewer.metaHeaderDescription">
+                                
                                     <div className="text-xs leading-relaxed text-[var(--text)]">
                                         <Markdown text={resolvedEffective.description} />
                                     </div>
-                                </DevTooltip>
+                                
                             )}
                         </div>
-                    </DevTooltip>
+                    </div>
                 )}
             </div>
-        </DevTooltip>
+        
     );
 
     const tabStrip = (
-        <DevTooltip name="SchemaViewer.tabStrip" className="min-w-0">
+        <div className="min-w-0">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-                <DevTooltip name="SchemaViewer.tabButtons" placement="inside-top">
+                
                     <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
                         <button
                             type="button"
@@ -909,24 +908,24 @@ export default function SchemaViewer({
                             </div>
                         )}
                     </div>
-                </DevTooltip>
+                
                 {headerActions && (
-                    <DevTooltip name="SchemaViewer.headerActions">
+                    
                         <div className="flex items-center gap-2 flex-wrap justify-end">{headerActions}</div>
-                    </DevTooltip>
+                    
                 )}
             </div>
-        </DevTooltip>
+        </div>
     );
 
     return (
-        <DevTooltip name="SchemaViewer.root" className={clsx('min-w-0', className)}>
+        
             <div className={clsx('space-y-3 min-w-0', className)}>
                 {metaHeader}
                 {tabStrip}
 
                 {activeTab === 'example' && (
-                    <DevTooltip name="SchemaViewer.generatedExamplePane" className="min-w-0">
+                    <div className="min-w-0">
                         <div className="space-y-3 min-w-0">
                             <CodeViewer
                                 code={inlineMenus.code}
@@ -941,11 +940,11 @@ export default function SchemaViewer({
                                 dimmedLines={dimmedCodeLines}
                             />
                         </div>
-                    </DevTooltip>
+                    </div>
                 )}
 
                 {activeTab === 'spec-example' && activeSpecExample && (
-                    <DevTooltip name="SchemaViewer.specExamplePane" className="min-w-0">
+                    <div className="min-w-0">
                         <div className="space-y-3 min-w-0">
                             <CodeViewer
                                 code={formatExample(
@@ -957,11 +956,11 @@ export default function SchemaViewer({
                                 maxHeight="320px"
                             />
                         </div>
-                    </DevTooltip>
+                    </div>
                 )}
 
                 {activeTab === 'enum' && hasEnum && (
-                    <DevTooltip name="SchemaViewer.enumPane">
+                    
                         <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
                             {resolvedEffective.enum.map((val: any) => (
                                 <span
@@ -972,11 +971,11 @@ export default function SchemaViewer({
                                 </span>
                             ))}
                         </div>
-                    </DevTooltip>
+                    
                 )}
 
                 {activeTab === 'schema' && (
-                    <DevTooltip name="SchemaViewer.unifiedSchemaPane" className="min-w-0">
+                    <div className="min-w-0">
                         <div className="space-y-3 min-w-0">
                             {(() => {
                                 const pureNull =
@@ -1041,7 +1040,7 @@ export default function SchemaViewer({
                             })()}
                             {schemaFooter}
                         </div>
-                    </DevTooltip>
+                    </div>
                 )}
 
                 {/* Dim unrelated property rows when an allOf part is focused. */}
@@ -1065,6 +1064,6 @@ export default function SchemaViewer({
                 `}</style>
                 )}
             </div>
-        </DevTooltip>
+        
     );
 }

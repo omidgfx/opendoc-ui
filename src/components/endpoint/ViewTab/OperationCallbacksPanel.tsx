@@ -5,8 +5,6 @@ import type {OpenApiSpec} from '../../../types';
 import {getPathItemOperations, getRefName, resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {formatExample} from '../../../utils/endpoint/exampleFormatting';
 import {getRequestBodyExample} from '../../../utils/endpoint/requestBodySource';
-import DevTooltip from '../../common/DevTooltip';
-
 interface OperationCallbacksPanelProps {
     callbacks: Record<string, any>;
     spec: OpenApiSpec;
@@ -45,7 +43,7 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
         .filter(([, callbackObject]) => !!callbackObject && typeof callbackObject === 'object');
     if (callbackEntries.length === 0) return null;
     return (
-        <DevTooltip name="OperationCallbacksPanel.root" className="min-w-0">
+        <div className="min-w-0">
             <div className="space-y-3 font-sans min-w-0">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -301,6 +299,6 @@ export default function OperationCallbacksPanel({callbacks, spec, onOpenSchema}:
                     })}
                 </div>
             </div>
-        </DevTooltip>
+        </div>
     );
 }

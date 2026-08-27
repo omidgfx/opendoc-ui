@@ -10,6 +10,7 @@ import SettingRow from '../controls/SettingRow';
 import SettingChoice from '../controls/SettingChoice';
 
 const ENDPOINT_SCOPE_OPTIONS: {value: EndpointRepresentationScope; label: string; icon: string}[] = [
+    {value: 'schema', label: 'Per schema', icon: 'ph ph-diamonds-four'},
     {value: 'endpoint', label: 'Per endpoint', icon: 'ph ph-plugs-connected'},
     {value: 'global', label: 'Globally', icon: 'ph ph-globe-simple'},
 ];
@@ -39,7 +40,7 @@ export default function GeneralSettingsSection() {
             >
                 <SettingRow
                     label="Documentation"
-                    description="Per endpoint keeps a choice for each endpoint. Globally makes one choice apply to every endpoint, request body, response and parameter table."
+                    description="Per schema keeps a choice for each request/response schema. Per endpoint keeps one choice per operation. Globally makes one choice apply everywhere in the documentation."
                     icon="ph ph-book-open-text"
                     control={
                         <SettingChoice

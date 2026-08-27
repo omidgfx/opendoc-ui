@@ -17,7 +17,7 @@ interface PreferencesContextValue {
     setPreference: <Key extends keyof AppPreferences>(key: Key, value: AppPreferences[Key]) => void;
     toggleIndicatorIcon: (kind: IndicatorIconKind, enabled: boolean) => void;
     /** Records a documentation schema/example choice under the active scope. */
-    setEndpointRepresentation: (endpointKey: string, mode: RepresentationMode) => void;
+    setEndpointRepresentation: (endpointKey: string, mode: RepresentationMode, schemaName?: string | null) => void;
     /** Records a schema modal schema/example choice under the active scope. */
     setModalRepresentation: (schemaName: string, mode: RepresentationMode) => void;
     resetPreferences: () => void;
@@ -63,13 +63,16 @@ export function PreferencesProvider({children}: {children: ReactNode}) {
             return next;
         });
     }, []);
-    const setEndpointRepresentation = useCallback((endpointKey: string, mode: RepresentationMode) => {
-        setPreferences(current => {
-            const next = withEndpointRepresentation(current, endpointKey, mode);
-            writeAppPreferences(next);
-            return next;
-        });
-    }, []);
+    const setEndpointRepresentation = useCallback(
+        (endpointKey: string, mode: RepresentationMode, schemaName?: string | null) => {
+            setPreferences(current => {
+                const next = withEndpointRepresentation(current, endpointKey, mode, schemaName);
+                writeAppPreferences(next);
+                return next;
+            });
+        },
+        [],
+    );
     const setModalRepresentation = useCallback((schemaName: string, mode: RepresentationMode) => {
         setPreferences(current => {
             const next = withModalRepresentation(current, schemaName, mode);

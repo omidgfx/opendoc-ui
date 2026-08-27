@@ -28,7 +28,10 @@ import {
     readSchemaBranchSelections,
     SCHEMA_BRANCH_SELECTION_EVENT,
     writeSchemaAllOfFocus,
+    writeSchemaAnyOfSelection,
     writeSchemaBranchSelection,
+    readSchemaAnyOfSelections,
+    toggleSchemaAnyOfSelection,
 } from '../../utils/schema/branchSelections';
 import {collectSchemaBranchChoices} from '../../utils/schema/branchChoices';
 import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
@@ -173,11 +176,13 @@ export default function SchemaPropertiesTable({
     const selectionKey = selectionScopeKey || inspectName || schemaName || 'schema';
     const [branchSelections, setBranchSelections] = useState(() => readSchemaBranchSelections(selectionKey));
     const [allOfFocus, setAllOfFocus] = useState(() => readSchemaAllOfFocus(selectionKey));
+    const [anyOfSelections, setAnyOfSelections] = useState(() => readSchemaAnyOfSelections(selectionKey));
     const [selectionRevision, setSelectionRevision] = useState(0);
 
     useEffect(() => {
         setBranchSelections(readSchemaBranchSelections(selectionKey));
         setAllOfFocus(readSchemaAllOfFocus(selectionKey));
+        setAnyOfSelections(readSchemaAnyOfSelections(selectionKey));
     }, [selectionKey]);
 
     useEffect(() => {
@@ -186,6 +191,7 @@ export default function SchemaPropertiesTable({
             if (detail?.key !== selectionKey) return;
             setBranchSelections(readSchemaBranchSelections(selectionKey));
             setAllOfFocus(readSchemaAllOfFocus(selectionKey));
+            setAnyOfSelections(readSchemaAnyOfSelections(selectionKey));
             setSelectionRevision(current => current + 1);
         };
         window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
@@ -202,6 +208,15 @@ export default function SchemaPropertiesTable({
         const next = writeSchemaAllOfFocus(selectionKey, path, index);
         setAllOfFocus(next);
         setSelectionRevision(current => current + 1);
+    };
+    const updateAnyOfSelection = (path: string, index: number, branchCount: number) => {
+        if (index < 0) {
+            const next = writeSchemaAnyOfSelection(selectionKey, path, []);
+            setAnyOfSelections(next);
+            return;
+        }
+        toggleSchemaAnyOfSelection(selectionKey, path, index, branchCount);
+        setAnyOfSelections(readSchemaAnyOfSelections(selectionKey));
     };
 
     const sourceProperties = useMemo(() => properties || {}, [properties]);
@@ -393,7 +408,7 @@ export default function SchemaPropertiesTable({
     const combinatorTitle = (kind: 'oneOf' | 'anyOf' | 'allOf', count: number) => {
         const meta = COMBINATOR_META[kind];
         const title = kind === 'oneOf' ? 'ONE OF' : kind === 'anyOf' ? 'ANY OF' : 'ALL OF';
-        const hint = kind === 'allOf' ? 'focus' : kind === 'oneOf' ? 'pick one' : '';
+        const hint = kind === 'allOf' ? 'focus' : kind === 'oneOf' ? 'pick one' : kind === 'anyOf' ? 'pick any' : '';
         return (
             <div
                 className="inline-flex items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider"
@@ -417,6 +432,9 @@ export default function SchemaPropertiesTable({
             kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
         const focusAllOf = kind === 'allOf' ? allOfFocus[name] : undefined;
         const combinedActive = kind === 'allOf' && (focusAllOf === null || focusAllOf === undefined);
+        const anySelectedIndices = kind === 'anyOf' ? anyOfSelections[name] || [] : ([] as number[]);
+        const anyAllActive =
+            kind === 'anyOf' && (anySelectedIndices.length === 0 || anySelectedIndices.length >= branches.length);
         const meta = COMBINATOR_META[kind];
         const selectionIcon = (active: boolean) => (
             <i
@@ -444,6 +462,22 @@ export default function SchemaPropertiesTable({
                             <span className="min-w-0 break-words font-semibold">Combined</span>
                         </button>
                     )}
+                    {kind === 'anyOf' && (
+                        <button
+                            type="button"
+                            onClick={() => updateAnyOfSelection(name, -1, branches.length)}
+                            className={clsx(
+                                'flex items-start gap-2 text-left text-[10px] leading-relaxed cursor-pointer rounded-md px-0.5 py-0.5 transition-colors',
+                                !anyAllActive && 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                            )}
+                            style={anyAllActive ? {color: meta.color} : undefined}
+                        >
+                            <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                {selectionIcon(anyAllActive)}
+                            </span>
+                            <span className="min-w-0 break-words font-semibold">All</span>
+                        </button>
+                    )}
                     {branches.map((sub: any, index: number) => {
                         const label = schemaVariantLabel(sub, resolveReference, getRefName, index);
                         const active =
@@ -451,9 +485,11 @@ export default function SchemaPropertiesTable({
                                 ? selectedOneOf === index
                                 : kind === 'allOf'
                                   ? focusAllOf === index
-                                  : false;
+                                  : kind === 'anyOf'
+                                    ? anyAllActive || anySelectedIndices.includes(index)
+                                    : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
-                        const interactive = kind === 'oneOf' || kind === 'allOf';
+                        const interactive = kind === 'oneOf' || kind === 'allOf' || kind === 'anyOf';
                         return (
                             <label
                                 key={`${name}:${kind}:${index}:${controlScope}`}
@@ -486,9 +522,15 @@ export default function SchemaPropertiesTable({
                                         {selectionIcon(active)}
                                     </span>
                                 ) : (
-                                    // anyOf is multi-match composition in the table — show keyword-colored checkbox glyphs.
                                     <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
-                                        {selectionIcon(false)}
+                                        <input
+                                            type="checkbox"
+                                            name={`anyof-${selectionKey}-${controlScope}-${name}-${index}`}
+                                            checked={active}
+                                            onChange={() => updateAnyOfSelection(name, index, branches.length)}
+                                            className="absolute inset-0 m-0 cursor-pointer opacity-0"
+                                        />
+                                        {selectionIcon(active)}
                                     </span>
                                 )}
                                 <span className="min-w-0 break-words">

@@ -211,7 +211,7 @@ export function buildTagTree(
 export function endpointMatchesSidebarFilter(
     endpoint: TreeNode['endpoints'][number],
     query: string,
-    displayRoutes: boolean,
+    _displayRoutes?: boolean,
 ): boolean {
     const terms = query
         .trim()
@@ -219,12 +219,13 @@ export function endpointMatchesSidebarFilter(
         .split(/[\s._-]+/)
         .filter(Boolean);
     if (terms.length === 0) return true;
-    const summary = String(endpoint.operation?.summary || endpoint.path).toLowerCase();
-    const visibleEndpointText = [
-        summary,
-        ...(displayRoutes && endpoint.operation?.summary ? [endpoint.path.toLowerCase()] : []),
-    ];
-    return terms.every(term => visibleEndpointText.some(value => value.includes(term)));
+    const summary = String(endpoint.operation?.summary || '').toLowerCase();
+    const path = String(endpoint.path || '').toLowerCase();
+    const method = String(endpoint.method || '').toLowerCase();
+    const opId = String(endpoint.operation?.operationId || '').toLowerCase();
+    // Path is always searchable — displayRoutes only affects sidebar chrome.
+    const haystack = [path, summary || path, method, opId].filter(Boolean);
+    return terms.every(term => haystack.some(value => value.includes(term)));
 }
 
 export function filterTagTree(node: TreeNode, predicate: (ep: TreeNode['endpoints'][number]) => boolean): TreeNode {

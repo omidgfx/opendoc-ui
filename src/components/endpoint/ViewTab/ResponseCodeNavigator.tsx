@@ -1,8 +1,6 @@
 import clsx from 'clsx';
 import type {ResponseDefinition} from '../../../types';
 import {Tip} from '../../common/Tooltip';
-import DevTooltip from '../../common/DevTooltip';
-
 interface ResponseCodeNavigatorProps {
     responses: Record<string, ResponseDefinition>;
     activeCode: string | null;
@@ -45,12 +43,9 @@ export default function ResponseCodeNavigator({
     const entries = Object.entries(responses);
     if (entries.length === 0) return null;
     return (
-        // sticky + sizing stay on the labeled host so DevTooltip cannot insert an
+        // sticky + sizing stay on the labeled host so a wrapper cannot insert an
         // extra relative box between the absolute rail slot and this navigator.
-        <DevTooltip
-            name="ResponseCodeNavigator.root"
-            className="sticky top-3 flex w-16 shrink-0 flex-col items-center gap-2.5 px-1 py-3"
-        >
+        <div className="sticky top-3 flex w-16 shrink-0 flex-col items-center gap-2.5 px-1 py-3">
             <nav
                 data-response-navigator="vertical"
                 aria-label="Response code navigator"
@@ -61,7 +56,7 @@ export default function ResponseCodeNavigator({
                     const expanded = expandedCodes.has(code);
                     const tone = responseTone(code);
                     return (
-                        <DevTooltip key={code} name={`ResponseCodeNavigator.item[${code}]`} className="w-full">
+                        <div className="w-full">
                             <Tip
                                 content={
                                     <span className="flex flex-col gap-0.5">
@@ -109,10 +104,10 @@ export default function ResponseCodeNavigator({
                                     </span>
                                 </button>
                             </Tip>
-                        </DevTooltip>
+                        </div>
                     );
                 })}
             </nav>
-        </DevTooltip>
+        </div>
     );
 }

@@ -1,7 +1,7 @@
 import {schemaVariantLabel, type SchemaReferenceResolver} from '../schemaProperties';
 import {expandAllOfBranches} from './combinators';
 
-export type SchemaBranchKind = 'oneOf' | 'allOf';
+export type SchemaBranchKind = 'oneOf' | 'anyOf' | 'allOf';
 
 export interface SchemaBranchChoiceOption {
     index: number;
@@ -33,13 +33,16 @@ const optionOf = (
 });
 
 /**
- * Walk a schema tree and collect every field-level oneOf (exclusive pick) and
- * allOf (focus a composed part) the reader can act on. Root-level combinators
- * (empty path) are intentionally skipped — the body rail owns those.
+ * Walk a schema tree and collect every field-level oneOf (exclusive pick),
+ * anyOf (multi-select merge), and allOf (focus a composed part) the reader can
+ * act on. Root-level combinators (empty path) are intentionally skipped — the
+ * body rail owns those.
  *
  * allOf is never collapsed to a single branch here: composition still applies
  * fully to mocks/tables; the choice only drives focus/dimming (see
  * `readSchemaAllOfFocus` / SchemaViewer allOf chips).
+ * anyOf keeps several branches selected and merges their shapes into the mock
+ * and table (same idea as the body-level anyOf rail).
  */
 export const collectSchemaBranchChoices = (
     input: any,
@@ -76,6 +79,24 @@ export const collectSchemaBranchChoices = (
             options: schema.oneOf.map((variant: any, index: number) =>
                 optionOf(variant, index, resolveReference, getRefName),
             ),
+        });
+    }
+    if (path && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
+        choices.push({
+            path,
+            title: path,
+            kind: 'anyOf',
+            // Leading "All" matches the body-level anyOf rail (every branch on).
+            options: [
+                {
+                    index: -1,
+                    label: 'All',
+                    description: 'Include every anyOf branch in the merged shape',
+                },
+                ...schema.anyOf.map((variant: any, index: number) =>
+                    optionOf(variant, index, resolveReference, getRefName),
+                ),
+            ],
         });
     }
     if (path && Array.isArray(schema.allOf) && schema.allOf.length > 0) {
@@ -122,14 +143,12 @@ export const collectSchemaBranchChoices = (
             collectChild(item, `${path}[${index}]`);
         });
     }
-    // Descend into allOf/anyOf wrappers without a new path segment so a property
+    // Descend into allOf wrappers without a new path segment so a property
     // whose schema is `{ allOf: […, { oneOf: […] }] }` still surfaces nested
-    // oneOf/allOf under that property name. Do not walk `oneOf` here — the
-    // field's own oneOf is already recorded above; walking it would re-enter
+    // oneOf/anyOf/allOf under that property name. Do not walk `oneOf`/`anyOf`
+    // here — those are already recorded above; walking them would re-enter
     // the same path and double-register.
-    ['allOf', 'anyOf'].forEach(key => {
-        if (Array.isArray(schema[key])) schema[key].forEach((item: any) => collectChild(item, path));
-    });
+    if (Array.isArray(schema.allOf)) schema.allOf.forEach((item: any) => collectChild(item, path));
 
     return choices;
 };
@@ -145,6 +164,18 @@ export const collectSchemaOneOfChoices = (
 ): SchemaBranchChoice[] =>
     collectSchemaBranchChoices(input, resolveReference, getRefName, path, ancestorRefs, ancestorObjects).filter(
         choice => choice.kind === 'oneOf',
+    );
+
+export const collectSchemaAnyOfChoices = (
+    input: any,
+    resolveReference: SchemaReferenceResolver,
+    getRefName: (refStr: string) => string,
+    path = '',
+    ancestorRefs = new Set<string>(),
+    ancestorObjects = new Set<object>(),
+): SchemaBranchChoice[] =>
+    collectSchemaBranchChoices(input, resolveReference, getRefName, path, ancestorRefs, ancestorObjects).filter(
+        choice => choice.kind === 'anyOf',
     );
 
 export const collectSchemaAllOfChoices = (

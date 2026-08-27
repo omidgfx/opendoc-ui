@@ -3,8 +3,6 @@ import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 import type {ResponseDefinition} from '../../../types';
 import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
-import DevTooltip from '../../common/DevTooltip';
-
 interface ResponseCodeSheetProps {
     responses: Record<string, ResponseDefinition>;
     activeCode: string | null;
@@ -51,9 +49,9 @@ export default function ResponseCodeSheet({responses, activeCode, expandedCodes,
     const current = activeCode && responses[activeCode] ? activeCode : entries[0][0];
     const currentResponse = responses[current];
     return (
-        <DevTooltip name="ResponseCodeSheet.root">
+        
             <>
-                <DevTooltip name="ResponseCodeSheet.trigger">
+                
                     <button
                         type="button"
                         onClick={() => setOpen(true)}
@@ -82,11 +80,11 @@ export default function ResponseCodeSheet({responses, activeCode, expandedCodes,
                         </span>
                         <i className="ph ph-caret-up-down shrink-0 text-[14px] text-[var(--text-muted)]" />
                     </button>
-                </DevTooltip>
+                
                 {open &&
                     typeof document !== 'undefined' &&
                     createPortal(
-                        <DevTooltip name="ResponseCodeSheet.portal">
+                        
                             <div className="fixed inset-0 z-[3000] flex items-end" role="presentation">
                                 <button
                                     type="button"
@@ -181,10 +179,10 @@ export default function ResponseCodeSheet({responses, activeCode, expandedCodes,
                                     </div>
                                 </section>
                             </div>
-                        </DevTooltip>,
+                        ,
                         document.body,
                     )}
             </>
-        </DevTooltip>
+        
     );
 }

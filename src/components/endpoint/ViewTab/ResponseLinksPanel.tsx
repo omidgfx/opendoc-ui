@@ -2,8 +2,6 @@ import Markdown from '../../common/Markdown';
 import CodeViewer from '../../common/CodeViewer';
 import type {LinkDefinition, OpenApiSpec} from '../../../types';
 import {resolveReference} from '../../../utils/openapi';
-import DevTooltip from '../../common/DevTooltip';
-
 interface ResponseLinksPanelProps {
     links: Record<string, LinkDefinition | {$ref: string}>;
     spec: OpenApiSpec;
@@ -27,7 +25,7 @@ export default function ResponseLinksPanel({links, spec}: ResponseLinksPanelProp
         .filter(([, link]) => !!link && typeof link === 'object');
     if (entries.length === 0) return null;
     return (
-        <DevTooltip name="ResponseLinksPanel.root" className="min-w-0">
+        <div className="min-w-0">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -154,6 +152,6 @@ export default function ResponseLinksPanel({links, spec}: ResponseLinksPanelProp
                     })}
                 </div>
             </div>
-        </DevTooltip>
+        </div>
     );
 }

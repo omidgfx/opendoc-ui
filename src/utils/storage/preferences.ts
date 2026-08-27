@@ -5,7 +5,7 @@ export type RepresentationMode = 'example' | 'schema';
 
 /** How long the documentation remembers that choice: for the endpoint the
  *  reader made it on, or for every endpoint at once. */
-export type EndpointRepresentationScope = 'endpoint' | 'global';
+export type EndpointRepresentationScope = 'schema' | 'endpoint' | 'global';
 
 /** The same question for the schema modal: per schema, or for every schema. */
 export type ModalRepresentationScope = 'schema' | 'global';
@@ -63,7 +63,7 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
-    endpointRepresentationScope: 'endpoint',
+    endpointRepresentationScope: 'schema',
     endpointRepresentation: 'example',
     endpointRepresentations: {},
     modalRepresentationScope: 'schema',
@@ -98,7 +98,9 @@ export const normalizeAppPreferences = (value: any): AppPreferences => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {...DEFAULT_APP_PREFERENCES};
     return {
         endpointRepresentationScope:
-            value.endpointRepresentationScope === 'endpoint' || value.endpointRepresentationScope === 'global'
+            value.endpointRepresentationScope === 'schema' ||
+            value.endpointRepresentationScope === 'endpoint' ||
+            value.endpointRepresentationScope === 'global'
                 ? value.endpointRepresentationScope
                 : DEFAULT_APP_PREFERENCES.endpointRepresentationScope,
         endpointRepresentation: isRepresentation(value.endpointRepresentation)
@@ -155,11 +157,24 @@ export const resetAppPreferences = (): AppPreferences => {
     return defaults;
 };
 
-/** The representation a documentation switch must show for one endpoint. */
-export const endpointRepresentationOf = (preferences: AppPreferences, endpointKey: string): RepresentationMode =>
-    preferences.endpointRepresentationScope === 'endpoint'
-        ? (preferences.endpointRepresentations[endpointKey] ?? preferences.endpointRepresentation)
-        : preferences.endpointRepresentation;
+/**
+ * Documentation schema/example choice for a body or field view.
+ * - `schema`: per component/schema name (default)
+ * - `endpoint`: per operation key
+ * - `global`: one choice everywhere
+ */
+export const endpointRepresentationOf = (
+    preferences: AppPreferences,
+    endpointKey: string,
+    schemaName?: string | null,
+): RepresentationMode => {
+    if (preferences.endpointRepresentationScope === 'global') return preferences.endpointRepresentation;
+    if (preferences.endpointRepresentationScope === 'schema') {
+        const key = (schemaName && String(schemaName).trim()) || endpointKey;
+        return preferences.endpointRepresentations[key] ?? preferences.endpointRepresentation;
+    }
+    return preferences.endpointRepresentations[endpointKey] ?? preferences.endpointRepresentation;
+};
 
 /** The representation the schema modal must show for one schema. */
 export const modalRepresentationOf = (preferences: AppPreferences, schemaName: string): RepresentationMode =>
@@ -172,10 +187,23 @@ export const withEndpointRepresentation = (
     preferences: AppPreferences,
     endpointKey: string,
     mode: RepresentationMode,
-): AppPreferences =>
-    preferences.endpointRepresentationScope === 'endpoint'
-        ? {...preferences, endpointRepresentations: {...preferences.endpointRepresentations, [endpointKey]: mode}}
-        : {...preferences, endpointRepresentation: mode};
+    schemaName?: string | null,
+): AppPreferences => {
+    if (preferences.endpointRepresentationScope === 'global') {
+        return {...preferences, endpointRepresentation: mode};
+    }
+    if (preferences.endpointRepresentationScope === 'schema') {
+        const key = (schemaName && String(schemaName).trim()) || endpointKey;
+        return {
+            ...preferences,
+            endpointRepresentations: {...preferences.endpointRepresentations, [key]: mode},
+        };
+    }
+    return {
+        ...preferences,
+        endpointRepresentations: {...preferences.endpointRepresentations, [endpointKey]: mode},
+    };
+};
 
 /** Records a schema modal choice in whichever place the scope points at. */
 export const withModalRepresentation = (

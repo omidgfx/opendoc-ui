@@ -4,8 +4,11 @@ import {Tip} from '../common/Tooltip';
 import type {SchemaBranchChoice} from '../../utils/schema/branchChoices';
 import {
     readSchemaAllOfFocus,
+    readSchemaAnyOfSelections,
     readSchemaBranchSelections,
+    toggleSchemaAnyOfSelection,
     writeSchemaAllOfFocus,
+    writeSchemaAnyOfSelection,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
 import {
@@ -22,8 +25,8 @@ interface SchemaOneOfMenuButtonProps {
 }
 
 /**
- * Header caret for parameter / nested schema pickers. Handles both oneOf
- * (exclusive branch) and allOf (Combined vs part focus) under one control.
+ * Header caret for parameter / nested schema pickers. Handles oneOf
+ * (exclusive), anyOf (multi-select), and allOf (Combined vs part focus).
  */
 export default function SchemaOneOfMenuButton({selectionKey, choices, className}: SchemaOneOfMenuButtonProps) {
     const [open, setOpen] = useState(false);
@@ -31,6 +34,7 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
     const ref = useRef<HTMLDivElement | null>(null);
     const oneOfSelections = readSchemaBranchSelections(selectionKey);
     const allOfFocus = readSchemaAllOfFocus(selectionKey);
+    const anyOfSelections = readSchemaAnyOfSelections(selectionKey);
     void revision;
 
     useEffect(() => {
@@ -52,12 +56,15 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
 
     if (choices.length === 0) return null;
 
+    const kinds = new Set(choices.map(c => c.kind || 'oneOf'));
     const tip =
-        choices.some(c => c.kind === 'allOf') && choices.some(c => c.kind === 'oneOf')
-            ? 'Select oneOf / focus allOf'
-            : choices.some(c => c.kind === 'allOf')
+        kinds.size > 1
+            ? 'Select oneOf / anyOf / focus allOf'
+            : kinds.has('allOf')
               ? 'Focus allOf part'
-              : 'Select oneOf schema';
+              : kinds.has('anyOf')
+                ? 'Select anyOf branches'
+                : 'Select oneOf schema';
 
     return (
         <div ref={ref} className={clsx('relative shrink-0 select-none', className)}>
@@ -86,15 +93,21 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                 <div
                                     className="px-2.5 py-2 text-[9px] font-black uppercase tracking-wider"
                                     style={{
-                                        color: COMBINATOR_META[kind === 'allOf' ? 'allOf' : 'oneOf'].color,
+                                        color: COMBINATOR_META[
+                                            kind === 'allOf' ? 'allOf' : kind === 'anyOf' ? 'anyOf' : 'oneOf'
+                                        ].color,
                                     }}
                                 >
-                                    {kind === 'allOf' ? 'allOf · ' : 'oneOf · '}
+                                    {kind === 'allOf' ? 'allOf · ' : kind === 'anyOf' ? 'anyOf · ' : 'oneOf · '}
                                     {choice.title}
                                 </div>
                                 {choice.options.map(option => {
-                                    const combinatorKind: CombinatorKind = kind === 'allOf' ? 'allOf' : 'oneOf';
+                                    const combinatorKind: CombinatorKind =
+                                        kind === 'allOf' ? 'allOf' : kind === 'anyOf' ? 'anyOf' : 'oneOf';
                                     const meta = COMBINATOR_META[combinatorKind];
+                                    const branchCount = choice.options.filter(item => item.index >= 0).length;
+                                    const anySelected = anyOfSelections[choice.path];
+                                    const anyAll = kind === 'anyOf' && (!anySelected || anySelected.length === 0);
                                     const active =
                                         kind === 'allOf'
                                             ? (() => {
@@ -102,7 +115,13 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                   if (option.index < 0) return focus === null || focus === undefined;
                                                   return focus === option.index;
                                               })()
-                                            : (oneOfSelections[choice.path] ?? 0) === option.index;
+                                            : kind === 'anyOf'
+                                              ? option.index < 0
+                                                  ? anyAll || (anySelected?.length || 0) >= branchCount
+                                                  : anyAll
+                                                    ? true
+                                                    : (anySelected || []).includes(option.index)
+                                              : (oneOfSelections[choice.path] ?? 0) === option.index;
                                     return (
                                         <button
                                             key={`${choice.path}:${option.index}`}
@@ -115,11 +134,24 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                         choice.path,
                                                         option.index < 0 ? null : option.index,
                                                     );
+                                                    setOpen(false);
+                                                } else if (kind === 'anyOf') {
+                                                    if (option.index < 0) {
+                                                        writeSchemaAnyOfSelection(selectionKey, choice.path, []);
+                                                    } else {
+                                                        toggleSchemaAnyOfSelection(
+                                                            selectionKey,
+                                                            choice.path,
+                                                            option.index,
+                                                            branchCount,
+                                                        );
+                                                    }
+                                                    // keep open for multi-toggle
                                                 } else {
                                                     writeSchemaBranchSelection(selectionKey, choice.path, option.index);
+                                                    setOpen(false);
                                                 }
                                                 setRevision(current => current + 1);
-                                                setOpen(false);
                                             }}
                                             className={clsx(
                                                 'flex w-full cursor-pointer items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors',

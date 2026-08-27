@@ -1,10 +1,13 @@
-import {expandAllOfBranches} from './combinators';
+import {expandAllOfBranches, mergeAnyOfBranchSchemas} from './combinators';
 export type BranchSelectionMap = Record<string, number>;
 /** Field path → focused allOf part index, or null for Combined (show every part). */
 export type AllOfFocusMap = Record<string, number | null>;
+/** Field path → selected anyOf branch indices (empty / missing = all branches). */
+export type AnyOfSelectionMap = Record<string, number[]>;
 
 const schemaBranchSelections = new Map<string, BranchSelectionMap>();
 const schemaAllOfFocus = new Map<string, AllOfFocusMap>();
+const schemaAnyOfSelections = new Map<string, AnyOfSelectionMap>();
 export const SCHEMA_BRANCH_SELECTION_EVENT = 'opendoc:schema-branch-selection-changed';
 
 export const readSchemaBranchSelections = (key: string): BranchSelectionMap => ({
@@ -44,6 +47,50 @@ export const writeSchemaAllOfFocus = (key: string, path: string, index: number |
             }),
         );
     }
+    return next;
+};
+
+export const readSchemaAnyOfSelections = (key: string): AnyOfSelectionMap => ({
+    ...(schemaAnyOfSelections.get(key) || {}),
+});
+
+/**
+ * Replace the selected anyOf branches under `path`. Pass an empty array (or
+ * every index) for "All". Index `-1` alone is treated as All.
+ */
+export const writeSchemaAnyOfSelection = (key: string, path: string, indices: number[]): AnyOfSelectionMap => {
+    const cleaned = Array.from(
+        new Set(
+            indices
+                .filter(index => typeof index === 'number' && Number.isFinite(index))
+                .map(index => Math.trunc(index)),
+        ),
+    ).filter(index => index >= 0);
+    const next = {...(schemaAnyOfSelections.get(key) || {}), [path]: cleaned};
+    schemaAnyOfSelections.set(key, next);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+            new CustomEvent(SCHEMA_BRANCH_SELECTION_EVENT, {
+                detail: {key, path, indices: cleaned, kind: 'anyOf', anyOfSelections: next},
+            }),
+        );
+    }
+    return next;
+};
+
+/** Toggle one anyOf branch under `path`. Returns the next index list. */
+export const toggleSchemaAnyOfSelection = (key: string, path: string, index: number, branchCount: number): number[] => {
+    const current = readSchemaAnyOfSelections(key)[path];
+    // Missing / empty means All are selected.
+    const selected =
+        !current || current.length === 0 ? Array.from({length: Math.max(0, branchCount)}, (_, i) => i) : [...current];
+    const at = selected.indexOf(index);
+    if (at >= 0) selected.splice(at, 1);
+    else selected.push(index);
+    selected.sort((a, b) => a - b);
+    // Selecting every branch collapses back to All (empty list).
+    const next = branchCount > 0 && selected.length === branchCount ? [] : selected;
+    writeSchemaAnyOfSelection(key, path, next);
     return next;
 };
 
@@ -167,6 +214,35 @@ export const applySchemaBranchSelections = (
         };
         return applySchemaBranchSelections(
             merged,
+            selectionKey,
+            resolveReference,
+            path,
+            new Set(ancestorRefs),
+            new Set(ancestorObjects),
+        );
+    }
+    if (path && Array.isArray(input.anyOf) && input.anyOf.length > 0) {
+        const anyOfMap = schemaAnyOfSelections.get(selectionKey) || {};
+        const selected = anyOfMap[path];
+        // Empty / missing = All branches (body-level anyOf default).
+        const indices =
+            !selected || selected.length === 0
+                ? input.anyOf.map((_: any, index: number) => index)
+                : selected.filter(index => index >= 0 && index < input.anyOf.length);
+        const merged = mergeAnyOfBranchSchemas(input.anyOf, indices, resolveReference, {
+            title: input.title,
+            description: input.description,
+        });
+        const withMeta = {
+            ...merged,
+            ...(merged?.deprecated === undefined && input.deprecated !== undefined
+                ? {deprecated: input.deprecated}
+                : {}),
+            ...(merged?.readOnly === undefined && input.readOnly !== undefined ? {readOnly: input.readOnly} : {}),
+            ...(merged?.writeOnly === undefined && input.writeOnly !== undefined ? {writeOnly: input.writeOnly} : {}),
+        };
+        return applySchemaBranchSelections(
+            withMeta,
             selectionKey,
             resolveReference,
             path,

@@ -1092,6 +1092,29 @@ test('collects field-level oneOf and allOf choices and applies oneOf picks witho
     assert.equal(detected?.branches.length, 3);
 });
 
+test('collects field-level anyOf choices and merges selected branches', () => {
+    const components: Record<string, any> = {
+        A: {type: 'object', properties: {a: {type: 'string'}}},
+        B: {type: 'object', properties: {b: {type: 'integer'}}},
+    };
+    const resolveRef = (item: any) => {
+        if (item?.$ref && typeof item.$ref === 'string') {
+            const name = item.$ref.split('/').pop();
+            return name ? components[name] : item;
+        }
+        return item;
+    };
+    const field = {
+        anyOf: [{$ref: '#/components/schemas/A'}, {$ref: '#/components/schemas/B'}],
+    };
+    const choices = collectSchemaBranchChoices({type: 'object', properties: {payload: field}}, resolveRef, getRefName);
+    const anyOf = choices.find(c => c.kind === 'anyOf' && c.path === 'payload');
+    assert.ok(anyOf);
+    // All + 2 branches
+    assert.equal(anyOf!.options.length, 3);
+    assert.equal(anyOf!.options[0].label, 'All');
+});
+
 test('dims code-viewer lines for body and field-level allOf focus the same way', () => {
     const rootCode = `{
   "fromA": 1,
@@ -1139,11 +1162,11 @@ other: 1
     assert.deepEqual(yamlDimmed, [5, 6, 7]);
 });
 
-test('defaults documentation switches to per-endpoint and schema modal to per-schema', () => {
-    assert.equal(DEFAULT_APP_PREFERENCES.endpointRepresentationScope, 'endpoint');
+test('defaults documentation switches to per-schema and schema modal to per-schema', () => {
+    assert.equal(DEFAULT_APP_PREFERENCES.endpointRepresentationScope, 'schema');
     assert.equal(DEFAULT_APP_PREFERENCES.modalRepresentationScope, 'schema');
     const normalized = normalizeAppPreferences({});
-    assert.equal(normalized.endpointRepresentationScope, 'endpoint');
+    assert.equal(normalized.endpointRepresentationScope, 'schema');
     assert.equal(normalized.modalRepresentationScope, 'schema');
 });
 
@@ -1638,7 +1661,7 @@ test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple spri
     assert.match(parsed, /--emoji-sheet-left:-[\d.]+em;--emoji-sheet-top:-[\d.]+em/);
     assert.match(parsed, /:not_an_emoji:/);
 });
-test('defaults endpoint routes on and limits the local sidebar filter to visible text', () => {
+test('defaults endpoint routes on and always matches endpoint paths in the local sidebar filter', () => {
     assert.equal(normalizeSidebarConfig(undefined).displayRoutes, true);
     assert.equal(normalizeSidebarConfig({displayRoutes: false}).displayRoutes, false);
     assert.equal(normalizeSidebarConfig({displayRoutes: true}).displayRoutes, true);
@@ -1653,10 +1676,11 @@ test('defaults endpoint routes on and limits the local sidebar filter to visible
     };
     assert.equal(endpointMatchesSidebarFilter(endpoint, 'customer invoice', true), true);
     assert.equal(endpointMatchesSidebarFilter(endpoint, 'invoice-route', true), true);
-    assert.equal(endpointMatchesSidebarFilter(endpoint, 'invoice-route', false), false);
+    // Path is always searchable, even when the sidebar hides routes.
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'invoice-route', false), true);
     assert.equal(endpointMatchesSidebarFilter(endpoint, 'Billing Folder', true), false);
     assert.equal(endpointMatchesSidebarFilter(endpoint, 'settlement', true), false);
-    assert.equal(endpointMatchesSidebarFilter(endpoint, 'post', true), false);
+    assert.equal(endpointMatchesSidebarFilter(endpoint, 'post', true), true);
     assert.equal(
         endpointMatchesSidebarFilter(
             {...endpoint, operation: {...endpoint.operation, summary: ''}},

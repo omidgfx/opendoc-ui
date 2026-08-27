@@ -350,10 +350,14 @@ export default function Sidebar(props: SidebarProps) {
             if (!mainSearchQuery) return true;
             const summary = (ep.operation?.summary || '').toLowerCase();
             const desc = (ep.operation?.description || '').toLowerCase();
+            const opId = String(ep.operation?.operationId || '').toLowerCase();
+            // Always search the path — displayRoutes only controls whether the
+            // route is *shown*, not whether it is findable.
             const searchable = [
-                ...(sidebarConfig.displayRoutes ? [ep.path.toLowerCase()] : []),
+                ep.path.toLowerCase(),
                 summary,
                 desc,
+                opId,
                 ep.method.toLowerCase(),
                 ...opTags.map((t: string) => t.toLowerCase()),
             ];
