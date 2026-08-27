@@ -52,8 +52,11 @@ export interface DevTooltipProps {
 
 type TipPos = {top: number; left: number};
 
+/** Build a backticked code name as a plain string (never JSX children that can print the token name). */
+const citedName = (name: string): string => '`' + name + '`';
+
 const copyCitedName = async (name: string): Promise<boolean> => {
-    const payload = `\`${name}\``;
+    const payload = citedName(name);
     try {
         await navigator.clipboard.writeText(payload);
         return true;
@@ -295,7 +298,7 @@ export default function DevTooltip({
                           visibility: pos ? 'visible' : 'hidden',
                       }}
                   >
-                      <span className="min-w-0 truncate select-all">{`{name}`}</span>
+                      <span className="min-w-0 truncate select-all">{citedName(name)}</span>
                       <button
                           type="button"
                           onMouseDown={event => {
@@ -310,7 +313,7 @@ export default function DevTooltip({
                                   ? 'border-emerald-200 bg-emerald-500 text-white'
                                   : 'border-red-950 bg-red-800 text-white hover:bg-red-950',
                           )}
-                          aria-label={copied ? 'Copied' : `Copy \`${name}\``}
+                          aria-label={copied ? 'Copied' : 'Copy ' + citedName(name)}
                       >
                           <i className={clsx('ph text-[13px]', copied ? 'ph-check-bold' : 'ph-copy')} />
                           {copied ? 'Copied' : 'Copy'}
@@ -338,7 +341,7 @@ export default function DevTooltip({
 
     const markClass = clsx(
         // 30% transparent + compact. Only this mark captures pointer events.
-        'absolute z-[6] size-1.5 cursor-help rounded-[2px] bg-red-600/70',
+        'absolute z-[6] size-1.5 cursor-help rounded-[2px] bg-red-600/70 pointer-events-auto',
         'ring-1 ring-white/50 shadow-none',
         'hover:scale-150 hover:bg-red-500/80 transition-transform',
         placement === 'start' && 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2',
@@ -361,11 +364,14 @@ export default function DevTooltip({
                         event.preventDefault();
                         event.stopPropagation();
                     }}
-                    className={clsx('relative inline-flex size-1.5 shrink-0 cursor-help align-middle', className)}
-                    title={`Hover for \`${name}\` · click to pin`}
+                    className={clsx(
+                        'relative z-[7] inline-flex size-1.5 shrink-0 cursor-help align-middle pointer-events-auto',
+                        className,
+                    )}
+                    title={'Hover for ' + citedName(name) + ' · click to pin'}
                     role="button"
                     tabIndex={-1}
-                    aria-label={`Dev label ${name}`}
+                    aria-label={'Dev label ' + name}
                 >
                     <span aria-hidden className="absolute inset-0 rounded-[2px] bg-red-600/70 ring-1 ring-white/50" />
                 </span>
@@ -390,8 +396,8 @@ export default function DevTooltip({
                     data-dev-tooltip-host={name}
                     role="button"
                     tabIndex={-1}
-                    aria-label={`Dev label ${name}`}
-                    title={`Hover for \`${name}\` · click to pin`}
+                    aria-label={'Dev label ' + name}
+                    title={'Hover for ' + citedName(name) + ' · click to pin'}
                     className={markClass}
                     onMouseEnter={onMarkEnter}
                     onMouseLeave={onMarkLeave}
