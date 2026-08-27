@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import Prism from 'prismjs';
 import clsx from 'clsx';
 import {Tip} from './Tooltip';
+import DevTooltip from './DevTooltip';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {usePreferences} from '../../contexts/PreferencesContext';
 import 'prismjs/components/prism-json';
@@ -460,270 +461,325 @@ export default function CodeViewer({
     const menuPortal =
         openMenu && menuPosition && typeof document !== 'undefined'
             ? createPortal(
-                  <div
-                      ref={menuRef}
-                      role="menu"
-                      className="fixed z-[999999] min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]"
-                      style={{
-                          top: menuPosition.top,
-                          left: menuPosition.left,
-                          transform: menuPosition.openAbove ? 'translateY(-100%)' : undefined,
-                      }}
-                  >
-                      {openMenu.options.map(option => {
-                          const active = openMenu.activeIndex === option.index;
-                          return (
-                              <button
-                                  key={`${openMenu.id}:${option.index}`}
-                                  type="button"
-                                  role="menuitem"
-                                  onMouseDown={event => event.preventDefault()}
-                                  onClick={() => {
-                                      openMenu.onSelect(option.index);
-                                      setOpenInlineMenuId(null);
-                                  }}
-                                  className={clsx(
-                                      'flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
-                                      active
-                                          ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                                          : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
-                                  )}
-                              >
-                                  <span
+                  <DevTooltip name="CodeViewer.oneOfMenuPortal" placement="above">
+                      <div
+                          ref={menuRef}
+                          role="menu"
+                          className="fixed z-[999999] min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]"
+                          style={{
+                              top: menuPosition.top,
+                              left: menuPosition.left,
+                              transform: menuPosition.openAbove ? 'translateY(-100%)' : undefined,
+                          }}
+                      >
+                          {openMenu.options.map(option => {
+                              const active = openMenu.activeIndex === option.index;
+                              return (
+                                  <button
+                                      key={`${openMenu.id}:${option.index}`}
+                                      type="button"
+                                      role="menuitem"
+                                      onMouseDown={event => event.preventDefault()}
+                                      onClick={() => {
+                                          openMenu.onSelect(option.index);
+                                          setOpenInlineMenuId(null);
+                                      }}
                                       className={clsx(
-                                          'mt-1 size-2 shrink-0 rounded-full',
-                                          active ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
+                                          'flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
+                                          active
+                                              ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                                              : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                       )}
-                                  />
-                                  <span className="min-w-0 flex-1">
-                                      <span className="block text-[11px] font-semibold">{option.label}</span>
-                                      {option.description && (
-                                          <span className="mt-0.5 block text-[9px] leading-snug text-[var(--text-muted)]">
-                                              {option.description}
-                                          </span>
-                                      )}
-                                  </span>
-                              </button>
-                          );
-                      })}
-                  </div>,
+                                  >
+                                      <span
+                                          className={clsx(
+                                              'mt-1 size-2 shrink-0 rounded-full',
+                                              active ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
+                                          )}
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                          <span className="block text-[11px] font-semibold">{option.label}</span>
+                                          {option.description && (
+                                              <span className="mt-0.5 block text-[9px] leading-snug text-[var(--text-muted)]">
+                                                  {option.description}
+                                              </span>
+                                          )}
+                                      </span>
+                                  </button>
+                              );
+                          })}
+                      </div>
+                  </DevTooltip>,
                   document.body,
               )
             : null;
 
     return (
-        <div
-            ref={viewerRef}
-            className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
-        >
-            <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
-                <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
-                    {language}
-                </span>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    {toolbarEnd}
-                    <button
-                        onClick={handleCopy}
-                        className={clsx(
-                            'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
-                            copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
-                        )}
-                    >
-                        {copied ? (
-                            <>
-                                <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
-                                <span className="text-[var(--method-get)] font-bold">Copied!</span>
-                            </>
-                        ) : (
-                            <>
-                                <i className="ph ph-copy text-[14px]"></i>
-                                <span className="font-semibold">Copy</span>
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-
+        <DevTooltip name="CodeViewer.root">
             <div
-                ref={scrollRef}
-                tabIndex={0}
-                onKeyDown={handleKeyDown}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-                className="relative overflow-auto scrollbar-thin outline-none"
-                style={{
-                    maxHeight: maxHeight || '450px',
-                    ...stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)'),
-                }}
+                ref={viewerRef}
+                className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
             >
-                <div className="flex min-h-full min-w-full w-max items-stretch">
+                <DevTooltip name="CodeViewer.headerBar" placement="inside-top">
+                    <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
+                        <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
+                            <DevTooltip name="CodeViewer.languageLabel" inline />
+                            {language}
+                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            {toolbarEnd ? (
+                                <DevTooltip name="CodeViewer.toolbarEnd" className="min-w-0">
+                                    {toolbarEnd}
+                                </DevTooltip>
+                            ) : null}
+                            <DevTooltip name="CodeViewer.copyButton">
+                                <button
+                                    onClick={handleCopy}
+                                    className={clsx(
+                                        'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
+                                        copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
+                                    )}
+                                >
+                                    {copied ? (
+                                        <>
+                                            <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
+                                            <span className="text-[var(--method-get)] font-bold">Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="ph ph-copy text-[14px]"></i>
+                                            <span className="font-semibold">Copy</span>
+                                        </>
+                                    )}
+                                </button>
+                            </DevTooltip>
+                        </div>
+                    </div>
+                </DevTooltip>
+
+                <DevTooltip name="CodeViewer.scrollBody" placement="inside-top" className="min-w-0">
                     <div
-                        ref={codeBarRef}
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-0 z-0 opacity-0 transition-opacity duration-75"
+                        ref={scrollRef}
+                        tabIndex={0}
+                        onKeyDown={handleKeyDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={handleMouseLeave}
+                        className="relative overflow-auto scrollbar-thin outline-none"
                         style={{
-                            height: `${LINE_HEIGHT_PX}px`,
-                            top: `${PAD_TOP_PX}px`,
-                            backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
+                            maxHeight: maxHeight || '450px',
+                            ...stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)'),
                         }}
-                    />
-                    {showLineNumbers && (
-                        <div
-                            aria-hidden="true"
-                            className="select-none sticky left-0 z-20 shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
-                            style={stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)')}
-                        >
+                    >
+                        <div className="flex min-h-full min-w-full w-max items-stretch">
                             <div
-                                ref={gutterBarRef}
+                                ref={codeBarRef}
                                 aria-hidden="true"
-                                className="pointer-events-none absolute inset-x-0 z-0 opacity-0 transition-opacity duration-75"
+                                className="pointer-events-none absolute left-0 z-0 opacity-0 transition-opacity duration-75"
                                 style={{
                                     height: `${LINE_HEIGHT_PX}px`,
                                     top: `${PAD_TOP_PX}px`,
                                     backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
                                 }}
                             />
-                            {Array.from({length: lineCount}, (_, index) => {
-                                const line = index + 1;
-                                const bucket = markersByLine.get(line);
-                                const icons = bucket?.filter(marker => !marker.dot);
-                                const dot = bucket?.find(marker => marker.dot);
-                                return (
-                                    <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
-                                        {iconSlotWidth > 0 && (
-                                            <span
-                                                className="flex items-center justify-start gap-[3px] shrink-0"
-                                                style={{width: `${iconSlotWidth}px`}}
-                                            >
-                                                {icons?.map((marker, markerIndex) => (
-                                                    <MarkerIcon key={markerIndex} marker={marker} />
-                                                ))}
-                                            </span>
-                                        )}
-                                        <span
-                                            className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
-                                            style={{minWidth: `${gutterDigits}ch`}}
-                                        >
-                                            {line}
-                                        </span>
-                                        {dot ? (
-                                            <Tip content={dot.tip}>
-                                                <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center cursor-help text-[var(--method-delete)]">
-                                                    <i className="ph-bold ph-asterisk text-[8px] leading-none" />
-                                                </span>
-                                            </Tip>
-                                        ) : (
-                                            <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center text-transparent">
-                                                <i className="ph-bold ph-asterisk text-[8px] leading-none" />
-                                            </span>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                    <pre className="relative z-0 p-4 flex-1" style={{tabSize: TAB_SIZE_CH}}>
-                        {visibleInlineMenus.map(menu => {
-                            const open = openInlineMenuId === menu.id;
-                            const start = Math.max(0, menu.column ?? 0);
-                            const end = Math.max(start, menu.endColumn ?? start);
-                            const nameWidthCh = Math.max(1, end - start);
-                            // Include a closing quote when the source has one so the handle's
-                            // caret slot lines up with the non-selectable layout gap (which is
-                            // inserted after that quote, not between name and quote).
-                            const sourceLine = preparedInlineMenus.copyCode.split('\n')[(menu.line || 1) - 1] || '';
-                            const closingQuoteCh =
-                                end < sourceLine.length && (sourceLine[end] === '"' || sourceLine[end] === "'") ? 1 : 0;
-                            // Tabs (Go map, etc.) are one source column but many painted `ch` —
-                            // place the handle with the expanded visual column.
-                            const visualStartCh = visualColumnCh(sourceLine, start);
-                            // Hover covers the field name + closing quote (with soft side pads).
-                            // The caret sits inside the non-selectable layout slot after that,
-                            // with equal air before and after the glyph.
-                            return (
-                                <div
-                                    key={menu.id}
-                                    className="absolute z-20 select-none"
-                                    style={{
-                                        top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
-                                        left: `calc(${PAD_LEFT_PX}px + ${visualStartCh}ch - ${HANDLE_PAD_X_PX}px)`,
-                                        height: `${LINE_HEIGHT_PX}px`,
-                                    }}
+                            {showLineNumbers && (
+                                <DevTooltip
+                                    name="CodeViewer.gutter"
+                                    placement="inside-top"
+                                    className="sticky left-0 z-20 shrink-0"
                                 >
-                                    <button
-                                        ref={node => {
-                                            if (node) handleRefs.current.set(menu.id, node);
-                                            else handleRefs.current.delete(menu.id);
-                                        }}
-                                        type="button"
-                                        onMouseDown={event => {
-                                            // Keep the click from starting a text selection on the overlay.
-                                            event.preventDefault();
-                                        }}
-                                        onClick={() =>
-                                            setOpenInlineMenuId(current => (current === menu.id ? null : menu.id))
-                                        }
-                                        className={clsx(
-                                            'group/handle relative inline-flex h-full items-center rounded-sm border-0 bg-transparent py-0 text-left cursor-pointer select-none',
-                                            'hover:bg-[var(--primary)]/10 focus-visible:bg-[var(--primary)]/10 focus-visible:outline-none',
-                                            open && 'bg-[var(--primary)]/10',
-                                        )}
-                                        style={{paddingLeft: HANDLE_PAD_X_PX, paddingRight: 0}}
-                                        aria-label={menu.ariaLabel || 'Select schema branch'}
-                                        aria-haspopup="menu"
-                                        aria-expanded={open}
+                                    <div
+                                        aria-hidden="true"
+                                        className="select-none sticky left-0 z-20 shrink-0 py-4 pl-2 pr-2.5 border-r bg-[var(--surface-hover)] border-[var(--border)] text-[var(--text-muted)] relative"
+                                        style={stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)')}
                                     >
-                                        {/* Field name (+ closing quote). Soft hover pad is paddingLeft only —
-                                            the caret slot supplies the air after the name, so this span
-                                            must end exactly on the quote. */}
-                                        <span
+                                        <div
+                                            ref={gutterBarRef}
                                             aria-hidden="true"
-                                            className="block h-full shrink-0"
+                                            className="pointer-events-none absolute inset-x-0 z-0 opacity-0 transition-opacity duration-75"
                                             style={{
-                                                width: `calc(${nameWidthCh + closingQuoteCh}ch)`,
+                                                height: `${LINE_HEIGHT_PX}px`,
+                                                top: `${PAD_TOP_PX}px`,
+                                                backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
                                             }}
                                         />
-                                        {/* Leading air inside the reserved slot (matches trailing air after caret). */}
-                                        <span
-                                            aria-hidden="true"
-                                            className="block h-full shrink-0"
-                                            style={{width: `calc(${CARET_SIDE_CH}ch)`}}
-                                        />
-                                        <span
-                                            aria-hidden="true"
-                                            className="pointer-events-none inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
-                                            style={{width: `calc(${CARET_ICON_CH}ch)`}}
-                                        >
-                                            <i className="ph-fill ph-caret-down text-[11px] leading-none" />
-                                        </span>
-                                        {/* Trailing slot air + soft hover pad past the layout gap. */}
-                                        <span
-                                            aria-hidden="true"
-                                            className="block h-full shrink-0"
-                                            style={{width: `calc(${CARET_SIDE_CH}ch + ${HANDLE_PAD_X_PX}px)`}}
-                                        />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                        <code ref={codeRef} className="block">
-                            {dimmedLineSet.size > 0
-                                ? highlightedLines.map((lineHtml, index) => (
-                                      <span
-                                          key={index}
-                                          className={clsx('block', dimmedLineSet.has(index + 1) && 'opacity-35')}
-                                          dangerouslySetInnerHTML={{
-                                              __html: lineHtml + (index < highlightedLines.length - 1 ? '\n' : ''),
-                                          }}
-                                      />
-                                  ))
-                                : null}
-                            {dimmedLineSet.size === 0 && <span dangerouslySetInnerHTML={{__html: highlightedHtml}} />}
-                        </code>
-                    </pre>
-                </div>
+                                        {Array.from({length: lineCount}, (_, index) => {
+                                            const line = index + 1;
+                                            const bucket = markersByLine.get(line);
+                                            const icons = bucket?.filter(marker => !marker.dot);
+                                            const dot = bucket?.find(marker => marker.dot);
+                                            return (
+                                                <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
+                                                    {iconSlotWidth > 0 && (
+                                                        <span
+                                                            className="flex items-center justify-start gap-[3px] shrink-0"
+                                                            style={{width: `${iconSlotWidth}px`}}
+                                                        >
+                                                            {icons?.map((marker, markerIndex) => (
+                                                                <MarkerIcon key={markerIndex} marker={marker} />
+                                                            ))}
+                                                        </span>
+                                                    )}
+                                                    <span
+                                                        className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
+                                                        style={{minWidth: `${gutterDigits}ch`}}
+                                                    >
+                                                        {line}
+                                                    </span>
+                                                    {dot ? (
+                                                        <Tip content={dot.tip}>
+                                                            <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center cursor-help text-[var(--method-delete)]">
+                                                                <i className="ph-bold ph-asterisk text-[8px] leading-none" />
+                                                            </span>
+                                                        </Tip>
+                                                    ) : (
+                                                        <span className="ml-1 inline-flex h-[10px] w-[10px] shrink-0 items-center justify-center text-transparent">
+                                                            <i className="ph-bold ph-asterisk text-[8px] leading-none" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </DevTooltip>
+                            )}
+                            <DevTooltip
+                                name="CodeViewer.codePre"
+                                placement="inside-top"
+                                className="relative z-0 min-w-0 flex-1"
+                            >
+                                <pre className="relative z-0 p-4 flex-1" style={{tabSize: TAB_SIZE_CH}}>
+                                    {visibleInlineMenus.map(menu => {
+                                        const open = openInlineMenuId === menu.id;
+                                        const start = Math.max(0, menu.column ?? 0);
+                                        const end = Math.max(start, menu.endColumn ?? start);
+                                        const nameWidthCh = Math.max(1, end - start);
+                                        // Include a closing quote when the source has one so the handle's
+                                        // caret slot lines up with the non-selectable layout gap (which is
+                                        // inserted after that quote, not between name and quote).
+                                        const sourceLine =
+                                            preparedInlineMenus.copyCode.split('\n')[(menu.line || 1) - 1] || '';
+                                        const closingQuoteCh =
+                                            end < sourceLine.length &&
+                                            (sourceLine[end] === '"' || sourceLine[end] === "'")
+                                                ? 1
+                                                : 0;
+                                        // Tabs (Go map, etc.) are one source column but many painted `ch` —
+                                        // place the handle with the expanded visual column.
+                                        const visualStartCh = visualColumnCh(sourceLine, start);
+                                        // Hover covers the field name + closing quote (with soft side pads).
+                                        // The caret sits inside the non-selectable layout slot after that,
+                                        // with equal air before and after the glyph.
+                                        return (
+                                            <div
+                                                key={menu.id}
+                                                className="absolute z-20 select-none"
+                                                style={{
+                                                    top: `${PAD_TOP_PX + (menu.line - 1) * LINE_HEIGHT_PX}px`,
+                                                    left: `calc(${PAD_LEFT_PX}px + ${visualStartCh}ch - ${HANDLE_PAD_X_PX}px)`,
+                                                    height: `${LINE_HEIGHT_PX}px`,
+                                                }}
+                                            >
+                                                <DevTooltip
+                                                    name="CodeViewer.fieldHandle"
+                                                    placement="above"
+                                                    className="h-full"
+                                                >
+                                                    <button
+                                                        ref={node => {
+                                                            if (node) handleRefs.current.set(menu.id, node);
+                                                            else handleRefs.current.delete(menu.id);
+                                                        }}
+                                                        type="button"
+                                                        onMouseDown={event => {
+                                                            // Keep the click from starting a text selection on the overlay.
+                                                            event.preventDefault();
+                                                        }}
+                                                        onClick={() =>
+                                                            setOpenInlineMenuId(current =>
+                                                                current === menu.id ? null : menu.id,
+                                                            )
+                                                        }
+                                                        className={clsx(
+                                                            'group/handle relative inline-flex h-full items-center rounded-sm border-0 bg-transparent py-0 text-left cursor-pointer select-none',
+                                                            'hover:bg-[var(--primary)]/10 focus-visible:bg-[var(--primary)]/10 focus-visible:outline-none',
+                                                            open && 'bg-[var(--primary)]/10',
+                                                        )}
+                                                        style={{paddingLeft: HANDLE_PAD_X_PX, paddingRight: 0}}
+                                                        aria-label={menu.ariaLabel || 'Select schema branch'}
+                                                        aria-haspopup="menu"
+                                                        aria-expanded={open}
+                                                    >
+                                                        {/* Field name (+ closing quote). Soft hover pad is paddingLeft only —
+                                            the caret slot supplies the air after the name, so this span
+                                            must end exactly on the quote. */}
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="block h-full shrink-0"
+                                                            style={{
+                                                                width: `calc(${nameWidthCh + closingQuoteCh}ch)`,
+                                                            }}
+                                                            data-dev="CodeViewer.handleNameSpan"
+                                                        />
+                                                        {/* Leading air inside the reserved slot (matches trailing air after caret). */}
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="block h-full shrink-0"
+                                                            style={{width: `calc(${CARET_SIDE_CH}ch)`}}
+                                                            data-dev="CodeViewer.handleLeadingAir"
+                                                        />
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="pointer-events-none relative inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
+                                                            style={{width: `calc(${CARET_ICON_CH}ch)`}}
+                                                            data-dev="CodeViewer.handleCaretIcon"
+                                                        >
+                                                            <DevTooltip name="CodeViewer.handleCaretIcon" inline />
+                                                            <i className="ph-fill ph-caret-down text-[11px] leading-none" />
+                                                        </span>
+                                                        {/* Trailing slot air + soft hover pad past the layout gap. */}
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="block h-full shrink-0"
+                                                            style={{
+                                                                width: `calc(${CARET_SIDE_CH}ch + ${HANDLE_PAD_X_PX}px)`,
+                                                            }}
+                                                            data-dev="CodeViewer.handleTrailingAir"
+                                                        />
+                                                    </button>
+                                                </DevTooltip>
+                                            </div>
+                                        );
+                                    })}
+                                    <DevTooltip name="CodeViewer.codeSurface" placement="inside-top">
+                                        <code ref={codeRef} className="block">
+                                            {dimmedLineSet.size > 0
+                                                ? highlightedLines.map((lineHtml, index) => (
+                                                      <span
+                                                          key={index}
+                                                          className={clsx(
+                                                              'block',
+                                                              dimmedLineSet.has(index + 1) && 'opacity-35',
+                                                          )}
+                                                          dangerouslySetInnerHTML={{
+                                                              __html:
+                                                                  lineHtml +
+                                                                  (index < highlightedLines.length - 1 ? '\n' : ''),
+                                                          }}
+                                                      />
+                                                  ))
+                                                : null}
+                                            {dimmedLineSet.size === 0 && (
+                                                <span dangerouslySetInnerHTML={{__html: highlightedHtml}} />
+                                            )}
+                                        </code>
+                                    </DevTooltip>
+                                </pre>
+                            </DevTooltip>
+                        </div>
+                    </div>
+                </DevTooltip>
+                {menuPortal}
             </div>
-            {menuPortal}
-        </div>
+        </DevTooltip>
     );
 }

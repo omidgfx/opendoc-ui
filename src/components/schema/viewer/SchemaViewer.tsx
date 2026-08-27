@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import CodeViewer from '../../common/CodeViewer';
 import CustomDropdown from '../../common/CustomDropdown';
+import DevTooltip from '../../common/DevTooltip';
 import ScrollableRow from '../../common/ScrollableRow';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import Markdown from '../../common/Markdown';
@@ -398,170 +399,183 @@ export default function SchemaViewer({
     );
 
     const formatToolbar = (
-        <CustomDropdown
-            value={exampleEncodingId}
-            onChange={setExampleEncodingId}
-            options={encodingOptions}
-            className="w-auto max-w-[11rem]"
-            triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
-            ariaLabel="Generated example format"
-        />
+        <DevTooltip name="SchemaViewer.formatToolbar">
+            <CustomDropdown
+                value={exampleEncodingId}
+                onChange={setExampleEncodingId}
+                options={encodingOptions}
+                className="w-auto max-w-[11rem]"
+                triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
+                ariaLabel="Generated example format"
+            />
+        </DevTooltip>
     );
 
     const renderBranchRail = () => {
         if (choiceKind === 'oneOf' && choiceBranches.length > 0) {
             return (
-                <div className="flex min-w-0 items-center gap-2">
-                    <CombinatorLabel meta={COMBINATOR_META.oneOf} />
-                    <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                            {choiceBranches.map((branch, index) => {
-                                const active = branchIndex === index;
-                                const label = branchLabelOf(branch, resolveReference, index);
-                                return (
-                                    <button
-                                        key={`oneof-${index}`}
-                                        type="button"
-                                        aria-pressed={active}
-                                        onClick={() => onBranchIndexChange?.(index)}
-                                        className={branchChipClass(active)}
-                                    >
-                                        <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                            <i
-                                                className={clsx(
-                                                    active
-                                                        ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
-                                                        : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
-                                                )}
-                                            />
-                                        </span>
-                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </ScrollableRow>
-                </div>
+                <DevTooltip name="SchemaViewer.oneOfBranchRail" className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <DevTooltip name="SchemaViewer.oneOfCombinatorLabel">
+                            <CombinatorLabel meta={COMBINATOR_META.oneOf} />
+                        </DevTooltip>
+                        <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                                {choiceBranches.map((branch, index) => {
+                                    const active = branchIndex === index;
+                                    const label = branchLabelOf(branch, resolveReference, index);
+                                    return (
+                                        <DevTooltip key={`oneof-${index}`} name={`SchemaViewer.oneOfChip[${index}]`}>
+                                            <button
+                                                type="button"
+                                                aria-pressed={active}
+                                                onClick={() => onBranchIndexChange?.(index)}
+                                                className={branchChipClass(active)}
+                                            >
+                                                <span className="relative flex h-[12px] w-[12px] items-center justify-center">
+                                                    <i
+                                                        className={clsx(
+                                                            active
+                                                                ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
+                                                                : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
+                                                        )}
+                                                    />
+                                                </span>
+                                                <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                            </button>
+                                        </DevTooltip>
+                                    );
+                                })}
+                            </div>
+                        </ScrollableRow>
+                    </div>
+                </DevTooltip>
             );
         }
 
         if (choiceKind === 'anyOf' && choiceBranches.length > 0) {
             const allSelected = anyOfSelected.length === choiceBranches.length;
             return (
-                <div className="flex min-w-0 items-center gap-2">
-                    <CombinatorLabel meta={COMBINATOR_META.anyOf} />
-                    <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                aria-pressed={allSelected}
-                                onClick={() =>
-                                    setAnyOfSelected(allSelected ? [] : choiceBranches.map((_, index) => index))
-                                }
-                                className={branchChipClass(allSelected)}
-                            >
-                                <i className="ph ph-checks text-[12px]" />
-                                All
-                            </button>
-                            {choiceBranches.map((branch, index) => {
-                                const active = anyOfSelected.includes(index);
-                                const label = branchLabelOf(branch, resolveReference, index);
-                                return (
-                                    <button
-                                        key={`anyof-${index}`}
-                                        type="button"
-                                        aria-pressed={active}
-                                        onClick={() => {
-                                            if (active) {
-                                                setAnyOfSelected(anyOfSelected.filter(item => item !== index));
-                                            } else {
-                                                setAnyOfSelected(
-                                                    unique([...anyOfSelected, index].map(String)).map(Number),
-                                                );
-                                            }
-                                        }}
-                                        className={branchChipClass(active)}
-                                    >
-                                        <i
-                                            className={clsx(
-                                                active
-                                                    ? 'ph-fill ph-check-square text-[12px] text-[var(--primary)]'
-                                                    : 'ph ph-square text-[12px] text-[var(--text-muted)]',
-                                            )}
-                                        />
-                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </ScrollableRow>
-                </div>
+                <DevTooltip name="SchemaViewer.anyOfBranchRail" className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <CombinatorLabel meta={COMBINATOR_META.anyOf} />
+                        <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    aria-pressed={allSelected}
+                                    onClick={() =>
+                                        setAnyOfSelected(allSelected ? [] : choiceBranches.map((_, index) => index))
+                                    }
+                                    className={branchChipClass(allSelected)}
+                                >
+                                    <i className="ph ph-checks text-[12px]" />
+                                    All
+                                </button>
+                                {choiceBranches.map((branch, index) => {
+                                    const active = anyOfSelected.includes(index);
+                                    const label = branchLabelOf(branch, resolveReference, index);
+                                    return (
+                                        <button
+                                            key={`anyof-${index}`}
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => {
+                                                if (active) {
+                                                    setAnyOfSelected(anyOfSelected.filter(item => item !== index));
+                                                } else {
+                                                    setAnyOfSelected(
+                                                        unique([...anyOfSelected, index].map(String)).map(Number),
+                                                    );
+                                                }
+                                            }}
+                                            className={branchChipClass(active)}
+                                        >
+                                            <i
+                                                className={clsx(
+                                                    active
+                                                        ? 'ph-fill ph-check-square text-[12px] text-[var(--primary)]'
+                                                        : 'ph ph-square text-[12px] text-[var(--text-muted)]',
+                                                )}
+                                            />
+                                            <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </ScrollableRow>
+                    </div>
+                </DevTooltip>
             );
         }
 
         if (composition && allOfBranches.length > 0) {
             return (
-                <div className="flex min-w-0 items-center gap-2">
-                    <CombinatorLabel meta={COMBINATOR_META.allOf} />
-                    <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                aria-pressed={allOfFocusIndex === null}
-                                onClick={() => onAllOfFocusIndexChange?.(null)}
-                                className={branchChipClass(allOfFocusIndex === null)}
-                            >
-                                <i className="ph ph-stack text-[12px]" />
-                                Combined
-                            </button>
-                            {allOfBranches.map((branch: any, index: number) => {
-                                const active = allOfFocusIndex === index;
-                                const label = branchLabelOf(branch, resolveReference, index);
-                                return (
-                                    <button
-                                        key={`allof-${index}`}
-                                        type="button"
-                                        aria-pressed={active}
-                                        onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
-                                        className={branchChipClass(active, allOfFocusIndex !== null && !active)}
-                                    >
-                                        <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                            <i
-                                                className={clsx(
-                                                    active
-                                                        ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
-                                                        : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
-                                                )}
-                                            />
-                                        </span>
-                                        <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </ScrollableRow>
-                </div>
+                <DevTooltip name="SchemaViewer.allOfBranchRail" className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <CombinatorLabel meta={COMBINATOR_META.allOf} />
+                        <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    aria-pressed={allOfFocusIndex === null}
+                                    onClick={() => onAllOfFocusIndexChange?.(null)}
+                                    className={branchChipClass(allOfFocusIndex === null)}
+                                >
+                                    <i className="ph ph-stack text-[12px]" />
+                                    Combined
+                                </button>
+                                {allOfBranches.map((branch: any, index: number) => {
+                                    const active = allOfFocusIndex === index;
+                                    const label = branchLabelOf(branch, resolveReference, index);
+                                    return (
+                                        <button
+                                            key={`allof-${index}`}
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
+                                            className={branchChipClass(active, allOfFocusIndex !== null && !active)}
+                                        >
+                                            <span className="relative flex h-[12px] w-[12px] items-center justify-center">
+                                                <i
+                                                    className={clsx(
+                                                        active
+                                                            ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
+                                                            : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
+                                                    )}
+                                                />
+                                            </span>
+                                            <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </ScrollableRow>
+                    </div>
+                </DevTooltip>
             );
         }
 
         if (rootCombinator?.meta.kind === 'not') {
             return (
-                <div className="flex flex-wrap items-center gap-2">
-                    <CombinatorLabel meta={COMBINATOR_META.not} />
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                        Values matching the negated schema are rejected.
-                    </span>
-                    {rootCombinator.branches[0]?.$ref && onOpenSchema && (
-                        <button
-                            type="button"
-                            onClick={() => onOpenSchema(getRefName(rootCombinator.branches[0].$ref))}
-                            className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-semibold text-[var(--primary)] cursor-pointer"
-                        >
-                            <i className="ph ph-diamonds-four text-[11px]" />
-                            {getRefName(rootCombinator.branches[0].$ref)}
-                        </button>
-                    )}
-                </div>
+                <DevTooltip name="SchemaViewer.notBranchRail">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CombinatorLabel meta={COMBINATOR_META.not} />
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                            Values matching the negated schema are rejected.
+                        </span>
+                        {rootCombinator.branches[0]?.$ref && onOpenSchema && (
+                            <button
+                                type="button"
+                                onClick={() => onOpenSchema(getRefName(rootCombinator.branches[0].$ref))}
+                                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-semibold text-[var(--primary)] cursor-pointer"
+                            >
+                                <i className="ph ph-diamonds-four text-[11px]" />
+                                {getRefName(rootCombinator.branches[0].$ref)}
+                            </button>
+                        )}
+                    </div>
+                </DevTooltip>
             );
         }
 
@@ -594,282 +608,305 @@ export default function SchemaViewer({
     };
 
     const metaHeader = (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
-                    <span className="font-black uppercase tracking-wider text-[var(--text-muted)]">Schema</span>
-                    {schemaName && (
+        <DevTooltip name="SchemaViewer.metaHeader">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+                        <span className="font-black uppercase tracking-wider text-[var(--text-muted)]">Schema</span>
+                        {schemaName && (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-[var(--text-heading)]">
+                                <span className="text-[var(--text-muted)] font-sans font-semibold">Name:</span>
+                                {schemaName}
+                            </span>
+                        )}
                         <span className="inline-flex items-center gap-1 font-mono font-bold text-[var(--text-heading)]">
-                            <span className="text-[var(--text-muted)] font-sans font-semibold">Name:</span>
-                            {schemaName}
+                            <span className="text-[var(--text-muted)] font-sans font-semibold">Type:</span>
+                            {displayTypeOf(effectiveForView || matrixSchema, resolveReference)}
                         </span>
-                    )}
-                    <span className="inline-flex items-center gap-1 font-mono font-bold text-[var(--text-heading)]">
-                        <span className="text-[var(--text-muted)] font-sans font-semibold">Type:</span>
-                        {displayTypeOf(effectiveForView || matrixSchema, resolveReference)}
-                    </span>
-                    {mediaType && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[var(--text-heading)]">
-                            <span className="text-[var(--text-muted)] font-sans font-semibold">Encoding:</span>
-                            <span className="rounded bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-bold border border-[var(--border)] break-all">
-                                {mediaType}
+                        {mediaType && (
+                            <span className="inline-flex items-center gap-1 font-mono text-[var(--text-heading)]">
+                                <span className="text-[var(--text-muted)] font-sans font-semibold">Encoding:</span>
+                                <span className="rounded bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-bold border border-[var(--border)] break-all">
+                                    {mediaType}
+                                </span>
                             </span>
-                        </span>
-                    )}
-                    {bodyShape && (
-                        <Tip content={bodyShape.hint}>
-                            <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--primary)]">
-                                <i className={`${bodyShape.icon} text-[11px]`} />
-                                {bodyShape.label}
-                            </span>
-                        </Tip>
-                    )}
-                </div>
-                <button
-                    type="button"
-                    onClick={() => setHeaderExpanded(current => !current)}
-                    aria-expanded={headerExpanded}
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-heading)] cursor-pointer"
-                    aria-label={headerExpanded ? 'Collapse schema header' : 'Expand schema header'}
-                >
-                    <i className={clsx('ph text-[14px]', headerExpanded ? 'ph-caret-up' : 'ph-caret-down')} />
-                </button>
-            </div>
-            {headerExpanded && (
-                <div className="space-y-3 border-t border-[var(--border)] px-3 py-3 animate-in fade-in">
-                    {/* <hdr-etyp> */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                        <p className="text-xs font-mono select-none">
-                            <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">
-                                Encoding TYPE:
-                            </span>
-                            <span className="rounded bg-[var(--surface)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] border border-[var(--border)] break-all">
-                                {mediaType}
-                            </span>
-                        </p>
+                        )}
                         {bodyShape && (
                             <Tip content={bodyShape.hint}>
-                                <span className="inline-flex cursor-help items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]">
-                                    <i className={`${bodyShape.icon} text-[12px]`} />
+                                <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--primary)]">
+                                    <i className={`${bodyShape.icon} text-[11px]`} />
                                     {bodyShape.label}
                                 </span>
                             </Tip>
                         )}
                     </div>
-                    {/* <hdr-asmbly> */}
-                    {composition && (
-                        <AllOfCompositionNote
-                            composition={composition}
-                            subject="request body"
-                            onInspect={onOpenSchema}
-                        />
-                    )}
-                    {/* <hdr-brnch> */}
-                    {renderBranchRail()}
-                    {resolvedEffective?.description && (
-                        <div className="text-xs leading-relaxed text-[var(--text)]">
-                            <Markdown text={resolvedEffective.description} />
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-
-    const tabStrip = (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
-                <button
-                    type="button"
-                    onClick={() => selectTab('example')}
-                    aria-pressed={activeTab === 'example'}
-                    className={tabButtonClass(activeTab === 'example')}
-                >
-                    <span className="hidden sm:inline">Generated Example</span>
-                    <span className="sm:hidden">Example</span>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => selectTab('schema')}
-                    aria-pressed={activeTab === 'schema'}
-                    className={tabButtonClass(activeTab === 'schema')}
-                >
-                    <span className="hidden sm:inline">Unified Schema</span>
-                    <span className="sm:hidden">Schema</span>
-                </button>
-                {hasEnum && (
                     <button
                         type="button"
-                        onClick={() => selectTab('enum')}
-                        aria-pressed={activeTab === 'enum'}
-                        className={tabButtonClass(activeTab === 'enum')}
+                        onClick={() => setHeaderExpanded(current => !current)}
+                        aria-expanded={headerExpanded}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-heading)] cursor-pointer"
+                        aria-label={headerExpanded ? 'Collapse schema header' : 'Expand schema header'}
                     >
-                        Enum
+                        <i className={clsx('ph text-[14px]', headerExpanded ? 'ph-caret-up' : 'ph-caret-down')} />
                     </button>
-                )}
-                {specExamples.length > 0 && (
-                    <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectTab('spec-example')}
-                        onKeyDown={event => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                selectTab('spec-example');
-                            }
-                        }}
-                        className={clsx(
-                            'px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1',
-                            activeTab === 'spec-example'
-                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                : 'hover:opacity-80',
+                </div>
+                {headerExpanded && (
+                    <div className="space-y-3 border-t border-[var(--border)] px-3 py-3 animate-in fade-in">
+                        {/* <hdr-etyp> */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                            <p className="text-xs font-mono select-none">
+                                <span className="mr-1 font-sans font-semibold text-[var(--text-heading)]">
+                                    Encoding TYPE:
+                                </span>
+                                <span className="rounded bg-[var(--surface)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-heading)] border border-[var(--border)] break-all">
+                                    {mediaType}
+                                </span>
+                            </p>
+                            {bodyShape && (
+                                <Tip content={bodyShape.hint}>
+                                    <span className="inline-flex cursor-help items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]">
+                                        <i className={`${bodyShape.icon} text-[12px]`} />
+                                        {bodyShape.label}
+                                    </span>
+                                </Tip>
+                            )}
+                        </div>
+                        {/* <hdr-asmbly> */}
+                        {composition && (
+                            <AllOfCompositionNote
+                                composition={composition}
+                                subject="request body"
+                                onInspect={onOpenSchema}
+                            />
                         )}
-                    >
-                        <span>Example:</span>
-                        {specExamples.length > 1 && activeTab === 'spec-example' ? (
-                            <span className="inline-flex min-w-0 items-center gap-1">
-                                <CustomDropdown
-                                    value={activeSpecExampleKey || specExamples[0].key}
-                                    onChange={value => onSpecExampleKeyChange?.(value)}
-                                    options={specExampleOptions}
-                                    className="w-auto min-w-0 max-w-[220px]"
-                                    ariaLabel="Specification examples"
-                                    plainTrigger
-                                />
-                            </span>
-                        ) : (
-                            <span>{activeSpecExample?.label || 'Example'}</span>
+                        {/* <hdr-brnch> */}
+                        {renderBranchRail()}
+                        {resolvedEffective?.description && (
+                            <div className="text-xs leading-relaxed text-[var(--text)]">
+                                <Markdown text={resolvedEffective.description} />
+                            </div>
                         )}
                     </div>
                 )}
             </div>
-            {headerActions && <div className="flex items-center gap-2 flex-wrap justify-end">{headerActions}</div>}
-        </div>
+        </DevTooltip>
+    );
+
+    const tabStrip = (
+        <DevTooltip name="SchemaViewer.tabStrip" className="min-w-0">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+                <DevTooltip name="SchemaViewer.tabButtons" placement="inside-top">
+                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
+                        <button
+                            type="button"
+                            onClick={() => selectTab('example')}
+                            aria-pressed={activeTab === 'example'}
+                            className={tabButtonClass(activeTab === 'example')}
+                        >
+                            <span className="hidden sm:inline">Generated Example</span>
+                            <span className="sm:hidden">Example</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => selectTab('schema')}
+                            aria-pressed={activeTab === 'schema'}
+                            className={tabButtonClass(activeTab === 'schema')}
+                        >
+                            <span className="hidden sm:inline">Unified Schema</span>
+                            <span className="sm:hidden">Schema</span>
+                        </button>
+                        {hasEnum && (
+                            <button
+                                type="button"
+                                onClick={() => selectTab('enum')}
+                                aria-pressed={activeTab === 'enum'}
+                                className={tabButtonClass(activeTab === 'enum')}
+                            >
+                                Enum
+                            </button>
+                        )}
+                        {specExamples.length > 0 && (
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => selectTab('spec-example')}
+                                onKeyDown={event => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        selectTab('spec-example');
+                                    }
+                                }}
+                                className={clsx(
+                                    'px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1',
+                                    activeTab === 'spec-example'
+                                        ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
+                                        : 'hover:opacity-80',
+                                )}
+                            >
+                                <span>Example:</span>
+                                {specExamples.length > 1 && activeTab === 'spec-example' ? (
+                                    <span className="inline-flex min-w-0 items-center gap-1">
+                                        <CustomDropdown
+                                            value={activeSpecExampleKey || specExamples[0].key}
+                                            onChange={value => onSpecExampleKeyChange?.(value)}
+                                            options={specExampleOptions}
+                                            className="w-auto min-w-0 max-w-[220px]"
+                                            ariaLabel="Specification examples"
+                                            plainTrigger
+                                        />
+                                    </span>
+                                ) : (
+                                    <span>{activeSpecExample?.label || 'Example'}</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </DevTooltip>
+                {headerActions && (
+                    <DevTooltip name="SchemaViewer.headerActions">
+                        <div className="flex items-center gap-2 flex-wrap justify-end">{headerActions}</div>
+                    </DevTooltip>
+                )}
+            </div>
+        </DevTooltip>
     );
 
     // Always keep the branch rail reachable even when the meta header is collapsed.
     const stickyBranch = !headerExpanded ? renderBranchRail() : null;
 
     return (
-        <div className={clsx('space-y-3 min-w-0', className)}>
-            {metaHeader}
-            {stickyBranch}
-            {tabStrip}
+        <DevTooltip name="SchemaViewer.root" className={clsx('min-w-0', className)}>
+            <div className={clsx('space-y-3 min-w-0', className)}>
+                {metaHeader}
+                {stickyBranch ? (
+                    <DevTooltip name="SchemaViewer.stickyBranchRail" className="min-w-0">
+                        {stickyBranch}
+                    </DevTooltip>
+                ) : null}
+                {tabStrip}
 
-            {activeTab === 'example' && (
-                <div className="space-y-3 min-w-0">
-                    <CodeViewer
-                        code={inlineMenus.code}
-                        language={generated.language}
-                        maxHeight="none"
-                        lineMarkers={mockMarkersToLineMarkers(generated.markers, {
-                            onOpenSchema,
-                            onTestPattern,
-                        })}
-                        inlineMenus={inlineMenus.menus}
-                        toolbarEnd={formatToolbar}
-                        dimmedLines={dimmedCodeLines}
-                    />
-                </div>
-            )}
+                {activeTab === 'example' && (
+                    <DevTooltip name="SchemaViewer.generatedExamplePane" className="min-w-0">
+                        <div className="space-y-3 min-w-0">
+                            <CodeViewer
+                                code={inlineMenus.code}
+                                language={generated.language}
+                                maxHeight="none"
+                                lineMarkers={mockMarkersToLineMarkers(generated.markers, {
+                                    onOpenSchema,
+                                    onTestPattern,
+                                })}
+                                inlineMenus={inlineMenus.menus}
+                                toolbarEnd={formatToolbar}
+                                dimmedLines={dimmedCodeLines}
+                            />
+                        </div>
+                    </DevTooltip>
+                )}
 
-            {activeTab === 'spec-example' && activeSpecExample && (
-                <div className="space-y-3 min-w-0">
-                    <CodeViewer
-                        code={formatExample(
-                            activeSpecExample.value,
-                            activeSpecExample.mediaType || mediaType,
-                            rootName,
-                        )}
-                        language={exampleLanguageFor(activeSpecExample.mediaType || mediaType)}
-                        maxHeight="320px"
-                    />
-                </div>
-            )}
-
-            {activeTab === 'enum' && hasEnum && (
-                <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                    {resolvedEffective.enum.map((val: any) => (
-                        <span
-                            key={JSON.stringify(val)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
-                        >
-                            {JSON.stringify(val)}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            {activeTab === 'schema' && (
-                <div className="space-y-3 min-w-0">
-                    {(() => {
-                        const pureNull =
-                            matrixSchema === null ||
-                            matrixSchema === undefined ||
-                            resolvedEffective?.type === 'null' ||
-                            (Array.isArray(resolvedEffective?.type) &&
-                                resolvedEffective.type.length > 0 &&
-                                resolvedEffective.type.every((item: string) => item === 'null'));
-                        if (pureNull) {
-                            return (
-                                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-xs leading-relaxed text-[var(--text-muted)]">
-                                    <strong className="text-[var(--text-heading)]">Null schema</strong>
-                                    <p className="mt-1">
-                                        This branch only accepts JSON <code className="font-mono">null</code> and
-                                        declares no properties.
-                                    </p>
-                                </div>
-                            );
-                        }
-                        if (matrixSchema === true) {
-                            return (
-                                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
-                                    <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
-                                    <p className="mt-1 text-[var(--text-muted)]">
-                                        Any JSON value satisfies this boolean schema.
-                                    </p>
-                                </div>
-                            );
-                        }
-                        if (matrixSchema === false) {
-                            return (
-                                <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
-                                    <strong className="text-[var(--method-delete)]">Impossible schema</strong>
-                                    <p className="mt-1 text-[var(--text-muted)]">
-                                        No JSON value satisfies this boolean schema.
-                                    </p>
-                                </div>
-                            );
-                        }
-                        return (
-                            <div
-                                className={clsx(
-                                    'pt-1 min-w-0',
-                                    dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus',
+                {activeTab === 'spec-example' && activeSpecExample && (
+                    <DevTooltip name="SchemaViewer.specExamplePane" className="min-w-0">
+                        <div className="space-y-3 min-w-0">
+                            <CodeViewer
+                                code={formatExample(
+                                    activeSpecExample.value,
+                                    activeSpecExample.mediaType || mediaType,
+                                    rootName,
                                 )}
-                                data-dimmed-fields={[...dimmedPropertyNames].join(',')}
-                            >
-                                <SchemaPropertiesTable
-                                    properties={tableProperties}
-                                    schema={matrixSchema ?? {type: 'null'}}
-                                    resolveReference={resolveReference}
-                                    getRefName={getRefName}
-                                    onPushSchema={name => onOpenSchema?.(name)}
-                                    inspectName={schemaName}
-                                    onTestPattern={pattern => onTestPattern?.(pattern)}
-                                    selectionScopeKey={selectionScopeKey}
-                                    showSchemaWide={showSchemaWide}
-                                />
-                            </div>
-                        );
-                    })()}
-                    {schemaFooter}
-                </div>
-            )}
+                                language={exampleLanguageFor(activeSpecExample.mediaType || mediaType)}
+                                maxHeight="320px"
+                            />
+                        </div>
+                    </DevTooltip>
+                )}
 
-            {/* Dim unrelated property rows when an allOf part is focused. */}
-            {dimmedPropertyNames.size > 0 && (
-                <style>{`
+                {activeTab === 'enum' && hasEnum && (
+                    <DevTooltip name="SchemaViewer.enumPane">
+                        <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
+                            {resolvedEffective.enum.map((val: any) => (
+                                <span
+                                    key={JSON.stringify(val)}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
+                                >
+                                    {JSON.stringify(val)}
+                                </span>
+                            ))}
+                        </div>
+                    </DevTooltip>
+                )}
+
+                {activeTab === 'schema' && (
+                    <DevTooltip name="SchemaViewer.unifiedSchemaPane" className="min-w-0">
+                        <div className="space-y-3 min-w-0">
+                            {(() => {
+                                const pureNull =
+                                    matrixSchema === null ||
+                                    matrixSchema === undefined ||
+                                    resolvedEffective?.type === 'null' ||
+                                    (Array.isArray(resolvedEffective?.type) &&
+                                        resolvedEffective.type.length > 0 &&
+                                        resolvedEffective.type.every((item: string) => item === 'null'));
+                                if (pureNull) {
+                                    return (
+                                        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-xs leading-relaxed text-[var(--text-muted)]">
+                                            <strong className="text-[var(--text-heading)]">Null schema</strong>
+                                            <p className="mt-1">
+                                                This branch only accepts JSON <code className="font-mono">null</code>{' '}
+                                                and declares no properties.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                if (matrixSchema === true) {
+                                    return (
+                                        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
+                                            <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+                                            <p className="mt-1 text-[var(--text-muted)]">
+                                                Any JSON value satisfies this boolean schema.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                if (matrixSchema === false) {
+                                    return (
+                                        <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
+                                            <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+                                            <p className="mt-1 text-[var(--text-muted)]">
+                                                No JSON value satisfies this boolean schema.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div
+                                        className={clsx(
+                                            'pt-1 min-w-0',
+                                            dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus',
+                                        )}
+                                        data-dimmed-fields={[...dimmedPropertyNames].join(',')}
+                                    >
+                                        <SchemaPropertiesTable
+                                            properties={tableProperties}
+                                            schema={matrixSchema ?? {type: 'null'}}
+                                            resolveReference={resolveReference}
+                                            getRefName={getRefName}
+                                            onPushSchema={name => onOpenSchema?.(name)}
+                                            inspectName={schemaName}
+                                            onTestPattern={pattern => onTestPattern?.(pattern)}
+                                            selectionScopeKey={selectionScopeKey}
+                                            showSchemaWide={showSchemaWide}
+                                        />
+                                    </div>
+                                );
+                            })()}
+                            {schemaFooter}
+                        </div>
+                    </DevTooltip>
+                )}
+
+                {/* Dim unrelated property rows when an allOf part is focused. */}
+                {dimmedPropertyNames.size > 0 && (
+                    <style>{`
                     .schema-viewer-allof-focus tr[data-field-name],
                     .schema-viewer-allof-focus [data-field-name] {
                         transition: opacity 120ms ease;
@@ -886,7 +923,8 @@ export default function SchemaViewer({
                         )
                         .join('\n')}
                 `}</style>
-            )}
-        </div>
+                )}
+            </div>
+        </DevTooltip>
     );
 }

@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ActiveAuth, OpenApiSpec, Operation} from '../../../types';
 import Markdown from '../../common/Markdown';
 import CodeViewer, {type CodeInlineMenu} from '../../common/CodeViewer';
+import DevTooltip from '../../common/DevTooltip';
 import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import SchemaViewer, {type SchemaViewerTab} from '../../schema/viewer/SchemaViewer';
 import PatternTesterModal from '../../modals/PatternTesterModal';
@@ -1120,101 +1121,111 @@ export default function ViewTab({
                 {parameterTables}
 
                 {selectedRequestBodyContent && (
-                    <div className="space-y-3 font-sans min-w-0">
-                        <div className="flex flex-nowrap items-center justify-between gap-3">
-                            <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                Request Body Context
-                            </h2>
-                            {/* Fixed slot: a long media type used to widen the
+                    <DevTooltip name="ViewTab.requestBodyContext" className="min-w-0">
+                        <div className="space-y-3 font-sans min-w-0">
+                            <div className="flex flex-nowrap items-center justify-between gap-3">
+                                <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                    Request Body Context
+                                </h2>
+                                {/* Fixed slot: a long media type used to widen the
                                 control until it wrapped onto its own line. */}
-                            <div className="flex w-[168px] shrink-0 items-center justify-end gap-2 sm:w-[220px]">
-                                <span className="hidden shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] sm:inline">
-                                    Encoding type
-                                </span>
-                                <CustomDropdown
-                                    value={selectedRequestBodyContentType}
-                                    onChange={contentType => {
-                                        setRequestBodyVariant(0);
-                                        setRequestAnyOfSelected([]);
-                                        setRequestAllOfFocusIndex(null);
-                                        setRequestBodyContentType(contentType);
-                                    }}
-                                    options={requestBodyContentEntries.map(([contentType]) => ({
-                                        value: contentType,
-                                        label: contentType,
-                                    }))}
-                                    icon="ph ph-code-block text-[13px]"
-                                    className="w-full min-w-0"
-                                />
+                                <DevTooltip name="ViewTab.requestBodyEncodingType">
+                                    <div className="flex w-[168px] shrink-0 items-center justify-end gap-2 sm:w-[220px]">
+                                        <span className="hidden shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] sm:inline">
+                                            Encoding type
+                                        </span>
+                                        <CustomDropdown
+                                            value={selectedRequestBodyContentType}
+                                            onChange={contentType => {
+                                                setRequestBodyVariant(0);
+                                                setRequestAnyOfSelected([]);
+                                                setRequestAllOfFocusIndex(null);
+                                                setRequestBodyContentType(contentType);
+                                            }}
+                                            options={requestBodyContentEntries.map(([contentType]) => ({
+                                                value: contentType,
+                                                label: contentType,
+                                            }))}
+                                            icon="ph ph-code-block text-[13px]"
+                                            className="w-full min-w-0"
+                                        />
+                                    </div>
+                                </DevTooltip>
                             </div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 animate-in fade-in min-w-0">
-                            {resolvedRequestBody.description && (
-                                <p className="mb-4 text-xs font-semibold leading-relaxed text-[var(--text)]">
-                                    {resolvedRequestBody.description}
-                                </p>
-                            )}
-                            <div key={selectedRequestBodyContentType} className="space-y-4 animate-fade-in">
-                                <SchemaViewer
-                                    spec={spec}
-                                    matrixSchema={requestBodyMatrixSchema}
-                                    effectiveSchema={requestBodyEffectiveSchema}
-                                    contentSchema={
-                                        // Prefer the unresolved content schema so the
-                                        // branch rail still sees oneOf/anyOf/allOf.
-                                        selectedRequestBodyContent?.schema || requestBodySource.schema
-                                    }
-                                    mediaType={selectedRequestBodyContentType}
-                                    selectionScopeKey={requestBodySelectionScopeKey}
-                                    activeTab={requestActiveTab}
-                                    onTabChange={setRequestActiveTab}
-                                    onPersistRepresentation={mode => setEndpointRepresentation(representationKey, mode)}
-                                    specExamples={requestSpecExamples}
-                                    activeSpecExampleKey={requestExampleKey}
-                                    onSpecExampleKeyChange={setRequestExampleKey}
-                                    branchIndex={requestBodyBranchIndex}
-                                    onBranchIndexChange={setRequestBodyVariant}
-                                    anyOfSelectedIndices={requestAnyOfSelected}
-                                    onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
-                                    allOfFocusIndex={requestAllOfFocusIndex}
-                                    onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
-                                    inspectName={
-                                        requestBodyMatrixSchema?.$ref
-                                            ? getRefName(requestBodyMatrixSchema.$ref)
-                                            : requestBodyMatrixSchema?.title || null
-                                    }
-                                    onOpenSchema={onOpenSchemaModal}
-                                    onTestPattern={setPatternToTest}
-                                    shapeInfo={requestBodyShape}
-                                    showSchemaWide={true}
-                                    headerActions={renderViewSchemaButton(
-                                        schemaModalNameOf(
-                                            requestBodyMatrixSchema,
-                                            schemaModalNameOf(selectedRequestBodyContent?.schema),
-                                        ),
+                            <DevTooltip name="ViewTab.requestBodyCard" className="min-w-0">
+                                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 animate-in fade-in min-w-0">
+                                    {resolvedRequestBody.description && (
+                                        <p className="mb-4 text-xs font-semibold leading-relaxed text-[var(--text)]">
+                                            {resolvedRequestBody.description}
+                                        </p>
                                     )}
-                                    schemaFooter={
-                                        requestBodyFormSnippet ? (
-                                            <div className="border-t border-[var(--border)] pt-2">
-                                                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                    <i className={`${requestBodyShape.icon} text-[12px]`} />
-                                                    Submitted shape
-                                                </h4>
-                                                <p className="mb-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                                    {requestBodyShape.hint}
-                                                </p>
-                                                <CodeViewer
-                                                    code={requestBodyFormSnippet}
-                                                    language={requestBodyShape.kind === 'form' ? 'plaintext' : 'http'}
-                                                    maxHeight="260px"
-                                                />
-                                            </div>
-                                        ) : null
-                                    }
-                                />
-                            </div>
+                                    <div key={selectedRequestBodyContentType} className="space-y-4 animate-fade-in">
+                                        <SchemaViewer
+                                            spec={spec}
+                                            matrixSchema={requestBodyMatrixSchema}
+                                            effectiveSchema={requestBodyEffectiveSchema}
+                                            contentSchema={
+                                                // Prefer the unresolved content schema so the
+                                                // branch rail still sees oneOf/anyOf/allOf.
+                                                selectedRequestBodyContent?.schema || requestBodySource.schema
+                                            }
+                                            mediaType={selectedRequestBodyContentType}
+                                            selectionScopeKey={requestBodySelectionScopeKey}
+                                            activeTab={requestActiveTab}
+                                            onTabChange={setRequestActiveTab}
+                                            onPersistRepresentation={mode =>
+                                                setEndpointRepresentation(representationKey, mode)
+                                            }
+                                            specExamples={requestSpecExamples}
+                                            activeSpecExampleKey={requestExampleKey}
+                                            onSpecExampleKeyChange={setRequestExampleKey}
+                                            branchIndex={requestBodyBranchIndex}
+                                            onBranchIndexChange={setRequestBodyVariant}
+                                            anyOfSelectedIndices={requestAnyOfSelected}
+                                            onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
+                                            allOfFocusIndex={requestAllOfFocusIndex}
+                                            onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
+                                            inspectName={
+                                                requestBodyMatrixSchema?.$ref
+                                                    ? getRefName(requestBodyMatrixSchema.$ref)
+                                                    : requestBodyMatrixSchema?.title || null
+                                            }
+                                            onOpenSchema={onOpenSchemaModal}
+                                            onTestPattern={setPatternToTest}
+                                            shapeInfo={requestBodyShape}
+                                            showSchemaWide={true}
+                                            headerActions={renderViewSchemaButton(
+                                                schemaModalNameOf(
+                                                    requestBodyMatrixSchema,
+                                                    schemaModalNameOf(selectedRequestBodyContent?.schema),
+                                                ),
+                                            )}
+                                            schemaFooter={
+                                                requestBodyFormSnippet ? (
+                                                    <div className="border-t border-[var(--border)] pt-2">
+                                                        <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                            <i className={`${requestBodyShape.icon} text-[12px]`} />
+                                                            Submitted shape
+                                                        </h4>
+                                                        <p className="mb-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                                            {requestBodyShape.hint}
+                                                        </p>
+                                                        <CodeViewer
+                                                            code={requestBodyFormSnippet}
+                                                            language={
+                                                                requestBodyShape.kind === 'form' ? 'plaintext' : 'http'
+                                                            }
+                                                            maxHeight="260px"
+                                                        />
+                                                    </div>
+                                                ) : null
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </DevTooltip>
                         </div>
-                    </div>
+                    </DevTooltip>
                 )}
 
                 <div className="space-y-3 animate-in fade-in min-w-0">

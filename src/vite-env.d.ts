@@ -1,4 +1,7 @@
 interface ImportMetaEnv {
+    readonly DEV: boolean;
+    readonly PROD: boolean;
+    readonly MODE: string;
     readonly VITE_DISABLE_APPLE_EMOJIS?: string;
     readonly VITE_LOAD_FROM_URL?: string;
     readonly VITE_SPEC_DOWNLOADER?: string;
