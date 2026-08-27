@@ -15,6 +15,12 @@ const METHOD_CLASSES: Record<
         background: 'bg-[var(--method-get)]',
         contrast: 'text-[var(--method-get-contrast)]',
     },
+    // OAS 3.2 / RFC 10008: safe + idempotent with a request body (not GET).
+    query: {
+        text: 'text-[var(--method-query)]',
+        background: 'bg-[var(--method-query)]',
+        contrast: 'text-[var(--method-query-contrast)]',
+    },
     head: {
         text: 'text-[var(--method-head)]',
         background: 'bg-[var(--method-head)]',

@@ -29,6 +29,7 @@ export const OPENAPI_CAPABILITIES: OpenApiCapability[] = [
         dialects: ['oas3.2'],
         consumers: ['parse', 'document', 'execute', 'codegen'],
         status: 'supported',
+        note: 'Documented and executed with a request body via browser fetch. Cross-origin QUERY is not CORS-safelisted, so the target must allow it on preflight (Access-Control-Allow-Methods).',
     },
     {
         id: 'operations.additional',

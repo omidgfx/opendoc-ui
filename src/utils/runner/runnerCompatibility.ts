@@ -182,7 +182,18 @@ export const analyzeRunnerCompatibility = (spec: OpenApiSpec): RunnerCompatibili
                 'get-head-request-bodies',
                 'browser',
                 'GET/HEAD request bodies',
-                'Browser fetch does not permit a body on GET or HEAD, so the Runner omits it and reports a notice.',
+                'Browser fetch does not permit a body on GET or HEAD, so the Runner omits it and reports a notice. Prefer OAS 3.2 QUERY when the operation is safe, idempotent, and needs a body.',
+                endpoint,
+            );
+        }
+        // QUERY (RFC 10008) is not a CORS safelisted method; cross-origin runs
+        // always preflight. Same-origin is fine. Body is sent (unlike GET/HEAD).
+        if (method.toLowerCase() === 'query') {
+            addFinding(
+                'query-cors-preflight',
+                'browser',
+                'QUERY CORS preflight',
+                'QUERY with a body is sent by the browser Runner. Cross-origin calls require a successful OPTIONS preflight with Access-Control-Allow-Methods including QUERY (and the usual Allow-Headers for Content-Type / auth).',
                 endpoint,
             );
         }

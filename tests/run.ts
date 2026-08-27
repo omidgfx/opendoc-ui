@@ -838,10 +838,70 @@ test('discovers OAS 3.2 QUERY and arbitrary additional operations through one op
         ['query', 'purge'],
     );
     assert.equal(getOperation(spec, '/items', 'PURGE')?.operationId, 'purgeItems');
+    assert.equal(getOperation(spec, '/items', 'query')?.operationId, 'queryItems');
     assert.equal(
         buildAIContext({spec, specKey: 'oas32'}).sources.some(source => source.id === 'path:PURGE:/items'),
         true,
     );
+});
+test('loads the OAS 3.2 QUERY fixture and keeps a request body on QUERY in the browser plan', () => {
+    const raw = readFileSync(resolve('tests/fixtures/oas32-query-method.yaml'), 'utf8');
+    const draft = parseSpecDraft(raw);
+    const spec: any = normalizeOpenApiSpec(draft as any);
+    const operations = getDocumentOperations(spec);
+    assert.equal(operations.length, 1);
+    assert.equal(operations[0].method, 'query');
+    assert.equal(operations[0].operation.operationId, 'searchProducts');
+    const operation = getOperation(spec, '/products', 'query');
+    assert.ok(operation?.requestBody);
+    const plan = compileBrowserRequest({
+        spec,
+        path: '/products',
+        method: 'query',
+        operation: operation!,
+        selectedServer: 'https://api.example.com',
+        activeAuth: createEmptyAuth(),
+        parameterValues: {},
+        headers: {},
+        body: JSON.stringify({filter: {category: 'shoes'}, limit: 5}),
+        bodyType: 'application/json',
+    });
+    assert.equal(plan.method, 'QUERY');
+    assert.equal(typeof plan.body, 'string');
+    assert.match(String(plan.body), /shoes/);
+    assert.ok(!plan.diagnostics.some(item => item.code === 'RUN_BROWSER_METHOD_BODY_UNSUPPORTED'));
+    const getWithBody = compileBrowserRequest({
+        spec: {...spec, paths: {'/products': {get: operation}}},
+        path: '/products',
+        method: 'get',
+        operation: operation!,
+        selectedServer: 'https://api.example.com',
+        activeAuth: createEmptyAuth(),
+        parameterValues: {},
+        headers: {},
+        body: JSON.stringify({filter: {category: 'shoes'}}),
+        bodyType: 'application/json',
+    });
+    assert.equal(getWithBody.body, null);
+    assert.ok(getWithBody.diagnostics.some(item => item.code === 'RUN_BROWSER_METHOD_BODY_UNSUPPORTED'));
+    const codegen = buildCodegenRequest({
+        spec,
+        path: '/products',
+        method: 'query',
+        operation: operation!,
+        selectedServer: 'https://api.example.com',
+        activeAuth: createEmptyAuth(),
+    });
+    assert.equal(codegen.method, 'QUERY');
+    assert.ok(codegen.body && /category|filter|shoes|limit/i.test(String(codegen.body)));
+    const curl = generateRequestSnippet('curl', codegen);
+    assert.match(curl, /QUERY/);
+    const fetchJs = generateRequestSnippet('js-fetch', codegen);
+    assert.match(fetchJs, /["']QUERY["']/);
+    const report = analyzeRunnerCompatibility(spec);
+    assert.ok(report.findings.some(item => item.id === 'query-cors-preflight'));
+    assert.ok(!report.findings.some(item => item.id === 'get-head-request-bodies'));
+    assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'operations.query' && item.status === 'supported'));
 });
 test('generates and parses clean routes for endpoints, notes, and compatibility views', () => {
     const operation: any = {operationId: 'listItems', responses: {'200': {description: 'ok'}}};

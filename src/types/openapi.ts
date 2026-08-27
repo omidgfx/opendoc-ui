@@ -23,6 +23,8 @@ export interface ThemeItem {
     methodConnect: string;
     methodOptions: string;
     methodTrace: string;
+    /** OAS 3.2 / RFC 10008 QUERY (safe + idempotent with a body). */
+    methodQuery: string;
 }
 
 export interface AppTheme {

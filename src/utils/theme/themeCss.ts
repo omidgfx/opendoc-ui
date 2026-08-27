@@ -2,7 +2,7 @@ import type React from 'react';
 import type {ThemeItem} from '../../types';
 import {getContrastColor} from '../color';
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace'] as const;
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'connect', 'options', 'trace', 'query'] as const;
 export const createThemeCssVariables = (theme: ThemeItem): React.CSSProperties => {
     const variables: Record<string, string> = {
         '--background': theme.background,
@@ -25,7 +25,9 @@ export const createThemeCssVariables = (theme: ThemeItem): React.CSSProperties =
         '--navbar': theme.navbar,
     };
     HTTP_METHODS.forEach(method => {
-        const color = (theme as any)[`method${method.charAt(0).toUpperCase()}${method.slice(1)}`];
+        const key = `method${method.charAt(0).toUpperCase()}${method.slice(1)}`;
+        // Older custom themes may omit methodQuery; fall back to GET (closest safe-read hue).
+        const color = (theme as any)[key] || (method === 'query' ? theme.methodGet || theme.primary : theme.primary);
         variables[`--method-${method}`] = color;
         variables[`--method-${method}-contrast`] = getContrastColor(color);
     });

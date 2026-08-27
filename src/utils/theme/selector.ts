@@ -5,6 +5,7 @@ export const METHOD_ITEMS: Array<{
     key: keyof ThemeItem;
 }> = [
     {label: 'GET', key: 'methodGet'},
+    {label: 'QUERY', key: 'methodQuery'},
     {label: 'POST', key: 'methodPost'},
     {label: 'PUT', key: 'methodPut'},
     {label: 'PATCH', key: 'methodPatch'},

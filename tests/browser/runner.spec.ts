@@ -1,6 +1,8 @@
 import {test, expect, type Page} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {readFileSync} from 'node:fs';
 import {createServer, type Server} from 'node:http';
+import {resolve} from 'node:path';
 
 let apiServer: Server;
 let apiOrigin = '';
@@ -246,8 +248,24 @@ test.beforeAll(async () => {
             return;
         }
         requestCount += 1;
-        request.resume();
+        const chunks: Buffer[] = [];
+        request.on('data', (chunk: Buffer) => chunks.push(chunk));
         request.on('end', () => {
+            const rawBody = Buffer.concat(chunks).toString('utf8');
+            // RFC 10008 QUERY: safe + body — echo for browser runner smoke tests.
+            if (request.method === 'QUERY' && (request.url || '').startsWith('/products')) {
+                response.statusCode = 200;
+                response.setHeader('content-type', 'application/json');
+                response.end(
+                    JSON.stringify({
+                        ok: true,
+                        method: 'QUERY',
+                        received: rawBody ? JSON.parse(rawBody) : null,
+                        count: requestCount,
+                    }),
+                );
+                return;
+            }
             response.statusCode = 400;
             response.setHeader('content-type', 'application/problem+json');
             response.end(JSON.stringify({error: 'the real fixture server rejected this request', count: requestCount}));
@@ -1848,4 +1866,39 @@ test('supports keyboard resizers and has no serious accessibility violations in 
     );
     const summary = serious.flatMap(item => item.nodes.map(node => `${item.id}: ${node.html}`)).join('\n');
     expect(serious, summary).toEqual([]);
+});
+
+test('documents and runs OAS 3.2 QUERY with a JSON body', async ({page}) => {
+    const fixturePath = resolve(process.cwd(), 'tests/fixtures/oas32-query-method.yaml');
+    let raw = readFileSync(fixturePath, 'utf8');
+    // Point the fixture server at the Playwright API origin so the Runner is same-origin-friendly.
+    raw = raw.replace('https://api.example.com', apiOrigin);
+
+    await page.goto('/');
+    await page
+        .getByRole('button', {name: /open specification/i})
+        .first()
+        .click();
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', {name: /open specification file/i}).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+        name: 'oas32-query-method.yaml',
+        mimeType: 'application/yaml',
+        buffer: Buffer.from(raw),
+    });
+    await expect(page.getByText('OAS 3.2 QUERY Method Fixture', {exact: true}).first()).toBeVisible();
+    await expect(page.getByText('/products').first()).toBeVisible();
+    // Method badge should render QUERY (not a muted unknown fallback only).
+    await expect(page.getByText('QUERY', {exact: true}).first()).toBeVisible();
+
+    await page.getByText('Advanced product search', {exact: true}).first().click();
+    await page.getByRole('button', {name: /API Runner/i}).click();
+    const runner = page.locator('form');
+    await expect(runner).toBeVisible();
+    // QUERY request body chrome (form or raw) — not omitted like GET/HEAD.
+    await expect(runner.getByText(/Request Body|Body|Raw|Form/i).first()).toBeVisible({timeout: 10000});
+    await runner.getByRole('button', {name: /Send API Request/i}).click();
+    await expect(runner.getByText('200', {exact: true})).toBeVisible({timeout: 15000});
+    await expect(runner.getByText(/QUERY/).first()).toBeVisible();
 });
