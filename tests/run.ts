@@ -60,6 +60,7 @@ import {generateValidatedMock, getMockSnippet} from '@/src/utils/runner/mockGene
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
 import {collectSchemaBranchChoices} from '@/src/utils/schema/branchChoices';
 import {expandAllOfBranches, describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import {dimmedLinesForObjectCode, dimmedLinesForFieldAllOfFocus} from '@/src/utils/schema/exampleEncodings';
 import {
     applySchemaBranchSelections,
     propertyNamesOfSchema,
@@ -1083,6 +1084,53 @@ test('collects field-level oneOf and allOf choices and applies oneOf picks witho
     const detected = detectSchemaCombinator(op8Field, resolveRef);
     assert.equal(detected?.meta.kind, 'allOf');
     assert.equal(detected?.branches.length, 3);
+});
+
+test('dims code-viewer lines for body and field-level allOf focus the same way', () => {
+    const rootCode = `{
+  "fromA": 1,
+  "fromB": 2,
+  "fromC": {
+    "x": 1
+  }
+}`;
+    const rootDimmed = dimmedLinesForObjectCode(rootCode, new Set(['fromA']));
+    assert.deepEqual(rootDimmed, [3, 4, 5, 6]);
+
+    const fieldCode = `{
+  "identifier": "uuid",
+  "combinedPayload": {
+    "a1": "x",
+    "a2": 1,
+    "b1": true,
+    "c1": 2.5,
+    "nested": {
+      "x": 1
+    }
+  },
+  "other": 1
+}`;
+    // Focus PartA (a1, a2): only nested keys under combinedPayload fade — siblings stay vivid.
+    const fieldDimmed = dimmedLinesForObjectCode(fieldCode, new Set(['a1', 'a2']), {
+        containerPath: 'combinedPayload',
+    });
+    assert.deepEqual(fieldDimmed, [6, 7, 8, 9, 10]);
+    const viaMap = dimmedLinesForFieldAllOfFocus(fieldCode, new Map([['combinedPayload', new Set(['a1', 'a2'])]]));
+    assert.deepEqual(viaMap, fieldDimmed);
+
+    const yaml = `identifier: uuid
+combinedPayload:
+  a1: x
+  a2: 1
+  b1: true
+  nested:
+    x: 1
+other: 1
+`;
+    const yamlDimmed = dimmedLinesForObjectCode(yaml, new Set(['a1', 'a2']), {
+        containerPath: 'combinedPayload',
+    });
+    assert.deepEqual(yamlDimmed, [5, 6, 7]);
 });
 
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {

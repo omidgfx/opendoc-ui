@@ -1,3 +1,4 @@
+import {expandAllOfBranches} from './combinators';
 export type BranchSelectionMap = Record<string, number>;
 /** Field path → focused allOf part index, or null for Combined (show every part). */
 export type AllOfFocusMap = Record<string, number | null>;
@@ -60,8 +61,11 @@ export const allOfFocusPropertyNames = (
     const focus = readSchemaAllOfFocus(selectionKey)[path];
     if (focus === null || focus === undefined) return null;
     const schemaAtPath = schemaAtBranchPath(input, path, resolveReference);
-    if (!schemaAtPath || !Array.isArray(schemaAtPath.allOf) || !schemaAtPath.allOf[focus]) return null;
-    return propertyNamesOfSchema(schemaAtPath.allOf[focus], resolveReference);
+    if (!schemaAtPath || !Array.isArray(schemaAtPath.allOf)) return null;
+    const parts = expandAllOfBranches(schemaAtPath, resolveReference);
+    const list = parts.length > 0 ? parts : schemaAtPath.allOf;
+    if (!list[focus]) return null;
+    return propertyNamesOfSchema(list[focus], resolveReference);
 };
 
 /** Top-level (and nested via flatten) property names contributed by a schema. */

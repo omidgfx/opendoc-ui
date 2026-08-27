@@ -453,43 +453,183 @@ export const topLevelKeysOf = (value: unknown): string[] => {
     return Object.keys(value as Record<string, unknown>);
 };
 
+export type DimmedObjectCodeOptions = {
+    /**
+     * Dot path to the object whose *direct* keys are judged against `activeKeys`.
+     * Empty / omitted = document root (body-level allOf focus).
+     * e.g. `combinedPayload` dims only nested keys under that field; siblings stay vivid.
+     */
+    containerPath?: string;
+};
+
+const pathSegmentsOf = (path: string): string[] =>
+    String(path || '')
+        .split('.')
+        .map(segment => segment.replace(/\[[^\]]*\]/g, ''))
+        .filter(segment => segment && segment !== '*');
+
+const pathsEqual = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((segment, index) => segment === b[index]);
+
 /**
- * Marks generated JSON/YAML lines whose top-level key is outside `activeKeys`.
- * Nested lines under a dimmed key inherit the dim so the whole branch fades.
+ * Marks generated JSON/YAML lines whose keys (at root, or under `containerPath`)
+ * are outside `activeKeys`. Nested lines under a dimmed key inherit the dim so
+ * the whole branch fades — same opacity treatment body-level allOf focus uses.
  */
-export const dimmedLinesForObjectCode = (code: string, activeKeys: Set<string> | null): number[] => {
+export const dimmedLinesForObjectCode = (
+    code: string,
+    activeKeys: Set<string> | null,
+    options?: DimmedObjectCodeOptions,
+): number[] => {
     if (!activeKeys || activeKeys.size === 0) return [];
+    const container = pathSegmentsOf(options?.containerPath || '');
     const lines = String(code || '').split('\n');
+    // Prefer brace-depth scanning when the payload looks like JSON; otherwise YAML indents.
+    const looksJson = lines.some(line => {
+        const trimmed = line.trim();
+        return trimmed.startsWith('{') || trimmed.startsWith('[') || /^\s*"[^"]+"\s*:/.test(line);
+    });
+    return looksJson
+        ? dimmedLinesForJsonObjectCode(lines, activeKeys, container)
+        : dimmedLinesForYamlObjectCode(lines, activeKeys, container);
+};
+
+/** Body-level / nested JSON object dimming via brace depth + key path stack. */
+const dimmedLinesForJsonObjectCode = (lines: string[], activeKeys: Set<string>, container: string[]): number[] => {
     const dimmed: number[] = [];
     let depth = 0;
+    // path[i] is the object key entered when depth became pathDepths[i].
+    const path: string[] = [];
+    const pathDepths: number[] = [];
     let dimSubtreeFromDepth: number | null = null;
+
+    const popPathToDepth = (nextDepth: number) => {
+        while (pathDepths.length > 0 && pathDepths[pathDepths.length - 1] > nextDepth) {
+            pathDepths.pop();
+            path.pop();
+        }
+    };
+
     lines.forEach((line, index) => {
         const trimmed = line.trim();
         const open = (trimmed.match(/[{[]/g) || []).length;
         const close = (trimmed.match(/[}\]]/g) || []).length;
+        // Keys live on the object depth they belong to (root object → depth 1).
         const keyMatch =
-            depth === 1 || (depth === 0 && /^\s*["']?([A-Za-z0-9_-]+)/.test(line))
+            depth >= 1 || (depth === 0 && /^\s*["']?([A-Za-z0-9_-]+)/.test(line))
                 ? line.match(/^\s*["']?([A-Za-z0-9_-]+)["']?\s*:/)
                 : null;
-        // YAML top-level keys also match `key:`.
-        const yamlKey = depth === 0 ? line.match(/^([A-Za-z0-9_-]+)\s*:/) : null;
-        const key = keyMatch?.[1] || yamlKey?.[1] || null;
+        const key = keyMatch?.[1] || null;
 
         if (dimSubtreeFromDepth !== null) {
             dimmed.push(index + 1);
-            depth += open - close;
+            depth = Math.max(0, depth + open - close);
+            popPathToDepth(depth);
             if (depth < dimSubtreeFromDepth) dimSubtreeFromDepth = null;
             return;
         }
 
-        if (key && depth <= 1 && !activeKeys.has(key)) {
-            dimmed.push(index + 1);
-            if (open > close) dimSubtreeFromDepth = depth + 1;
-            depth += open - close;
+        if (key) {
+            // Direct children of the focused container are judged; everything else stays vivid.
+            const parentPath = path.slice();
+            const isUnderContainer = pathsEqual(parentPath, container);
+            if (isUnderContainer && !activeKeys.has(key)) {
+                dimmed.push(index + 1);
+                if (open > close) {
+                    dimSubtreeFromDepth = depth + (open - close);
+                    depth = Math.max(0, depth + open - close);
+                    // Still record the path hop so deeper scans stay consistent if dim clears mid-tree.
+                    path.push(key);
+                    pathDepths.push(depth);
+                    return;
+                }
+                depth = Math.max(0, depth + open - close);
+                popPathToDepth(depth);
+                return;
+            }
+            depth = Math.max(0, depth + open - close);
+            if (open > close) {
+                path.push(key);
+                pathDepths.push(depth);
+            } else {
+                popPathToDepth(depth);
+            }
             return;
         }
 
         depth = Math.max(0, depth + open - close);
+        popPathToDepth(depth);
     });
     return dimmed;
+};
+
+/** YAML (js-yaml dump) dimming via indentation stack. */
+const dimmedLinesForYamlObjectCode = (lines: string[], activeKeys: Set<string>, container: string[]): number[] => {
+    const dimmed: number[] = [];
+    // stack entries: indent of the key line that opened this object scope.
+    const stack: {indent: number; key: string}[] = [];
+    let dimUnderIndent: number | null = null;
+
+    lines.forEach((line, index) => {
+        if (!line.trim() || line.trim().startsWith('#')) {
+            if (dimUnderIndent !== null) dimmed.push(index + 1);
+            return;
+        }
+        const match = line.match(/^(\s*)([A-Za-z0-9_-]+)\s*:(?:\s*(.*))?$/);
+        if (!match) {
+            // list items / continued values inherit parent dim.
+            if (dimUnderIndent !== null) {
+                const indent = (line.match(/^(\s*)/) || ['', ''])[1].length;
+                if (indent > dimUnderIndent) dimmed.push(index + 1);
+                else dimUnderIndent = null;
+            }
+            return;
+        }
+        const indent = match[1].length;
+        const key = match[2];
+        const rest = (match[3] || '').trim();
+        const opensNested = rest === '' || rest === '|' || rest === '>' || rest === '|-';
+        rest === '>-';
+
+        while (stack.length > 0 && indent <= stack[stack.length - 1].indent) {
+            stack.pop();
+        }
+        if (dimUnderIndent !== null && indent <= dimUnderIndent) {
+            dimUnderIndent = null;
+        }
+        if (dimUnderIndent !== null && indent > dimUnderIndent) {
+            dimmed.push(index + 1);
+            if (opensNested) stack.push({indent, key});
+            return;
+        }
+
+        const parentPath = stack.map(entry => entry.key);
+        if (pathsEqual(parentPath, container) && !activeKeys.has(key)) {
+            dimmed.push(index + 1);
+            if (opensNested) {
+                dimUnderIndent = indent;
+                stack.push({indent, key});
+            }
+            return;
+        }
+        if (opensNested) stack.push({indent, key});
+    });
+    return dimmed;
+};
+
+/**
+ * Union dimmed lines for several field-level allOf focuses (path → owned keys).
+ * Root/body focus should call `dimmedLinesForObjectCode` directly instead.
+ */
+export const dimmedLinesForFieldAllOfFocus = (
+    code: string,
+    fieldFocus: Map<string, Set<string>> | null | undefined,
+): number[] => {
+    if (!fieldFocus || fieldFocus.size === 0) return [];
+    const union = new Set<number>();
+    fieldFocus.forEach((activeKeys, fieldPath) => {
+        if (!activeKeys || activeKeys.size === 0) return;
+        dimmedLinesForObjectCode(code, activeKeys, {containerPath: fieldPath}).forEach(line => union.add(line));
+    });
+    return [...union].sort((a, b) => a - b);
 };

@@ -31,6 +31,7 @@ import {describeRequestBody, type RequestBodyKindInfo} from '../../../utils/endp
 import {
     EXAMPLE_ENCODINGS,
     defaultExampleEncodingId,
+    dimmedLinesForFieldAllOfFocus,
     dimmedLinesForObjectCode,
     exampleEncodingOf,
 } from '../../../utils/schema/exampleEncodings';
@@ -458,29 +459,12 @@ export default function SchemaViewer({
 
     const dimmedCodeLines = useMemo(() => {
         if (exampleEncodingId !== 'json' && exampleEncodingId !== 'yaml') return [];
-        // Prefer root allOf focus for code dimming (top-level keys). Field-level
-        // allOf dimming is reflected in the table; code still shows full composition.
+        // Body-level allOf focus dims top-level keys outside the focused part.
         if (rootAllOfActiveKeys) return dimmedLinesForObjectCode(generated.code, rootAllOfActiveKeys);
+        // Field-level allOf focus: same opacity treatment, scoped under each field path
+        // so sibling keys (and nested keys owned by the focused part) stay vivid.
         if (fieldAllOfActiveKeys && fieldAllOfActiveKeys.size > 0) {
-            // When only field-level focus is set, dim top-level keys that appear
-            // under no focused part's ownership if the allOf is on a top-level field
-            // with nested props — use nested dimming via property path prefixes.
-            const nestedActive = new Set<string>();
-            fieldAllOfActiveKeys.forEach((names, fieldPath) => {
-                names.forEach(name => nestedActive.add(fieldPath.includes('.') ? `${fieldPath}.${name}` : name));
-                // Also allow bare nested names for dimmedLines top-level matcher
-                // when the allOf field itself is the object root of the mock.
-                names.forEach(name => nestedActive.add(name));
-            });
-            // If any focus is on a non-root path, skip aggressive code dimming
-            // (line matcher is top-level only); table handles nested opacity.
-            const onlyTopLevel = [...fieldAllOfActiveKeys.keys()].every(path => !path.includes('.'));
-            if (onlyTopLevel && nestedActive.size > 0) {
-                // Field allOf at top-level path means the field IS the key; its
-                // nested composition doesn't change sibling top-level keys.
-                return [];
-            }
-            return [];
+            return dimmedLinesForFieldAllOfFocus(generated.code, fieldAllOfActiveKeys);
         }
         return [];
     }, [rootAllOfActiveKeys, fieldAllOfActiveKeys, exampleEncodingId, generated.code]);
