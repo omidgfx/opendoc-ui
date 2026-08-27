@@ -12,7 +12,7 @@ import {processLocalOpenApiBundle} from '../utils/openapi/engine';
 import {registerRawSpecDocument, registerSpecDiagnostics} from '../utils/specification/specSource';
 import {collectReferenceIssues, validateOpenApiDocument} from '../utils/openapi';
 import {diagnostic} from '../types';
-import * as jsYaml from 'js-yaml';
+import {parseSpecText} from '../utils/specification/yamlText';
 
 const stableTextHash = (text: string): string => {
     let hash = 0x811c9dc5;
@@ -34,10 +34,7 @@ interface UseLocalSpecificationsOptions {
     onApply: (value: AppliedLocalSpec) => void;
 }
 
-const parseLoose = (raw: string): unknown => {
-    const trimmed = raw.trim();
-    return trimmed.startsWith('{') || trimmed.startsWith('[') ? JSON.parse(raw) : jsYaml.load(raw);
-};
+const parseLoose = (raw: string): unknown => parseSpecText(raw);
 
 export function useLocalSpecifications({selectedSpecKey, onApply}: UseLocalSpecificationsOptions) {
     const [localSpec, setLocalSpec] = useState<LocalSpec | null>(null);

@@ -1,4 +1,4 @@
-import * as jsYaml from 'js-yaml';
+import {parseSpecText} from './yamlText';
 import type {OpenApiSpec, Parsable} from '@/src/types';
 import {assertValidOpenApiDocument, getDocumentOperations, normalizeOpenApiSpec} from '@/src/utils/openapi';
 import {isOperationProtected} from '@/src/utils/runner/auth';
@@ -47,8 +47,7 @@ export const summarizeSpecification = (spec: OpenApiSpec): SpecificationSummary 
     };
 };
 export const parseSpecification = (text: string): OpenApiSpec => {
-    const trimmed = text.trim();
-    const parsed = trimmed.startsWith('{') || trimmed.startsWith('[') ? JSON.parse(text) : jsYaml.load(text);
+    const parsed = parseSpecText(text);
     assertValidOpenApiDocument(parsed);
     return normalizeOpenApiSpec(parsed);
 };

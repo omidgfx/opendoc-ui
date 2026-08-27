@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: Broken flow oneOf
+  version: "1.0.0"
+paths: {}
+components:
+  schemas:
+    Sample:
+      type: object
+      properties:
+        layerOneOf: { oneOf: { type: integer }, { type: string } }

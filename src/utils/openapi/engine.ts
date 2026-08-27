@@ -1,7 +1,7 @@
 import type {Diagnostic, OpenApiSpec} from '../../types';
 import {diagnostic} from '../../types';
 import {normalizeOpenApiSpec} from './compat';
-import * as jsYaml from 'js-yaml';
+import {parseSpecText} from '../specification/yamlText';
 
 const MAX_EXTERNAL_DOCUMENTS = 16;
 const MAX_EXTERNAL_BYTES = 5 * 1024 * 1024;
@@ -301,9 +301,7 @@ export const processLocalOpenApiBundle = async (
     if (files.length === 0) throw new Error('No local OpenAPI files were selected.');
     const parsedFiles = files.map(file => {
         const name = normalizeVirtualPath(file.name) || 'openapi.yaml';
-        const trimmed = file.raw.trim();
-        const specification =
-            trimmed.startsWith('{') || trimmed.startsWith('[') ? JSON.parse(file.raw) : jsYaml.load(file.raw);
+        const specification = parseSpecText(file.raw) as any;
         return {name, raw: file.raw, specification};
     });
     const root =
