@@ -58,6 +58,15 @@ import {
 import {sanitizeZipEntryName} from '@/src/utils/export/zip';
 import {generateValidatedMock, getMockSnippet} from '@/src/utils/runner/mockGenerator';
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
+import {collectSchemaBranchChoices} from '@/src/utils/schema/branchChoices';
+import {
+    applySchemaBranchSelections,
+    propertyNamesOfSchema,
+    readSchemaAllOfFocus,
+    writeSchemaAllOfFocus,
+    writeSchemaBranchSelection,
+} from '@/src/utils/schema/branchSelections';
+import {inlineMenusForCode} from '@/src/components/schema/inlineMenus';
 import {buildCodegenRequest, generateRequestSnippet} from '@/src/utils/export/codeGeneration';
 import {parseSpecDraft} from '@/src/utils/specification/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specification/specSource';
@@ -975,6 +984,63 @@ test('keeps the immutable raw document available beside the normalized semantic 
     assert.equal(metadata?.dialect, 'openapi3.0');
     assert.equal((metadata?.document as any).components.schemas.Value.type, 'string');
 });
+test('collects field-level oneOf and allOf choices and applies oneOf picks without collapsing allOf', () => {
+    const resolve = (item: any) => item;
+    const getRefName = (ref: string) => ref.split('/').pop() || ref;
+    const schema = {
+        type: 'object',
+        properties: {
+            payment: {
+                allOf: [
+                    {type: 'object', properties: {amount: {type: 'number'}, currency: {type: 'string'}}},
+                    {
+                        type: 'object',
+                        properties: {
+                            method: {
+                                oneOf: [
+                                    {type: 'object', title: 'Card', properties: {last4: {type: 'string'}}},
+                                    {type: 'object', title: 'Cash', properties: {tendered: {type: 'number'}}},
+                                ],
+                            },
+                        },
+                    },
+                ],
+            },
+            note: {type: 'string'},
+        },
+    };
+    const choices = collectSchemaBranchChoices(schema, resolve, getRefName);
+    const kinds = choices.map(c => `${c.kind}:${c.path}`);
+    assert.ok(kinds.includes('allOf:payment'));
+    assert.ok(kinds.includes('oneOf:payment.method'));
+    const allOfPayment = choices.find(c => c.kind === 'allOf' && c.path === 'payment')!;
+    assert.equal(allOfPayment.options[0].index, -1);
+    assert.equal(allOfPayment.options[0].label, 'Combined');
+    assert.ok(allOfPayment.options.length >= 3);
+
+    const key = 'test:allof-field';
+    writeSchemaBranchSelection(key, 'payment.method', 1);
+    const applied = applySchemaBranchSelections(schema, key, resolve);
+    assert.equal(applied.properties.payment.allOf[1].properties.method.title, 'Cash');
+    // allOf composition remains — both parts still present after oneOf pick
+    assert.equal(applied.properties.payment.allOf.length, 2);
+
+    writeSchemaAllOfFocus(key, 'payment', 0);
+    assert.equal(readSchemaAllOfFocus(key).payment, 0);
+    const owned = propertyNamesOfSchema(schema.properties.payment.allOf[0], resolve);
+    assert.ok(owned.has('amount'));
+    assert.ok(owned.has('currency'));
+    assert.ok(!owned.has('method'));
+
+    writeSchemaAllOfFocus(key, 'payment', null);
+    assert.equal(readSchemaAllOfFocus(key).payment, null);
+
+    const code = JSON.stringify({payment: {amount: 10, currency: 'USD', method: {tendered: 20}}, note: 'hi'}, null, 2);
+    const menus = inlineMenusForCode(code, key, choices, 'json');
+    assert.ok(menus.menus.some(m => m.id.includes('allOf:payment')));
+    assert.ok(menus.menus.some(m => m.id.includes('oneOf:payment.method')));
+});
+
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {
     assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'references.local' && item.status === 'supported'));
     assert.ok(OPENAPI_CAPABILITIES.some(item => item.id === 'responses.binary' && item.status === 'supported'));

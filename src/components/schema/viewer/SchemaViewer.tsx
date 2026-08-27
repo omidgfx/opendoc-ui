@@ -17,8 +17,13 @@ import {
     detectSchemaCombinator,
     type CombinatorKind,
 } from '../../../utils/schema/combinators';
-import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
-import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
+import {
+    applySchemaBranchSelections,
+    propertyNamesOfSchema,
+    readSchemaAllOfFocus,
+    SCHEMA_BRANCH_SELECTION_EVENT,
+} from '../../../utils/schema/branchSelections';
+import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 import {exampleLanguageFor, formatExample} from '../../../utils/endpoint/exampleFormatting';
 import {describeRequestBody, type RequestBodyKindInfo} from '../../../utils/endpoint/requestBodyShape';
@@ -255,17 +260,60 @@ export default function SchemaViewer({
 
     const bodyShape = shapeInfo || describeRequestBody(mediaType, effectiveForView);
 
-    // allOf focus: property names belonging only to the focused part stay vivid.
-    const allOfActiveKeys = useMemo(() => {
+    // Body-level allOf focus: property names belonging to the focused part stay vivid.
+    const rootAllOfActiveKeys = useMemo(() => {
         if (allOfFocusIndex === null || allOfFocusIndex === undefined || !allOfBranches.length) return null;
         const focused = allOfBranches[allOfFocusIndex];
         if (!focused) return null;
-        const focusedNames = new Set(propertyNamesOf(focused, resolveReference));
-        // Keep names that also appear on other parts vivid only when focused owns them;
-        // dim everything the focused part does not declare.
-        return focusedNames;
+        return new Set(propertyNamesOf(focused, resolveReference));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allOfFocusIndex, allOfBranches, branchRevision]);
+
+    // Field-level allOf focus (caret menus): union of owned names, keyed by the
+    // field path so nested properties dim relative to their parent object.
+    const fieldAllOfActiveKeys = useMemo(() => {
+        const focusMap = readSchemaAllOfFocus(selectionScopeKey);
+        const entries = Object.entries(focusMap).filter(([, index]) => index !== null && index !== undefined);
+        if (entries.length === 0) return null as Map<string, Set<string>> | null;
+        const source = matrixSchema || effectiveForView;
+        if (!source) return null;
+        const map = new Map<string, Set<string>>();
+        entries.forEach(([path, index]) => {
+            // Walk to the field schema the same way branch collection does.
+            const segments = path.split('.').filter(Boolean);
+            let current: any = source;
+            for (const segment of segments) {
+                if (!current || typeof current !== 'object') {
+                    current = null;
+                    break;
+                }
+                if (typeof current.$ref === 'string') current = resolveReference(current) || current;
+                while (current && typeof current === 'object' && !current.properties && Array.isArray(current.allOf)) {
+                    const hit = current.allOf.find((part: any) => {
+                        const resolved = resolveReference(part) || part;
+                        return resolved?.properties && segment in resolved.properties;
+                    });
+                    current = resolveReference(hit || current.allOf[0]) || hit || current.allOf[0];
+                }
+                if (segment === '*') {
+                    current = current?.items;
+                    continue;
+                }
+                const bare = segment.replace(/\[[^\]]+\]/g, '');
+                if (current?.properties && bare in current.properties) {
+                    current = current.properties[bare];
+                    continue;
+                }
+                current = null;
+                break;
+            }
+            if (current && typeof current.$ref === 'string') current = resolveReference(current) || current;
+            if (!current || !Array.isArray(current.allOf) || current.allOf[index as number] === undefined) return;
+            map.set(path, propertyNamesOfSchema(current.allOf[index as number], resolveReference));
+        });
+        return map.size > 0 ? map : null;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [matrixSchema, effectiveForView, selectionScopeKey, branchRevision, spec]);
 
     const tableProperties = useMemo(
         () => flattenSchemaProperties(matrixSchema ?? effectiveForView, resolveReference),
@@ -274,15 +322,34 @@ export default function SchemaViewer({
     );
 
     const dimmedPropertyNames = useMemo(() => {
-        if (!allOfActiveKeys) return new Set<string>();
-        const allNames = Object.keys(tableProperties).map(path => path.split('.')[0]);
-        return new Set(allNames.filter(name => name && !allOfActiveKeys.has(name)));
-    }, [allOfActiveKeys, tableProperties]);
+        const dimmed = new Set<string>();
+        const allPaths = Object.keys(tableProperties);
+        // Body-level allOf: dim every property path whose top-level key is outside the focused part.
+        if (rootAllOfActiveKeys) {
+            allPaths.forEach(path => {
+                const top = path.split('.')[0];
+                if (top && !rootAllOfActiveKeys.has(top)) dimmed.add(path);
+            });
+        }
+        // Field-level allOf: dim nested rows under the field that the focused part does not own.
+        // Sibling fields outside the allOf field stay vivid (composition is local to that field).
+        if (fieldAllOfActiveKeys) {
+            fieldAllOfActiveKeys.forEach((activeNames, fieldPath) => {
+                allPaths.forEach(path => {
+                    if (path === fieldPath) return;
+                    if (!path.startsWith(`${fieldPath}.`)) return;
+                    const nested = path.slice(fieldPath.length + 1).split('.')[0];
+                    if (nested && !activeNames.has(nested)) dimmed.add(path);
+                });
+            });
+        }
+        return dimmed;
+    }, [rootAllOfActiveKeys, fieldAllOfActiveKeys, tableProperties]);
 
-    const oneOfChoices = useMemo(
+    const branchChoices = useMemo(
         () =>
             matrixSchema || effectiveForView
-                ? collectSchemaOneOfChoices(matrixSchema || effectiveForView, resolveReference, getRefName)
+                ? collectSchemaBranchChoices(matrixSchema || effectiveForView, resolveReference, getRefName)
                 : [],
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [matrixSchema, effectiveForView, branchRevision, spec],
@@ -387,20 +454,43 @@ export default function SchemaViewer({
     }, [effectiveForView, spec, exampleEncodingId, rootName]);
 
     const dimmedCodeLines = useMemo(() => {
-        if (!allOfActiveKeys) return [];
         if (exampleEncodingId !== 'json' && exampleEncodingId !== 'yaml') return [];
-        return dimmedLinesForObjectCode(generated.code, allOfActiveKeys);
-    }, [allOfActiveKeys, exampleEncodingId, generated.code]);
+        // Prefer root allOf focus for code dimming (top-level keys). Field-level
+        // allOf dimming is reflected in the table; code still shows full composition.
+        if (rootAllOfActiveKeys) return dimmedLinesForObjectCode(generated.code, rootAllOfActiveKeys);
+        if (fieldAllOfActiveKeys && fieldAllOfActiveKeys.size > 0) {
+            // When only field-level focus is set, dim top-level keys that appear
+            // under no focused part's ownership if the allOf is on a top-level field
+            // with nested props — use nested dimming via property path prefixes.
+            const nestedActive = new Set<string>();
+            fieldAllOfActiveKeys.forEach((names, fieldPath) => {
+                names.forEach(name => nestedActive.add(fieldPath.includes('.') ? `${fieldPath}.${name}` : name));
+                // Also allow bare nested names for dimmedLines top-level matcher
+                // when the allOf field itself is the object root of the mock.
+                names.forEach(name => nestedActive.add(name));
+            });
+            // If any focus is on a non-root path, skip aggressive code dimming
+            // (line matcher is top-level only); table handles nested opacity.
+            const onlyTopLevel = [...fieldAllOfActiveKeys.keys()].every(path => !path.includes('.'));
+            if (onlyTopLevel && nestedActive.size > 0) {
+                // Field allOf at top-level path means the field IS the key; its
+                // nested composition doesn't change sibling top-level keys.
+                return [];
+            }
+            return [];
+        }
+        return [];
+    }, [rootAllOfActiveKeys, fieldAllOfActiveKeys, exampleEncodingId, generated.code]);
 
     const inlineMenus = useMemo(
         () =>
             inlineMenusForCode(
                 generated.code,
                 selectionScopeKey,
-                oneOfChoices,
+                branchChoices,
                 exampleEncodingId || generated.language,
             ),
-        [generated.code, generated.language, selectionScopeKey, oneOfChoices, exampleEncodingId],
+        [generated.code, generated.language, selectionScopeKey, branchChoices, exampleEncodingId],
     );
 
     const formatToolbar = (

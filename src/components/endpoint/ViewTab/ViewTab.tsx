@@ -63,7 +63,7 @@ import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import ResponseLinksPanel from './ResponseLinksPanel';
 import OperationCallbacksPanel from './OperationCallbacksPanel';
 import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
-import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
+import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
 import SchemaOneOfMenuButton from '../../schema/SchemaOneOfMenuButton';
 import {inlineMenusForCode} from '../../schema/inlineMenus';
 // Legacy request-body panel kept in-tree (unused) for comparison while the
@@ -777,7 +777,13 @@ export default function ViewTab({
         const effectiveSchema = param.schema
             ? applySchemaBranchSelections(param.schema, selectionKey, resolveReference)
             : param.schema;
-        const branchChoices = param.schema ? collectSchemaOneOfChoices(param.schema, resolveReference, getRefName) : [];
+        const branchChoices = param.schema
+            ? collectSchemaBranchChoices(
+                  {type: 'object', properties: {[param.name]: param.schema}},
+                  resolveReference,
+                  getRefName,
+              )
+            : [];
         const resolvedSchema = resolveReference(effectiveSchema) || effectiveSchema;
         const needsMore =
             !!resolvedSchema &&
@@ -1735,7 +1741,7 @@ export default function ViewTab({
                                                                                         const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
                                                                                         const responseOneOfChoices =
                                                                                             activeSchema
-                                                                                                ? collectSchemaOneOfChoices(
+                                                                                                ? collectSchemaBranchChoices(
                                                                                                       activeSchema,
                                                                                                       resolveReference,
                                                                                                       getRefName,

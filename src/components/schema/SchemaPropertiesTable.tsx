@@ -24,14 +24,19 @@ import SerializerPlaygroundModal from '../modals/SerializerPlaygroundModal';
 import CustomDropdown from '../common/CustomDropdown';
 import {
     applySchemaBranchSelections,
+    readSchemaAllOfFocus,
     readSchemaBranchSelections,
     SCHEMA_BRANCH_SELECTION_EVENT,
+    writeSchemaAllOfFocus,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
-import {collectSchemaOneOfChoices} from '../../utils/schema/branchChoices';
+import {collectSchemaBranchChoices} from '../../utils/schema/branchChoices';
 import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
 import {mockMarkersToLineMarkers} from '../../utils/lineMarkers';
 import {inlineMenusForCode} from './inlineMenus';
+import {dimmedLinesForObjectCode} from '../../utils/schema/exampleEncodings';
+import {propertyNamesOfSchema} from '../../utils/schema/branchSelections';
+import SchemaOneOfMenuButton from './SchemaOneOfMenuButton';
 
 interface SchemaPropertiesTableProps {
     properties: {
@@ -167,10 +172,12 @@ export default function SchemaPropertiesTable({
     const schemaName = getSchemaName();
     const selectionKey = selectionScopeKey || inspectName || schemaName || 'schema';
     const [branchSelections, setBranchSelections] = useState(() => readSchemaBranchSelections(selectionKey));
+    const [allOfFocus, setAllOfFocus] = useState(() => readSchemaAllOfFocus(selectionKey));
     const [selectionRevision, setSelectionRevision] = useState(0);
 
     useEffect(() => {
         setBranchSelections(readSchemaBranchSelections(selectionKey));
+        setAllOfFocus(readSchemaAllOfFocus(selectionKey));
     }, [selectionKey]);
 
     useEffect(() => {
@@ -178,6 +185,7 @@ export default function SchemaPropertiesTable({
             const detail = (event as CustomEvent<{key?: string}>).detail;
             if (detail?.key !== selectionKey) return;
             setBranchSelections(readSchemaBranchSelections(selectionKey));
+            setAllOfFocus(readSchemaAllOfFocus(selectionKey));
             setSelectionRevision(current => current + 1);
         };
         window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
@@ -187,6 +195,12 @@ export default function SchemaPropertiesTable({
     const updateBranchSelection = (path: string, index: number) => {
         const next = writeSchemaBranchSelection(selectionKey, path, index);
         setBranchSelections(next);
+        setSelectionRevision(current => current + 1);
+    };
+
+    const updateAllOfFocus = (path: string, index: number | null) => {
+        const next = writeSchemaAllOfFocus(selectionKey, path, index);
+        setAllOfFocus(next);
         setSelectionRevision(current => current + 1);
     };
 
@@ -364,13 +378,15 @@ export default function SchemaPropertiesTable({
     const combinatorTitle = (kind: 'oneOf' | 'anyOf' | 'allOf', count: number) => {
         const meta = COMBINATOR_META[kind];
         const title = kind === 'oneOf' ? 'ONE OF' : kind === 'anyOf' ? 'ANY OF' : 'ALL OF';
+        const hint = kind === 'allOf' ? 'focus' : kind === 'oneOf' ? 'pick one' : '';
         return (
             <div
                 className="inline-flex items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider"
                 style={{color: meta.color}}
             >
                 <i className={`${meta.icon} text-[11px]`} />
-                {title} ({count}):
+                {title} ({count})
+                {hint ? <span className="font-semibold normal-case tracking-normal opacity-70">· {hint}</span> : null}:
             </div>
         );
     };
@@ -382,19 +398,55 @@ export default function SchemaPropertiesTable({
         controlScope: 'table' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
         if (!Array.isArray(branches) || branches.length === 0) return null;
-        const selected = kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
+        const selectedOneOf =
+            kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
+        const focusAllOf = kind === 'allOf' ? allOfFocus[name] : undefined;
+        const combinedActive = kind === 'allOf' && (focusAllOf === null || focusAllOf === undefined);
         return (
             <div className="flex flex-col gap-1.5">
                 {combinatorTitle(kind, branches.length)}
                 <div className="flex flex-col gap-1.5">
+                    {kind === 'allOf' && (
+                        <button
+                            type="button"
+                            onClick={() => updateAllOfFocus(name, null)}
+                            className={clsx(
+                                'flex items-start gap-2 text-left text-[10px] leading-relaxed cursor-pointer rounded-md px-0.5 py-0.5 transition-colors',
+                                combinedActive
+                                    ? 'text-[var(--primary)]'
+                                    : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                            )}
+                        >
+                            <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                <i
+                                    className={clsx(
+                                        combinedActive
+                                            ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
+                                            : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
+                                    )}
+                                />
+                            </span>
+                            <span className="min-w-0 break-words font-semibold">Combined</span>
+                        </button>
+                    )}
                     {branches.map((sub: any, index: number) => {
                         const label = schemaVariantLabel(sub, resolveReference, getRefName, index);
-                        const active = kind === 'oneOf' ? selected === index : false;
+                        const active =
+                            kind === 'oneOf'
+                                ? selectedOneOf === index
+                                : kind === 'allOf'
+                                  ? focusAllOf === index
+                                  : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
+                        const interactive = kind === 'oneOf' || kind === 'allOf';
                         return (
                             <label
                                 key={`${name}:${kind}:${index}:${controlScope}`}
-                                className="flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)] cursor-pointer"
+                                className={clsx(
+                                    'flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]',
+                                    interactive && 'cursor-pointer',
+                                    active && 'text-[var(--primary)]',
+                                )}
                             >
                                 {kind === 'oneOf' ? (
                                     <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
@@ -403,6 +455,23 @@ export default function SchemaPropertiesTable({
                                             name={`oneof-${selectionKey}-${controlScope}-${name}`}
                                             checked={active}
                                             onChange={() => updateBranchSelection(name, index)}
+                                            className="absolute inset-0 m-0 cursor-pointer opacity-0"
+                                        />
+                                        <i
+                                            className={clsx(
+                                                active
+                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
+                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
+                                            )}
+                                        />
+                                    </span>
+                                ) : kind === 'allOf' ? (
+                                    <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                        <input
+                                            type="radio"
+                                            name={`allof-${selectionKey}-${controlScope}-${name}`}
+                                            checked={active}
+                                            onChange={() => updateAllOfFocus(name, index)}
                                             className="absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
                                         <i
@@ -1091,9 +1160,16 @@ export default function SchemaPropertiesTable({
         detailsModalName && activeRawProperty ? buildFieldSpecificationsRows(detailsModalName, activeRawProperty) : [];
     const activeValidationRows =
         detailsModalName && activeRawProperty ? buildValidationRows(detailsModalName, activeRawProperty) : [];
-    const activeOneOfChoices = useMemo(() => {
-        return activeRawProperty ? collectSchemaOneOfChoices(activeRawProperty, resolveReference, getRefName) : [];
-    }, [activeRawProperty, resolveReference, getRefName, selectionRevision]);
+    const activeBranchChoices = useMemo(() => {
+        // Collect under the property's real path so selections share the same
+        // key space as the parent table / code viewer (`payment`, not ``).
+        if (!detailsModalName || !activeRawProperty) return [];
+        return collectSchemaBranchChoices(
+            {type: 'object', properties: {[detailsModalName]: activeRawProperty}},
+            resolveReference,
+            getRefName,
+        );
+    }, [detailsModalName, activeRawProperty, resolveReference, getRefName, selectionRevision]);
     const activeMockExample = useMemo(() => {
         if (!detailsModalName || !activeDetailsProperty) return null;
         return getMockSnippetWithMarkers(activeDetailsProperty, null);
@@ -1128,8 +1204,19 @@ export default function SchemaPropertiesTable({
 
     const inlineMockMenus = useMemo(() => {
         if (!activeMockExample) return {code: '', menus: []};
-        return inlineMenusForCode(activeMockExample.code, selectionKey, activeOneOfChoices);
-    }, [activeMockExample, selectionKey, activeOneOfChoices]);
+        return inlineMenusForCode(activeMockExample.code, selectionKey, activeBranchChoices);
+    }, [activeMockExample, selectionKey, activeBranchChoices]);
+
+    const detailDimmedLines = useMemo(() => {
+        if (!detailsModalName || !activeRawProperty) return [] as number[];
+        const focus = allOfFocus[detailsModalName];
+        if (focus === null || focus === undefined) return [];
+        const resolved = resolveReference(activeRawProperty) || activeRawProperty;
+        if (!Array.isArray(resolved?.allOf) || !resolved.allOf[focus]) return [];
+        const active = propertyNamesOfSchema(resolved.allOf[focus], resolveReference);
+        if (!activeMockExample) return [];
+        return dimmedLinesForObjectCode(activeMockExample.code, active);
+    }, [detailsModalName, activeRawProperty, allOfFocus, activeMockExample, resolveReference]);
 
     return (
         <>
@@ -1377,24 +1464,11 @@ export default function SchemaPropertiesTable({
                                                 </div>
                                             )}
                                         </div>
-                                        {modalExampleTab === 'generated' && activeOneOfChoices.length > 0 && (
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                    oneOf:
-                                                </span>
-                                                <CustomDropdown
-                                                    value={String(branchSelections[detailsModalName] ?? 0)}
-                                                    onChange={val =>
-                                                        updateBranchSelection(detailsModalName, Number(val))
-                                                    }
-                                                    options={activeOneOfChoices[0].options.map(opt => ({
-                                                        value: String(opt.index),
-                                                        label: opt.label,
-                                                    }))}
-                                                    className="w-auto min-w-0 max-w-[200px]"
-                                                    ariaLabel="Select oneOf variant"
-                                                />
-                                            </div>
+                                        {modalExampleTab === 'generated' && activeBranchChoices.length > 0 && (
+                                            <SchemaOneOfMenuButton
+                                                selectionKey={selectionKey}
+                                                choices={activeBranchChoices}
+                                            />
                                         )}
                                     </div>
                                     <div className="p-3">
@@ -1403,6 +1477,7 @@ export default function SchemaPropertiesTable({
                                                 code={inlineMockMenus.code}
                                                 language="json"
                                                 maxHeight="340px"
+                                                dimmedLines={detailDimmedLines}
                                                 lineMarkers={mockMarkersToLineMarkers(activeMockExample.markers, {
                                                     onOpenSchema: schemaName => {
                                                         detailsTransition.requestClose();

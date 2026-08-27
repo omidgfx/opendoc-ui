@@ -1,6 +1,9 @@
 export type BranchSelectionMap = Record<string, number>;
+/** Field path → focused allOf part index, or null for Combined (show every part). */
+export type AllOfFocusMap = Record<string, number | null>;
 
 const schemaBranchSelections = new Map<string, BranchSelectionMap>();
+const schemaAllOfFocus = new Map<string, AllOfFocusMap>();
 export const SCHEMA_BRANCH_SELECTION_EVENT = 'opendoc:schema-branch-selection-changed';
 
 export const readSchemaBranchSelections = (key: string): BranchSelectionMap => ({
@@ -13,11 +16,115 @@ export const writeSchemaBranchSelection = (key: string, path: string, index: num
     if (typeof window !== 'undefined') {
         window.dispatchEvent(
             new CustomEvent(SCHEMA_BRANCH_SELECTION_EVENT, {
-                detail: {key, path, index, selections: next},
+                detail: {key, path, index, kind: 'oneOf', selections: next},
             }),
         );
     }
     return next;
+};
+
+export const readSchemaAllOfFocus = (key: string): AllOfFocusMap => ({
+    ...(schemaAllOfFocus.get(key) || {}),
+});
+
+/**
+ * Focus one allOf part under `path` (dim sibling fields), or pass `null` for
+ * Combined. Index `-1` is accepted as Combined so menus can use a single
+ * numeric activeIndex like oneOf.
+ */
+export const writeSchemaAllOfFocus = (key: string, path: string, index: number | null): AllOfFocusMap => {
+    const normalized = index === null || index < 0 ? null : index;
+    const next = {...(schemaAllOfFocus.get(key) || {}), [path]: normalized};
+    schemaAllOfFocus.set(key, next);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+            new CustomEvent(SCHEMA_BRANCH_SELECTION_EVENT, {
+                detail: {key, path, index: normalized, kind: 'allOf', allOfFocus: next},
+            }),
+        );
+    }
+    return next;
+};
+
+/**
+ * Property names owned by the focused allOf part at `path` (resolved against
+ * the live schema tree). Returns null when focus is Combined or the path is
+ * not an allOf field.
+ */
+export const allOfFocusPropertyNames = (
+    input: any,
+    selectionKey: string,
+    path: string,
+    resolveReference: (item: any) => any,
+): Set<string> | null => {
+    const focus = readSchemaAllOfFocus(selectionKey)[path];
+    if (focus === null || focus === undefined) return null;
+    const schemaAtPath = schemaAtBranchPath(input, path, resolveReference);
+    if (!schemaAtPath || !Array.isArray(schemaAtPath.allOf) || !schemaAtPath.allOf[focus]) return null;
+    return propertyNamesOfSchema(schemaAtPath.allOf[focus], resolveReference);
+};
+
+/** Top-level (and nested via flatten) property names contributed by a schema. */
+export const propertyNamesOfSchema = (schema: any, resolveReference: (item: any) => any): Set<string> => {
+    const names = new Set<string>();
+    const visit = (input: any, depth: number, refs: Set<string>, objects: Set<object>) => {
+        if (!input || typeof input !== 'object' || depth > 24) return;
+        let current = input;
+        if (typeof current.$ref === 'string') {
+            if (refs.has(current.$ref)) return;
+            refs = new Set(refs);
+            refs.add(current.$ref);
+            const resolved = resolveReference(current);
+            if (!resolved || resolved === current) return;
+            current = resolved;
+        }
+        if (!current || typeof current !== 'object' || objects.has(current)) return;
+        objects = new Set(objects);
+        objects.add(current);
+        if (Array.isArray(current.allOf)) current.allOf.forEach((part: any) => visit(part, depth + 1, refs, objects));
+        if (current.properties && typeof current.properties === 'object') {
+            Object.keys(current.properties).forEach(name => names.add(name));
+        }
+    };
+    visit(schema, 0, new Set(), new Set());
+    return names;
+};
+
+const schemaAtBranchPath = (input: any, path: string, resolveReference: (item: any) => any): any => {
+    if (!path) return input;
+    const segments = path.split('.').filter(Boolean);
+    let current = input;
+    for (const segment of segments) {
+        if (!current || typeof current !== 'object') return null;
+        if (typeof current.$ref === 'string') {
+            current = resolveReference(current) || current;
+        }
+        // Skip through allOf/anyOf wrappers that share this path.
+        while (current && typeof current === 'object' && !current.properties && Array.isArray(current.allOf)) {
+            // Prefer a part that holds the next segment.
+            const hit = current.allOf.find((part: any) => {
+                const resolved = resolveReference(part) || part;
+                return resolved?.properties && segment in resolved.properties;
+            });
+            current = resolveReference(hit || current.allOf[0]) || hit || current.allOf[0];
+        }
+        if (segment === '*') {
+            current = current?.items;
+            continue;
+        }
+        if (segment === 'additionalProperties') {
+            current = current?.additionalProperties;
+            continue;
+        }
+        const bare = segment.replace(/\[[^\]]+\]/g, '');
+        if (current?.properties && bare in current.properties) {
+            current = current.properties[bare];
+            continue;
+        }
+        return null;
+    }
+    if (current && typeof current.$ref === 'string') current = resolveReference(current) || current;
+    return current;
 };
 
 export const applySchemaBranchSelections = (

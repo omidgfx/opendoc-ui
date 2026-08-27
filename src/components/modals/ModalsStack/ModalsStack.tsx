@@ -36,7 +36,7 @@ import {modalRepresentationOf} from '../../../utils/storage/preferences';
 import CombinatorLabel from '../../common/CombinatorLabel';
 import {COMBINATOR_META, schemaDeclaresNothing} from '../../../utils/schema/combinators';
 import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
-import {collectSchemaOneOfChoices} from '../../../utils/schema/branchChoices';
+import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
 import {inlineMenusForCode} from '../../schema/inlineMenus';
 import {formatExample} from '../../../utils/endpoint/exampleFormatting';
 
@@ -435,7 +435,7 @@ export default function ModalsStack({
         : null;
     const modalOneOfChoices = useMemo(() => {
         return activeSchemaObj?.schema
-            ? collectSchemaOneOfChoices(activeSchemaObj.schema, resolveReference, getRefName)
+            ? collectSchemaBranchChoices(activeSchemaObj.schema, resolveReference, getRefName)
             : [];
         // resolveReference is recreated each render; schema + branch revision drive work.
         // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -12,7 +12,7 @@ import {
     readSchemaBranchSelections,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
-import {collectSchemaOneOfChoices} from '../../utils/schema/branchChoices';
+import {collectSchemaBranchChoices} from '../../utils/schema/branchChoices';
 import {inlineMenusForCode} from '../schema/inlineMenus';
 
 interface CodeGeneratorModalProps {
@@ -77,7 +77,7 @@ export default function CodeGeneratorModal({
     );
     const branchChoices = useMemo(
         () =>
-            rawRequestBodySchema ? collectSchemaOneOfChoices(rawRequestBodySchema, resolveReference, getRefName) : [],
+            rawRequestBodySchema ? collectSchemaBranchChoices(rawRequestBodySchema, resolveReference, getRefName) : [],
         [rawRequestBodySchema, spec],
     );
 
