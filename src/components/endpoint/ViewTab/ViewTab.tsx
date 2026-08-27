@@ -859,108 +859,112 @@ export default function ViewTab({
         showLocation: boolean,
         group?: ReturnType<typeof parameterGroupMetaOf>,
     ) => (
-        <div key={title} className="@container space-y-3 min-w-0">
-            <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
-            </h2>
-            <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
-                {/* A table needs room; below that the same rows read as cards. */}
-                <CardOrTable
-                    preferCards={cardParameterTables}
-                    maxWidth={CARD_LAYOUT_WIDTH}
-                    cards={() => (
-                        <div className="space-y-2 p-2">
-                            {params.map((param, index) => renderParameterCard(param, index, showLocation))}
-                        </div>
-                    )}
-                    table={() => (
-                        <div className="overflow-x-auto scrollbar-thin">
-                            <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
-                                <thead>
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                            Parameter Name
-                                        </th>
-                                        {showLocation && (
+        <DevTooltip name={`ViewTab.parameterTable[${title}]`} className="min-w-0">
+            <div key={title} className="@container space-y-3 min-w-0">
+                <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
+                </h2>
+                <div className="border rounded-2xl overflow-hidden animate-in fade-in border-[var(--border)] bg-[var(--surface)] min-w-0">
+                    {/* A table needs room; below that the same rows read as cards. */}
+                    <CardOrTable
+                        preferCards={cardParameterTables}
+                        maxWidth={CARD_LAYOUT_WIDTH}
+                        cards={() => (
+                            <div className="space-y-2 p-2">
+                                {params.map((param, index) => renderParameterCard(param, index, showLocation))}
+                            </div>
+                        )}
+                        table={() => (
+                            <div className="overflow-x-auto scrollbar-thin">
+                                <table className="w-full text-left border-collapse" style={{minWidth: 560}}>
+                                    <thead>
+                                        <tr>
                                             <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                                Location
+                                                Parameter Name
                                             </th>
-                                        )}
-                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                            Schema / Pattern
-                                        </th>
-                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                            Example
-                                        </th>
-                                        <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
-                                            Required
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {params.map((param, idx) => {
-                                        return (
-                                            <tr
-                                                key={idx}
-                                                className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
-                                            >
-                                                <td className="px-4 py-3 text-xs align-top">
-                                                    <div className="flex items-start flex-wrap gap-1">
-                                                        <span className="font-mono font-bold text-[var(--text-heading)]">
-                                                            {param.name}
-                                                        </span>
+                                            {showLocation && (
+                                                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                                    Location
+                                                </th>
+                                            )}
+                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                                Schema / Pattern
+                                            </th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                                Example
+                                            </th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-[var(--text-heading)] border-b border-[var(--border)]">
+                                                Required
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {params.map((param, idx) => {
+                                            return (
+                                                <tr
+                                                    key={idx}
+                                                    className="hover:bg-[var(--surface-hover)] transition-colors border-b border-[var(--border)]"
+                                                >
+                                                    <td className="px-4 py-3 text-xs align-top">
+                                                        <div className="flex items-start flex-wrap gap-1">
+                                                            <span className="font-mono font-bold text-[var(--text-heading)]">
+                                                                {param.name}
+                                                            </span>
+                                                            {param.description &&
+                                                                usesDescriptionTooltip(param.description) && (
+                                                                    <DescriptionTip
+                                                                        fieldLabel={param.name}
+                                                                        documents={[{text: param.description}]}
+                                                                    />
+                                                                )}
+                                                        </div>
                                                         {param.description &&
-                                                            usesDescriptionTooltip(param.description) && (
-                                                                <DescriptionTip
-                                                                    fieldLabel={param.name}
-                                                                    documents={[{text: param.description}]}
-                                                                />
+                                                            !usesDescriptionTooltip(param.description) && (
+                                                                <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
+                                                                    {param.description}
+                                                                </p>
                                                             )}
-                                                    </div>
-                                                    {param.description &&
-                                                        !usesDescriptionTooltip(param.description) && (
-                                                            <p className="text-[10px] mt-0.5 leading-normal max-w-md break-words text-[var(--text-muted)]">
-                                                                {param.description}
-                                                            </p>
-                                                        )}
-                                                </td>
-                                                {showLocation && (
-                                                    <td className="px-4 py-3 text-xs select-none">
-                                                        {(() => {
-                                                            const paramGroup = parameterGroupMetaOf(param);
-                                                            return paramGroup ? (
-                                                                <ParameterLocationTag group={paramGroup} />
-                                                            ) : (
-                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
-                                                                    {param.in}
-                                                                </span>
-                                                            );
-                                                        })()}
                                                     </td>
-                                                )}
-                                                <td className="px-4 py-3 text-xs min-w-[240px]">
-                                                    {renderParameterSchemaCell(param)}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs">{renderParameterExample(param)}</td>
-                                                <td className="px-4 py-3 text-xs select-none">
-                                                    {param.required ? (
-                                                        <span className="text-[var(--method-delete)] font-bold text-xs">
-                                                            Yes
-                                                        </span>
-                                                    ) : (
-                                                        <span>No</span>
+                                                    {showLocation && (
+                                                        <td className="px-4 py-3 text-xs select-none">
+                                                            {(() => {
+                                                                const paramGroup = parameterGroupMetaOf(param);
+                                                                return paramGroup ? (
+                                                                    <ParameterLocationTag group={paramGroup} />
+                                                                ) : (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border uppercase bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)]">
+                                                                        {param.in}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </td>
                                                     )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                />
+                                                    <td className="px-4 py-3 text-xs min-w-[240px]">
+                                                        {renderParameterSchemaCell(param)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs">
+                                                        {renderParameterExample(param)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs select-none">
+                                                        {param.required ? (
+                                                            <span className="text-[var(--method-delete)] font-bold text-xs">
+                                                                Yes
+                                                            </span>
+                                                        ) : (
+                                                            <span>No</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    />
+                </div>
             </div>
-        </div>
+        </DevTooltip>
     );
     const parameterTables = separatedParameterTables
         ? parameterGroups.map(group => renderParameterTable(group.title, group.parameters, false, group))
@@ -973,838 +977,1070 @@ export default function ViewTab({
         ? `${expandServerUrl(selectedServer, serverVariables).replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
         : path;
     return (
-        <div
-            ref={scrollContainerRef}
-            data-endpoint-docs-scroll
-            className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
-            style={{maxWidth: '100%'}}
-        >
-            <div className="@container p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
-                        <MethodBadge method={method} size="md" className="rounded-full px-3 py-1 shrink-0 w-16" />
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <ScrollableRow className="font-mono text-sm font-bold tracking-tight text-[var(--text-heading)]">
-                                {path}
-                            </ScrollableRow>
-                            <Tip content="Copy endpoint path">
-                                <button
-                                    aria-label="Copy endpoint path"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(path);
-                                        setCopiedPath(true);
-                                        setTimeout(() => setCopiedPath(false), 2000);
-                                    }}
-                                    className={clsx(
-                                        'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
-                                        copiedPath ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
-                                    )}
-                                >
-                                    {copiedPath ? (
-                                        <i className="ph ph-check text-[var(--method-get)] text-[11px]"></i>
-                                    ) : (
-                                        <i className="ph ph-copy text-[11px]"></i>
-                                    )}
-                                </button>
-                            </Tip>
-                            <Tip content="Copy full URL from selected server">
-                                <button
-                                    aria-label="Copy full endpoint URL"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(fullEndpointUrl);
-                                        setCopiedFullUrl(true);
-                                        setTimeout(() => setCopiedFullUrl(false), 2000);
-                                    }}
-                                    className={clsx(
-                                        'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
-                                        copiedFullUrl ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
-                                    )}
-                                >
-                                    {copiedFullUrl ? (
-                                        <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
-                                    ) : (
-                                        <i className="ph ph-link-simple text-[12px]" />
-                                    )}
-                                </button>
-                            </Tip>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {operation.deprecated && (
-                            <span className="inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border bg-[var(--method-put)]/10 border-[var(--method-put)]/20 text-[var(--method-put)] select-none">
-                                <i className="ph ph-warning-circle text-[16px]"></i> Deprecated
-                            </span>
-                        )}
-                        {isProtected && (
-                            <span
-                                className={clsx(
-                                    'inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border select-none',
-                                    isAuthorized
-                                        ? 'bg-[var(--method-get)]/10 border-[var(--method-get)]/25 text-[var(--method-get)]'
-                                        : 'bg-[var(--method-delete)]/10 border-[var(--method-delete)]/20 text-[var(--method-delete)] animate-pulse',
-                                )}
-                            >
-                                <i
-                                    className={`ph-fill ${isAuthorized ? 'ph-lock-key-open' : 'ph-lock-key'} text-[16px]`}
-                                ></i>
-                                {isAuthorized ? 'Authorized' : 'Protected'}
-                            </span>
-                        )}
-                        {/* Narrow panes fold the route actions into one menu at
-                            the end of the heading instead of crowding the route. */}
-                        <OverflowActionsMenu
-                            className="@xl:hidden"
-                            ariaLabel="Endpoint actions"
-                            actions={[
-                                {
-                                    id: 'copy-path',
-                                    label: 'Copy endpoint path',
-                                    doneLabel: 'Copied',
-                                    icon: 'ph ph-copy',
-                                    onSelect: () => navigator.clipboard.writeText(path),
-                                },
-                                {
-                                    id: 'copy-url',
-                                    label: 'Copy full URL',
-                                    doneLabel: 'Copied',
-                                    icon: 'ph ph-link-simple',
-                                    onSelect: () => navigator.clipboard.writeText(fullEndpointUrl),
-                                },
-                                {
-                                    id: 'share',
-                                    label: 'Share this endpoint',
-                                    icon: 'ph ph-share-network',
-                                    onSelect: handleShareEndpoint,
-                                },
-                            ]}
-                        />
-                        <Tip content="Share this endpoint">
-                            <button
-                                onClick={handleShareEndpoint}
-                                aria-label="Share this endpoint"
-                                className="w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
-                            >
-                                <i className="ph ph-share-network text-[13px]"></i>
-                            </button>
-                        </Tip>
-                    </div>
-                </div>
-
-                <div className="border-t border-[var(--border)]"></div>
-
-                <div className="min-w-0">
-                    <h1 className="text-xl font-extrabold tracking-tight font-sans text-[var(--text-heading)] break-words">
-                        {operation.summary || 'Endpoint Documentation'}
-                    </h1>
-                    {operation.description && (
-                        <div className="mt-2 text-sm max-w-none text-inherit leading-relaxed animate-in fade-in text-[var(--text)]">
-                            <Markdown text={operation.description} />
-                        </div>
-                    )}
-                    {operation.externalDocs && operation.externalDocs.url && (
-                        <div className="mt-3">
-                            <a
-                                href={operation.externalDocs.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--primary-contrast)] transition-all hover:opacity-90 cursor-pointer shadow-sm select-none bg-[var(--primary)]"
-                            >
-                                <i className="ph ph-arrow-square-out text-[10px]"></i>
-                                <span>{operation.externalDocs.description || 'View Operation Reference'}</span>
-                            </a>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="w-full space-y-8 mx-auto min-w-0">
-                {parameterTables}
-
-                {selectedRequestBodyContent && (
-                    <DevTooltip name="ViewTab.requestBodyContext" className="min-w-0">
-                        <div className="space-y-3 font-sans min-w-0">
-                            <div className="flex flex-nowrap items-center justify-between gap-3">
-                                <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                    Request Body Context
-                                </h2>
-                                {/* Fixed slot: a long media type used to widen the
-                                control until it wrapped onto its own line. */}
-                                <DevTooltip name="ViewTab.requestBodyEncodingType">
-                                    <div className="flex w-[168px] shrink-0 items-center justify-end gap-2 sm:w-[220px]">
-                                        <span className="hidden shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] sm:inline">
-                                            Encoding type
-                                        </span>
-                                        <CustomDropdown
-                                            value={selectedRequestBodyContentType}
-                                            onChange={contentType => {
-                                                setRequestBodyVariant(0);
-                                                setRequestAnyOfSelected([]);
-                                                setRequestAllOfFocusIndex(null);
-                                                setRequestBodyContentType(contentType);
-                                            }}
-                                            options={requestBodyContentEntries.map(([contentType]) => ({
-                                                value: contentType,
-                                                label: contentType,
-                                            }))}
-                                            icon="ph ph-code-block text-[13px]"
-                                            className="w-full min-w-0"
-                                        />
-                                    </div>
-                                </DevTooltip>
-                            </div>
-                            <DevTooltip name="ViewTab.requestBodyCard" className="min-w-0">
-                                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 animate-in fade-in min-w-0">
-                                    {resolvedRequestBody.description && (
-                                        <p className="mb-4 text-xs font-semibold leading-relaxed text-[var(--text)]">
-                                            {resolvedRequestBody.description}
-                                        </p>
-                                    )}
-                                    <div key={selectedRequestBodyContentType} className="space-y-4 animate-fade-in">
-                                        <SchemaViewer
-                                            spec={spec}
-                                            matrixSchema={requestBodyMatrixSchema}
-                                            effectiveSchema={requestBodyEffectiveSchema}
-                                            contentSchema={
-                                                // Prefer the unresolved content schema so the
-                                                // branch rail still sees oneOf/anyOf/allOf.
-                                                selectedRequestBodyContent?.schema || requestBodySource.schema
-                                            }
-                                            mediaType={selectedRequestBodyContentType}
-                                            selectionScopeKey={requestBodySelectionScopeKey}
-                                            activeTab={requestActiveTab}
-                                            onTabChange={setRequestActiveTab}
-                                            onPersistRepresentation={mode =>
-                                                setEndpointRepresentation(representationKey, mode)
-                                            }
-                                            specExamples={requestSpecExamples}
-                                            activeSpecExampleKey={requestExampleKey}
-                                            onSpecExampleKeyChange={setRequestExampleKey}
-                                            branchIndex={requestBodyBranchIndex}
-                                            onBranchIndexChange={setRequestBodyVariant}
-                                            anyOfSelectedIndices={requestAnyOfSelected}
-                                            onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
-                                            allOfFocusIndex={requestAllOfFocusIndex}
-                                            onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
-                                            inspectName={
-                                                requestBodyMatrixSchema?.$ref
-                                                    ? getRefName(requestBodyMatrixSchema.$ref)
-                                                    : requestBodyMatrixSchema?.title || null
-                                            }
-                                            onOpenSchema={onOpenSchemaModal}
-                                            onTestPattern={setPatternToTest}
-                                            shapeInfo={requestBodyShape}
-                                            showSchemaWide={true}
-                                            headerActions={renderViewSchemaButton(
-                                                schemaModalNameOf(
-                                                    requestBodyMatrixSchema,
-                                                    schemaModalNameOf(selectedRequestBodyContent?.schema),
-                                                ),
-                                            )}
-                                            schemaFooter={
-                                                requestBodyFormSnippet ? (
-                                                    <div className="border-t border-[var(--border)] pt-2">
-                                                        <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                            <i className={`${requestBodyShape.icon} text-[12px]`} />
-                                                            Submitted shape
-                                                        </h4>
-                                                        <p className="mb-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                                            {requestBodyShape.hint}
-                                                        </p>
-                                                        <CodeViewer
-                                                            code={requestBodyFormSnippet}
-                                                            language={
-                                                                requestBodyShape.kind === 'form' ? 'plaintext' : 'http'
-                                                            }
-                                                            maxHeight="260px"
-                                                        />
-                                                    </div>
-                                                ) : null
-                                            }
-                                        />
+        <DevTooltip name="ViewTab.root" className="h-full min-w-0">
+            <div
+                ref={scrollContainerRef}
+                data-endpoint-docs-scroll
+                className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
+                style={{maxWidth: '100%'}}
+            >
+                <DevTooltip name="ViewTab.endpointHeader">
+                    <div className="@container p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <DevTooltip name="ViewTab.endpointPathRow" className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
+                                    <MethodBadge
+                                        method={method}
+                                        size="md"
+                                        className="rounded-full px-3 py-1 shrink-0 w-16"
+                                    />
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                        <ScrollableRow className="font-mono text-sm font-bold tracking-tight text-[var(--text-heading)]">
+                                            {path}
+                                        </ScrollableRow>
+                                        <Tip content="Copy endpoint path">
+                                            <button
+                                                aria-label="Copy endpoint path"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(path);
+                                                    setCopiedPath(true);
+                                                    setTimeout(() => setCopiedPath(false), 2000);
+                                                }}
+                                                className={clsx(
+                                                    'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
+                                                    copiedPath
+                                                        ? 'text-[var(--method-get)]'
+                                                        : 'text-[var(--text-muted)]',
+                                                )}
+                                            >
+                                                {copiedPath ? (
+                                                    <i className="ph ph-check text-[var(--method-get)] text-[11px]"></i>
+                                                ) : (
+                                                    <i className="ph ph-copy text-[11px]"></i>
+                                                )}
+                                            </button>
+                                        </Tip>
+                                        <Tip content="Copy full URL from selected server">
+                                            <button
+                                                aria-label="Copy full endpoint URL"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(fullEndpointUrl);
+                                                    setCopiedFullUrl(true);
+                                                    setTimeout(() => setCopiedFullUrl(false), 2000);
+                                                }}
+                                                className={clsx(
+                                                    'w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none shrink-0',
+                                                    copiedFullUrl
+                                                        ? 'text-[var(--method-get)]'
+                                                        : 'text-[var(--text-muted)]',
+                                                )}
+                                            >
+                                                {copiedFullUrl ? (
+                                                    <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
+                                                ) : (
+                                                    <i className="ph ph-link-simple text-[12px]" />
+                                                )}
+                                            </button>
+                                        </Tip>
                                     </div>
                                 </div>
                             </DevTooltip>
-                        </div>
-                    </DevTooltip>
-                )}
-
-                <div className="space-y-3 animate-in fade-in min-w-0">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                        Response Matrix
-                    </h4>
-                    {/* The rail needs a column of its own; a phone gets the same
-                        navigator as a pill above the matrix and a bottom sheet. */}
-                    {isMobile && (
-                        <ResponseCodeSheet
-                            responses={operation.responses}
-                            activeCode={visibleResponseCode || navigatorActiveCode}
-                            expandedCodes={expandedResponseCodes}
-                            onSelect={openAndScrollToResponse}
-                        />
-                    )}
-                    <div className={clsx('relative space-y-2', !isMobile && 'pl-16')}>
-                        {!isMobile && (
-                            <div className="absolute inset-y-0 left-0 w-16">
-                                <ResponseCodeNavigator
-                                    responses={operation.responses}
-                                    activeCode={navigatorActiveCode}
-                                    expandedCodes={expandedResponseCodes}
-                                    onSelect={openAndScrollToResponse}
-                                />
-                            </div>
-                        )}
-                        {Object.entries(operation.responses).map(([code, resp]) => {
-                            const isCollapsed = collapsedResponses[code] ?? true;
-                            const isSuccess = code === 'default' || code.startsWith('2');
-                            const activeResponseTab = responseActiveTab[code] || endpointRepresentation;
-                            const responseContentEntries = resp.content
-                                ? (Object.entries(resp.content) as [string, any][])
-                                : [];
-                            const selectedContentType =
-                                responseContentTypes[code] && resp.content?.[responseContentTypes[code]]
-                                    ? responseContentTypes[code]
-                                    : responseContentEntries[0]?.[0] || '';
-                            const selectedContentObj =
-                                selectedContentType && resp.content ? (resp.content as any)[selectedContentType] : null;
-                            const responseNamedExamples = namedMediaExamples(selectedContentObj);
-                            const responseSpecExamples =
-                                responseNamedExamples.length > 0
-                                    ? responseNamedExamples
-                                    : selectedContentObj?.example !== undefined
-                                      ? [{key: 'example', label: 'Example', value: selectedContentObj.example}]
-                                      : [];
-                            const activeResponseSpecExample =
-                                responseSpecExamples.find(
-                                    example =>
-                                        example.key === (responseExampleKeys[code] || responseSpecExamples[0]?.key),
-                                ) || responseSpecExamples[0];
-                            const setResponseTab = (tab: 'example' | 'schema' | 'enum' | 'spec-example') => {
-                                if (tab === 'enum' || tab === 'spec-example') {
-                                    setResponseActiveTab(prev => ({...prev, [code]: tab}));
-                                    return;
-                                }
-                                // Schema and example are constant views, so the
-                                // choice is a preference. Its scope decides
-                                // whether it stays on this endpoint or follows
-                                // the reader to every other one.
-                                setResponseActiveTab({});
-                                setEndpointRepresentation(representationKey, tab);
-                            };
-                            const schemaNames = getSchemaNamesFromResponse(resp);
-                            return (
-                                <div
-                                    key={code}
-                                    id={`response-${code}`}
-                                    className="rounded-xl border overflow-hidden transition-all duration-150 animate-in fade-in bg-[var(--surface)] border-[var(--border)] group/resp"
-                                >
-                                    <div
-                                        onClick={() => toggleResponse(code)}
-                                        className={clsx(
-                                            'px-2.5 sm:px-3 py-2 flex items-center justify-between cursor-pointer select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0',
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 flex-wrap">
-                                            <span
-                                                className={`font-mono text-xs font-bold px-2 py-0.5 rounded shrink-0 ${isSuccess ? 'bg-[var(--method-get)]/10 text-[var(--method-get)] border border-[var(--method-get)]/20' : 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] border border-[var(--method-delete)]/20'}`}
-                                            >
-                                                {code}
-                                            </span>
-                                            <ScrollableRow className="min-w-0 flex-1 text-xs font-semibold leading-none text-[var(--text-heading)]">
-                                                {resp.description || 'Response details'}
-                                            </ScrollableRow>
-
-                                            {!isMobile && schemaNames.length > 0 && (
-                                                <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] min-w-0 flex-wrap">
-                                                    {schemaNames.map((name, idx) => (
-                                                        <React.Fragment key={name}>
-                                                            {idx > 0 && <span className="opacity-50">|</span>}
-                                                            <span className="px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--background)] truncate max-w-[180px]">
-                                                                {humanizeSchemaName(name)}
-                                                            </span>
-                                                        </React.Fragment>
-                                                    ))}
-                                                </span>
+                            <DevTooltip name="ViewTab.endpointHeaderActions">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {operation.deprecated && (
+                                        <span className="inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border bg-[var(--method-put)]/10 border-[var(--method-put)]/20 text-[var(--method-put)] select-none">
+                                            <i className="ph ph-warning-circle text-[16px]"></i> Deprecated
+                                        </span>
+                                    )}
+                                    {isProtected && (
+                                        <span
+                                            className={clsx(
+                                                'inline-flex items-center gap-1.5 pe-2.5 ps-1.5 py-1 text-[10px] font-bold font-sans rounded-full border select-none',
+                                                isAuthorized
+                                                    ? 'bg-[var(--method-get)]/10 border-[var(--method-get)]/25 text-[var(--method-get)]'
+                                                    : 'bg-[var(--method-delete)]/10 border-[var(--method-delete)]/20 text-[var(--method-delete)] animate-pulse',
                                             )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--text-muted)] shrink-0">
-                                            <Tip content="Share link to this response">
-                                                <button
-                                                    onClick={e => handleShareResponse(code, resp, e)}
-                                                    aria-label={`Share response ${code}`}
-                                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors cursor-pointer border border-transparent hover:border-[var(--primary)]/20"
-                                                >
-                                                    <i className="ph ph-share-network text-[12px]"></i>
-                                                </button>
-                                            </Tip>
+                                        >
                                             <i
-                                                className={`ph transform transition-transform duration-100 ${isCollapsed ? 'ph-caret-down' : 'ph-caret-up'}`}
+                                                className={`ph-fill ${isAuthorized ? 'ph-lock-key-open' : 'ph-lock-key'} text-[16px]`}
                                             ></i>
-                                        </div>
+                                            {isAuthorized ? 'Authorized' : 'Protected'}
+                                        </span>
+                                    )}
+                                    {/* Narrow panes fold the route actions into one menu at
+                            the end of the heading instead of crowding the route. */}
+                                    <OverflowActionsMenu
+                                        className="@xl:hidden"
+                                        ariaLabel="Endpoint actions"
+                                        actions={[
+                                            {
+                                                id: 'copy-path',
+                                                label: 'Copy endpoint path',
+                                                doneLabel: 'Copied',
+                                                icon: 'ph ph-copy',
+                                                onSelect: () => navigator.clipboard.writeText(path),
+                                            },
+                                            {
+                                                id: 'copy-url',
+                                                label: 'Copy full URL',
+                                                doneLabel: 'Copied',
+                                                icon: 'ph ph-link-simple',
+                                                onSelect: () => navigator.clipboard.writeText(fullEndpointUrl),
+                                            },
+                                            {
+                                                id: 'share',
+                                                label: 'Share this endpoint',
+                                                icon: 'ph ph-share-network',
+                                                onSelect: handleShareEndpoint,
+                                            },
+                                        ]}
+                                    />
+                                    <Tip content="Share this endpoint">
+                                        <button
+                                            onClick={handleShareEndpoint}
+                                            aria-label="Share this endpoint"
+                                            className="w-7 h-7 rounded hidden @xl:flex items-center justify-center text-xs transition-colors cursor-pointer select-none text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10"
+                                        >
+                                            <i className="ph ph-share-network text-[13px]"></i>
+                                        </button>
+                                    </Tip>
+                                </div>
+                            </DevTooltip>
+                        </div>
+
+                        <div className="border-t border-[var(--border)]"></div>
+
+                        <DevTooltip name="ViewTab.endpointSummary" className="min-w-0">
+                            <div className="min-w-0">
+                                <h1 className="text-xl font-extrabold tracking-tight font-sans text-[var(--text-heading)] break-words">
+                                    {operation.summary || 'Endpoint Documentation'}
+                                </h1>
+                                {operation.description && (
+                                    <div className="mt-2 text-sm max-w-none text-inherit leading-relaxed animate-in fade-in text-[var(--text)]">
+                                        <Markdown text={operation.description} />
                                     </div>
+                                )}
+                                {operation.externalDocs && operation.externalDocs.url && (
+                                    <div className="mt-3">
+                                        <a
+                                            href={operation.externalDocs.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--primary-contrast)] transition-all hover:opacity-90 cursor-pointer shadow-sm select-none bg-[var(--primary)]"
+                                        >
+                                            <i className="ph ph-arrow-square-out text-[10px]"></i>
+                                            <span>
+                                                {operation.externalDocs.description || 'View Operation Reference'}
+                                            </span>
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        </DevTooltip>
+                    </div>
+                </DevTooltip>
 
-                                    {!isCollapsed && (
-                                        <div className="p-2.5 sm:p-3 border-t space-y-4 animate-in fade-in border-[var(--border)] min-w-0">
-                                            {resp.headers && (
-                                                <div>
-                                                    <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
-                                                        Response Headers
-                                                    </p>
-                                                    <div className="border rounded-lg overflow-hidden border-[var(--border)]">
-                                                        {/* Cards when the pane is too narrow for two columns. */}
-                                                        <CardOrTable
-                                                            preferCards={cardParameterTables}
-                                                            maxWidth={COMPACT_CARD_LAYOUT_WIDTH}
-                                                            cards={() => (
-                                                                <div className="space-y-2 p-2">
-                                                                    {Object.entries(resp.headers).map(
-                                                                        ([hName, hObj]: any) => (
-                                                                            <DataCard
-                                                                                key={hName}
-                                                                                title={
-                                                                                    <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
-                                                                                        {hName}
-                                                                                    </span>
-                                                                                }
-                                                                                subtitle={hObj.description}
-                                                                                facts={[
-                                                                                    {
-                                                                                        label: 'Example',
-                                                                                        value: hObj.schema?.example ? (
-                                                                                            <code className="font-mono text-[10px]">
-                                                                                                {String(
-                                                                                                    hObj.schema.example,
-                                                                                                )}
-                                                                                            </code>
-                                                                                        ) : null,
-                                                                                    },
-                                                                                ]}
-                                                                            />
-                                                                        ),
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            table={() => (
-                                                                <div className="overflow-x-auto scrollbar-thin">
-                                                                    <table
-                                                                        className="w-full text-xs text-left border-collapse"
-                                                                        style={{minWidth: 400}}
-                                                                    >
-                                                                        <thead>
-                                                                            <tr>
-                                                                                <th className="px-3 py-2 font-semibold">
-                                                                                    Header
-                                                                                </th>
-                                                                                <th className="px-3 py-2 font-semibold">
-                                                                                    Details
-                                                                                </th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {Object.entries(resp.headers).map(
-                                                                                ([hName, hObj]: any) => (
-                                                                                    <tr
-                                                                                        key={hName}
-                                                                                        className="border-b border-[var(--border)]"
-                                                                                    >
-                                                                                        <td className="px-3 py-2 font-mono font-bold whitespace-nowrap text-[var(--text-heading)]">
-                                                                                            {hName}
-                                                                                        </td>
-                                                                                        <td className="px-3 py-2 leading-relaxed text-[var(--text)]">
-                                                                                            {hObj.description}
-                                                                                            {hObj.schema?.example && (
-                                                                                                <div className="font-mono text-[9px] mt-0.5 opacity-80 overflow-x-auto whitespace-pre-wrap">
-                                                                                                    Ex:{' '}
-                                                                                                    {
-                                                                                                        hObj.schema
-                                                                                                            .example
-                                                                                                    }
-                                                                                                </div>
-                                                                                            )}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                ),
-                                                                            )}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
+                <DevTooltip name="ViewTab.contentColumn" className="min-w-0">
+                    <div className="w-full space-y-8 mx-auto min-w-0">
+                        {parameterTables ? (
+                            <DevTooltip name="ViewTab.parameterTables" className="min-w-0">
+                                {parameterTables}
+                            </DevTooltip>
+                        ) : null}
+
+                        {selectedRequestBodyContent && (
+                            <DevTooltip name="ViewTab.requestBodyContext" className="min-w-0">
+                                <div className="space-y-3 font-sans min-w-0">
+                                    <div className="flex flex-nowrap items-center justify-between gap-3">
+                                        <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            Request Body Context
+                                        </h2>
+                                        {/* Fixed slot: a long media type used to widen the
+                                control until it wrapped onto its own line. */}
+                                        <DevTooltip name="ViewTab.requestBodyEncodingType">
+                                            <div className="flex w-[168px] shrink-0 items-center justify-end gap-2 sm:w-[220px]">
+                                                <span className="hidden shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] sm:inline">
+                                                    Encoding type
+                                                </span>
+                                                <CustomDropdown
+                                                    value={selectedRequestBodyContentType}
+                                                    onChange={contentType => {
+                                                        setRequestBodyVariant(0);
+                                                        setRequestAnyOfSelected([]);
+                                                        setRequestAllOfFocusIndex(null);
+                                                        setRequestBodyContentType(contentType);
+                                                    }}
+                                                    options={requestBodyContentEntries.map(([contentType]) => ({
+                                                        value: contentType,
+                                                        label: contentType,
+                                                    }))}
+                                                    icon="ph ph-code-block text-[13px]"
+                                                    className="w-full min-w-0"
+                                                />
+                                            </div>
+                                        </DevTooltip>
+                                    </div>
+                                    <DevTooltip name="ViewTab.requestBodyCard" className="min-w-0">
+                                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 animate-in fade-in min-w-0">
+                                            {resolvedRequestBody.description && (
+                                                <p className="mb-4 text-xs font-semibold leading-relaxed text-[var(--text)]">
+                                                    {resolvedRequestBody.description}
+                                                </p>
                                             )}
-
-                                            {resp.links && Object.keys(resp.links).length > 0 && (
-                                                <ResponseLinksPanel links={resp.links as any} spec={spec} />
-                                            )}
-
-                                            {resp.content && selectedContentObj ? (
-                                                <>
-                                                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                        <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
-                                                            <button
-                                                                onClick={() => setResponseTab('example')}
-                                                                aria-pressed={activeResponseTab === 'example'}
-                                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                            >
-                                                                <span className="hidden sm:inline">
-                                                                    Generated Example
-                                                                </span>
-                                                                <span className="sm:hidden">Example</span>
-                                                            </button>
-                                                            {(() => {
-                                                                const s = resolveReference(
-                                                                    viewerExampleSchemas[code] ??
-                                                                        getDefaultViewerSchema(
-                                                                            selectedContentObj?.schema,
-                                                                        ),
-                                                                );
-                                                                const hasEnum =
-                                                                    s?.enum &&
-                                                                    Array.isArray(s.enum) &&
-                                                                    s.enum.length > 0;
-                                                                return hasEnum ? (
-                                                                    <button
-                                                                        onClick={() => setResponseTab('enum')}
-                                                                        aria-pressed={activeResponseTab === 'enum'}
-                                                                        className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'enum' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                    >
-                                                                        Enum
-                                                                    </button>
-                                                                ) : null;
-                                                            })()}
-                                                            <button
-                                                                onClick={() => setResponseTab('schema')}
-                                                                aria-pressed={activeResponseTab === 'schema'}
-                                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'schema' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                            >
-                                                                <span className="hidden sm:inline">Unified Schema</span>
-                                                                <span className="sm:hidden">Schema</span>
-                                                            </button>
-                                                            {responseSpecExamples.length > 0 && (
-                                                                <div
-                                                                    role="button"
-                                                                    tabIndex={0}
-                                                                    onClick={() => setResponseTab('spec-example')}
-                                                                    onKeyDown={event => {
-                                                                        if (
-                                                                            event.key === 'Enter' ||
-                                                                            event.key === ' '
-                                                                        ) {
-                                                                            event.preventDefault();
-                                                                            setResponseTab('spec-example');
-                                                                        }
-                                                                    }}
-                                                                    className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${activeResponseTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                >
-                                                                    <span>Example:</span>
-                                                                    {responseSpecExamples.length > 1 &&
-                                                                    activeResponseTab === 'spec-example' ? (
-                                                                        <CustomDropdown
-                                                                            value={
-                                                                                responseExampleKeys[code] ||
-                                                                                responseSpecExamples[0].key
-                                                                            }
-                                                                            onChange={value =>
-                                                                                setResponseExampleKeys(previous => ({
-                                                                                    ...previous,
-                                                                                    [code]: value,
-                                                                                }))
-                                                                            }
-                                                                            options={responseSpecExamples.map(
-                                                                                example => ({
-                                                                                    value: example.key,
-                                                                                    label: example.label,
-                                                                                }),
-                                                                            )}
-                                                                            className="w-auto min-w-0 max-w-[180px]"
-                                                                            ariaLabel={`Response ${code} examples`}
-                                                                            plainTrigger
-                                                                        />
-                                                                    ) : (
-                                                                        <span>
-                                                                            {activeResponseSpecExample?.label ||
-                                                                                'Example'}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end flex-wrap">
-                                                            {renderViewSchemaButton(
-                                                                schemaModalNameOf(
-                                                                    viewerExampleSchemas[code] ??
-                                                                        selectedContentObj?.schema,
-                                                                    viewerExampleNames[code] ||
-                                                                        schemaModalNameOf(selectedContentObj?.schema),
-                                                                ),
-                                                            )}
-                                                            {responseContentEntries.length > 1 && (
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
-                                                                        Format
-                                                                    </span>
-                                                                    <CustomDropdown
-                                                                        value={selectedContentType}
-                                                                        onChange={value => {
-                                                                            setResponseContentTypes(previous => ({
-                                                                                ...previous,
-                                                                                [code]: value,
-                                                                            }));
-                                                                            resetViewerSchema(code);
-                                                                        }}
-                                                                        options={responseContentEntries.map(
-                                                                            ([mime]) => ({
-                                                                                value: mime,
-                                                                                label: mime,
-                                                                            }),
-                                                                        )}
-                                                                        icon="ph ph-code-block text-[14px]"
-                                                                        className="w-full max-w-[200px]"
+                                            <div
+                                                key={selectedRequestBodyContentType}
+                                                className="space-y-4 animate-fade-in"
+                                            >
+                                                <SchemaViewer
+                                                    spec={spec}
+                                                    matrixSchema={requestBodyMatrixSchema}
+                                                    effectiveSchema={requestBodyEffectiveSchema}
+                                                    contentSchema={
+                                                        // Prefer the unresolved content schema so the
+                                                        // branch rail still sees oneOf/anyOf/allOf.
+                                                        selectedRequestBodyContent?.schema || requestBodySource.schema
+                                                    }
+                                                    mediaType={selectedRequestBodyContentType}
+                                                    selectionScopeKey={requestBodySelectionScopeKey}
+                                                    activeTab={requestActiveTab}
+                                                    onTabChange={setRequestActiveTab}
+                                                    onPersistRepresentation={mode =>
+                                                        setEndpointRepresentation(representationKey, mode)
+                                                    }
+                                                    specExamples={requestSpecExamples}
+                                                    activeSpecExampleKey={requestExampleKey}
+                                                    onSpecExampleKeyChange={setRequestExampleKey}
+                                                    branchIndex={requestBodyBranchIndex}
+                                                    onBranchIndexChange={setRequestBodyVariant}
+                                                    anyOfSelectedIndices={requestAnyOfSelected}
+                                                    onAnyOfSelectedIndicesChange={setRequestAnyOfSelected}
+                                                    allOfFocusIndex={requestAllOfFocusIndex}
+                                                    onAllOfFocusIndexChange={setRequestAllOfFocusIndex}
+                                                    inspectName={
+                                                        requestBodyMatrixSchema?.$ref
+                                                            ? getRefName(requestBodyMatrixSchema.$ref)
+                                                            : requestBodyMatrixSchema?.title || null
+                                                    }
+                                                    onOpenSchema={onOpenSchemaModal}
+                                                    onTestPattern={setPatternToTest}
+                                                    shapeInfo={requestBodyShape}
+                                                    showSchemaWide={true}
+                                                    headerActions={renderViewSchemaButton(
+                                                        schemaModalNameOf(
+                                                            requestBodyMatrixSchema,
+                                                            schemaModalNameOf(selectedRequestBodyContent?.schema),
+                                                        ),
+                                                    )}
+                                                    schemaFooter={
+                                                        requestBodyFormSnippet ? (
+                                                            <div className="border-t border-[var(--border)] pt-2">
+                                                                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                                    <i
+                                                                        className={`${requestBodyShape.icon} text-[12px]`}
                                                                     />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                                    Submitted shape
+                                                                </h4>
+                                                                <p className="mb-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                                                    {requestBodyShape.hint}
+                                                                </p>
+                                                                <CodeViewer
+                                                                    code={requestBodyFormSnippet}
+                                                                    language={
+                                                                        requestBodyShape.kind === 'form'
+                                                                            ? 'plaintext'
+                                                                            : 'http'
+                                                                    }
+                                                                    maxHeight="260px"
+                                                                />
+                                                            </div>
+                                                        ) : null
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                    </DevTooltip>
+                                </div>
+                            </DevTooltip>
+                        )}
 
-                                                    <div className="mt-3 min-w-0">
-                                                        {(() => {
-                                                            const cType = selectedContentType;
-                                                            const cObj = selectedContentObj;
-                                                            const activeSchema =
-                                                                viewerExampleSchemas[code] ??
-                                                                getDefaultViewerSchema(cObj.schema);
-                                                            const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
-                                                            const responseOneOfChoices = activeSchema
-                                                                ? collectSchemaOneOfChoices(
-                                                                      activeSchema,
-                                                                      resolveReference,
-                                                                      getRefName,
-                                                                  )
-                                                                : [];
-                                                            const activeSchemaWithSelections = activeSchema
-                                                                ? applySchemaBranchSelections(
-                                                                      activeSchema,
-                                                                      responseSelectionScopeKey,
-                                                                      resolveReference,
-                                                                  )
-                                                                : activeSchema;
-                                                            const resolvedSchema =
-                                                                resolveReference(activeSchemaWithSelections);
-                                                            const isEnum =
-                                                                resolvedSchema?.enum &&
-                                                                Array.isArray(resolvedSchema.enum) &&
-                                                                resolvedSchema.enum.length > 0;
-                                                            return (
-                                                                <div key={cType} className="space-y-3 min-w-0">
-                                                                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                                        <p className="text-[10px] font-mono select-none text-[var(--text-muted)] break-all">
-                                                                            Content Type: {cType}
-                                                                        </p>
-                                                                    </div>
-                                                                    {activeResponseTab === 'example' ? (
-                                                                        <div className="space-y-3 min-w-0">
-                                                                            <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                                                                <div className="mb-2 flex items-center justify-between gap-2">
-                                                                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                                                        Inspect Response Schema
-                                                                                    </h4>
-                                                                                </div>
-                                                                                <div className="flex flex-col gap-2 min-w-0">
-                                                                                    <div className="min-w-0 overflow-x-auto scrollbar-thin">
-                                                                                        {renderSchemaTypeExample(
-                                                                                            cObj.schema,
-                                                                                            code,
-                                                                                        )}
-                                                                                    </div>
-                                                                                    {activeSchemaWithSelections?.description && (
-                                                                                        <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
-                                                                                            <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
-                                                                                                Schema Description:
-                                                                                            </div>
-                                                                                            <div className="markdown-body">
-                                                                                                <Markdown
-                                                                                                    text={
-                                                                                                        activeSchemaWithSelections.description
-                                                                                                    }
-                                                                                                />
-                                                                                            </div>
+                        <DevTooltip name="ViewTab.responseMatrix" className="min-w-0">
+                            <div className="space-y-3 animate-in fade-in min-w-0">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                    Response Matrix
+                                </h4>
+                                {/* The rail needs a column of its own; a phone gets the same
+                        navigator as a pill above the matrix and a bottom sheet. */}
+                                {isMobile && (
+                                    <DevTooltip name="ViewTab.responseCodeSheet">
+                                        <ResponseCodeSheet
+                                            responses={operation.responses}
+                                            activeCode={visibleResponseCode || navigatorActiveCode}
+                                            expandedCodes={expandedResponseCodes}
+                                            onSelect={openAndScrollToResponse}
+                                        />
+                                    </DevTooltip>
+                                )}
+                                <div className={clsx('relative space-y-2', !isMobile && 'pl-16')}>
+                                    {!isMobile && (
+                                        <DevTooltip
+                                            name="ViewTab.responseCodeNavigator"
+                                            className="absolute inset-y-0 left-0 w-16"
+                                        >
+                                            <ResponseCodeNavigator
+                                                responses={operation.responses}
+                                                activeCode={navigatorActiveCode}
+                                                expandedCodes={expandedResponseCodes}
+                                                onSelect={openAndScrollToResponse}
+                                            />
+                                        </DevTooltip>
+                                    )}
+                                    {Object.entries(operation.responses).map(([code, resp]) => {
+                                        const isCollapsed = collapsedResponses[code] ?? true;
+                                        const isSuccess = code === 'default' || code.startsWith('2');
+                                        const activeResponseTab = responseActiveTab[code] || endpointRepresentation;
+                                        const responseContentEntries = resp.content
+                                            ? (Object.entries(resp.content) as [string, any][])
+                                            : [];
+                                        const selectedContentType =
+                                            responseContentTypes[code] && resp.content?.[responseContentTypes[code]]
+                                                ? responseContentTypes[code]
+                                                : responseContentEntries[0]?.[0] || '';
+                                        const selectedContentObj =
+                                            selectedContentType && resp.content
+                                                ? (resp.content as any)[selectedContentType]
+                                                : null;
+                                        const responseNamedExamples = namedMediaExamples(selectedContentObj);
+                                        const responseSpecExamples =
+                                            responseNamedExamples.length > 0
+                                                ? responseNamedExamples
+                                                : selectedContentObj?.example !== undefined
+                                                  ? [
+                                                        {
+                                                            key: 'example',
+                                                            label: 'Example',
+                                                            value: selectedContentObj.example,
+                                                        },
+                                                    ]
+                                                  : [];
+                                        const activeResponseSpecExample =
+                                            responseSpecExamples.find(
+                                                example =>
+                                                    example.key ===
+                                                    (responseExampleKeys[code] || responseSpecExamples[0]?.key),
+                                            ) || responseSpecExamples[0];
+                                        const setResponseTab = (
+                                            tab: 'example' | 'schema' | 'enum' | 'spec-example',
+                                        ) => {
+                                            if (tab === 'enum' || tab === 'spec-example') {
+                                                setResponseActiveTab(prev => ({...prev, [code]: tab}));
+                                                return;
+                                            }
+                                            // Schema and example are constant views, so the
+                                            // choice is a preference. Its scope decides
+                                            // whether it stays on this endpoint or follows
+                                            // the reader to every other one.
+                                            setResponseActiveTab({});
+                                            setEndpointRepresentation(representationKey, tab);
+                                        };
+                                        const schemaNames = getSchemaNamesFromResponse(resp);
+                                        return (
+                                            <DevTooltip
+                                                key={code}
+                                                name={`ViewTab.responseCard[${code}]`}
+                                                className="min-w-0"
+                                            >
+                                                <div
+                                                    id={`response-${code}`}
+                                                    className="rounded-xl border overflow-hidden transition-all duration-150 animate-in fade-in bg-[var(--surface)] border-[var(--border)] group/resp"
+                                                >
+                                                    <DevTooltip name={`ViewTab.responseCardHeader[${code}]`}>
+                                                        <div
+                                                            onClick={() => toggleResponse(code)}
+                                                            className={clsx(
+                                                                'px-2.5 sm:px-3 py-2 flex items-center justify-between cursor-pointer select-none hover:bg-[var(--text-muted)]/5 transition-colors gap-2 min-w-0',
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 flex-wrap">
+                                                                <span
+                                                                    className={`font-mono text-xs font-bold px-2 py-0.5 rounded shrink-0 ${isSuccess ? 'bg-[var(--method-get)]/10 text-[var(--method-get)] border border-[var(--method-get)]/20' : 'bg-[var(--method-delete)]/10 text-[var(--method-delete)] border border-[var(--method-delete)]/20'}`}
+                                                                >
+                                                                    {code}
+                                                                </span>
+                                                                <ScrollableRow className="min-w-0 flex-1 text-xs font-semibold leading-none text-[var(--text-heading)]">
+                                                                    {resp.description || 'Response details'}
+                                                                </ScrollableRow>
+
+                                                                {!isMobile && schemaNames.length > 0 && (
+                                                                    <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] min-w-0 flex-wrap">
+                                                                        {schemaNames.map((name, idx) => (
+                                                                            <React.Fragment key={name}>
+                                                                                {idx > 0 && (
+                                                                                    <span className="opacity-50">
+                                                                                        |
+                                                                                    </span>
+                                                                                )}
+                                                                                <span className="px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--background)] truncate max-w-[180px]">
+                                                                                    {humanizeSchemaName(name)}
+                                                                                </span>
+                                                                            </React.Fragment>
+                                                                        ))}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--text-muted)] shrink-0">
+                                                                <Tip content="Share link to this response">
+                                                                    <button
+                                                                        onClick={e =>
+                                                                            handleShareResponse(code, resp, e)
+                                                                        }
+                                                                        aria-label={`Share response ${code}`}
+                                                                        className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors cursor-pointer border border-transparent hover:border-[var(--primary)]/20"
+                                                                    >
+                                                                        <i className="ph ph-share-network text-[12px]"></i>
+                                                                    </button>
+                                                                </Tip>
+                                                                <i
+                                                                    className={`ph transform transition-transform duration-100 ${isCollapsed ? 'ph-caret-down' : 'ph-caret-up'}`}
+                                                                ></i>
+                                                            </div>
+                                                        </div>
+                                                    </DevTooltip>
+
+                                                    {!isCollapsed && (
+                                                        <DevTooltip
+                                                            name={`ViewTab.responseCardBody[${code}]`}
+                                                            className="min-w-0"
+                                                        >
+                                                            <div className="p-2.5 sm:p-3 border-t space-y-4 animate-in fade-in border-[var(--border)] min-w-0">
+                                                                {resp.headers && (
+                                                                    <DevTooltip
+                                                                        name={`ViewTab.responseHeaders[${code}]`}
+                                                                    >
+                                                                        <div>
+                                                                            <p className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
+                                                                                Response Headers
+                                                                            </p>
+                                                                            <div className="border rounded-lg overflow-hidden border-[var(--border)]">
+                                                                                {/* Cards when the pane is too narrow for two columns. */}
+                                                                                <CardOrTable
+                                                                                    preferCards={cardParameterTables}
+                                                                                    maxWidth={COMPACT_CARD_LAYOUT_WIDTH}
+                                                                                    cards={() => (
+                                                                                        <div className="space-y-2 p-2">
+                                                                                            {Object.entries(
+                                                                                                resp.headers,
+                                                                                            ).map(
+                                                                                                ([
+                                                                                                    hName,
+                                                                                                    hObj,
+                                                                                                ]: any) => (
+                                                                                                    <DataCard
+                                                                                                        key={hName}
+                                                                                                        title={
+                                                                                                            <span className="font-mono text-xs font-bold text-[var(--text-heading)]">
+                                                                                                                {hName}
+                                                                                                            </span>
+                                                                                                        }
+                                                                                                        subtitle={
+                                                                                                            hObj.description
+                                                                                                        }
+                                                                                                        facts={[
+                                                                                                            {
+                                                                                                                label: 'Example',
+                                                                                                                value: hObj
+                                                                                                                    .schema
+                                                                                                                    ?.example ? (
+                                                                                                                    <code className="font-mono text-[10px]">
+                                                                                                                        {String(
+                                                                                                                            hObj
+                                                                                                                                .schema
+                                                                                                                                .example,
+                                                                                                                        )}
+                                                                                                                    </code>
+                                                                                                                ) : null,
+                                                                                                            },
+                                                                                                        ]}
+                                                                                                    />
+                                                                                                ),
+                                                                                            )}
                                                                                         </div>
                                                                                     )}
-                                                                                </div>
-                                                                            </div>
-                                                                            {(() => {
-                                                                                const example =
-                                                                                    buildSchemaRepresentationSnippet(
-                                                                                        activeSchemaWithSelections,
-                                                                                        cType,
-                                                                                        'response',
-                                                                                    );
-                                                                                const inlineMenus = inlineMenusForCode(
-                                                                                    example.code,
-                                                                                    responseSelectionScopeKey,
-                                                                                    responseOneOfChoices,
-                                                                                );
-                                                                                return (
-                                                                                    <CodeViewer
-                                                                                        code={inlineMenus.code}
-                                                                                        language={getLanguageForContentType(
-                                                                                            cType,
-                                                                                        )}
-                                                                                        maxHeight="none"
-                                                                                        lineMarkers={mockMarkersToLineMarkers(
-                                                                                            example.markers,
-                                                                                            {
-                                                                                                onOpenSchema:
-                                                                                                    onOpenSchemaModal,
-                                                                                                onTestPattern:
-                                                                                                    setPatternToTest,
-                                                                                            },
-                                                                                        )}
-                                                                                        inlineMenus={inlineMenus.menus}
-                                                                                    />
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    ) : activeResponseTab === 'spec-example' ? (
-                                                                        <div className="space-y-3 min-w-0">
-                                                                            <div className="border-t border-[var(--border)] pt-2">
-                                                                                <CodeViewer
-                                                                                    code={formatExample(
-                                                                                        activeResponseSpecExample?.value,
-                                                                                        cType,
-                                                                                        activeSchemaWithSelections?.$ref
-                                                                                            ? getRefName(
-                                                                                                  activeSchemaWithSelections.$ref,
-                                                                                              )
-                                                                                            : activeSchemaWithSelections?.title ||
-                                                                                                  'response',
+                                                                                    table={() => (
+                                                                                        <div className="overflow-x-auto scrollbar-thin">
+                                                                                            <table
+                                                                                                className="w-full text-xs text-left border-collapse"
+                                                                                                style={{minWidth: 400}}
+                                                                                            >
+                                                                                                <thead>
+                                                                                                    <tr>
+                                                                                                        <th className="px-3 py-2 font-semibold">
+                                                                                                            Header
+                                                                                                        </th>
+                                                                                                        <th className="px-3 py-2 font-semibold">
+                                                                                                            Details
+                                                                                                        </th>
+                                                                                                    </tr>
+                                                                                                </thead>
+                                                                                                <tbody>
+                                                                                                    {Object.entries(
+                                                                                                        resp.headers,
+                                                                                                    ).map(
+                                                                                                        ([
+                                                                                                            hName,
+                                                                                                            hObj,
+                                                                                                        ]: any) => (
+                                                                                                            <tr
+                                                                                                                key={
+                                                                                                                    hName
+                                                                                                                }
+                                                                                                                className="border-b border-[var(--border)]"
+                                                                                                            >
+                                                                                                                <td className="px-3 py-2 font-mono font-bold whitespace-nowrap text-[var(--text-heading)]">
+                                                                                                                    {
+                                                                                                                        hName
+                                                                                                                    }
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-2 leading-relaxed text-[var(--text)]">
+                                                                                                                    {
+                                                                                                                        hObj.description
+                                                                                                                    }
+                                                                                                                    {hObj
+                                                                                                                        .schema
+                                                                                                                        ?.example && (
+                                                                                                                        <div className="font-mono text-[9px] mt-0.5 opacity-80 overflow-x-auto whitespace-pre-wrap">
+                                                                                                                            Ex:{' '}
+                                                                                                                            {
+                                                                                                                                hObj
+                                                                                                                                    .schema
+                                                                                                                                    .example
+                                                                                                                            }
+                                                                                                                        </div>
+                                                                                                                    )}
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                        ),
+                                                                                                    )}
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
                                                                                     )}
-                                                                                    language={exampleLanguageFor(cType)}
-                                                                                    maxHeight="320px"
                                                                                 />
                                                                             </div>
                                                                         </div>
-                                                                    ) : activeResponseTab === 'enum' && isEnum ? (
-                                                                        <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                                                                            {resolvedSchema.enum.map((val: any) => (
-                                                                                <span
-                                                                                    key={JSON.stringify(val)}
-                                                                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
-                                                                                >
-                                                                                    {JSON.stringify(val)}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="space-y-3 min-w-0">
-                                                                            <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                                                                <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-[var(--text-muted)]">
-                                                                                    Inspect Response Schema
-                                                                                </h4>
-                                                                                <div className="flex flex-col gap-2 min-w-0">
-                                                                                    <div className="min-w-0 overflow-x-auto scrollbar-thin">
-                                                                                        {renderSchemaTypeExample(
-                                                                                            cObj.schema,
-                                                                                            code,
+                                                                    </DevTooltip>
+                                                                )}
+
+                                                                {resp.links && Object.keys(resp.links).length > 0 && (
+                                                                    <DevTooltip name={`ViewTab.responseLinks[${code}]`}>
+                                                                        <ResponseLinksPanel
+                                                                            links={resp.links as any}
+                                                                            spec={spec}
+                                                                        />
+                                                                    </DevTooltip>
+                                                                )}
+
+                                                                {resp.content && selectedContentObj ? (
+                                                                    <DevTooltip
+                                                                        name={`ViewTab.responseContent[${code}]`}
+                                                                        className="min-w-0"
+                                                                    >
+                                                                        <>
+                                                                            <DevTooltip
+                                                                                name={`ViewTab.responseTabStrip[${code}]`}
+                                                                            >
+                                                                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                                                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
+                                                                                        <button
+                                                                                            onClick={() =>
+                                                                                                setResponseTab(
+                                                                                                    'example',
+                                                                                                )
+                                                                                            }
+                                                                                            aria-pressed={
+                                                                                                activeResponseTab ===
+                                                                                                'example'
+                                                                                            }
+                                                                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                                                                        >
+                                                                                            <span className="hidden sm:inline">
+                                                                                                Generated Example
+                                                                                            </span>
+                                                                                            <span className="sm:hidden">
+                                                                                                Example
+                                                                                            </span>
+                                                                                        </button>
+                                                                                        {(() => {
+                                                                                            const s = resolveReference(
+                                                                                                viewerExampleSchemas[
+                                                                                                    code
+                                                                                                ] ??
+                                                                                                    getDefaultViewerSchema(
+                                                                                                        selectedContentObj?.schema,
+                                                                                                    ),
+                                                                                            );
+                                                                                            const hasEnum =
+                                                                                                s?.enum &&
+                                                                                                Array.isArray(s.enum) &&
+                                                                                                s.enum.length > 0;
+                                                                                            return hasEnum ? (
+                                                                                                <button
+                                                                                                    onClick={() =>
+                                                                                                        setResponseTab(
+                                                                                                            'enum',
+                                                                                                        )
+                                                                                                    }
+                                                                                                    aria-pressed={
+                                                                                                        activeResponseTab ===
+                                                                                                        'enum'
+                                                                                                    }
+                                                                                                    className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'enum' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                                                                                >
+                                                                                                    Enum
+                                                                                                </button>
+                                                                                            ) : null;
+                                                                                        })()}
+                                                                                        <button
+                                                                                            onClick={() =>
+                                                                                                setResponseTab('schema')
+                                                                                            }
+                                                                                            aria-pressed={
+                                                                                                activeResponseTab ===
+                                                                                                'schema'
+                                                                                            }
+                                                                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'schema' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                                                                        >
+                                                                                            <span className="hidden sm:inline">
+                                                                                                Unified Schema
+                                                                                            </span>
+                                                                                            <span className="sm:hidden">
+                                                                                                Schema
+                                                                                            </span>
+                                                                                        </button>
+                                                                                        {responseSpecExamples.length >
+                                                                                            0 && (
+                                                                                            <div
+                                                                                                role="button"
+                                                                                                tabIndex={0}
+                                                                                                onClick={() =>
+                                                                                                    setResponseTab(
+                                                                                                        'spec-example',
+                                                                                                    )
+                                                                                                }
+                                                                                                onKeyDown={event => {
+                                                                                                    if (
+                                                                                                        event.key ===
+                                                                                                            'Enter' ||
+                                                                                                        event.key ===
+                                                                                                            ' '
+                                                                                                    ) {
+                                                                                                        event.preventDefault();
+                                                                                                        setResponseTab(
+                                                                                                            'spec-example',
+                                                                                                        );
+                                                                                                    }
+                                                                                                }}
+                                                                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${activeResponseTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
+                                                                                            >
+                                                                                                <span>Example:</span>
+                                                                                                {responseSpecExamples.length >
+                                                                                                    1 &&
+                                                                                                activeResponseTab ===
+                                                                                                    'spec-example' ? (
+                                                                                                    <CustomDropdown
+                                                                                                        value={
+                                                                                                            responseExampleKeys[
+                                                                                                                code
+                                                                                                            ] ||
+                                                                                                            responseSpecExamples[0]
+                                                                                                                .key
+                                                                                                        }
+                                                                                                        onChange={value =>
+                                                                                                            setResponseExampleKeys(
+                                                                                                                previous => ({
+                                                                                                                    ...previous,
+                                                                                                                    [code]: value,
+                                                                                                                }),
+                                                                                                            )
+                                                                                                        }
+                                                                                                        options={responseSpecExamples.map(
+                                                                                                            example => ({
+                                                                                                                value: example.key,
+                                                                                                                label: example.label,
+                                                                                                            }),
+                                                                                                        )}
+                                                                                                        className="w-auto min-w-0 max-w-[180px]"
+                                                                                                        ariaLabel={`Response ${code} examples`}
+                                                                                                        plainTrigger
+                                                                                                    />
+                                                                                                ) : (
+                                                                                                    <span>
+                                                                                                        {activeResponseSpecExample?.label ||
+                                                                                                            'Example'}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
                                                                                         )}
                                                                                     </div>
-                                                                                    {activeSchemaWithSelections?.description && (
-                                                                                        <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
-                                                                                            <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
-                                                                                                Schema Description:
-                                                                                            </div>
-                                                                                            <div className="markdown-body">
-                                                                                                <Markdown
-                                                                                                    text={
-                                                                                                        activeSchemaWithSelections.description
+                                                                                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end flex-wrap">
+                                                                                        {renderViewSchemaButton(
+                                                                                            schemaModalNameOf(
+                                                                                                viewerExampleSchemas[
+                                                                                                    code
+                                                                                                ] ??
+                                                                                                    selectedContentObj?.schema,
+                                                                                                viewerExampleNames[
+                                                                                                    code
+                                                                                                ] ||
+                                                                                                    schemaModalNameOf(
+                                                                                                        selectedContentObj?.schema,
+                                                                                                    ),
+                                                                                            ),
+                                                                                        )}
+                                                                                        {responseContentEntries.length >
+                                                                                            1 && (
+                                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                                <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
+                                                                                                    Format
+                                                                                                </span>
+                                                                                                <CustomDropdown
+                                                                                                    value={
+                                                                                                        selectedContentType
                                                                                                     }
+                                                                                                    onChange={value => {
+                                                                                                        setResponseContentTypes(
+                                                                                                            previous => ({
+                                                                                                                ...previous,
+                                                                                                                [code]: value,
+                                                                                                            }),
+                                                                                                        );
+                                                                                                        resetViewerSchema(
+                                                                                                            code,
+                                                                                                        );
+                                                                                                    }}
+                                                                                                    options={responseContentEntries.map(
+                                                                                                        ([mime]) => ({
+                                                                                                            value: mime,
+                                                                                                            label: mime,
+                                                                                                        }),
+                                                                                                    )}
+                                                                                                    icon="ph ph-code-block text-[14px]"
+                                                                                                    className="w-full max-w-[200px]"
                                                                                                 />
                                                                                             </div>
-                                                                                        </div>
-                                                                                    )}
+                                                                                        )}
+                                                                                    </div>
                                                                                 </div>
-                                                                            </div>
-                                                                            {renderSchemaPropertiesTable(
-                                                                                activeSchema,
-                                                                                viewerExampleNames[code] ||
-                                                                                    (cObj.schema?.$ref
-                                                                                        ? getRefName(cObj.schema.$ref)
-                                                                                        : cObj.schema?.title || null),
-                                                                                responseSelectionScopeKey,
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <p className="text-xs italic text-[11px] text-[var(--text-muted)]">
-                                                    Does not return structured body payload.
-                                                </p>
-                                            )}
-                                        </div>
+                                                                            </DevTooltip>
+
+                                                                            <DevTooltip
+                                                                                name={`ViewTab.responseTabPane[${code}]`}
+                                                                                className="min-w-0"
+                                                                            >
+                                                                                <div className="mt-3 min-w-0">
+                                                                                    {(() => {
+                                                                                        const cType =
+                                                                                            selectedContentType;
+                                                                                        const cObj = selectedContentObj;
+                                                                                        const activeSchema =
+                                                                                            viewerExampleSchemas[
+                                                                                                code
+                                                                                            ] ??
+                                                                                            getDefaultViewerSchema(
+                                                                                                cObj.schema,
+                                                                                            );
+                                                                                        const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
+                                                                                        const responseOneOfChoices =
+                                                                                            activeSchema
+                                                                                                ? collectSchemaOneOfChoices(
+                                                                                                      activeSchema,
+                                                                                                      resolveReference,
+                                                                                                      getRefName,
+                                                                                                  )
+                                                                                                : [];
+                                                                                        const activeSchemaWithSelections =
+                                                                                            activeSchema
+                                                                                                ? applySchemaBranchSelections(
+                                                                                                      activeSchema,
+                                                                                                      responseSelectionScopeKey,
+                                                                                                      resolveReference,
+                                                                                                  )
+                                                                                                : activeSchema;
+                                                                                        const resolvedSchema =
+                                                                                            resolveReference(
+                                                                                                activeSchemaWithSelections,
+                                                                                            );
+                                                                                        const isEnum =
+                                                                                            resolvedSchema?.enum &&
+                                                                                            Array.isArray(
+                                                                                                resolvedSchema.enum,
+                                                                                            ) &&
+                                                                                            resolvedSchema.enum.length >
+                                                                                                0;
+                                                                                        return (
+                                                                                            <div
+                                                                                                key={cType}
+                                                                                                className="space-y-3 min-w-0"
+                                                                                            >
+                                                                                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                                                    <p className="text-[10px] font-mono select-none text-[var(--text-muted)] break-all">
+                                                                                                        Content Type:{' '}
+                                                                                                        {cType}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                                {activeResponseTab ===
+                                                                                                'example' ? (
+                                                                                                    <div className="space-y-3 min-w-0">
+                                                                                                        <div className="pt-2 border-t border-[var(--border)] min-w-0">
+                                                                                                            <div className="mb-2 flex items-center justify-between gap-2">
+                                                                                                                <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                                                                                                    Inspect
+                                                                                                                    Response
+                                                                                                                    Schema
+                                                                                                                </h4>
+                                                                                                            </div>
+                                                                                                            <div className="flex flex-col gap-2 min-w-0">
+                                                                                                                <div className="min-w-0 overflow-x-auto scrollbar-thin">
+                                                                                                                    {renderSchemaTypeExample(
+                                                                                                                        cObj.schema,
+                                                                                                                        code,
+                                                                                                                    )}
+                                                                                                                </div>
+                                                                                                                {activeSchemaWithSelections?.description && (
+                                                                                                                    <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
+                                                                                                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
+                                                                                                                            Schema
+                                                                                                                            Description:
+                                                                                                                        </div>
+                                                                                                                        <div className="markdown-body">
+                                                                                                                            <Markdown
+                                                                                                                                text={
+                                                                                                                                    activeSchemaWithSelections.description
+                                                                                                                                }
+                                                                                                                            />
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        {(() => {
+                                                                                                            const example =
+                                                                                                                buildSchemaRepresentationSnippet(
+                                                                                                                    activeSchemaWithSelections,
+                                                                                                                    cType,
+                                                                                                                    'response',
+                                                                                                                );
+                                                                                                            const inlineMenus =
+                                                                                                                inlineMenusForCode(
+                                                                                                                    example.code,
+                                                                                                                    responseSelectionScopeKey,
+                                                                                                                    responseOneOfChoices,
+                                                                                                                );
+                                                                                                            return (
+                                                                                                                <CodeViewer
+                                                                                                                    code={
+                                                                                                                        inlineMenus.code
+                                                                                                                    }
+                                                                                                                    language={getLanguageForContentType(
+                                                                                                                        cType,
+                                                                                                                    )}
+                                                                                                                    maxHeight="none"
+                                                                                                                    lineMarkers={mockMarkersToLineMarkers(
+                                                                                                                        example.markers,
+                                                                                                                        {
+                                                                                                                            onOpenSchema:
+                                                                                                                                onOpenSchemaModal,
+                                                                                                                            onTestPattern:
+                                                                                                                                setPatternToTest,
+                                                                                                                        },
+                                                                                                                    )}
+                                                                                                                    inlineMenus={
+                                                                                                                        inlineMenus.menus
+                                                                                                                    }
+                                                                                                                />
+                                                                                                            );
+                                                                                                        })()}
+                                                                                                    </div>
+                                                                                                ) : activeResponseTab ===
+                                                                                                  'spec-example' ? (
+                                                                                                    <div className="space-y-3 min-w-0">
+                                                                                                        <div className="border-t border-[var(--border)] pt-2">
+                                                                                                            <CodeViewer
+                                                                                                                code={formatExample(
+                                                                                                                    activeResponseSpecExample?.value,
+                                                                                                                    cType,
+                                                                                                                    activeSchemaWithSelections?.$ref
+                                                                                                                        ? getRefName(
+                                                                                                                              activeSchemaWithSelections.$ref,
+                                                                                                                          )
+                                                                                                                        : activeSchemaWithSelections?.title ||
+                                                                                                                              'response',
+                                                                                                                )}
+                                                                                                                language={exampleLanguageFor(
+                                                                                                                    cType,
+                                                                                                                )}
+                                                                                                                maxHeight="320px"
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                ) : activeResponseTab ===
+                                                                                                      'enum' &&
+                                                                                                  isEnum ? (
+                                                                                                    <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
+                                                                                                        {resolvedSchema.enum.map(
+                                                                                                            (
+                                                                                                                val: any,
+                                                                                                            ) => (
+                                                                                                                <span
+                                                                                                                    key={JSON.stringify(
+                                                                                                                        val,
+                                                                                                                    )}
+                                                                                                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
+                                                                                                                >
+                                                                                                                    {JSON.stringify(
+                                                                                                                        val,
+                                                                                                                    )}
+                                                                                                                </span>
+                                                                                                            ),
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <div className="space-y-3 min-w-0">
+                                                                                                        <div className="pt-2 border-t border-[var(--border)] min-w-0">
+                                                                                                            <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-[var(--text-muted)]">
+                                                                                                                Inspect
+                                                                                                                Response
+                                                                                                                Schema
+                                                                                                            </h4>
+                                                                                                            <div className="flex flex-col gap-2 min-w-0">
+                                                                                                                <div className="min-w-0 overflow-x-auto scrollbar-thin">
+                                                                                                                    {renderSchemaTypeExample(
+                                                                                                                        cObj.schema,
+                                                                                                                        code,
+                                                                                                                    )}
+                                                                                                                </div>
+                                                                                                                {activeSchemaWithSelections?.description && (
+                                                                                                                    <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
+                                                                                                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
+                                                                                                                            Schema
+                                                                                                                            Description:
+                                                                                                                        </div>
+                                                                                                                        <div className="markdown-body">
+                                                                                                                            <Markdown
+                                                                                                                                text={
+                                                                                                                                    activeSchemaWithSelections.description
+                                                                                                                                }
+                                                                                                                            />
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        {renderSchemaPropertiesTable(
+                                                                                                            activeSchema,
+                                                                                                            viewerExampleNames[
+                                                                                                                code
+                                                                                                            ] ||
+                                                                                                                (cObj
+                                                                                                                    .schema
+                                                                                                                    ?.$ref
+                                                                                                                    ? getRefName(
+                                                                                                                          cObj
+                                                                                                                              .schema
+                                                                                                                              .$ref,
+                                                                                                                      )
+                                                                                                                    : cObj
+                                                                                                                          .schema
+                                                                                                                          ?.title ||
+                                                                                                                      null),
+                                                                                                            responseSelectionScopeKey,
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        );
+                                                                                    })()}
+                                                                                </div>
+                                                                            </DevTooltip>
+                                                                        </>
+                                                                    </DevTooltip>
+                                                                ) : (
+                                                                    <p className="text-xs italic text-[11px] text-[var(--text-muted)]">
+                                                                        Does not return structured body payload.
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </DevTooltip>
+                                                    )}
+                                                </div>
+                                            </DevTooltip>
+                                        );
+                                    })}
+                                    {responseScrollTailHeight > 0 && (
+                                        <div
+                                            data-response-scroll-tail
+                                            aria-hidden="true"
+                                            className="!mt-0 pointer-events-none"
+                                            style={{height: responseScrollTailHeight}}
+                                        />
                                     )}
                                 </div>
-                            );
-                        })}
-                        {responseScrollTailHeight > 0 && (
-                            <div
-                                data-response-scroll-tail
-                                aria-hidden="true"
-                                className="!mt-0 pointer-events-none"
-                                style={{height: responseScrollTailHeight}}
-                            />
+                            </div>
+                        </DevTooltip>
+
+                        {(operation as any).callbacks && Object.keys((operation as any).callbacks).length > 0 && (
+                            <DevTooltip name="ViewTab.operationCallbacks" className="min-w-0">
+                                <OperationCallbacksPanel
+                                    callbacks={(operation as any).callbacks}
+                                    spec={spec}
+                                    onOpenSchema={onOpenSchemaModal}
+                                />
+                            </DevTooltip>
                         )}
                     </div>
-                </div>
-            </div>
+                </DevTooltip>
+                {/* ViewTab.contentColumn */}
 
-            {(operation as any).callbacks && Object.keys((operation as any).callbacks).length > 0 && (
-                <OperationCallbacksPanel
-                    callbacks={(operation as any).callbacks}
-                    spec={spec}
-                    onOpenSchema={onOpenSchemaModal}
-                />
-            )}
+                <DevTooltip name="ViewTab.exampleModal">
+                    <EndpointInfoModal
+                        visible={exampleTransition.shouldRender && !!exampleModalContent}
+                        backdropClassName={exampleTransition.backdropClassName}
+                        title={exampleModalContent?.title || ''}
+                        icon="ph ph-eye"
+                        closeLabel="Close Example"
+                        onClose={exampleTransition.requestClose}
+                        zIndex="z-[3000]"
+                    >
+                        {exampleModalContent && (
+                            <CodeViewer
+                                code={exampleModalContent.content}
+                                language="json"
+                                maxHeight="none"
+                                lineMarkers={exampleModalContent.lineMarkers}
+                            />
+                        )}
+                    </EndpointInfoModal>
+                </DevTooltip>
 
-            <EndpointInfoModal
-                visible={exampleTransition.shouldRender && !!exampleModalContent}
-                backdropClassName={exampleTransition.backdropClassName}
-                title={exampleModalContent?.title || ''}
-                icon="ph ph-eye"
-                closeLabel="Close Example"
-                onClose={exampleTransition.requestClose}
-                zIndex="z-[3000]"
-            >
-                {exampleModalContent && (
-                    <CodeViewer
-                        code={exampleModalContent.content}
-                        language="json"
-                        maxHeight="none"
-                        lineMarkers={exampleModalContent.lineMarkers}
+                {patternToTest && <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)} />}
+                {serializerParameter && (
+                    <SerializerPlaygroundModal
+                        parameter={serializerParameter}
+                        onClose={() => setSerializerParameter(null)}
                     />
                 )}
-            </EndpointInfoModal>
 
-            {patternToTest && <PatternTesterModal pattern={patternToTest} onClose={() => setPatternToTest(null)} />}
-            {serializerParameter && (
-                <SerializerPlaygroundModal
-                    parameter={serializerParameter}
-                    onClose={() => setSerializerParameter(null)}
-                />
-            )}
-
-            {shareModal && (
-                <ShareModal
-                    isOpen={!!shareModal}
-                    onClose={() => setShareModal(null)}
-                    url={shareModal.url}
-                    title={shareModal.title}
-                    description={shareModal.description}
-                />
-            )}
-        </div>
+                {shareModal && (
+                    <DevTooltip name="ViewTab.shareModal">
+                        <ShareModal
+                            isOpen={!!shareModal}
+                            onClose={() => setShareModal(null)}
+                            url={shareModal.url}
+                            title={shareModal.title}
+                            description={shareModal.description}
+                        />
+                    </DevTooltip>
+                )}
+            </div>
+        </DevTooltip>
     );
 }
