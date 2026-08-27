@@ -154,11 +154,9 @@ export default function ModalsStack({
         window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
         return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
     }, []);
-    if (modals.length === 0) {
-        return null;
-    }
-    const activeIndex = modals.length - 1;
-    const activeModal = modals[activeIndex];
+    // ModalsStack stays mounted while a spec has schemas, so hooks below must
+    // run even when the stack is empty — never return before them.
+    const activeIndex = Math.max(0, modals.length - 1);
     const resolveReference = (item: any): any => resolveOpenApiReference(item, spec);
     const getSchemaShareUrl = (schemaName: string) => {
         if (typeof window === 'undefined') return '';
@@ -377,14 +375,17 @@ export default function ModalsStack({
             return plain();
         }
     };
-    const activeSchemaObj = modals[modals.length - 1];
-    const activeModalIndex = modals.length - 1;
-    const activeResolution = resolveReferenceResult(activeSchemaObj.schema, spec);
-    const resolvedSchema = activeResolution.value || activeSchemaObj.schema;
+    const activeSchemaObj = modals.length > 0 ? modals[modals.length - 1] : null;
+    const activeModal = activeSchemaObj;
+    const activeModalIndex = activeIndex;
+    const activeResolution = activeSchemaObj ? resolveReferenceResult(activeSchemaObj.schema, spec) : null;
+    const resolvedSchema = activeResolution?.value || activeSchemaObj?.schema;
     const isEnum = resolvedSchema?.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0;
     const [modalBranchRevision, setModalBranchRevision] = useState(0);
     const [modalExampleKeys, setModalExampleKeys] = useState<Record<number, string>>({});
-    const modalRepresentation = modalRepresentationOf(preferences, activeSchemaObj.schemaName);
+    const modalRepresentation = activeSchemaObj
+        ? modalRepresentationOf(preferences, activeSchemaObj.schemaName)
+        : 'example';
     const activeTab = activeTabs[activeModalIndex] || (modalRepresentation === 'schema' ? 'table' : 'example');
     const activeExampleEncoding = exampleEncodings[activeModalIndex] || 'application/json';
     const simulationLanguage =
@@ -398,9 +399,11 @@ export default function ModalsStack({
     useEffect(() => {
         // Same rule as the documentation: the enum view is a one-off peek and
         // never survives a schema change or a preference change.
+        if (!activeSchemaObj) return;
         setActiveTabs({});
-    }, [activeSchemaObj.schemaName, modalRepresentation]);
+    }, [activeSchemaObj?.schemaName, modalRepresentation]);
     const setTab = (tab: 'table' | 'example' | 'enum') => {
+        if (!activeSchemaObj) return;
         if (tab === 'enum') {
             setActiveTabs(prev => ({...prev, [activeModalIndex]: tab}));
             return;
@@ -411,9 +414,12 @@ export default function ModalsStack({
         setActiveTabs({});
         setModalRepresentation(activeSchemaObj.schemaName, tab === 'table' ? 'schema' : 'example');
     };
-    const modalSelectionScopeKey = `${parsableKey}:schema-modal:${activeSchemaObj.schemaName}`;
+    const modalSelectionScopeKey = activeSchemaObj
+        ? `${parsableKey}:schema-modal:${activeSchemaObj.schemaName}`
+        : `${parsableKey}:schema-modal:`;
 
     useEffect(() => {
+        if (!activeSchemaObj) return;
         const handler = (event: Event) => {
             const detail = (event as CustomEvent<{key?: string}>).detail;
             if (detail?.key === modalSelectionScopeKey) {
@@ -422,21 +428,22 @@ export default function ModalsStack({
         };
         window.addEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
         return () => window.removeEventListener(SCHEMA_BRANCH_SELECTION_EVENT, handler as EventListener);
-    }, [modalSelectionScopeKey]);
+    }, [modalSelectionScopeKey, activeSchemaObj]);
 
-    const effectiveModalSchema = applySchemaBranchSelections(
-        activeSchemaObj.schema,
-        modalSelectionScopeKey,
-        resolveReference,
-    );
+    const effectiveModalSchema = activeSchemaObj
+        ? applySchemaBranchSelections(activeSchemaObj.schema, modalSelectionScopeKey, resolveReference)
+        : null;
     const modalOneOfChoices = useMemo(() => {
         return activeSchemaObj?.schema
             ? collectSchemaOneOfChoices(activeSchemaObj.schema, resolveReference, getRefName)
             : [];
-    }, [activeSchemaObj?.schema, resolveReference, getRefName, modalBranchRevision]);
+        // resolveReference is recreated each render; schema + branch revision drive work.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSchemaObj?.schema, modalBranchRevision]);
 
     const schemaSpecExamples = useMemo(() => {
         const list: Array<{key: string; label: string; value: unknown; summary?: string; description?: string}> = [];
+        if (!activeSchemaObj) return list;
         const seen = new Set<string>();
 
         const addExample = (key: string, label: string, val: any, summary?: string, desc?: string) => {
@@ -559,6 +566,11 @@ export default function ModalsStack({
     const activeModalSpecExample =
         schemaSpecExamples.find(ex => ex.key === (modalExampleKeys[activeModalIndex] || schemaSpecExamples[0]?.key)) ||
         schemaSpecExamples[0];
+
+    // Hooks above this line must always run; empty stack has nothing to paint.
+    if (!activeSchemaObj || !activeResolution) {
+        return null;
+    }
 
     const properties = traverseSchemaProperties(activeSchemaObj.schema);
     const schemaIsRecursiveView = schemaIsRecursive(effectiveModalSchema, resolveReference);

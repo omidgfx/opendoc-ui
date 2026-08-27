@@ -159,7 +159,7 @@ export default function HomeView({
                                 {config.type === 'apiKey'
                                     ? 'API Key'
                                     : config.type === 'http'
-                                      ? config.scheme === 'basic'
+                                      ? String(config.scheme || '').toLowerCase() === 'basic'
                                           ? 'Basic Auth'
                                           : 'Bearer Token'
                                       : config.type === 'openIdConnect'

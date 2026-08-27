@@ -211,6 +211,8 @@ const credentialFor = (auth: ActiveAuth, id: string, scheme: any): AuthCredentia
                 : id === 'cookie' || id === 'legacy:cookie'
                   ? 'cookie'
                   : '';
+    // OAS http `scheme` is case-insensitive (RFC 9110); specs often write `Bearer`.
+    const httpScheme = String(scheme?.scheme || '').toLowerCase();
     const type =
         legacyType ||
         (scheme?.type === 'apiKey'
@@ -219,9 +221,9 @@ const credentialFor = (auth: ActiveAuth, id: string, scheme: any): AuthCredentia
               ? 'oauth2'
               : scheme?.type === 'openIdConnect'
                 ? 'openIdConnect'
-                : scheme?.scheme === 'basic'
+                : httpScheme === 'basic'
                   ? 'basic'
-                  : scheme?.scheme === 'bearer'
+                  : httpScheme === 'bearer'
                     ? 'bearer'
                     : scheme?.type || 'unknown');
     if (type === 'apiKey')

@@ -842,8 +842,9 @@ export default function ViewTab({
         showLocation: boolean,
         group?: ReturnType<typeof parameterGroupMetaOf>,
     ) => (
-        <DevTooltip name={`ViewTab.parameterTable[${title}]`} className="min-w-0">
-            <div key={title} className="@container space-y-3 min-w-0">
+        // Key must sit on the outermost node when tables are mapped (separated layout).
+        <DevTooltip key={title} name={`ViewTab.parameterTable[${title}]`} className="min-w-0">
+            <div className="@container space-y-3 min-w-0">
                 <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
                 </h2>

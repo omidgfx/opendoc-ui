@@ -133,8 +133,10 @@ export default function AuthModal({isOpen, onClose, spec, specKey, operation, ac
                 in: scheme.in,
                 value: '',
             };
-        if (scheme?.type === 'http' && scheme.scheme === 'basic') return {schemeId: id, type: 'basic'};
-        if (scheme?.type === 'http' && scheme.scheme === 'bearer') return {schemeId: id, type: 'bearer'};
+        // OAS http `scheme` is case-insensitive (RFC 9110); specs often write `Bearer`.
+        const httpScheme = String(scheme?.scheme || '').toLowerCase();
+        if (scheme?.type === 'http' && httpScheme === 'basic') return {schemeId: id, type: 'basic'};
+        if (scheme?.type === 'http' && httpScheme === 'bearer') return {schemeId: id, type: 'bearer'};
         if (scheme?.type === 'oauth2') return {schemeId: id, type: 'oauth2'};
         if (scheme?.type === 'openIdConnect') return {schemeId: id, type: 'openIdConnect'};
         if (scheme?.type === 'mutualTLS') return {schemeId: id, type: 'mutualTLS'};
