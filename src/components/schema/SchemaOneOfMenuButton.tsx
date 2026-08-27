@@ -8,6 +8,12 @@ import {
     writeSchemaAllOfFocus,
     writeSchemaBranchSelection,
 } from '../../utils/schema/branchSelections';
+import {
+    COMBINATOR_META,
+    combinatorActiveSurfaceStyle,
+    combinatorSelectionIconClass,
+} from '../../utils/schema/combinators';
+import type {CombinatorKind} from '../../utils/schema/combinators';
 
 interface SchemaOneOfMenuButtonProps {
     selectionKey: string;
@@ -77,11 +83,18 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                 key={`${kind}:${choice.path}`}
                                 className="border-b last:border-b-0 border-[var(--border)]/70"
                             >
-                                <div className="px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                <div
+                                    className="px-2.5 py-2 text-[9px] font-black uppercase tracking-wider"
+                                    style={{
+                                        color: COMBINATOR_META[kind === 'allOf' ? 'allOf' : 'oneOf'].color,
+                                    }}
+                                >
                                     {kind === 'allOf' ? 'allOf · ' : 'oneOf · '}
                                     {choice.title}
                                 </div>
                                 {choice.options.map(option => {
+                                    const combinatorKind: CombinatorKind = kind === 'allOf' ? 'allOf' : 'oneOf';
+                                    const meta = COMBINATOR_META[combinatorKind];
                                     const active =
                                         kind === 'allOf'
                                             ? (() => {
@@ -109,18 +122,20 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                 setOpen(false);
                                             }}
                                             className={clsx(
-                                                'flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
-                                                active
-                                                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                                                    : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                                'flex w-full cursor-pointer items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors',
+                                                !active && 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                             )}
+                                            style={combinatorActiveSurfaceStyle(combinatorKind, active)}
                                         >
-                                            <span
-                                                className={clsx(
-                                                    'mt-1 size-2 shrink-0 rounded-full',
-                                                    active ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
-                                                )}
-                                            />
+                                            <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+                                                <i
+                                                    className={clsx(
+                                                        combinatorSelectionIconClass(combinatorKind, active),
+                                                        'text-[14px]',
+                                                    )}
+                                                    style={active ? {color: meta.color} : undefined}
+                                                />
+                                            </span>
                                             <span className="min-w-0 flex-1">
                                                 <span className="block text-[11px] font-semibold">{option.label}</span>
                                                 {option.description && (

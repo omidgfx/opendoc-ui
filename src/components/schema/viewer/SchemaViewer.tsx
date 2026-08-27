@@ -13,6 +13,8 @@ import type {OpenApiSpec} from '../../../types';
 import type {CustomDropdownOption} from '../../../types/ui';
 import {
     COMBINATOR_META,
+    combinatorActiveSurfaceStyle,
+    combinatorSelectionIconClass,
     describeAllOfComposition,
     detectSchemaCombinator,
     expandAllOfBranches,
@@ -103,11 +105,19 @@ const branchChipClass = (active: boolean, muted = false) =>
     clsx(
         'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-all cursor-pointer select-none',
         active
-            ? 'border-[var(--primary)]/40 bg-[var(--primary)]/15 text-[var(--primary)]'
+            ? // Color comes from style={{...combinatorActiveSurfaceStyle}} so each keyword keeps its hue.
+              'border-current'
             : muted
               ? 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] opacity-55'
               : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
     );
+
+const selectionGlyph = (kind: CombinatorKind, active: boolean, sizeClass = 'text-[12px]') => (
+    <i
+        className={clsx(combinatorSelectionIconClass(kind, active), sizeClass)}
+        style={active ? {color: COMBINATOR_META[kind].color} : undefined}
+    />
+);
 
 const displayTypeOf = (schema: any, resolveReference: (item: any) => any): string => {
     const resolved = resolveReference(schema) || schema;
@@ -511,15 +521,10 @@ export default function SchemaViewer({
                                                 aria-pressed={active}
                                                 onClick={() => onBranchIndexChange?.(index)}
                                                 className={branchChipClass(active)}
+                                                style={combinatorActiveSurfaceStyle('oneOf', active)}
                                             >
                                                 <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                                    <i
-                                                        className={clsx(
-                                                            active
-                                                                ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
-                                                                : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
-                                                        )}
-                                                    />
+                                                    {selectionGlyph('oneOf', active)}
                                                 </span>
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
@@ -551,8 +556,9 @@ export default function SchemaViewer({
                                             setAnyOfSelected(allSelected ? [] : choiceBranches.map((_, index) => index))
                                         }
                                         className={branchChipClass(allSelected)}
+                                        style={combinatorActiveSurfaceStyle('anyOf', allSelected)}
                                     >
-                                        <i className="ph ph-checks text-[12px]" />
+                                        {selectionGlyph('anyOf', allSelected)}
                                         All
                                     </button>
                                 </DevTooltip>
@@ -574,14 +580,9 @@ export default function SchemaViewer({
                                                     }
                                                 }}
                                                 className={branchChipClass(active)}
+                                                style={combinatorActiveSurfaceStyle('anyOf', active)}
                                             >
-                                                <i
-                                                    className={clsx(
-                                                        active
-                                                            ? 'ph-fill ph-check-square text-[12px] text-[var(--primary)]'
-                                                            : 'ph ph-square text-[12px] text-[var(--text-muted)]',
-                                                    )}
-                                                />
+                                                {selectionGlyph('anyOf', active)}
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
                                         </DevTooltip>
@@ -609,8 +610,9 @@ export default function SchemaViewer({
                                         aria-pressed={allOfFocusIndex === null}
                                         onClick={() => onAllOfFocusIndexChange?.(null)}
                                         className={branchChipClass(allOfFocusIndex === null)}
+                                        style={combinatorActiveSurfaceStyle('allOf', allOfFocusIndex === null)}
                                     >
-                                        <i className="ph ph-stack text-[12px]" />
+                                        {selectionGlyph('allOf', allOfFocusIndex === null)}
                                         Combined
                                     </button>
                                 </DevTooltip>
@@ -624,15 +626,10 @@ export default function SchemaViewer({
                                                 aria-pressed={active}
                                                 onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
                                                 className={branchChipClass(active, allOfFocusIndex !== null && !active)}
+                                                style={combinatorActiveSurfaceStyle('allOf', active)}
                                             >
                                                 <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                                    <i
-                                                        className={clsx(
-                                                            active
-                                                                ? 'ph-fill ph-radio-button text-[12px] text-[var(--primary)]'
-                                                                : 'ph ph-circle text-[12px] text-[var(--text-muted)]',
-                                                        )}
-                                                    />
+                                                    {selectionGlyph('allOf', active)}
                                                 </span>
                                                 <span className="max-w-[160px] truncate font-mono">{label}</span>
                                             </button>
@@ -658,10 +655,10 @@ export default function SchemaViewer({
                             <button
                                 type="button"
                                 onClick={() => onOpenSchema(getRefName(rootCombinator.branches[0].$ref))}
-                                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-semibold text-[var(--primary)] cursor-pointer"
+                                className="inline-flex items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--method-delete)] cursor-pointer"
                             >
                                 <i className="ph ph-diamonds-four text-[11px]" />
-                                {getRefName(rootCombinator.branches[0].$ref)}
+                                Inspect
                             </button>
                         )}
                     </div>
@@ -669,32 +666,7 @@ export default function SchemaViewer({
             );
         }
 
-        // if/then/else and dependentSchemas surface as informational chips.
-        const extras: React.ReactNode[] = [];
-        if (resolvedContent?.if) {
-            extras.push(
-                <span
-                    key="if"
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)]"
-                >
-                    <i className="ph ph-git-diff text-[11px]" />
-                    if / then / else
-                </span>,
-            );
-        }
-        if (resolvedContent?.dependentSchemas && typeof resolvedContent.dependentSchemas === 'object') {
-            extras.push(
-                <span
-                    key="deps"
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)]"
-                >
-                    <i className="ph ph-tree-structure text-[11px]" />
-                    dependentSchemas ({Object.keys(resolvedContent.dependentSchemas).length})
-                </span>,
-            );
-        }
-        if (extras.length === 0) return null;
-        return <div className="flex flex-wrap items-center gap-1.5">{extras}</div>;
+        return null;
     };
 
     // Meta header is always open: summary bar + branch rail / description when present.

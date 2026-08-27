@@ -15,7 +15,7 @@ import {
     schemaVariantLabel,
 } from '../../utils/schemaProperties';
 import CombinatorLabel from '../common/CombinatorLabel';
-import {COMBINATOR_META, expandAllOfBranches} from '../../utils/schema/combinators';
+import {COMBINATOR_META, combinatorSelectionIconClass, expandAllOfBranches} from '../../utils/schema/combinators';
 import ModalPortal from '../common/ModalPortal';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
@@ -340,9 +340,24 @@ export default function SchemaPropertiesTable({
         if (!prop) return <span className="font-mono text-[10px] text-[var(--text)]">any</span>;
         if (prop.$ref) return renderSchemaLink(getRefName(prop.$ref), true);
         const resolved = resolveReference(prop) || prop;
-        if (resolved?.oneOf) return <span className="font-mono text-[10px] text-[var(--text)]">oneOf</span>;
-        if (resolved?.anyOf) return <span className="font-mono text-[10px] text-[var(--text)]">anyOf</span>;
-        if (resolved?.allOf) return <span className="font-mono text-[10px] text-[var(--text)]">allOf</span>;
+        if (resolved?.oneOf)
+            return (
+                <span className="font-mono text-[10px]" style={{color: COMBINATOR_META.oneOf.color}}>
+                    oneOf
+                </span>
+            );
+        if (resolved?.anyOf)
+            return (
+                <span className="font-mono text-[10px]" style={{color: COMBINATOR_META.anyOf.color}}>
+                    anyOf
+                </span>
+            );
+        if (resolved?.allOf)
+            return (
+                <span className="font-mono text-[10px]" style={{color: COMBINATOR_META.allOf.color}}>
+                    allOf
+                </span>
+            );
         if (resolved?.type === 'array') return <span className="font-mono text-[10px] text-[var(--text)]">array</span>;
         if (
             resolved?.type === 'object' &&
@@ -402,6 +417,13 @@ export default function SchemaPropertiesTable({
             kind === 'oneOf' ? Math.max(0, Math.min(branches.length - 1, branchSelections[name] ?? 0)) : 0;
         const focusAllOf = kind === 'allOf' ? allOfFocus[name] : undefined;
         const combinedActive = kind === 'allOf' && (focusAllOf === null || focusAllOf === undefined);
+        const meta = COMBINATOR_META[kind];
+        const selectionIcon = (active: boolean) => (
+            <i
+                className={clsx(combinatorSelectionIconClass(kind, active), 'text-[14px]')}
+                style={active ? {color: meta.color} : undefined}
+            />
+        );
         return (
             <div className="flex flex-col gap-1.5">
                 {combinatorTitle(kind, branches.length)}
@@ -412,19 +434,12 @@ export default function SchemaPropertiesTable({
                             onClick={() => updateAllOfFocus(name, null)}
                             className={clsx(
                                 'flex items-start gap-2 text-left text-[10px] leading-relaxed cursor-pointer rounded-md px-0.5 py-0.5 transition-colors',
-                                combinedActive
-                                    ? 'text-[var(--primary)]'
-                                    : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                !combinedActive && 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
                             )}
+                            style={combinedActive ? {color: meta.color} : undefined}
                         >
                             <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
-                                <i
-                                    className={clsx(
-                                        combinedActive
-                                            ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
-                                            : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
-                                    )}
-                                />
+                                {selectionIcon(combinedActive)}
                             </span>
                             <span className="min-w-0 break-words font-semibold">Combined</span>
                         </button>
@@ -445,8 +460,8 @@ export default function SchemaPropertiesTable({
                                 className={clsx(
                                     'flex items-start gap-2 text-[10px] leading-relaxed text-[var(--text)]',
                                     interactive && 'cursor-pointer',
-                                    active && 'text-[var(--primary)]',
                                 )}
+                                style={active ? {color: meta.color} : undefined}
                             >
                                 {kind === 'oneOf' ? (
                                     <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
@@ -457,13 +472,7 @@ export default function SchemaPropertiesTable({
                                             onChange={() => updateBranchSelection(name, index)}
                                             className="absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
-                                        <i
-                                            className={clsx(
-                                                active
-                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
-                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
-                                            )}
-                                        />
+                                        {selectionIcon(active)}
                                     </span>
                                 ) : kind === 'allOf' ? (
                                     <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
@@ -474,16 +483,13 @@ export default function SchemaPropertiesTable({
                                             onChange={() => updateAllOfFocus(name, index)}
                                             className="absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
-                                        <i
-                                            className={clsx(
-                                                active
-                                                    ? 'ph-fill ph-radio-button text-[14px] text-[var(--primary)]'
-                                                    : 'ph ph-circle text-[14px] text-[var(--text-muted)]',
-                                            )}
-                                        />
+                                        {selectionIcon(active)}
                                     </span>
                                 ) : (
-                                    <span className="mt-[4px] size-1.5 rounded-full bg-[var(--border)] shrink-0" />
+                                    // anyOf is multi-match composition in the table — show keyword-colored checkbox glyphs.
+                                    <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
+                                        {selectionIcon(false)}
+                                    </span>
                                 )}
                                 <span className="min-w-0 break-words">
                                     {refName ? renderSchemaLink(refName, true) : <span>{label}</span>}

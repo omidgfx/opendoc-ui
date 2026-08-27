@@ -1,6 +1,7 @@
 import {RECURSIVE_SCHEMA_ICON} from './schemaProperties';
 import type {MockLineMarker} from './runner/mockGenerator';
 import type {IndicatorIconKind} from './storage/preferences';
+import {COMBINATOR_META, type CombinatorKind} from './schema/combinators';
 
 /**
  * A gutter annotation for CodeViewer: an icon rendered beside a specific
@@ -33,6 +34,8 @@ export interface CodeLineMarker {
     tip: string;
     /** Optional extra class for the icon (color / emphasis). */
     className?: string;
+    /** Optional theme color for the icon / active detail dots (combinator keywords). */
+    accentColor?: string;
     /** When set, the icon becomes interactive (e.g. open the schema). */
     onClick?: () => void;
     /**
@@ -158,12 +161,21 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
             case 'branch': {
                 const branch = marker.branch;
                 if (!branch) return [];
+                const combinatorKind = (
+                    branch.kind === 'oneOf' ||
+                    branch.kind === 'anyOf' ||
+                    branch.kind === 'allOf' ||
+                    branch.kind === 'not'
+                        ? branch.kind
+                        : 'oneOf'
+                ) as CombinatorKind;
+                const meta = COMBINATOR_META[combinatorKind];
                 return [
                     {
                         line,
                         kind: 'branch',
-                        icon: BRANCH_ICON,
-                        className: 'text-[var(--method-post)]',
+                        icon: meta.icon || BRANCH_ICON,
+                        accentColor: meta.color,
                         tip: `${branch.kind}: example expands branch ${branch.index + 1} of ${branch.count}.`,
                         details: {
                             title: `${branch.kind} — ${branch.count} alternatives, branch ${branch.index + 1} shown`,

@@ -11,10 +11,23 @@ export interface CombinatorMeta {
     label: string;
     /** Inline caption used inside type cells. */
     inlineLabel: string;
-    /** Theme token, so each keyword keeps its hue in every palette. */
+    /**
+     * Theme token shared everywhere the keyword appears (labels, chips, rails,
+     * radios/checkboxes). Fixed to method hues so oneOf/anyOf/allOf never look alike:
+     * oneOf = PUT orange, anyOf = GET green, allOf = POST blue, not = DELETE red.
+     */
     color: string;
     icon: string;
     hint: string;
+    /**
+     * How a branch is picked in UI: exclusive radio (oneOf/allOf focus) or
+     * multi checkbox (anyOf). `not` has no selection control.
+     */
+    selectionControl: 'radio' | 'checkbox' | 'none';
+    /** Phosphor outline icon for an idle selection control. */
+    selectionIcon: string;
+    /** Phosphor filled icon for an active selection control. */
+    selectionIconActive: string;
 }
 
 export const COMBINATOR_META: Record<CombinatorKind, CombinatorMeta> = {
@@ -22,25 +35,37 @@ export const COMBINATOR_META: Record<CombinatorKind, CombinatorMeta> = {
         kind: 'oneOf',
         label: 'One of',
         inlineLabel: 'One Of:',
-        color: 'var(--method-options)',
+        // PUT orange — exclusive pick, distinct from anyOf green and allOf blue.
+        color: 'var(--method-put)',
         icon: 'ph ph-git-branch',
         hint: 'Exactly one branch must match.',
+        selectionControl: 'radio',
+        selectionIcon: 'ph ph-circle',
+        selectionIconActive: 'ph-fill ph-radio-button',
     },
     anyOf: {
         kind: 'anyOf',
         label: 'Any of',
         inlineLabel: 'Any Of:',
-        color: 'var(--method-put)',
+        // GET green — multi-select, distinct from oneOf orange.
+        color: 'var(--method-get)',
         icon: 'ph ph-git-fork',
         hint: 'One or more branches may match.',
+        selectionControl: 'checkbox',
+        selectionIcon: 'ph ph-square',
+        selectionIconActive: 'ph-fill ph-check-square',
     },
     allOf: {
         kind: 'allOf',
         label: 'All of',
         inlineLabel: 'All Of · every constraint applies:',
-        color: 'var(--primary)',
+        // POST blue — composition/focus, not a choice between alternatives.
+        color: 'var(--method-post)',
         icon: 'ph ph-intersect',
         hint: 'Every constraint applies at once; the branches are listed so each one can be inspected.',
+        selectionControl: 'radio',
+        selectionIcon: 'ph ph-circle',
+        selectionIconActive: 'ph-fill ph-radio-button',
     },
     not: {
         kind: 'not',
@@ -49,7 +74,45 @@ export const COMBINATOR_META: Record<CombinatorKind, CombinatorMeta> = {
         color: 'var(--method-delete)',
         icon: 'ph ph-prohibit',
         hint: 'The value must not match this schema.',
+        selectionControl: 'none',
+        selectionIcon: 'ph ph-circle',
+        selectionIconActive: 'ph-fill ph-radio-button',
     },
+};
+
+/** Active selection control icon classes (radio / checkbox) in the keyword’s color. */
+export const combinatorSelectionIconClass = (kind: CombinatorKind, active: boolean): string => {
+    const meta = COMBINATOR_META[kind];
+    const icon = active ? meta.selectionIconActive : meta.selectionIcon;
+    if (!active) return `${icon} text-[var(--text-muted)]`;
+    // Color is applied via style or a parent; keep a stable class hook for size callers.
+    return icon;
+};
+
+/** Inline style for an active chip/row tinted with the keyword color. */
+export const combinatorActiveSurfaceStyle = (
+    kind: CombinatorKind,
+    active: boolean,
+): {color: string; borderColor: string; backgroundColor: string} | undefined => {
+    if (!active) return undefined;
+    const color = COMBINATOR_META[kind].color;
+    return {
+        color,
+        borderColor: color,
+        backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
+    };
+};
+
+/** Soft hover/open wash using the keyword color (code-viewer handles, menus). */
+export const combinatorSoftWashStyle = (
+    kind: CombinatorKind,
+    strength = 0.1,
+): {backgroundColor: string; color: string} => {
+    const color = COMBINATOR_META[kind].color;
+    return {
+        color,
+        backgroundColor: `color-mix(in srgb, ${color} ${Math.round(strength * 100)}%, transparent)`,
+    };
 };
 
 export interface SchemaCombinator {

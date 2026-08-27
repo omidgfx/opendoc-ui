@@ -56,9 +56,18 @@ export default function AllOfCompositionNote({
                                 part.empty
                                     ? 'border-dashed border-[var(--border)] bg-transparent text-[var(--text-muted)]'
                                     : part.refName
-                                      ? 'border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]'
+                                      ? ''
                                       : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-heading)]',
                             )}
+                            style={
+                                !part.empty && part.refName
+                                    ? {
+                                          color: COMBINATOR_META.allOf.color,
+                                          borderColor: `color-mix(in srgb, ${COMBINATOR_META.allOf.color} 25%, transparent)`,
+                                          backgroundColor: `color-mix(in srgb, ${COMBINATOR_META.allOf.color} 10%, transparent)`,
+                                      }
+                                    : undefined
+                            }
                         >
                             {part.refName && <i className="ph ph-diamonds-four text-[11px]" />}
                             {part.label}

@@ -40,6 +40,7 @@ export const inlineMenusForCode = (
             const focus = allOfFocus[choice.path];
             menus.push({
                 id: `${selectionKey}:allOf:${choice.path}`,
+                kind: 'allOf',
                 line: hit.line,
                 column: hit.startColumn,
                 endColumn: hit.endColumn,
@@ -55,6 +56,7 @@ export const inlineMenusForCode = (
         }
         menus.push({
             id: `${selectionKey}:oneOf:${choice.path}`,
+            kind: 'oneOf',
             line: hit.line,
             column: hit.startColumn,
             endColumn: hit.endColumn,

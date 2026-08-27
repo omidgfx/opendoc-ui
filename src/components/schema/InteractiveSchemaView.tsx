@@ -1,3 +1,4 @@
+import {COMBINATOR_META} from '../../utils/schema/combinators';
 import {useState} from 'react';
 import SchemaPropertiesTable from './SchemaPropertiesTable';
 import CodeViewer from '../common/CodeViewer';
@@ -179,40 +180,28 @@ export default function InteractiveSchemaView({
     const cacheKey = `${combinatorType}-${resolved.title || 'root'}`;
     const selectedIdx = activeTabMap[cacheKey] || 0;
     const activeSubSchema = subSchemas[selectedIdx];
-    const getBadgeStyle = () => {
-        switch (combinatorType) {
-            case 'oneOf':
-                return {
-                    label: 'One Of',
-                    classes:
-                        'bg-[var(--method-options)]/10 text-[var(--method-options)] border-[var(--method-options)]/25',
-                };
-            case 'anyOf':
-                return {
-                    label: 'Any Of',
-                    classes: 'bg-[var(--method-put)]/10 text-[var(--method-put)] border-[var(--method-put)]/25',
-                };
-            case 'allOf':
-                return {
-                    label: 'All Of',
-                    classes: 'bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/25',
-                };
-            default:
-                return {
-                    label: 'Schema',
-                    classes: 'bg-[var(--text-muted)]/10 text-[var(--text-muted)] border-[var(--text-muted)]/25',
-                };
-        }
-    };
-    const badge = getBadgeStyle();
+    const badgeMeta = combinatorType ? COMBINATOR_META[combinatorType] : null;
+    const badge = badgeMeta
+        ? {
+              label: badgeMeta.label,
+              color: badgeMeta.color,
+              icon: badgeMeta.icon,
+          }
+        : {label: 'Schema', color: 'var(--text-muted)', icon: 'ph ph-diamonds-four'};
     if (combinatorType === 'allOf') {
         return (
             <div className="space-y-4 border rounded-2xl p-4 md:p-5 font-sans bg-[var(--surface-hover)] border-[var(--border)]">
                 <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3">
                     <span
-                        className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full"
+                        style={{
+                            color: badge.color,
+                            borderColor: badge.color,
+                            backgroundColor: `color-mix(in srgb, ${badge.color} 10%, transparent)`,
+                        }}
                     >
-                        All Of
+                        <i className={`${badge.icon} text-[11px]`} />
+                        {badge.label}
                     </span>
                     <div>
                         <p className="text-xs font-semibold text-[var(--text-heading)]">
@@ -224,9 +213,15 @@ export default function InteractiveSchemaView({
                     </div>
                 </div>
                 {unifiedAllOf && (
-                    <section className="rounded-xl border border-[var(--primary)]/30 bg-[var(--surface)] p-4">
+                    <section
+                        className="rounded-xl border bg-[var(--surface)] p-4"
+                        style={{borderColor: `color-mix(in srgb, ${COMBINATOR_META.allOf.color} 30%, transparent)`}}
+                    >
                         <div className="mb-3 flex items-center justify-between border-b border-[var(--border)] pb-2">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--primary)]">
+                            <span
+                                className="text-[10px] font-extrabold uppercase tracking-wide"
+                                style={{color: COMBINATOR_META.allOf.color}}
+                            >
                                 Effective object · every part merged
                             </span>
                         </div>
@@ -260,8 +255,14 @@ export default function InteractiveSchemaView({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
                 <div className="flex items-center gap-2">
                     <span
-                        className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full ${badge.classes}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider border rounded-full"
+                        style={{
+                            color: badge.color,
+                            borderColor: badge.color,
+                            backgroundColor: `color-mix(in srgb, ${badge.color} 10%, transparent)`,
+                        }}
                     >
+                        <i className={`${badge.icon} text-[11px]`} />
                         {badge.label}
                     </span>
                     <span className="text-xs font-semibold text-[var(--text-heading)]">
@@ -286,9 +287,18 @@ export default function InteractiveSchemaView({
                             onClick={() => setActiveTabMap(prev => ({...prev, [cacheKey]: idx}))}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer select-none transition-all duration-150 ${
                                 isSelected
-                                    ? 'bg-[var(--primary)] border-[var(--primary)] text-[var(--primary-contrast)] shadow-sm'
+                                    ? 'shadow-sm text-[var(--primary-contrast)]'
                                     : 'bg-[var(--text-muted)]/5 border-[var(--border)]/10 hover:bg-[var(--text-muted)]/15'
                             }`}
+                            style={
+                                isSelected && combinatorType
+                                    ? {
+                                          backgroundColor: COMBINATOR_META[combinatorType].color,
+                                          borderColor: COMBINATOR_META[combinatorType].color,
+                                          color: 'var(--primary-contrast)',
+                                      }
+                                    : undefined
+                            }
                         >
                             {label}
                         </button>

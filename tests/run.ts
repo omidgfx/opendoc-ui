@@ -59,7 +59,12 @@ import {sanitizeZipEntryName} from '@/src/utils/export/zip';
 import {generateValidatedMock, getMockSnippet} from '@/src/utils/runner/mockGenerator';
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
 import {collectSchemaBranchChoices} from '@/src/utils/schema/branchChoices';
-import {expandAllOfBranches, describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
+import {
+    expandAllOfBranches,
+    describeAllOfComposition,
+    detectSchemaCombinator,
+    COMBINATOR_META,
+} from '@/src/utils/schema/combinators';
 import {dimmedLinesForObjectCode, dimmedLinesForFieldAllOfFocus} from '@/src/utils/schema/exampleEncodings';
 import {DEFAULT_APP_PREFERENCES, normalizeAppPreferences} from '@/src/utils/storage/preferences';
 import {
@@ -1140,6 +1145,18 @@ test('defaults documentation switches to per-endpoint and schema modal to per-sc
     const normalized = normalizeAppPreferences({});
     assert.equal(normalized.endpointRepresentationScope, 'endpoint');
     assert.equal(normalized.modalRepresentationScope, 'schema');
+});
+
+test('locks oneOf/anyOf/allOf to distinct method colors and selection controls', () => {
+    assert.equal(COMBINATOR_META.oneOf.color, 'var(--method-put)');
+    assert.equal(COMBINATOR_META.anyOf.color, 'var(--method-get)');
+    assert.equal(COMBINATOR_META.allOf.color, 'var(--method-post)');
+    assert.equal(COMBINATOR_META.oneOf.selectionControl, 'radio');
+    assert.equal(COMBINATOR_META.anyOf.selectionControl, 'checkbox');
+    assert.equal(COMBINATOR_META.allOf.selectionControl, 'radio');
+    assert.match(COMBINATOR_META.oneOf.selectionIconActive, /radio-button/);
+    assert.match(COMBINATOR_META.anyOf.selectionIconActive, /check-square/);
+    assert.match(COMBINATOR_META.allOf.selectionIconActive, /radio-button/);
 });
 
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {

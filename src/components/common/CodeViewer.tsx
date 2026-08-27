@@ -2,6 +2,11 @@ import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import {createPortal} from 'react-dom';
 import Prism from 'prismjs';
 import clsx from 'clsx';
+import {
+    COMBINATOR_META,
+    combinatorActiveSurfaceStyle,
+    combinatorSelectionIconClass,
+} from '../../utils/schema/combinators';
 import {Tip} from './Tooltip';
 import DevTooltip from './DevTooltip';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
@@ -27,6 +32,8 @@ export interface CodeInlineMenuOption {
 
 export interface CodeInlineMenu {
     id: string;
+    /** oneOf exclusive pick vs allOf part focus — drives selection icon/color. */
+    kind?: 'oneOf' | 'allOf';
     line: number;
     /** 0-based start column of the field name in the source line. */
     column?: number;
@@ -147,6 +154,7 @@ const stripeBackground = (color: string) => ({
 
 function MarkerIcon({marker}: {marker: CodeLineMarker}) {
     const iconClass = marker.icon || '';
+    const accent = marker.accentColor;
     const tipContent = marker.details ? (
         <div className="w-[min(300px,calc(100vw-64px))] max-w-full select-text space-y-2 text-[var(--text)]">
             <div className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
@@ -158,8 +166,10 @@ function MarkerIcon({marker}: {marker: CodeLineMarker}) {
                         <span
                             className={clsx(
                                 'inline-block size-1 shrink-0 rounded-full',
-                                item.active ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
+                                !item.active && 'bg-[var(--border)]',
+                                item.active && !accent && 'bg-[var(--primary)]',
                             )}
+                            style={item.active && accent ? {backgroundColor: accent} : undefined}
                         />
                         {item.schemaName && marker.onOpenSchema ? (
                             <button
@@ -183,7 +193,15 @@ function MarkerIcon({marker}: {marker: CodeLineMarker}) {
         marker.tip
     );
     const icon = (
-        <i className={clsx(iconClass, 'text-[11px] leading-none', marker.className || 'text-[var(--text-muted)]')} />
+        <i
+            className={clsx(
+                iconClass,
+                'text-[11px] leading-none',
+                !accent && (marker.className || 'text-[var(--text-muted)]'),
+                accent && marker.className,
+            )}
+            style={accent ? {color: accent} : undefined}
+        />
     );
     return (
         <Tip
@@ -474,6 +492,8 @@ export default function CodeViewer({
                       >
                           {openMenu.options.map(option => {
                               const active = openMenu.activeIndex === option.index;
+                              const combinatorKind = openMenu.kind === 'allOf' ? 'allOf' : 'oneOf';
+                              const meta = COMBINATOR_META[combinatorKind];
                               return (
                                   <button
                                       key={`${openMenu.id}:${option.index}`}
@@ -485,18 +505,20 @@ export default function CodeViewer({
                                           setOpenInlineMenuId(null);
                                       }}
                                       className={clsx(
-                                          'flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
-                                          active
-                                              ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                                              : 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                                          'flex w-full cursor-pointer items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors',
+                                          !active && 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                       )}
+                                      style={combinatorActiveSurfaceStyle(combinatorKind, active)}
                                   >
-                                      <span
-                                          className={clsx(
-                                              'mt-1 size-2 shrink-0 rounded-full',
-                                              active ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
-                                          )}
-                                      />
+                                      <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+                                          <i
+                                              className={clsx(
+                                                  combinatorSelectionIconClass(combinatorKind, active),
+                                                  'text-[14px]',
+                                              )}
+                                              style={active ? {color: meta.color} : undefined}
+                                          />
+                                      </span>
                                       <span className="min-w-0 flex-1">
                                           <span className="block text-[11px] font-semibold">{option.label}</span>
                                           {option.description && (
@@ -701,10 +723,37 @@ export default function CodeViewer({
                                                         }
                                                         className={clsx(
                                                             'group/handle relative inline-flex h-full items-center rounded-sm border-0 bg-transparent py-0 text-left cursor-pointer select-none',
-                                                            'hover:bg-[var(--primary)]/10 focus-visible:bg-[var(--primary)]/10 focus-visible:outline-none',
-                                                            open && 'bg-[var(--primary)]/10',
+                                                            'focus-visible:outline-none',
                                                         )}
-                                                        style={{paddingLeft: HANDLE_PAD_X_PX, paddingRight: 0}}
+                                                        style={
+                                                            {
+                                                                paddingLeft: HANDLE_PAD_X_PX,
+                                                                paddingRight: 0,
+                                                                // Soft wash uses the branch keyword color (oneOf orange / allOf blue).
+                                                                backgroundColor: open
+                                                                    ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : 'oneOf'].color} 12%, transparent)`
+                                                                    : undefined,
+                                                            } as React.CSSProperties
+                                                        }
+                                                        onMouseEnter={event => {
+                                                            if (open) return;
+                                                            const color =
+                                                                COMBINATOR_META[
+                                                                    menu.kind === 'allOf' ? 'allOf' : 'oneOf'
+                                                                ].color;
+                                                            (
+                                                                event.currentTarget as HTMLButtonElement
+                                                            ).style.backgroundColor =
+                                                                `color-mix(in srgb, ${color} 10%, transparent)`;
+                                                        }}
+                                                        onMouseLeave={event => {
+                                                            if (open) return;
+                                                            (
+                                                                event.currentTarget as HTMLButtonElement
+                                                            ).style.backgroundColor = open
+                                                                ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : 'oneOf'].color} 12%, transparent)`
+                                                                : '';
+                                                        }}
                                                         aria-label={menu.ariaLabel || 'Select schema branch'}
                                                         aria-haspopup="menu"
                                                         aria-expanded={open}
@@ -729,8 +778,13 @@ export default function CodeViewer({
                                                         />
                                                         <span
                                                             aria-hidden="true"
-                                                            className="pointer-events-none relative inline-flex h-full shrink-0 items-center justify-center select-none text-[var(--primary)] opacity-80 group-hover/handle:opacity-100"
-                                                            style={{width: `calc(${CARET_ICON_CH}ch)`}}
+                                                            className="pointer-events-none relative inline-flex h-full shrink-0 items-center justify-center select-none opacity-80 group-hover/handle:opacity-100"
+                                                            style={{
+                                                                width: `calc(${CARET_ICON_CH}ch)`,
+                                                                color: COMBINATOR_META[
+                                                                    menu.kind === 'allOf' ? 'allOf' : 'oneOf'
+                                                                ].color,
+                                                            }}
                                                             data-dev="CodeViewer.handleCaretIcon"
                                                         >
                                                             <DevTooltip name="CodeViewer.handleCaretIcon" inline />

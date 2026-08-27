@@ -3,6 +3,7 @@ import {useState} from 'react';
 import type {OpenApiSpec} from '@/src/types';
 import AdaptiveTabStrip from '@/src/components/common/AdaptiveTabStrip';
 import CombinatorLabel from '@/src/components/common/CombinatorLabel';
+import {COMBINATOR_META} from '@/src/utils/schema/combinators';
 import {describeAllOfComposition, detectSchemaCombinator, effectiveAllOfSchema} from '@/src/utils/schema/combinators';
 import AllOfCompositionNote from '@/src/components/schema/AllOfCompositionNote';
 import {getRefName, resolveReference as resolveOpenApiReference} from '@/src/utils/openapi';
@@ -79,8 +80,12 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
         if (prop.oneOf && Array.isArray(prop.oneOf)) {
             return (
                 <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-options)] uppercase tracking-wider font-sans">
-                        One Of:
+                    <span
+                        className="text-[10px] font-bold uppercase tracking-wider font-sans inline-flex items-center gap-1"
+                        style={{color: COMBINATOR_META.oneOf.color}}
+                    >
+                        <i className={`${COMBINATOR_META.oneOf.icon} text-[11px]`} />
+                        {COMBINATOR_META.oneOf.inlineLabel}
                     </span>
                     <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
                         {prop.oneOf.map((sub: any, sIdx: number) => (
@@ -102,8 +107,12 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
         if (prop.anyOf && Array.isArray(prop.anyOf)) {
             return (
                 <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--method-put)] uppercase tracking-wider font-sans">
-                        Any Of:
+                    <span
+                        className="text-[10px] font-bold uppercase tracking-wider font-sans inline-flex items-center gap-1"
+                        style={{color: COMBINATOR_META.anyOf.color}}
+                    >
+                        <i className={`${COMBINATOR_META.anyOf.icon} text-[11px]`} />
+                        {COMBINATOR_META.anyOf.inlineLabel}
                     </span>
                     <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
                         {prop.anyOf.map((sub: any, sIdx: number) => (
@@ -125,8 +134,12 @@ export function useSchemaViewer(spec: OpenApiSpec, onOpenSchemaModal: (name: str
         if (prop.allOf && Array.isArray(prop.allOf)) {
             return (
                 <div className="flex flex-col gap-1.5 items-start">
-                    <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider font-sans">
-                        All Of · every constraint applies:
+                    <span
+                        className="text-[10px] font-bold uppercase tracking-wider font-sans inline-flex items-center gap-1"
+                        style={{color: COMBINATOR_META.allOf.color}}
+                    >
+                        <i className={`${COMBINATOR_META.allOf.icon} text-[11px]`} />
+                        {COMBINATOR_META.allOf.inlineLabel}
                     </span>
                     <div className="flex p-0.5 rounded-lg border flex-wrap border-[var(--border)] bg-[var(--background)]">
                         {prop.allOf.map((sub: any, sIdx: number) => (
