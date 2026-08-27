@@ -126,7 +126,7 @@ export default function ResponseHistoryDropdown({
                     Clear all
                 </button>
             </div>
-            <div className="max-h-80 overflow-y-auto p-1.5 scrollbar-thin">
+            <div className="flex max-h-80 flex-col gap-1 overflow-y-auto p-1.5 scrollbar-thin">
                 {history.map((response, index) => (
                     <div
                         key={`${response.timestamp}:${index}`}

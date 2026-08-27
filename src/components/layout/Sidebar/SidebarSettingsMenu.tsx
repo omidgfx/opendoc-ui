@@ -71,7 +71,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                         ref={settingsMenuRef}
                         role="menu"
                         aria-label="API navigation settings"
-                        className="fixed z-[10000] w-[252px] rounded-xl border shadow-2xl py-1.5 bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
+                        className="fixed z-[10000] flex w-[252px] flex-col gap-1 rounded-xl border p-1.5 shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
                         style={{
                             top: settingsMenuPosition.top,
                             left: settingsMenuPosition.left,
@@ -91,7 +91,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({displayRoutes: !sidebarConfig.displayRoutes});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-path text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="flex-1 min-w-0">Show endpoint routes</span>
@@ -115,7 +115,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({flattenTags: !sidebarConfig.flattenTags});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-arrows-out-line-horizontal text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="flex-1 min-w-0">Flatten tag folders</span>
@@ -139,7 +139,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({pagesFirst: !sidebarConfig.pagesFirst});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-stack text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="flex-1 min-w-0">Pages first</span>
@@ -163,7 +163,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({compactMethodNames: !sidebarConfig.compactMethodNames});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-text-aa text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="flex-1 min-w-0">Compact method names</span>
@@ -198,7 +198,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                     if (isMobile && folderBehaviorMenuOpen) closeFolderBehaviorMenu();
                                     else openFolderBehaviorMenu();
                                 }}
-                                className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                             >
                                 <i className="ph ph-tree-structure text-[14px] text-[var(--primary)] shrink-0" />
                                 <span className="flex-1 min-w-0">Tag folder behavior</span>
@@ -212,7 +212,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 <div
                                     role="menu"
                                     aria-label="Tag folder behavior"
-                                    className="fixed z-[10001] w-[218px] rounded-xl border shadow-2xl py-1 bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
+                                    className="fixed z-[10001] flex w-[218px] flex-col gap-1 rounded-xl border p-1.5 shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
                                     style={{
                                         top: folderBehaviorMenuPosition.top,
                                         left: folderBehaviorMenuPosition.left,
@@ -247,7 +247,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                             aria-checked={sidebarConfig.folderBehavior === option.value}
                                             onClick={() => updateFolderBehavior(option.value)}
                                             className={clsx(
-                                                'w-full text-left px-3 py-2 text-[11px] flex items-start gap-2 transition-colors cursor-pointer hover:bg-[var(--surface-hover)]',
+                                                'flex w-full cursor-pointer items-start gap-2 rounded-lg px-3 py-2 text-left text-[11px] transition-colors hover:bg-[var(--surface-hover)]',
                                                 sidebarConfig.folderBehavior === option.value
                                                     ? 'text-[var(--primary)]'
                                                     : 'text-[var(--text)]',
@@ -292,7 +292,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                     if (isMobile && sortMenuOpen) closeSortMenu();
                                     else openSortMenu();
                                 }}
-                                className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                             >
                                 <i className="ph ph-sort-ascending text-[14px] text-[var(--primary)] shrink-0" />
                                 <span className="flex-1 min-w-0">Sort by</span>
@@ -310,7 +310,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 <div
                                     role="menu"
                                     aria-label="Sort API navigation"
-                                    className="fixed z-[10001] w-[174px] rounded-xl border shadow-2xl py-1 bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
+                                    className="fixed z-[10001] flex w-[174px] flex-col gap-1 rounded-xl border p-1.5 shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)] animate-fade-in"
                                     style={{top: sortMenuPosition.top, left: sortMenuPosition.left}}
                                     onMouseEnter={() => {
                                         if (!isMobile) openSortMenu();
@@ -345,7 +345,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                                     }
                                                 }}
                                                 className={clsx(
-                                                    'w-full text-left px-3 py-1.5 text-[11px] font-medium flex items-center gap-2 transition-colors',
+                                                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium transition-colors',
                                                     disabled
                                                         ? 'cursor-not-allowed opacity-35'
                                                         : 'cursor-pointer hover:bg-[var(--surface-hover)]',
@@ -382,7 +382,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                                 closeSortMenu();
                                             }}
                                             className={clsx(
-                                                'w-full text-left px-3 py-1.5 text-[11px] font-medium flex items-center gap-2 transition-colors cursor-pointer hover:bg-[var(--surface-hover)]',
+                                                'flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[var(--surface-hover)]',
                                                 sidebarConfig.sortDirection === option.value
                                                     ? 'text-[var(--primary)]'
                                                     : 'text-[var(--text)]',
@@ -413,7 +413,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({hideEndpointCount: !sidebarConfig.hideEndpointCount});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-hash text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="flex-1 min-w-0">Hide endpoint counts</span>
@@ -437,7 +437,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({hideProtectedIcon: !sidebarConfig.hideProtectedIcon});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-lock-key text-[14px] text-[var(--method-delete)] shrink-0" />
                             <span className="flex-1 min-w-0">Hide protected icon</span>
@@ -461,7 +461,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 updateSidebarConfig({hideDeprecatedEndpoints: !sidebarConfig.hideDeprecatedEndpoints});
                             }}
-                            className="w-full text-left px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
                         >
                             <i className="ph ph-warning-circle text-[14px] text-[var(--method-put)] shrink-0" />
                             <span className="flex-1 min-w-0">Hide deprecated endpoints</span>
@@ -486,7 +486,7 @@ export default function SidebarSettingsMenu(props: SidebarSettingsMenuProps) {
                                 closeAllSubmenus();
                                 onUnhideAllEndpoints();
                             }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <i className="ph ph-eye text-[14px] text-[var(--primary)] shrink-0" />
                             <span className="min-w-0 flex-1">Unhide all endpoints</span>

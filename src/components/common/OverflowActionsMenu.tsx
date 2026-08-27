@@ -96,7 +96,7 @@ export default function OverflowActionsMenu({actions, ariaLabel, className}: Ove
                         ref={menuRef}
                         role="menu"
                         aria-label={ariaLabel}
-                        className="fixed z-[999999] overflow-hidden rounded-xl border p-1 shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
+                        className="fixed z-[999999] flex flex-col gap-1 overflow-hidden rounded-xl border p-1.5 shadow-2xl bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
                         style={{
                             top: position.top,
                             left: position.left,

@@ -1339,6 +1339,36 @@ export default function SchemaPropertiesTable({
                         </div>
                     </div>
                 )}
+                {notSchema ? (
+                    <div className="shrink-0 border-b border-[var(--border)] bg-[var(--method-delete)]/5 px-3 py-2.5">
+                        <div className="flex flex-wrap items-start gap-2">
+                            <span
+                                className="inline-flex items-center gap-1 rounded-md border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                                style={{color: COMBINATOR_META.not.color}}
+                            >
+                                <i className={`${COMBINATOR_META.not.icon} text-[12px]`} />
+                                Not
+                            </span>
+                            <div className="min-w-0 flex-1 text-[11px] leading-snug text-[var(--text)]">
+                                <span className="text-[var(--text-muted)]">Must not match </span>
+                                <span className="font-semibold" style={{color: COMBINATOR_META.not.color}}>
+                                    {describeNotConstraint(notSchema)}
+                                </span>
+                                {typeof notSchema?.$ref === 'string' ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => onPushSchema(getRefName(notSchema.$ref))}
+                                        className="ml-2 inline-flex items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-1.5 py-0.5 text-[10px] font-bold cursor-pointer"
+                                        style={{color: COMBINATOR_META.not.color}}
+                                    >
+                                        <i className="ph ph-diamonds-four text-[11px]" />
+                                        Inspect
+                                    </button>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
                 <div className="flex min-w-0 max-h-full min-h-0 flex-col bg-[var(--surface)] flex-1">
                     <CardOrTable
                         preferCards={preferCards}

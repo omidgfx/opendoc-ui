@@ -1186,6 +1186,12 @@ test('detects bare $ref bodies for oneOf/anyOf/allOf/not', () => {
     assert.equal(detectSchemaCombinator({$ref: '#/components/schemas/StandaloneAnyOf'}, resolve)?.meta.kind, 'anyOf');
     assert.equal(detectSchemaCombinator({$ref: '#/components/schemas/StandaloneNot'}, resolve)?.meta.kind, 'not');
     assert.equal(describeNotConstraint({$ref: '#/components/schemas/Forbidden'}), 'Forbidden');
+    // Body-level pure `not` (Operation 14 style) is a root combinator, not a field choice.
+    const topNot = {not: {$ref: '#/components/schemas/StandaloneNot'}};
+    assert.equal(detectSchemaCombinator(topNot, resolve)?.meta.kind, 'not');
+    assert.equal(detectSchemaCombinator(topNot, resolve)?.branches.length, 1);
+    const fieldOnly = collectSchemaBranchChoices(topNot, resolve, r => r.split('/').pop() || r);
+    assert.equal(fieldOnly.filter(c => c.kind === 'not').length, 0);
 });
 
 test('dims code-viewer lines for body and field-level allOf focus the same way', () => {
@@ -1736,6 +1742,31 @@ test('renders comprehensive native, shortcode, skin-tone and Emoji 16 Apple spri
     assert.match(parsed, /--emoji-sheet-left:-[\d.]+em;--emoji-sheet-top:-[\d.]+em/);
     assert.match(parsed, /:not_an_emoji:/);
 });
+
+test('sorts sidebar endpoints by name with natural numeric order', () => {
+    const spec: any = {
+        openapi: '3.0.3',
+        info: {title: 'Sort', version: '1.0.0'},
+        paths: {
+            '/a': {post: {summary: 'Operation 10 - Ten', tags: ['Ops']}},
+            '/b': {post: {summary: 'Operation 2 - Two', tags: ['Ops']}},
+            '/c': {post: {summary: 'Operation 1 - One', tags: ['Ops']}},
+            '/d': {post: {summary: 'Operation 14 - Fourteen', tags: ['Ops']}},
+        },
+    };
+    const tree = buildTagTree(
+        spec,
+        normalizeSidebarConfig({sortBy: 'name', sortDirection: 'asc'}),
+        undefined,
+        new Set(),
+    );
+    const ops = tree.children['Ops']?.endpoints || [];
+    assert.deepEqual(
+        ops.map(ep => ep.operation.summary),
+        ['Operation 1 - One', 'Operation 2 - Two', 'Operation 10 - Ten', 'Operation 14 - Fourteen'],
+    );
+});
+
 test('defaults endpoint routes on and always matches endpoint paths in the local sidebar filter', () => {
     assert.equal(normalizeSidebarConfig(undefined).displayRoutes, true);
     assert.equal(normalizeSidebarConfig({displayRoutes: false}).displayRoutes, false);

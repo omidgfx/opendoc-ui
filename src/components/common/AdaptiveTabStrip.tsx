@@ -279,7 +279,7 @@ export default function AdaptiveTabStrip({
                         ref={menuRef}
                         role="menu"
                         aria-label={ariaLabel}
-                        className="fixed z-[999999] overflow-y-auto rounded-xl border p-1 shadow-2xl scrollbar-thin bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
+                        className="fixed z-[999999] flex flex-col gap-1 overflow-y-auto rounded-xl border p-1.5 shadow-2xl scrollbar-thin bg-[var(--surface)] border-[var(--border)] text-[var(--text)]"
                         style={{
                             top: menuPosition.top,
                             left: menuPosition.left,

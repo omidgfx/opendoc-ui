@@ -66,14 +66,14 @@ export default function SidebarContextMenu({x, y, target, hasAIProfile, onAction
         onClose();
     };
     const button =
-        'group w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer text-[var(--text)] hover:bg-[var(--surface-hover)] flex items-center gap-2';
+        'group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]';
     return (
         <>
             <div
                 ref={menuRef}
                 role="menu"
                 aria-label={target.type === 'endpoint' ? 'Endpoint actions' : 'View actions'}
-                className="fixed z-[5000] min-w-[220px] max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border shadow-xl py-1 bg-[var(--surface)] border-[var(--border)] animate-fade-in scrollbar-thin"
+                className="fixed z-[5000] flex min-w-[220px] max-h-[calc(100vh-16px)] flex-col gap-1 overflow-y-auto rounded-xl border p-1.5 shadow-xl bg-[var(--surface)] border-[var(--border)] animate-fade-in scrollbar-thin"
                 style={{top: position.top, left: position.left}}
                 onClick={event => event.stopPropagation()}
                 onContextMenu={event => event.preventDefault()}

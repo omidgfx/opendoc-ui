@@ -85,13 +85,13 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
             </Tip>
 
             {open && (
-                <div className="absolute right-0 top-full z-30 mt-1 min-w-[240px] max-w-[320px] overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]">
+                <div className="absolute right-0 top-full z-30 mt-1 flex min-w-[240px] max-w-[320px] flex-col gap-1 overflow-hidden rounded-xl border bg-[var(--surface)] p-1.5 shadow-2xl border-[var(--border)]">
                     {choices.map(choice => {
                         const kind = choice.kind || 'oneOf';
                         return (
                             <div
                                 key={`${kind}:${choice.path}`}
-                                className="border-b last:border-b-0 border-[var(--border)]/70"
+                                className="flex flex-col gap-1 border-b last:border-b-0 border-[var(--border)]/70 pb-1 last:pb-0"
                             >
                                 <div
                                     className="px-2.5 py-2 text-[9px] font-black uppercase tracking-wider"

@@ -52,7 +52,7 @@ export default function CustomDropdown({
         const rect = triggerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const described = options.some(option => !!option.description?.trim());
-        const estimatedHeight = Math.min(288, options.length * (described ? 44 : 34) + 8);
+        const estimatedHeight = Math.min(288, options.length * (described ? 48 : 38) + 12);
         const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - 8);
         const spaceAbove = Math.max(0, rect.top - 8);
         const openAbove = spaceBelow < Math.min(estimatedHeight, 160) && spaceAbove > spaceBelow;
@@ -154,7 +154,7 @@ export default function CustomDropdown({
             id={listboxId}
             role="listbox"
             aria-activedescendant={`${listboxId}-option-${activeIndex}`}
-            className="fixed z-[999999] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm min-w-[180px] max-h-72 overflow-y-auto text-[var(--text)]"
+            className="fixed z-[999999] flex flex-col gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl p-1.5 text-sm min-w-[180px] max-h-72 overflow-y-auto text-[var(--text)]"
             style={{
                 top: position.top,
                 left: menuLeft,
@@ -180,7 +180,7 @@ export default function CustomDropdown({
                         event.stopPropagation();
                         selectIndex(index);
                     }}
-                    className={`mx-[1px] my-[1px] px-3 py-2 flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${option.disabled ? 'cursor-not-allowed opacity-45 bg-transparent text-[var(--text-muted)]' : 'cursor-pointer'} ${!option.disabled && index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
+                    className={`px-3 py-2 flex items-center gap-2 rounded-lg text-xs font-mono transition-colors ${option.disabled ? 'cursor-not-allowed opacity-45 bg-transparent text-[var(--text-muted)]' : 'cursor-pointer'} ${!option.disabled && index === activeIndex ? 'bg-[var(--surface-hover)]' : 'bg-transparent'} ${option.value === value ? 'font-semibold' : ''}`}
                 >
                     <span
                         className={`size-2 shrink-0 rounded-full ${index === activeIndex ? 'bg-[var(--primary)]' : option.value === value ? 'bg-[var(--method-get)]' : 'bg-transparent'}`}

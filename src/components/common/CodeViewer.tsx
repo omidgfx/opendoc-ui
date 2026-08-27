@@ -484,7 +484,7 @@ export default function CodeViewer({
                   <div
                       ref={menuRef}
                       role="menu"
-                      className="fixed z-[999999] min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border bg-[var(--surface)] p-1 shadow-2xl border-[var(--border)]"
+                      className="fixed z-[999999] flex min-w-[220px] max-w-[280px] flex-col gap-1 overflow-hidden rounded-xl border bg-[var(--surface)] p-1.5 shadow-2xl border-[var(--border)]"
                       style={{
                           top: menuPosition.top,
                           left: menuPosition.left,

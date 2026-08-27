@@ -51,7 +51,7 @@ export default function SearchHistoryDropdown({specKey, query, onPick, onClose}:
                     Clear
                 </button>
             </div>
-            <div className="py-1 max-h-64 overflow-y-auto scrollbar-thin">
+            <div className="flex max-h-64 flex-col gap-1 overflow-y-auto p-1.5 scrollbar-thin">
                 {items.map(item => (
                     <div
                         key={item}

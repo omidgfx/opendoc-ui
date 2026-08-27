@@ -176,7 +176,8 @@ export function buildTagTree(
             isHiddenGroup: true,
         };
     }
-    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {sensitivity: 'base'});
+    // numeric: true so "Operation 2" sorts before "Operation 10" (and routes like /v1 before /v10).
+    const compareText = (a: string, b: string) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'});
     const direction = config.sortDirection === 'desc' ? -1 : 1;
     const endpointName = (endpoint: TreeNode['endpoints'][number]) => endpoint.operation?.summary || endpoint.path;
     const compareEndpoints = (a: TreeNode['endpoints'][number], b: TreeNode['endpoints'][number]) => {

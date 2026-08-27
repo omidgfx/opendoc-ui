@@ -127,6 +127,7 @@ const displayTypeOf = (schema: any, resolveReference: (item: any) => any): strin
     if (resolved.oneOf) return 'oneOf';
     if (resolved.anyOf) return 'anyOf';
     if (resolved.allOf) return 'allOf';
+    if (resolved.not) return 'not';
     if (resolved.properties || resolved.additionalProperties) return 'object';
     if (resolved.items) return 'array';
     return 'any';
@@ -230,8 +231,11 @@ export default function SchemaViewer({
         rootCombinator?.meta.kind === 'allOf'
             ? describeAllOfComposition(resolvedContent, resolveReference, getRefName)
             : null;
+    // oneOf/anyOf only — allOf has its own rail; not is inspection-only (no pick chips).
     const choiceKind: CombinatorKind | null =
-        rootCombinator && rootCombinator.meta.kind !== 'allOf' ? rootCombinator.meta.kind : null;
+        rootCombinator && (rootCombinator.meta.kind === 'oneOf' || rootCombinator.meta.kind === 'anyOf')
+            ? rootCombinator.meta.kind
+            : null;
     const choiceBranches = choiceKind && rootCombinator ? rootCombinator.branches : [];
     const allOfBranches =
         rootCombinator?.meta.kind === 'allOf' && rootCombinator.branches.length > 0 ? rootCombinator.branches : [];
