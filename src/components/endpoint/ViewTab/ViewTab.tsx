@@ -608,7 +608,7 @@ export default function ViewTab({
     const resolvedRequestBodySchema = requestBodySource.schema
         ? resolveReference(requestBodySource.schema) || requestBodySource.schema
         : null;
-    const requestBodyCombinator = detectSchemaCombinator(resolvedRequestBodySchema);
+    const requestBodyCombinator = detectSchemaCombinator(resolvedRequestBodySchema, resolveReference);
     // allOf composes rather than offers alternatives: the reader gets the one
     // object it assembles, with a note saying which parts it came from.
     const requestBodyComposition =

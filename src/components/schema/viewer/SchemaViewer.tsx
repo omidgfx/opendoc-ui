@@ -15,6 +15,7 @@ import {
     COMBINATOR_META,
     describeAllOfComposition,
     detectSchemaCombinator,
+    expandAllOfBranches,
     type CombinatorKind,
 } from '../../../utils/schema/combinators';
 import {
@@ -213,7 +214,8 @@ export default function SchemaViewer({
         contentSchema !== undefined && contentSchema !== null
             ? resolveReference(contentSchema) || contentSchema
             : resolvedMatrix;
-    const rootCombinator = detectSchemaCombinator(resolvedContent);
+    // Pass resolve so pure allOf wrappers (`allOf: [$ref→allOf]`) expand to real parts.
+    const rootCombinator = detectSchemaCombinator(resolvedContent, resolveReference);
     const composition =
         rootCombinator?.meta.kind === 'allOf'
             ? describeAllOfComposition(resolvedContent, resolveReference, getRefName)
@@ -222,9 +224,7 @@ export default function SchemaViewer({
         rootCombinator && rootCombinator.meta.kind !== 'allOf' ? rootCombinator.meta.kind : null;
     const choiceBranches = choiceKind && rootCombinator ? rootCombinator.branches : [];
     const allOfBranches =
-        rootCombinator?.meta.kind === 'allOf' && Array.isArray((resolvedContent as any)?.allOf)
-            ? ((resolvedContent as any).allOf as any[])
-            : [];
+        rootCombinator?.meta.kind === 'allOf' && rootCombinator.branches.length > 0 ? rootCombinator.branches : [];
 
     const anyOfSelected =
         anyOfSelectedIndices ??
@@ -308,8 +308,11 @@ export default function SchemaViewer({
                 break;
             }
             if (current && typeof current.$ref === 'string') current = resolveReference(current) || current;
-            if (!current || !Array.isArray(current.allOf) || current.allOf[index as number] === undefined) return;
-            map.set(path, propertyNamesOfSchema(current.allOf[index as number], resolveReference));
+            if (!current || !Array.isArray(current.allOf)) return;
+            const parts = expandAllOfBranches(current, resolveReference);
+            const list = parts.length > 0 ? parts : current.allOf;
+            if (list[index as number] === undefined) return;
+            map.set(path, propertyNamesOfSchema(list[index as number], resolveReference));
         });
         return map.size > 0 ? map : null;
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -715,83 +718,165 @@ export default function SchemaViewer({
     // Meta header is always open: summary bar + branch rail / description when present.
     const branchRailNode = renderBranchRail();
 
+    const typeLabel = displayTypeOf(effectiveForView || matrixSchema, resolveReference);
+    const combinatorBadge = rootCombinator
+        ? {
+              label: rootCombinator.meta.kind,
+              tip: rootCombinator.meta.hint,
+              icon: rootCombinator.meta.icon,
+              color: rootCombinator.meta.color,
+          }
+        : null;
+
+    const metaStat = (opts: {
+        label: string;
+        value: React.ReactNode;
+        tip?: string;
+        mono?: boolean;
+        icon?: string;
+        accent?: string;
+        name: string;
+    }) => {
+        const chip = (
+            <span
+                className={clsx(
+                    'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] leading-none',
+                    opts.accent
+                        ? 'border-current/20 bg-current/10'
+                        : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]',
+                )}
+                style={opts.accent ? {color: opts.accent} : undefined}
+            >
+                {opts.icon ? <i className={`${opts.icon} text-[12px] shrink-0 opacity-90`} /> : null}
+                <span className="shrink-0 font-sans text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    {opts.label}
+                </span>
+                <span
+                    className={clsx(
+                        'min-w-0 truncate font-semibold',
+                        opts.mono ? 'font-mono' : 'font-sans',
+                        !opts.accent && 'text-[var(--text-heading)]',
+                    )}
+                >
+                    {opts.value}
+                </span>
+            </span>
+        );
+        return (
+            <DevTooltip key={opts.name} name={opts.name} className="inline-flex min-w-0 max-w-full">
+                {opts.tip ? <Tip content={opts.tip}>{chip}</Tip> : chip}
+            </DevTooltip>
+        );
+    };
+
     const metaHeader = (
         <DevTooltip name="SchemaViewer.metaHeader">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden shadow-sm">
                 <DevTooltip name="SchemaViewer.metaHeaderBar">
-                    <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <DevTooltip name="SchemaViewer.metaHeaderSummary" className="min-w-0">
-                            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
-                                <span className="font-black uppercase tracking-wider text-[var(--text-muted)]">
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                <span className="mr-0.5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                                    <i className="ph ph-diamonds-four text-[12px] text-[var(--primary)]" />
                                     Schema
                                 </span>
-                                {schemaName && (
-                                    <DevTooltip name="SchemaViewer.metaHeaderName" className="inline-flex">
-                                        <span className="inline-flex items-center gap-1 font-mono font-bold text-[var(--text-heading)]">
-                                            <span className="text-[var(--text-muted)] font-sans font-semibold">
-                                                Name:
-                                            </span>
-                                            {schemaName}
-                                        </span>
-                                    </DevTooltip>
-                                )}
-                                <DevTooltip name="SchemaViewer.metaHeaderType" className="inline-flex">
-                                    <span className="inline-flex items-center gap-1 font-mono font-bold text-[var(--text-heading)]">
-                                        <span className="text-[var(--text-muted)] font-sans font-semibold">Type:</span>
-                                        {displayTypeOf(effectiveForView || matrixSchema, resolveReference)}
-                                    </span>
-                                </DevTooltip>
-                                {mediaType && (
-                                    <DevTooltip name="SchemaViewer.metaHeaderEncoding" className="inline-flex">
-                                        <span className="inline-flex items-center gap-1 font-mono text-[var(--text-heading)]">
-                                            <span className="text-[var(--text-muted)] font-sans font-semibold">
-                                                Encoding:
-                                            </span>
-                                            <span className="rounded bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-bold border border-[var(--border)] break-all">
-                                                {mediaType}
-                                            </span>
-                                        </span>
-                                    </DevTooltip>
-                                )}
-                                {bodyShape && (
-                                    <DevTooltip name="SchemaViewer.metaHeaderBodyShape" className="inline-flex">
-                                        <Tip content={bodyShape.hint}>
-                                            <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--primary)]">
-                                                <i className={`${bodyShape.icon} text-[11px]`} />
-                                                {bodyShape.label}
-                                            </span>
-                                        </Tip>
-                                    </DevTooltip>
-                                )}
+                                {schemaName
+                                    ? metaStat({
+                                          name: 'SchemaViewer.metaHeaderName',
+                                          label: 'Name',
+                                          value: schemaName,
+                                          mono: true,
+                                          tip: `Component / title: ${schemaName}`,
+                                          icon: 'ph ph-tag',
+                                      })
+                                    : null}
+                                {metaStat({
+                                    name: 'SchemaViewer.metaHeaderType',
+                                    label: 'Type',
+                                    value: typeLabel,
+                                    mono: true,
+                                    tip: 'JSON Schema type after branch selection',
+                                    icon: 'ph ph-cube',
+                                })}
+                                {combinatorBadge
+                                    ? metaStat({
+                                          name: 'SchemaViewer.metaHeaderCombinator',
+                                          label: 'Shape',
+                                          value: combinatorBadge.label,
+                                          mono: true,
+                                          tip: combinatorBadge.tip,
+                                          icon: combinatorBadge.icon,
+                                          accent: combinatorBadge.color,
+                                      })
+                                    : null}
+                                {mediaType
+                                    ? metaStat({
+                                          name: 'SchemaViewer.metaHeaderEncoding',
+                                          label: 'Media',
+                                          value: mediaType,
+                                          mono: true,
+                                          tip: 'Content-Type for this request or response body',
+                                          icon: 'ph ph-file-code',
+                                      })
+                                    : null}
+                                {bodyShape
+                                    ? metaStat({
+                                          name: 'SchemaViewer.metaHeaderBodyShape',
+                                          label: 'Body',
+                                          value: bodyShape.label,
+                                          tip: bodyShape.hint,
+                                          icon: bodyShape.icon,
+                                          accent: 'var(--primary)',
+                                      })
+                                    : null}
                             </div>
                         </DevTooltip>
-                        {composition && (
-                            <DevTooltip name="SchemaViewer.metaHeaderFieldCount" className="inline-flex shrink-0">
-                                <Tip
-                                    content={
-                                        composition.requiredCount > 0
-                                            ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'}, ${composition.requiredCount} required (allOf assembly)`
-                                            : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} (allOf assembly)`
-                                    }
-                                >
-                                    <span className="inline-flex cursor-help items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)]">
-                                        <i className="ph ph-stack-simple text-[11px]" />
-                                        {composition.fieldCount} field
-                                        {composition.fieldCount === 1 ? '' : 's'}
-                                        {composition.requiredCount > 0 && (
-                                            <span className="font-mono opacity-80">
-                                                · {composition.requiredCount} req
-                                            </span>
-                                        )}
-                                    </span>
-                                </Tip>
-                            </DevTooltip>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
+                            {composition
+                                ? metaStat({
+                                      name: 'SchemaViewer.metaHeaderFieldCount',
+                                      label: 'Fields',
+                                      value: (
+                                          <>
+                                              {composition.fieldCount}
+                                              {composition.requiredCount > 0 ? (
+                                                  <span className="opacity-80"> · {composition.requiredCount} req</span>
+                                              ) : null}
+                                          </>
+                                      ),
+                                      tip:
+                                          composition.requiredCount > 0
+                                              ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf · ${composition.requiredCount} required`
+                                              : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf`,
+                                      icon: 'ph ph-stack-simple',
+                                  })
+                                : null}
+                            {composition && composition.parts.length > 0
+                                ? metaStat({
+                                      name: 'SchemaViewer.metaHeaderPartCount',
+                                      label: 'Parts',
+                                      value: composition.parts.length,
+                                      tip: 'allOf composition parts (use the rail below to focus one)',
+                                      icon: 'ph ph-intersect',
+                                      accent: 'var(--primary)',
+                                  })
+                                : null}
+                            {choiceKind && choiceBranches.length > 0
+                                ? metaStat({
+                                      name: 'SchemaViewer.metaHeaderBranchCount',
+                                      label: choiceKind,
+                                      value: choiceBranches.length,
+                                      tip: rootCombinator?.meta.hint,
+                                      icon: rootCombinator?.meta.icon,
+                                      accent: rootCombinator?.meta.color,
+                                  })
+                                : null}
+                        </div>
                     </div>
                 </DevTooltip>
                 {(branchRailNode || resolvedEffective?.description) && (
                     <DevTooltip name="SchemaViewer.metaHeaderBody" className="min-w-0">
-                        <div className="space-y-3 border-t border-[var(--border)] px-3 py-3">
+                        <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
                             {branchRailNode ? (
                                 <DevTooltip name="SchemaViewer.metaHeaderBranchRail" className="min-w-0">
                                     {branchRailNode}

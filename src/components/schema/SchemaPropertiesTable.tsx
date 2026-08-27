@@ -15,7 +15,7 @@ import {
     schemaVariantLabel,
 } from '../../utils/schemaProperties';
 import CombinatorLabel from '../common/CombinatorLabel';
-import {COMBINATOR_META} from '../../utils/schema/combinators';
+import {COMBINATOR_META, expandAllOfBranches} from '../../utils/schema/combinators';
 import ModalPortal from '../common/ModalPortal';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
@@ -516,12 +516,15 @@ export default function SchemaPropertiesTable({
                     {renderCombinatorOptions(name, 'anyOf', resolved.anyOf, controlScope)}
                 </div>,
             );
-        if (Array.isArray(resolved?.allOf) && resolved.allOf.length > 0)
+        if (Array.isArray(resolved?.allOf) && resolved.allOf.length > 0) {
+            const allOfParts = expandAllOfBranches(resolved, resolveReference);
+            const parts = allOfParts.length > 0 ? allOfParts : resolved.allOf;
             rows.push(
                 <div key={`${name}:allOf`} className="flex flex-col gap-1.5">
-                    {renderCombinatorOptions(name, 'allOf', resolved.allOf, controlScope)}
+                    {renderCombinatorOptions(name, 'allOf', parts, controlScope)}
                 </div>,
             );
+        }
         if (
             resolved?.type === 'object' &&
             !resolved?.properties &&
@@ -1212,8 +1215,11 @@ export default function SchemaPropertiesTable({
         const focus = allOfFocus[detailsModalName];
         if (focus === null || focus === undefined) return [];
         const resolved = resolveReference(activeRawProperty) || activeRawProperty;
-        if (!Array.isArray(resolved?.allOf) || !resolved.allOf[focus]) return [];
-        const active = propertyNamesOfSchema(resolved.allOf[focus], resolveReference);
+        if (!Array.isArray(resolved?.allOf)) return [];
+        const parts = expandAllOfBranches(resolved, resolveReference);
+        const list = parts.length > 0 ? parts : resolved.allOf;
+        if (!list[focus]) return [];
+        const active = propertyNamesOfSchema(list[focus], resolveReference);
         if (!activeMockExample) return [];
         return dimmedLinesForObjectCode(activeMockExample.code, active);
     }, [detailsModalName, activeRawProperty, allOfFocus, activeMockExample, resolveReference]);

@@ -59,6 +59,7 @@ import {sanitizeZipEntryName} from '@/src/utils/export/zip';
 import {generateValidatedMock, getMockSnippet} from '@/src/utils/runner/mockGenerator';
 import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabilities';
 import {collectSchemaBranchChoices} from '@/src/utils/schema/branchChoices';
+import {expandAllOfBranches, describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {
     applySchemaBranchSelections,
     propertyNamesOfSchema,
@@ -1039,6 +1040,49 @@ test('collects field-level oneOf and allOf choices and applies oneOf picks witho
     const menus = inlineMenusForCode(code, key, choices, 'json');
     assert.ok(menus.menus.some(m => m.id.includes('allOf:payment')));
     assert.ok(menus.menus.some(m => m.id.includes('oneOf:payment.method')));
+
+    // Op-8 style: field allOf is a single $ref to a multi-part allOf component.
+    const components: Record<string, any> = {
+        PartA: {type: 'object', properties: {a1: {type: 'string'}, a2: {type: 'integer'}}},
+        PartB: {type: 'object', properties: {b1: {type: 'boolean'}}},
+        PartC: {type: 'object', properties: {c1: {type: 'number'}}},
+        CombinedBag: {
+            allOf: [
+                {$ref: '#/components/schemas/PartA'},
+                {$ref: '#/components/schemas/PartB'},
+                {$ref: '#/components/schemas/PartC'},
+            ],
+        },
+    };
+    const resolveRef = (item: any) => {
+        if (item?.$ref && typeof item.$ref === 'string') {
+            const name = item.$ref.split('/').pop();
+            return name ? components[name] : item;
+        }
+        return item;
+    };
+    const op8Field = {allOf: [{$ref: '#/components/schemas/CombinedBag'}]};
+    const expanded = expandAllOfBranches(op8Field, resolveRef);
+    assert.equal(expanded.length, 3);
+    const op8Choices = collectSchemaBranchChoices(
+        {type: 'object', properties: {combinedPayload: op8Field}},
+        resolveRef,
+        getRefName,
+    );
+    const op8AllOf = op8Choices.find(c => c.kind === 'allOf' && c.path === 'combinedPayload');
+    assert.ok(op8AllOf);
+    // Combined + 3 parts
+    assert.equal(op8AllOf!.options.length, 4);
+    assert.deepEqual(
+        op8AllOf!.options.slice(1).map(o => o.label),
+        ['PartA', 'PartB', 'PartC'],
+    );
+    const composition = describeAllOfComposition(op8Field, resolveRef, getRefName);
+    assert.equal(composition?.parts.length, 3);
+    assert.equal(composition?.fieldCount, 4);
+    const detected = detectSchemaCombinator(op8Field, resolveRef);
+    assert.equal(detected?.meta.kind, 'allOf');
+    assert.equal(detected?.branches.length, 3);
 });
 
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {

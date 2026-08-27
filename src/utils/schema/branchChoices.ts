@@ -1,4 +1,5 @@
 import {schemaVariantLabel, type SchemaReferenceResolver} from '../schemaProperties';
+import {expandAllOfBranches} from './combinators';
 
 export type SchemaBranchKind = 'oneOf' | 'allOf';
 
@@ -78,6 +79,10 @@ export const collectSchemaBranchChoices = (
         });
     }
     if (path && Array.isArray(schema.allOf) && schema.allOf.length > 0) {
+        // Expand pure allOf wrappers (`allOf: [ $ref → multi-part allOf ]`) so
+        // field menus list every composed part, not a single opaque $ref.
+        const allOfParts = expandAllOfBranches(schema, resolveReference);
+        const parts = allOfParts.length > 0 ? allOfParts : schema.allOf;
         choices.push({
             path,
             title: path,
@@ -89,9 +94,7 @@ export const collectSchemaBranchChoices = (
                     label: 'Combined',
                     description: 'Show every field from all composed parts',
                 },
-                ...schema.allOf.map((variant: any, index: number) =>
-                    optionOf(variant, index, resolveReference, getRefName),
-                ),
+                ...parts.map((variant: any, index: number) => optionOf(variant, index, resolveReference, getRefName)),
             ],
         });
     }

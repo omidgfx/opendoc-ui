@@ -155,6 +155,80 @@ export const effectiveAllOfSchema = (schema: any, resolve: SchemaBranchResolver 
     };
 };
 
+/**
+ * True when a schema is only an allOf composition (plus harmless metadata).
+ * Used to unwrap `allOf: [ $ref → { allOf: [A,B,C] } ]` into the real parts
+ * A/B/C for focus chips and field menus — otherwise the reader sees one opaque
+ * wrapper instead of the twelve composed schemas the author wrote.
+ */
+export const isAllOfWrapperSchema = (schema: any): boolean => {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return false;
+    if (!Array.isArray(schema.allOf) || schema.allOf.length === 0) return false;
+    const meta = new Set([
+        'title',
+        'description',
+        'deprecated',
+        'example',
+        'examples',
+        'externalDocs',
+        'default',
+        'readOnly',
+        'writeOnly',
+        'nullable',
+        '$id',
+        '$anchor',
+        '$schema',
+        '$comment',
+        '$ref',
+        'allOf',
+    ]);
+    return Object.keys(schema).every(key => meta.has(key));
+};
+
+/**
+ * Flatten allOf branches through pure allOf wrappers and $refs to allOf
+ * wrappers, preserving authoring identity on leaf parts (keep the $ref that
+ * points at a concrete schema with properties).
+ */
+export const expandAllOfBranches = (
+    schema: any,
+    resolve: SchemaBranchResolver = value => value,
+    depth = 0,
+    seen = new Set<any>(),
+): any[] => {
+    if (!schema || typeof schema !== 'object' || depth > 12) return [];
+    const root = resolve(schema) || schema;
+    if (!root || typeof root !== 'object') return [];
+    const list = Array.isArray(root.allOf) ? root.allOf : Array.isArray(schema.allOf) ? schema.allOf : [];
+    if (list.length === 0) return [];
+
+    const out: any[] = [];
+    list.forEach(branch => {
+        if (!branch || typeof branch !== 'object') {
+            out.push(branch);
+            return;
+        }
+        // Prefer resolving $ref to decide whether this hop is a wrapper.
+        const resolved = resolve(branch) || branch;
+        if (resolved && typeof resolved === 'object') {
+            if (seen.has(resolved)) {
+                out.push(branch);
+                return;
+            }
+            if (isAllOfWrapperSchema(resolved) && Array.isArray(resolved.allOf) && resolved.allOf.length > 0) {
+                const nextSeen = new Set(seen);
+                nextSeen.add(resolved);
+                // Recurse so nested wrappers also flatten; pass the resolved
+                // node so its allOf list is walked.
+                out.push(...expandAllOfBranches(resolved, resolve, depth + 1, nextSeen));
+                return;
+            }
+        }
+        out.push(branch);
+    });
+    return out;
+};
+
 /** Names each declared part of an allOf, so the reader sees where the fields come from. */
 export const describeAllOfParts = (
     branches: any[],
@@ -163,12 +237,20 @@ export const describeAllOfParts = (
 ): AllOfPart[] =>
     branches.map((branch, index) => {
         const resolved = (branch && resolve(branch)) || branch;
-        const fieldCount =
-            resolved && typeof resolved === 'object' && resolved.properties
-                ? Object.keys(resolved.properties).length
-                : 0;
-        const empty = !declaresSomething(resolved);
-        const name = branch?.$ref ? refName(branch.$ref) : resolved?.title || null;
+        // Nested allOf wrappers may still appear as a single branch if expansion
+        // was skipped; count fields through effective merge so the label is honest.
+        const effective =
+            resolved && typeof resolved === 'object' && Array.isArray(resolved.allOf)
+                ? effectiveAllOfSchema(resolved, resolve)
+                : null;
+        const propsSource = effective?.properties || resolved?.properties;
+        const fieldCount = propsSource && typeof propsSource === 'object' ? Object.keys(propsSource).length : 0;
+        const empty = !declaresSomething(resolved) && fieldCount === 0;
+        const name = branch?.$ref
+            ? refName(branch.$ref)
+            : resolved?.$ref
+              ? refName(resolved.$ref)
+              : resolved?.title || null;
         const label = name
             ? name
             : empty
@@ -178,7 +260,7 @@ export const describeAllOfParts = (
                 : `Part ${index + 1}`;
         return {
             label,
-            refName: branch?.$ref ? refName(branch.$ref) : null,
+            refName: branch?.$ref ? refName(branch.$ref) : resolved?.$ref ? refName(resolved.$ref) : null,
             fieldCount,
             empty,
             description: resolved?.description,
@@ -191,10 +273,15 @@ export const describeAllOfComposition = (
     resolve: SchemaBranchResolver = value => value,
     refName?: (ref: string) => string,
 ): AllOfComposition | null => {
-    const branches = Array.isArray(schema?.allOf) ? schema.allOf : [];
-    if (branches.length === 0) return null;
+    const rawBranches = Array.isArray(schema?.allOf)
+        ? schema.allOf
+        : Array.isArray((resolve(schema) || schema)?.allOf)
+          ? (resolve(schema) || schema).allOf
+          : [];
+    if (rawBranches.length === 0) return null;
+    const branches = expandAllOfBranches(schema, resolve);
     const effective = effectiveAllOfSchema(schema, resolve);
-    const parts = describeAllOfParts(branches, resolve, refName);
+    const parts = describeAllOfParts(branches.length > 0 ? branches : rawBranches, resolve, refName);
     return {
         effective: effective || schema,
         parts,
@@ -284,17 +371,30 @@ export const mergeAnyOfBranchSchemas = (
  * The polymorphism keyword declared on this schema node itself — never walks
  * into `properties` / `items`. Nested oneOf/anyOf/allOf belong on the field
  * row, not on the body-level branch rail.
+ *
+ * When `resolve` is provided, pure allOf wrappers (`allOf: [ $ref → allOf ]`)
+ * are expanded so the branch rail lists the real composed parts.
  */
-export const detectSchemaCombinator = (schema: any, _resolve?: SchemaBranchResolver): SchemaCombinator | null => {
+export const detectSchemaCombinator = (schema: any, resolve?: SchemaBranchResolver): SchemaCombinator | null => {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
-    // Own keywords only — do not resolve $ref here: the caller decides whether
-    // to resolve, so a body `$ref` wrapper is handled upstream.
+    // Own keywords only for oneOf/anyOf/not — do not resolve $ref on those so a
+    // body `$ref` wrapper stays handled upstream. allOf may expand wrappers.
     if (Array.isArray(schema.oneOf) && schema.oneOf.length)
         return {meta: COMBINATOR_META.oneOf, branches: schema.oneOf};
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)
         return {meta: COMBINATOR_META.anyOf, branches: schema.anyOf};
-    if (Array.isArray(schema.allOf) && schema.allOf.length)
-        return {meta: COMBINATOR_META.allOf, branches: schema.allOf};
+    if (Array.isArray(schema.allOf) && schema.allOf.length) {
+        const branches = resolve ? expandAllOfBranches(schema, resolve) : schema.allOf;
+        return {meta: COMBINATOR_META.allOf, branches: branches.length > 0 ? branches : schema.allOf};
+    }
     if (schema.not && typeof schema.not === 'object') return {meta: COMBINATOR_META.not, branches: [schema.not]};
+    // Body is often a bare $ref to an allOf schema — surface it when resolve is given.
+    if (resolve && typeof schema.$ref === 'string') {
+        const resolved = resolve(schema);
+        if (resolved && resolved !== schema && Array.isArray(resolved.allOf) && resolved.allOf.length) {
+            const branches = expandAllOfBranches(resolved, resolve);
+            return {meta: COMBINATOR_META.allOf, branches: branches.length > 0 ? branches : resolved.allOf};
+        }
+    }
     return null;
 };
