@@ -1,82 +1,381 @@
-import React from 'react';
+import React, {useCallback, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 
 /**
- * Temporary red code-name badges for chat feedback.
+ * Temporary DEV-ONLY code-name tooltips for chat feedback.
  *
- * DEV ONLY — `import.meta.env.DEV` is false in production builds, so these
- * never ship. When the labeling pass is done, delete this file and every
- * `<DevTooltip …>` / `devLabel=…` usage (grep `DevTooltip` / `devLabel`).
+ * The tip opens **under the pointer** so the cursor is already on Copy —
+ * no mouse travel across a gap. Click the red mark to pin until Copy / ✕ /
+ * Escape. Copy writes `` `Name` `` to the clipboard.
  *
- * Usage:
- *   <DevTooltip name="CodeViewer.root">{…}</DevTooltip>
- *   <DevTooltip name="handle.caret" inline />   // badge only, no wrap
+ * - Production: `import.meta.env.DEV` is false → children only.
+ * - Kill switch: `DEV_TOOLTIPS_ENABLED = false`.
+ * - Full removal: delete this file + every `DevTooltip` usage.
  */
 
-/** Flip to `false` to hide every badge without ripping call sites out yet. */
 export const DEV_TOOLTIPS_ENABLED = true;
 
 const showDevTooltips = (): boolean => Boolean(import.meta.env.DEV) && DEV_TOOLTIPS_ENABLED;
 
+let claimOwner: string | null = null;
+const claimListeners = new Map<string, () => void>();
+
+const claimTip = (id: string, close: () => void) => {
+    if (claimOwner && claimOwner !== id) claimListeners.get(claimOwner)?.();
+    claimOwner = id;
+    claimListeners.set(id, close);
+};
+
+const releaseTip = (id: string) => {
+    claimListeners.delete(id);
+    if (claimOwner === id) claimOwner = null;
+};
+
 export interface DevTooltipProps {
-    /** Stable code name to cite in chat (e.g. `CodeViewer.fieldHandle`). */
     name: string;
     children?: React.ReactNode;
-    /**
-     * Where the red badge sits relative to the wrapped content.
-     * - `above` (default): top-left, hanging slightly outside
-     * - `start`: left edge mid
-     * - `inside-top`: inside the box at top-left
-     */
     placement?: 'above' | 'start' | 'inside-top';
-    /** Badge only — no wrapper around children (for tight spots / portals). */
     inline?: boolean;
     className?: string;
-    /** Extra classes on the red pill itself. */
     badgeClassName?: string;
 }
 
-const badgeClass = (placement: DevTooltipProps['placement'], inline?: boolean) =>
-    clsx(
-        'pointer-events-none select-none whitespace-nowrap rounded-[3px] border border-red-800',
-        'bg-red-600 px-[5px] py-px font-mono text-[9px] font-bold leading-tight text-white',
-        'shadow-[0_1px_2px_rgba(0,0,0,0.35)] z-[2147483000]',
-        !inline && 'absolute',
-        !inline && placement === 'above' && 'left-0 top-0 -translate-y-[calc(100%+2px)]',
-        !inline && placement === 'start' && 'left-0 top-1/2 -translate-x-[calc(100%+4px)] -translate-y-1/2',
-        !inline && placement === 'inside-top' && 'left-0.5 top-0.5',
-        inline && 'inline-flex align-middle',
-    );
+type TipPos = {top: number; left: number};
 
-/**
- * Renders a red code-name badge. In production (or when disabled) children
- * pass through unchanged and inline badges render nothing.
- */
+const copyCitedName = async (name: string): Promise<boolean> => {
+    const payload = `\`${name}\``;
+    try {
+        await navigator.clipboard.writeText(payload);
+        return true;
+    } catch {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = payload;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            ta.remove();
+            return ok;
+        } catch {
+            return false;
+        }
+    }
+};
+
+const deepestHost = (node: EventTarget | null): Element | null => {
+    if (!(node instanceof Element)) return null;
+    return node.closest('[data-dev-tooltip-host]');
+};
+
+/** Place tip so (x,y) lands inside it — cursor never has to "reach" the tip. */
+const posUnderPoint = (x: number, y: number, tipW: number, tipH: number): TipPos => {
+    const pad = 8;
+    // Cursor sits in the left half of the tip, vertically centered on the row.
+    let left = x - 12;
+    let top = y - Math.min(14, tipH / 2);
+    if (left + tipW > window.innerWidth - pad) left = window.innerWidth - tipW - pad;
+    if (left < pad) left = pad;
+    if (top + tipH > window.innerHeight - pad) top = window.innerHeight - tipH - pad;
+    if (top < pad) top = pad;
+    return {top, left};
+};
+
 export default function DevTooltip({
     name,
     children,
-    placement = 'above',
+    placement = 'inside-top',
     inline = false,
     className,
-    badgeClassName,
 }: DevTooltipProps) {
+    const reactId = useId();
+    const instanceId = useRef(`devtip-${reactId}`).current;
+    const hostRef = useRef<HTMLElement | null>(null);
+    const tipRef = useRef<HTMLDivElement | null>(null);
+    const markRef = useRef<HTMLElement | null>(null);
+    const closeTimer = useRef<number | null>(null);
+    const pointRef = useRef({x: 0, y: 0});
+    const pinnedRef = useRef(false);
+    const overTipRef = useRef(false);
+
+    const [open, setOpen] = useState(false);
+    const [pinned, setPinned] = useState(false);
+    const [pos, setPos] = useState<TipPos | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    const clearClose = useCallback(() => {
+        if (closeTimer.current !== null) {
+            window.clearTimeout(closeTimer.current);
+            closeTimer.current = null;
+        }
+    }, []);
+
+    const closeNow = useCallback(() => {
+        clearClose();
+        releaseTip(instanceId);
+        pinnedRef.current = false;
+        overTipRef.current = false;
+        setPinned(false);
+        setOpen(false);
+        setPos(null);
+        setCopied(false);
+    }, [clearClose, instanceId]);
+
+    const scheduleClose = useCallback(() => {
+        if (pinnedRef.current || overTipRef.current) return;
+        clearClose();
+        closeTimer.current = window.setTimeout(() => {
+            if (pinnedRef.current || overTipRef.current) return;
+            closeNow();
+        }, 400);
+    }, [clearClose, closeNow]);
+
+    const openAt = useCallback(
+        (x: number, y: number, pin = false) => {
+            clearClose();
+            pointRef.current = {x, y};
+            claimTip(instanceId, closeNow);
+            if (pin) {
+                pinnedRef.current = true;
+                setPinned(true);
+            }
+            setOpen(true);
+        },
+        [clearClose, closeNow, instanceId],
+    );
+
+    const updatePos = useCallback(() => {
+        const tip = tipRef.current;
+        const w = tip?.offsetWidth || 220;
+        const h = tip?.offsetHeight || 32;
+        setPos(posUnderPoint(pointRef.current.x, pointRef.current.y, w, h));
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!open) return;
+        updatePos();
+    }, [open, updatePos, copied, pinned, name]);
+
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') closeNow();
+        };
+        const onDown = (event: MouseEvent) => {
+            if (!pinnedRef.current) return;
+            const t = event.target as Node;
+            if (tipRef.current?.contains(t)) return;
+            if (markRef.current?.contains(t)) return;
+            closeNow();
+        };
+        const onScroll = () => updatePos();
+        document.addEventListener('keydown', onKey);
+        document.addEventListener('mousedown', onDown, true);
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', onScroll);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('mousedown', onDown, true);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', onScroll);
+        };
+    }, [open, closeNow, updatePos]);
+
+    useEffect(
+        () => () => {
+            clearClose();
+            releaseTip(instanceId);
+        },
+        [clearClose, instanceId],
+    );
+
+    const onHostMouseOver = (event: React.MouseEvent) => {
+        if (deepestHost(event.target) !== hostRef.current) return;
+        openAt(event.clientX, event.clientY, false);
+    };
+
+    const onHostMouseMove = (event: React.MouseEvent) => {
+        if (!open || pinnedRef.current || overTipRef.current) return;
+        if (deepestHost(event.target) !== hostRef.current) return;
+        pointRef.current = {x: event.clientX, y: event.clientY};
+        updatePos();
+    };
+
+    const onHostMouseOut = (event: React.MouseEvent) => {
+        if (pinnedRef.current) return;
+        const related = event.relatedTarget as Node | null;
+        if (related && tipRef.current?.contains(related)) {
+            overTipRef.current = true;
+            clearClose();
+            return;
+        }
+        if (related && hostRef.current?.contains(related)) return;
+        scheduleClose();
+    };
+
+    const pinAtEvent = (event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openAt(event.clientX, event.clientY, true);
+    };
+
+    const onCopy = async (event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const ok = await copyCitedName(name);
+        if (ok) {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1400);
+        }
+    };
+
     if (!showDevTooltips()) {
         if (inline) return null;
         return <>{children}</>;
     }
 
-    const badge = (
-        <span className={clsx(badgeClass(placement, inline), badgeClassName)} data-dev-tooltip={name} title={name}>
-            {name}
-        </span>
+    const tip =
+        open && typeof document !== 'undefined'
+            ? createPortal(
+                  <div
+                      ref={tipRef}
+                      role="tooltip"
+                      id={reactId}
+                      data-dev-tooltip={name}
+                      data-dev-tooltip-pinned={pinned ? 'true' : undefined}
+                      onMouseEnter={() => {
+                          overTipRef.current = true;
+                          clearClose();
+                      }}
+                      onMouseLeave={() => {
+                          overTipRef.current = false;
+                          if (!pinnedRef.current) scheduleClose();
+                      }}
+                      className={clsx(
+                          'fixed z-[2147483646] flex max-w-[min(360px,calc(100vw-16px))] items-center gap-1.5',
+                          'rounded-md border-2 border-red-950 bg-red-600 px-2 py-1.5',
+                          'font-mono text-[12px] font-bold leading-none text-white',
+                          'shadow-[0_6px_20px_rgba(0,0,0,0.4)]',
+                      )}
+                      style={{
+                          top: pos?.top ?? -9999,
+                          left: pos?.left ?? -9999,
+                          visibility: pos ? 'visible' : 'hidden',
+                      }}
+                  >
+                      <span className="min-w-0 truncate select-all">`{name}`</span>
+                      <button
+                          type="button"
+                          onMouseDown={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                          }}
+                          onClick={onCopy}
+                          className={clsx(
+                              'inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded border px-2',
+                              'text-[11px] font-sans font-bold transition-colors',
+                              copied
+                                  ? 'border-emerald-200 bg-emerald-500 text-white'
+                                  : 'border-red-950 bg-red-800 text-white hover:bg-red-950',
+                          )}
+                          aria-label={copied ? 'Copied' : `Copy \`${name}\``}
+                      >
+                          <i className={clsx('ph text-[13px]', copied ? 'ph-check-bold' : 'ph-copy')} />
+                          {copied ? 'Copied' : 'Copy'}
+                      </button>
+                      {pinned && (
+                          <button
+                              type="button"
+                              onMouseDown={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                              }}
+                              onClick={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  closeNow();
+                              }}
+                              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded border border-red-950 bg-red-800 text-white hover:bg-red-950"
+                              aria-label="Close"
+                          >
+                              <i className="ph ph-x text-[12px]" />
+                          </button>
+                      )}
+                  </div>,
+                  document.body,
+              )
+            : null;
+
+    const markClass = clsx(
+        // 30% transparent + compact so labels don't fight the UI.
+        'absolute z-[6] size-1.5 cursor-pointer rounded-[2px] bg-red-600/70',
+        'ring-1 ring-white/50 shadow-none',
+        'hover:scale-150 hover:bg-red-500/80 transition-transform',
+        placement === 'start' && 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2',
+        placement === 'above' && 'left-0 top-0 -translate-y-1/2',
+        placement === 'inside-top' && 'left-0.5 top-0.5',
     );
 
-    if (inline) return badge;
+    if (inline) {
+        return (
+            <>
+                <span
+                    ref={node => {
+                        hostRef.current = node;
+                    }}
+                    data-dev-tooltip-host={name}
+                    onMouseOver={onHostMouseOver}
+                    onMouseMove={onHostMouseMove}
+                    onMouseOut={onHostMouseOut}
+                    onClick={pinAtEvent}
+                    className={clsx('relative inline-flex size-1.5 shrink-0 cursor-pointer align-middle', className)}
+                    title={`Click to pin \`${name}\``}
+                >
+                    <span
+                        ref={node => {
+                            markRef.current = node;
+                        }}
+                        aria-hidden
+                        className="absolute inset-0 rounded-[2px] bg-red-600/70 ring-1 ring-white/50"
+                    />
+                </span>
+                {tip}
+            </>
+        );
+    }
 
     return (
-        <div className={clsx('relative', className)} data-dev-tooltip-host={name}>
-            {badge}
-            {children}
-        </div>
+        <>
+            <div
+                ref={node => {
+                    hostRef.current = node;
+                }}
+                data-dev-tooltip-host={name}
+                onMouseOver={onHostMouseOver}
+                onMouseMove={onHostMouseMove}
+                onMouseOut={onHostMouseOut}
+                className={clsx('relative', className)}
+            >
+                <span
+                    ref={node => {
+                        markRef.current = node;
+                    }}
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={`Dev label ${name}`}
+                    title={`Click to pin \`${name}\``}
+                    className={markClass}
+                    onClick={pinAtEvent}
+                    onMouseDown={event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }}
+                />
+                {children}
+            </div>
+            {tip}
+        </>
     );
 }
