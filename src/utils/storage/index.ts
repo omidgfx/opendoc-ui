@@ -153,6 +153,22 @@ const hydrate = async (): Promise<boolean> => {
         if (await idbSet(`${IDB_STORAGE_PREFIX}${key}`, value)) deleteLocalRaw(key);
     }
 
+    // IndexedDB is the source of truth. Drop residual localStorage mirrors so
+    // they cannot grow unbounded or shadow later IDB reads. Emergency fallback
+    // rows (prefixed) are kept only while an IDB write is known to have failed.
+    for (const key of localKeys()) {
+        let stored: string | null = null;
+        try {
+            stored = window.localStorage.getItem(key);
+        } catch {
+            continue;
+        }
+        if (stored === null) continue;
+        if (stored.startsWith(LOCAL_FALLBACK_PREFIX) || stored === LOCAL_DELETE_MARKER) continue;
+        // Value already lives in memory/IDB from the migration pass above.
+        deleteLocalRaw(key);
+    }
+
     storageHydrated = true;
     return true;
 };
@@ -165,7 +181,19 @@ export const hydrateStorageFromIndexedDb = (): Promise<boolean> => {
 
 const readRaw = (key: string): string | null => {
     if (memoryStore.has(key)) return memoryStore.get(key) ?? '';
-    if (indexedDbEnabled) return null;
+    // After a successful IndexedDB hydrate, never read plain localStorage mirrors —
+    // only emergency fallback rows written when an IDB write failed.
+    if (indexedDbEnabled) {
+        try {
+            const stored = window.localStorage.getItem(key);
+            if (stored && stored.startsWith(LOCAL_FALLBACK_PREFIX)) {
+                return stored.slice(LOCAL_FALLBACK_PREFIX.length);
+            }
+        } catch {
+            /* ignore */
+        }
+        return null;
+    }
     return readLocalRaw(key);
 };
 
@@ -198,8 +226,25 @@ export const storage = {
     },
     set(key: string, value: string): boolean {
         const normalized = String(value);
-        if (!indexedDbEnabled) return writeLocalRaw(key, normalized);
+        // Always keep the hot path in memory. Durable writes go to IndexedDB when
+        // available; localStorage is only the emergency fallback (or the sole
+        // backend when IndexedDB is unavailable after hydration).
         memoryStore.set(key, normalized);
+        if (!storageHydrated) {
+            void hydrateStorageFromIndexedDb().then(enabled => {
+                if (enabled) {
+                    void queueIndexedDbOperation(
+                        key,
+                        () => idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized),
+                        () => writeLocalRaw(key, `${LOCAL_FALLBACK_PREFIX}${normalized}`),
+                    );
+                    return;
+                }
+                writeLocalRaw(key, normalized);
+            });
+            return true;
+        }
+        if (!indexedDbEnabled) return writeLocalRaw(key, normalized);
         void queueIndexedDbOperation(
             key,
             () => idbSet(`${IDB_STORAGE_PREFIX}${key}`, normalized),

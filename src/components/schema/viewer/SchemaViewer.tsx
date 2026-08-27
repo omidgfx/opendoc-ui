@@ -27,7 +27,7 @@ import {
 import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
 import {flattenSchemaProperties, schemaVariantLabel} from '../../../utils/schemaProperties';
 import {exampleLanguageFor, formatExample} from '../../../utils/endpoint/exampleFormatting';
-import {describeRequestBody, type RequestBodyKindInfo} from '../../../utils/endpoint/requestBodyShape';
+import type {MockUsage} from '../../../utils/runner/mockGenerator';
 import {
     EXAMPLE_ENCODINGS,
     defaultExampleEncodingId,
@@ -87,8 +87,8 @@ export interface SchemaViewerProps {
     headerActions?: React.ReactNode;
     /** Optional footer under the unified schema pane (e.g. submitted shape). */
     schemaFooter?: React.ReactNode;
-    /** Body shape chip next to encoding type. */
-    shapeInfo?: RequestBodyKindInfo | null;
+    /** Mock generation usage — request omits readOnly; response omits writeOnly. */
+    usage?: MockUsage;
     showSchemaWide?: boolean;
     className?: string;
 }
@@ -182,7 +182,7 @@ export default function SchemaViewer({
     onTestPattern,
     headerActions,
     schemaFooter,
-    shapeInfo,
+    usage = 'request',
     showSchemaWide = true,
     className,
 }: SchemaViewerProps) {
@@ -258,8 +258,6 @@ export default function SchemaViewer({
         matrixSchema?.title ||
         resolvedEffective?.title ||
         null;
-
-    const bodyShape = shapeInfo || describeRequestBody(mediaType, effectiveForView);
 
     // Body-level allOf focus: property names belonging to the focused part stay vivid.
     const rootAllOfActiveKeys = useMemo(() => {
@@ -422,7 +420,7 @@ export default function SchemaViewer({
     const generated = useMemo(() => {
         const encoding = exampleEncodingOf(exampleEncodingId);
         try {
-            const mock = generateValidatedMock(effectiveForView ?? {type: 'null'}, spec, 'request');
+            const mock = generateValidatedMock(effectiveForView ?? {type: 'null'}, spec, usage);
             if (mock.value === undefined) {
                 return {
                     value: undefined as unknown,
@@ -455,7 +453,7 @@ export default function SchemaViewer({
                 language: encoding.language,
             };
         }
-    }, [effectiveForView, spec, exampleEncodingId, rootName]);
+    }, [effectiveForView, spec, exampleEncodingId, rootName, usage]);
 
     const dimmedCodeLines = useMemo(() => {
         if (exampleEncodingId !== 'json' && exampleEncodingId !== 'yaml') return [];
@@ -799,18 +797,8 @@ export default function SchemaViewer({
                                           label: 'Media',
                                           value: mediaType,
                                           mono: true,
-                                          tip: 'Content-Type for this request or response body',
+                                          tip: 'Media type (Content-Type) for this body',
                                           icon: 'ph ph-file-code',
-                                      })
-                                    : null}
-                                {bodyShape
-                                    ? metaStat({
-                                          name: 'SchemaViewer.metaHeaderBodyShape',
-                                          label: 'Body',
-                                          value: bodyShape.label,
-                                          tip: bodyShape.hint,
-                                          icon: bodyShape.icon,
-                                          accent: 'var(--primary)',
                                       })
                                     : null}
                             </div>

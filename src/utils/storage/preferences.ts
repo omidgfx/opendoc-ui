@@ -63,10 +63,10 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
-    endpointRepresentationScope: 'global',
+    endpointRepresentationScope: 'endpoint',
     endpointRepresentation: 'example',
     endpointRepresentations: {},
-    modalRepresentationScope: 'global',
+    modalRepresentationScope: 'schema',
     modalRepresentation: 'example',
     modalRepresentations: {},
     parameterTableLayout: 'separated',

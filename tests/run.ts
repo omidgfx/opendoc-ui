@@ -61,6 +61,7 @@ import {OPENAPI_CAPABILITIES, capabilitiesFor} from '@/src/utils/openapi/capabil
 import {collectSchemaBranchChoices} from '@/src/utils/schema/branchChoices';
 import {expandAllOfBranches, describeAllOfComposition, detectSchemaCombinator} from '@/src/utils/schema/combinators';
 import {dimmedLinesForObjectCode, dimmedLinesForFieldAllOfFocus} from '@/src/utils/schema/exampleEncodings';
+import {DEFAULT_APP_PREFERENCES, normalizeAppPreferences} from '@/src/utils/storage/preferences';
 import {
     applySchemaBranchSelections,
     propertyNamesOfSchema,
@@ -1131,6 +1132,14 @@ other: 1
         containerPath: 'combinedPayload',
     });
     assert.deepEqual(yamlDimmed, [5, 6, 7]);
+});
+
+test('defaults documentation switches to per-endpoint and schema modal to per-schema', () => {
+    assert.equal(DEFAULT_APP_PREFERENCES.endpointRepresentationScope, 'endpoint');
+    assert.equal(DEFAULT_APP_PREFERENCES.modalRepresentationScope, 'schema');
+    const normalized = normalizeAppPreferences({});
+    assert.equal(normalized.endpointRepresentationScope, 'endpoint');
+    assert.equal(normalized.modalRepresentationScope, 'schema');
 });
 
 test('publishes an explicit capability contract for partial and transport-dependent behavior', () => {

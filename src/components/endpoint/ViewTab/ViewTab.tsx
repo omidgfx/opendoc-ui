@@ -1,9 +1,8 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ActiveAuth, OpenApiSpec, Operation} from '../../../types';
 import Markdown from '../../common/Markdown';
-import CodeViewer, {type CodeInlineMenu} from '../../common/CodeViewer';
+import CodeViewer from '../../common/CodeViewer';
 import DevTooltip from '../../common/DevTooltip';
-import SchemaPropertiesTable from '../../schema/SchemaPropertiesTable';
 import SchemaViewer, {type SchemaViewerTab} from '../../schema/viewer/SchemaViewer';
 import PatternTesterModal from '../../modals/PatternTesterModal';
 import MethodBadge from '../../common/MethodBadge';
@@ -32,7 +31,6 @@ import {
     mergeAnyOfBranchSchemas,
 } from '@/src/utils/schema/combinators';
 import {buildFormSkeleton, describeRequestBody, formSkeletonSnippet} from '@/src/utils/endpoint/requestBodyShape';
-import {exampleLanguageFor, formatExample} from '@/src/utils/endpoint/exampleFormatting';
 import {endpointRepresentationOf} from '@/src/utils/storage/preferences';
 import {groupParameters, parameterGroupMetaOf} from '@/src/utils/endpoint/parameterGroups';
 import ParameterLocationTag from '../../common/ParameterLocationTag';
@@ -42,11 +40,6 @@ import {describeParameterSerialization} from '@/src/utils/endpoint/parameterSeri
 import DescriptionTip from '../ExamineTab/recursive/DescriptionTip';
 import {usesDescriptionTooltip} from '@/src/utils/runner/recursiveBody';
 import {mockMarkersToLineMarkers, type CodeLineMarker} from '@/src/utils/lineMarkers';
-import {
-    extractMockLineMarkers,
-    generateValidatedMock,
-    prepareMockForAnnotation,
-} from '@/src/utils/runner/mockGenerator';
 import {useSchemaViewer} from '@/src/hooks/useSchemaViewer';
 import {Tip} from '../../common/Tooltip';
 import {useBreakpoint} from '../../../hooks/useBreakpoint';
@@ -59,15 +52,14 @@ import {
     resolveRequestBody,
 } from '../../../utils/openapi';
 import {isOperationAuthenticated, isOperationProtected} from '../../../utils/runner/auth';
-import {flattenSchemaProperties} from '../../../utils/schemaProperties';
 import ResponseLinksPanel from './ResponseLinksPanel';
 import OperationCallbacksPanel from './OperationCallbacksPanel';
 import {applySchemaBranchSelections, SCHEMA_BRANCH_SELECTION_EVENT} from '../../../utils/schema/branchSelections';
 import {collectSchemaBranchChoices} from '../../../utils/schema/branchChoices';
 import SchemaOneOfMenuButton from '../../schema/SchemaOneOfMenuButton';
-import {inlineMenusForCode} from '../../schema/inlineMenus';
-// Legacy request-body panel kept in-tree (unused) for comparison while the
-// new SchemaViewer is evaluated on Request Body Context only.
+// Legacy request-body panel kept in-tree (unused) for comparison; request +
+// response documentation both use SchemaViewer now. Schema Modal still uses
+// the prior viewers until reviewed separately.
 import '../../schema/legacy/LegacyRequestBodySchemaPanel';
 
 interface ViewTabProps {
@@ -84,14 +76,6 @@ interface ViewTabProps {
     onSelectResponseCode?: (code: string | null) => void;
     parsableKey?: string;
     isActive?: boolean;
-}
-
-interface FlatProperty {
-    name: string;
-    typeNode: React.ReactNode;
-    description: string;
-    isRequired: boolean;
-    rawProp?: any;
 }
 
 const getPatternFromParam = (param: any, spec: OpenApiSpec | null): string | null => {
@@ -138,14 +122,15 @@ export default function ViewTab({
         title: string;
         description?: string;
     } | null>(null);
-    const [responseActiveTab, setResponseActiveTab] = useState<{
-        [code: string]: 'example' | 'schema' | 'enum' | 'spec-example';
-    }>({});
+    const [responseActiveTab, setResponseActiveTab] = useState<Record<string, SchemaViewerTab>>({});
     const [requestActiveTab, setRequestActiveTab] = useState<SchemaViewerTab>(endpointRepresentation);
     const [requestExampleKey, setRequestExampleKey] = useState('');
     const [responseExampleKeys, setResponseExampleKeys] = useState<Record<string, string>>({});
     const [requestAnyOfSelected, setRequestAnyOfSelected] = useState<number[]>([]);
     const [requestAllOfFocusIndex, setRequestAllOfFocusIndex] = useState<number | null>(null);
+    const [responseBranchIndex, setResponseBranchIndex] = useState<Record<string, number>>({});
+    const [responseAnyOfSelected, setResponseAnyOfSelected] = useState<Record<string, number[]>>({});
+    const [responseAllOfFocusIndex, setResponseAllOfFocusIndex] = useState<Record<string, number | null>>({});
     // Enum is a peek at the values, not a representation the reader chose to
     // keep: it lasts for this visit only and never touches the preference.
     useEffect(() => {
@@ -155,6 +140,9 @@ export default function ViewTab({
         setResponseExampleKeys({});
         setRequestAnyOfSelected([]);
         setRequestAllOfFocusIndex(null);
+        setResponseBranchIndex({});
+        setResponseAnyOfSelected({});
+        setResponseAllOfFocusIndex({});
     }, [representationKey, endpointRepresentation]);
     useEffect(() => {
         const handler = () => setSchemaBranchRevision(current => current + 1);
@@ -413,45 +401,9 @@ export default function ViewTab({
             description: resp?.description || `Response ${code} for ${method.toUpperCase()} ${path}`,
         });
     };
-    const {
-        viewerExampleSchemas,
-        viewerExampleNames,
-        resolveReference,
-        renderSchemaButton,
-        renderSchemaTypeExample,
-        getDefaultViewerSchema,
-        resetViewerSchema,
-    } = useSchemaViewer(spec, onOpenSchemaModal);
-    const resolveProperties = (schema: any): Record<string, any> => flattenSchemaProperties(schema, resolveReference);
-    const renderSchemaPropertiesTable = (
-        schema: any,
-        inspectName?: string | null,
-        selectionScopeKey?: string,
-        showSchemaWide = false,
-    ) => {
-        if (schema === undefined || schema === null) return null;
-        const properties = resolveProperties(schema);
-        return (
-            <SchemaPropertiesTable
-                properties={properties}
-                schema={schema}
-                resolveReference={resolveReference}
-                getRefName={getRefName}
-                onPushSchema={onOpenSchemaModal}
-                inspectName={inspectName ?? null}
-                onTestPattern={setPatternToTest}
-                selectionScopeKey={selectionScopeKey}
-                showSchemaWide={showSchemaWide}
-            />
-        );
-    };
-    const {
-        getMockSnippetWithMarkers,
-        getSchemaDisplayName,
-        getLanguageForContentType,
-        humanizeSchemaName,
-        getSchemaNamesFromResponse,
-    } = createResponseExampleHelpers(spec);
+    const {resolveReference, renderSchemaButton} = useSchemaViewer(spec, onOpenSchemaModal);
+    const {getMockSnippetWithMarkers, humanizeSchemaName, getSchemaNamesFromResponse} =
+        createResponseExampleHelpers(spec);
     /* ---------- Example column rendering (Request Parameters) ---------- */
     const exampleEntryValue = (entry: any): unknown => {
         if (entry && typeof entry === 'object') {
@@ -683,26 +635,6 @@ export default function ViewTab({
                 <span>View Schema</span>
             </button>
         );
-    };
-    const buildSchemaRepresentationSnippet = (
-        schemaCandidate: any,
-        contentType: string,
-        usage: 'request' | 'response',
-    ): {code: string; markers: any[]} => {
-        const generated = generateValidatedMock(schemaCandidate, spec, usage);
-        if (generated.value === undefined)
-            return {
-                code: `// Mock unavailable: ${generated.diagnostics.map(item => item.message).join('; ')}`,
-                markers: [],
-            };
-        const prepared = prepareMockForAnnotation(generated.value);
-        const rootName = getSchemaDisplayName(schemaCandidate, usage === 'request' ? 'request' : 'response');
-        const serialized = formatExample(
-            prepared.value,
-            contentType,
-            rootName || (usage === 'request' ? 'request' : 'response'),
-        );
-        return extractMockLineMarkers(serialized, prepared);
     };
     // Gather examples across every request media type so the selector can
     // section them by format instead of forcing a separate encoding switch.
@@ -1213,7 +1145,7 @@ export default function ViewTab({
                                                     }
                                                     onOpenSchema={onOpenSchemaModal}
                                                     onTestPattern={setPatternToTest}
-                                                    shapeInfo={requestBodyShape}
+                                                    usage="request"
                                                     showSchemaWide={true}
                                                     headerActions={renderViewSchemaButton(
                                                         schemaModalNameOf(
@@ -1318,9 +1250,7 @@ export default function ViewTab({
                                                     example.key ===
                                                     (responseExampleKeys[code] || responseSpecExamples[0]?.key),
                                             ) || responseSpecExamples[0];
-                                        const setResponseTab = (
-                                            tab: 'example' | 'schema' | 'enum' | 'spec-example',
-                                        ) => {
+                                        const setResponseTab = (tab: SchemaViewerTab) => {
                                             if (tab === 'enum' || tab === 'spec-example') {
                                                 setResponseActiveTab(prev => ({...prev, [code]: tab}));
                                                 return;
@@ -1329,10 +1259,76 @@ export default function ViewTab({
                                             // choice is a preference. Its scope decides
                                             // whether it stays on this endpoint or follows
                                             // the reader to every other one.
-                                            setResponseActiveTab({});
+                                            setResponseActiveTab(prev => {
+                                                const next = {...prev};
+                                                delete next[code];
+                                                return next;
+                                            });
                                             setEndpointRepresentation(representationKey, tab);
                                         };
                                         const schemaNames = getSchemaNamesFromResponse(resp);
+
+                                        // Same composition model as request body, scoped per
+                                        // status code. Responses select Format (media type),
+                                        // not "Encoding type" — wire shape is what came back.
+                                        const responseContentSchema = selectedContentObj?.schema ?? null;
+                                        const resolvedResponseSchema = responseContentSchema
+                                            ? resolveReference(responseContentSchema) || responseContentSchema
+                                            : null;
+                                        const responseCombinator = detectSchemaCombinator(
+                                            resolvedResponseSchema,
+                                            resolveReference,
+                                        );
+                                        const responseComposition =
+                                            responseCombinator?.meta.kind === 'allOf'
+                                                ? describeAllOfComposition(
+                                                      resolvedResponseSchema,
+                                                      resolveReference,
+                                                      getRefName,
+                                                  )
+                                                : null;
+                                        const responseChoice = responseComposition ? null : responseCombinator;
+                                        const responseBranchIdx = responseChoice
+                                            ? Math.min(
+                                                  responseBranchIndex[code] ?? 0,
+                                                  Math.max(0, responseChoice.branches.length - 1),
+                                              )
+                                            : 0;
+                                        const responseAnyOfSchema =
+                                            responseChoice?.meta.kind === 'anyOf'
+                                                ? mergeAnyOfBranchSchemas(
+                                                      responseChoice.branches,
+                                                      responseAnyOfSelected[code] || [],
+                                                      resolveReference,
+                                                      {
+                                                          title: resolvedResponseSchema?.title,
+                                                          description: resolvedResponseSchema?.description,
+                                                      },
+                                                  )
+                                                : null;
+                                        const responseMatrixSchema = responseComposition
+                                            ? responseComposition.effective
+                                            : responseAnyOfSchema
+                                              ? responseAnyOfSchema
+                                              : responseChoice
+                                                ? effectiveBranchSchema(
+                                                      asBranchSchema(responseChoice.branches[responseBranchIdx]),
+                                                      resolveReference,
+                                                  )
+                                                : responseContentSchema;
+                                        const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
+                                        const responseEffectiveSchema = responseMatrixSchema
+                                            ? applySchemaBranchSelections(
+                                                  responseMatrixSchema,
+                                                  responseSelectionScopeKey,
+                                                  resolveReference,
+                                              )
+                                            : responseMatrixSchema;
+                                        const responseSpecExamplesForViewer = responseSpecExamples.map(example => ({
+                                            ...example,
+                                            mediaType: selectedContentType || undefined,
+                                            group: selectedContentType || undefined,
+                                        }));
                                         return (
                                             <DevTooltip
                                                 key={code}
@@ -1534,424 +1530,167 @@ export default function ViewTab({
                                                                         name={`ViewTab.responseContent[${code}]`}
                                                                         className="min-w-0"
                                                                     >
-                                                                        <>
-                                                                            <DevTooltip
-                                                                                name={`ViewTab.responseTabStrip[${code}]`}
-                                                                            >
-                                                                                <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                                                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
-                                                                                        <button
-                                                                                            onClick={() =>
-                                                                                                setResponseTab(
-                                                                                                    'example',
-                                                                                                )
-                                                                                            }
-                                                                                            aria-pressed={
-                                                                                                activeResponseTab ===
-                                                                                                'example'
-                                                                                            }
-                                                                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                                        >
-                                                                                            <span className="hidden sm:inline">
-                                                                                                Generated Example
-                                                                                            </span>
-                                                                                            <span className="sm:hidden">
-                                                                                                Example
-                                                                                            </span>
-                                                                                        </button>
-                                                                                        {(() => {
-                                                                                            const s = resolveReference(
-                                                                                                viewerExampleSchemas[
-                                                                                                    code
-                                                                                                ] ??
-                                                                                                    getDefaultViewerSchema(
-                                                                                                        selectedContentObj?.schema,
-                                                                                                    ),
-                                                                                            );
-                                                                                            const hasEnum =
-                                                                                                s?.enum &&
-                                                                                                Array.isArray(s.enum) &&
-                                                                                                s.enum.length > 0;
-                                                                                            return hasEnum ? (
-                                                                                                <button
-                                                                                                    onClick={() =>
-                                                                                                        setResponseTab(
-                                                                                                            'enum',
-                                                                                                        )
-                                                                                                    }
-                                                                                                    aria-pressed={
-                                                                                                        activeResponseTab ===
-                                                                                                        'enum'
-                                                                                                    }
-                                                                                                    className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'enum' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                                                >
-                                                                                                    Enum
-                                                                                                </button>
-                                                                                            ) : null;
-                                                                                        })()}
-                                                                                        <button
-                                                                                            onClick={() =>
-                                                                                                setResponseTab('schema')
-                                                                                            }
-                                                                                            aria-pressed={
-                                                                                                activeResponseTab ===
-                                                                                                'schema'
-                                                                                            }
-                                                                                            className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeResponseTab === 'schema' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                                        >
-                                                                                            <span className="hidden sm:inline">
-                                                                                                Unified Schema
-                                                                                            </span>
-                                                                                            <span className="sm:hidden">
-                                                                                                Schema
-                                                                                            </span>
-                                                                                        </button>
-                                                                                        {responseSpecExamples.length >
-                                                                                            0 && (
-                                                                                            <div
-                                                                                                role="button"
-                                                                                                tabIndex={0}
-                                                                                                onClick={() =>
-                                                                                                    setResponseTab(
-                                                                                                        'spec-example',
-                                                                                                    )
-                                                                                                }
-                                                                                                onKeyDown={event => {
-                                                                                                    if (
-                                                                                                        event.key ===
-                                                                                                            'Enter' ||
-                                                                                                        event.key ===
-                                                                                                            ' '
-                                                                                                    ) {
-                                                                                                        event.preventDefault();
-                                                                                                        setResponseTab(
-                                                                                                            'spec-example',
-                                                                                                        );
-                                                                                                    }
-                                                                                                }}
-                                                                                                className={`px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${activeResponseTab === 'spec-example' ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold' : 'hover:opacity-80'}`}
-                                                                                            >
-                                                                                                <span>Example:</span>
-                                                                                                {responseSpecExamples.length >
-                                                                                                    1 &&
-                                                                                                activeResponseTab ===
-                                                                                                    'spec-example' ? (
-                                                                                                    <CustomDropdown
-                                                                                                        value={
-                                                                                                            responseExampleKeys[
-                                                                                                                code
-                                                                                                            ] ||
-                                                                                                            responseSpecExamples[0]
-                                                                                                                .key
-                                                                                                        }
-                                                                                                        onChange={value =>
-                                                                                                            setResponseExampleKeys(
-                                                                                                                previous => ({
-                                                                                                                    ...previous,
-                                                                                                                    [code]: value,
-                                                                                                                }),
-                                                                                                            )
-                                                                                                        }
-                                                                                                        options={responseSpecExamples.map(
-                                                                                                            example => ({
-                                                                                                                value: example.key,
-                                                                                                                label: example.label,
-                                                                                                            }),
-                                                                                                        )}
-                                                                                                        className="w-auto min-w-0 max-w-[180px]"
-                                                                                                        ariaLabel={`Response ${code} examples`}
-                                                                                                        plainTrigger
-                                                                                                    />
-                                                                                                ) : (
-                                                                                                    <span>
-                                                                                                        {activeResponseSpecExample?.label ||
-                                                                                                            'Example'}
-                                                                                                    </span>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        )}
+                                                                        <div className="space-y-3 min-w-0">
+                                                                            {/* Responses use Format (which media type the
+                                                                                server returns), not request Encoding type. */}
+                                                                            {responseContentEntries.length > 1 && (
+                                                                                <DevTooltip
+                                                                                    name={`ViewTab.responseFormat[${code}]`}
+                                                                                >
+                                                                                    <div className="flex items-center justify-end gap-2 min-w-0">
+                                                                                        <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
+                                                                                            Format
+                                                                                        </span>
+                                                                                        <CustomDropdown
+                                                                                            value={selectedContentType}
+                                                                                            onChange={value => {
+                                                                                                setResponseContentTypes(
+                                                                                                    previous => ({
+                                                                                                        ...previous,
+                                                                                                        [code]: value,
+                                                                                                    }),
+                                                                                                );
+                                                                                                setResponseBranchIndex(
+                                                                                                    previous => {
+                                                                                                        const next = {
+                                                                                                            ...previous,
+                                                                                                        };
+                                                                                                        delete next[
+                                                                                                            code
+                                                                                                        ];
+                                                                                                        return next;
+                                                                                                    },
+                                                                                                );
+                                                                                                setResponseAnyOfSelected(
+                                                                                                    previous => {
+                                                                                                        const next = {
+                                                                                                            ...previous,
+                                                                                                        };
+                                                                                                        delete next[
+                                                                                                            code
+                                                                                                        ];
+                                                                                                        return next;
+                                                                                                    },
+                                                                                                );
+                                                                                                setResponseAllOfFocusIndex(
+                                                                                                    previous => {
+                                                                                                        const next = {
+                                                                                                            ...previous,
+                                                                                                        };
+                                                                                                        delete next[
+                                                                                                            code
+                                                                                                        ];
+                                                                                                        return next;
+                                                                                                    },
+                                                                                                );
+                                                                                            }}
+                                                                                            options={responseContentEntries.map(
+                                                                                                ([mime]) => ({
+                                                                                                    value: mime,
+                                                                                                    label: mime,
+                                                                                                }),
+                                                                                            )}
+                                                                                            icon="ph ph-code-block text-[14px]"
+                                                                                            className="w-full max-w-[200px]"
+                                                                                        />
                                                                                     </div>
-                                                                                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end flex-wrap">
-                                                                                        {renderViewSchemaButton(
+                                                                                </DevTooltip>
+                                                                            )}
+                                                                            <div
+                                                                                key={`${code}:${selectedContentType}`}
+                                                                                className="space-y-4 animate-fade-in min-w-0"
+                                                                            >
+                                                                                <SchemaViewer
+                                                                                    spec={spec}
+                                                                                    matrixSchema={responseMatrixSchema}
+                                                                                    effectiveSchema={
+                                                                                        responseEffectiveSchema
+                                                                                    }
+                                                                                    contentSchema={
+                                                                                        responseContentSchema
+                                                                                    }
+                                                                                    mediaType={selectedContentType}
+                                                                                    selectionScopeKey={
+                                                                                        responseSelectionScopeKey
+                                                                                    }
+                                                                                    activeTab={activeResponseTab}
+                                                                                    onTabChange={setResponseTab}
+                                                                                    onPersistRepresentation={mode =>
+                                                                                        setEndpointRepresentation(
+                                                                                            representationKey,
+                                                                                            mode,
+                                                                                        )
+                                                                                    }
+                                                                                    specExamples={
+                                                                                        responseSpecExamplesForViewer
+                                                                                    }
+                                                                                    activeSpecExampleKey={
+                                                                                        responseExampleKeys[code] || ''
+                                                                                    }
+                                                                                    onSpecExampleKeyChange={key =>
+                                                                                        setResponseExampleKeys(
+                                                                                            previous => ({
+                                                                                                ...previous,
+                                                                                                [code]: key,
+                                                                                            }),
+                                                                                        )
+                                                                                    }
+                                                                                    branchIndex={responseBranchIdx}
+                                                                                    onBranchIndexChange={index =>
+                                                                                        setResponseBranchIndex(
+                                                                                            previous => ({
+                                                                                                ...previous,
+                                                                                                [code]: index,
+                                                                                            }),
+                                                                                        )
+                                                                                    }
+                                                                                    anyOfSelectedIndices={
+                                                                                        responseAnyOfSelected[code] ||
+                                                                                        []
+                                                                                    }
+                                                                                    onAnyOfSelectedIndicesChange={indices =>
+                                                                                        setResponseAnyOfSelected(
+                                                                                            previous => ({
+                                                                                                ...previous,
+                                                                                                [code]: indices,
+                                                                                            }),
+                                                                                        )
+                                                                                    }
+                                                                                    allOfFocusIndex={
+                                                                                        responseAllOfFocusIndex[code] ??
+                                                                                        null
+                                                                                    }
+                                                                                    onAllOfFocusIndexChange={index =>
+                                                                                        setResponseAllOfFocusIndex(
+                                                                                            previous => ({
+                                                                                                ...previous,
+                                                                                                [code]: index,
+                                                                                            }),
+                                                                                        )
+                                                                                    }
+                                                                                    inspectName={
+                                                                                        responseMatrixSchema?.$ref
+                                                                                            ? getRefName(
+                                                                                                  responseMatrixSchema.$ref,
+                                                                                              )
+                                                                                            : responseMatrixSchema?.title ||
+                                                                                              null
+                                                                                    }
+                                                                                    onOpenSchema={onOpenSchemaModal}
+                                                                                    onTestPattern={setPatternToTest}
+                                                                                    usage="response"
+                                                                                    showSchemaWide={true}
+                                                                                    headerActions={renderViewSchemaButton(
+                                                                                        schemaModalNameOf(
+                                                                                            responseMatrixSchema,
                                                                                             schemaModalNameOf(
-                                                                                                viewerExampleSchemas[
-                                                                                                    code
-                                                                                                ] ??
-                                                                                                    selectedContentObj?.schema,
-                                                                                                viewerExampleNames[
-                                                                                                    code
-                                                                                                ] ||
-                                                                                                    schemaModalNameOf(
-                                                                                                        selectedContentObj?.schema,
-                                                                                                    ),
+                                                                                                selectedContentObj?.schema,
                                                                                             ),
-                                                                                        )}
-                                                                                        {responseContentEntries.length >
-                                                                                            1 && (
-                                                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                                                <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 text-[var(--text-muted)]">
-                                                                                                    Format
-                                                                                                </span>
-                                                                                                <CustomDropdown
-                                                                                                    value={
-                                                                                                        selectedContentType
-                                                                                                    }
-                                                                                                    onChange={value => {
-                                                                                                        setResponseContentTypes(
-                                                                                                            previous => ({
-                                                                                                                ...previous,
-                                                                                                                [code]: value,
-                                                                                                            }),
-                                                                                                        );
-                                                                                                        resetViewerSchema(
-                                                                                                            code,
-                                                                                                        );
-                                                                                                    }}
-                                                                                                    options={responseContentEntries.map(
-                                                                                                        ([mime]) => ({
-                                                                                                            value: mime,
-                                                                                                            label: mime,
-                                                                                                        }),
-                                                                                                    )}
-                                                                                                    icon="ph ph-code-block text-[14px]"
-                                                                                                    className="w-full max-w-[200px]"
-                                                                                                />
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            </DevTooltip>
-
-                                                                            <DevTooltip
-                                                                                name={`ViewTab.responseTabPane[${code}]`}
-                                                                                className="min-w-0"
-                                                                            >
-                                                                                <div className="mt-3 min-w-0">
-                                                                                    {(() => {
-                                                                                        const cType =
-                                                                                            selectedContentType;
-                                                                                        const cObj = selectedContentObj;
-                                                                                        const activeSchema =
-                                                                                            viewerExampleSchemas[
-                                                                                                code
-                                                                                            ] ??
-                                                                                            getDefaultViewerSchema(
-                                                                                                cObj.schema,
-                                                                                            );
-                                                                                        const responseSelectionScopeKey = `${parsableKey || 'default'}:response:${method.toLowerCase()}:${path}:${code}`;
-                                                                                        const responseOneOfChoices =
-                                                                                            activeSchema
-                                                                                                ? collectSchemaBranchChoices(
-                                                                                                      activeSchema,
-                                                                                                      resolveReference,
-                                                                                                      getRefName,
-                                                                                                  )
-                                                                                                : [];
-                                                                                        const activeSchemaWithSelections =
-                                                                                            activeSchema
-                                                                                                ? applySchemaBranchSelections(
-                                                                                                      activeSchema,
-                                                                                                      responseSelectionScopeKey,
-                                                                                                      resolveReference,
-                                                                                                  )
-                                                                                                : activeSchema;
-                                                                                        const resolvedSchema =
-                                                                                            resolveReference(
-                                                                                                activeSchemaWithSelections,
-                                                                                            );
-                                                                                        const isEnum =
-                                                                                            resolvedSchema?.enum &&
-                                                                                            Array.isArray(
-                                                                                                resolvedSchema.enum,
-                                                                                            ) &&
-                                                                                            resolvedSchema.enum.length >
-                                                                                                0;
-                                                                                        return (
-                                                                                            <div
-                                                                                                key={cType}
-                                                                                                className="space-y-3 min-w-0"
-                                                                                            >
-                                                                                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                                                                    <p className="text-[10px] font-mono select-none text-[var(--text-muted)] break-all">
-                                                                                                        Content Type:{' '}
-                                                                                                        {cType}
-                                                                                                    </p>
-                                                                                                </div>
-                                                                                                {activeResponseTab ===
-                                                                                                'example' ? (
-                                                                                                    <div className="space-y-3 min-w-0">
-                                                                                                        <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                                                                                            <div className="mb-2 flex items-center justify-between gap-2">
-                                                                                                                <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                                                                                                    Inspect
-                                                                                                                    Response
-                                                                                                                    Schema
-                                                                                                                </h4>
-                                                                                                            </div>
-                                                                                                            <div className="flex flex-col gap-2 min-w-0">
-                                                                                                                <div className="min-w-0 overflow-x-auto scrollbar-thin">
-                                                                                                                    {renderSchemaTypeExample(
-                                                                                                                        cObj.schema,
-                                                                                                                        code,
-                                                                                                                    )}
-                                                                                                                </div>
-                                                                                                                {activeSchemaWithSelections?.description && (
-                                                                                                                    <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
-                                                                                                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
-                                                                                                                            Schema
-                                                                                                                            Description:
-                                                                                                                        </div>
-                                                                                                                        <div className="markdown-body">
-                                                                                                                            <Markdown
-                                                                                                                                text={
-                                                                                                                                    activeSchemaWithSelections.description
-                                                                                                                                }
-                                                                                                                            />
-                                                                                                                        </div>
-                                                                                                                    </div>
-                                                                                                                )}
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                        {(() => {
-                                                                                                            const example =
-                                                                                                                buildSchemaRepresentationSnippet(
-                                                                                                                    activeSchemaWithSelections,
-                                                                                                                    cType,
-                                                                                                                    'response',
-                                                                                                                );
-                                                                                                            const inlineMenus =
-                                                                                                                inlineMenusForCode(
-                                                                                                                    example.code,
-                                                                                                                    responseSelectionScopeKey,
-                                                                                                                    responseOneOfChoices,
-                                                                                                                );
-                                                                                                            return (
-                                                                                                                <CodeViewer
-                                                                                                                    code={
-                                                                                                                        inlineMenus.code
-                                                                                                                    }
-                                                                                                                    language={getLanguageForContentType(
-                                                                                                                        cType,
-                                                                                                                    )}
-                                                                                                                    maxHeight="none"
-                                                                                                                    lineMarkers={mockMarkersToLineMarkers(
-                                                                                                                        example.markers,
-                                                                                                                        {
-                                                                                                                            onOpenSchema:
-                                                                                                                                onOpenSchemaModal,
-                                                                                                                            onTestPattern:
-                                                                                                                                setPatternToTest,
-                                                                                                                        },
-                                                                                                                    )}
-                                                                                                                    inlineMenus={
-                                                                                                                        inlineMenus.menus
-                                                                                                                    }
-                                                                                                                />
-                                                                                                            );
-                                                                                                        })()}
-                                                                                                    </div>
-                                                                                                ) : activeResponseTab ===
-                                                                                                  'spec-example' ? (
-                                                                                                    <div className="space-y-3 min-w-0">
-                                                                                                        <div className="border-t border-[var(--border)] pt-2">
-                                                                                                            <CodeViewer
-                                                                                                                code={formatExample(
-                                                                                                                    activeResponseSpecExample?.value,
-                                                                                                                    cType,
-                                                                                                                    activeSchemaWithSelections?.$ref
-                                                                                                                        ? getRefName(
-                                                                                                                              activeSchemaWithSelections.$ref,
-                                                                                                                          )
-                                                                                                                        : activeSchemaWithSelections?.title ||
-                                                                                                                              'response',
-                                                                                                                )}
-                                                                                                                language={exampleLanguageFor(
-                                                                                                                    cType,
-                                                                                                                )}
-                                                                                                                maxHeight="320px"
-                                                                                                            />
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                ) : activeResponseTab ===
-                                                                                                      'enum' &&
-                                                                                                  isEnum ? (
-                                                                                                    <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                                                                                                        {resolvedSchema.enum.map(
-                                                                                                            (
-                                                                                                                val: any,
-                                                                                                            ) => (
-                                                                                                                <span
-                                                                                                                    key={JSON.stringify(
-                                                                                                                        val,
-                                                                                                                    )}
-                                                                                                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
-                                                                                                                >
-                                                                                                                    {JSON.stringify(
-                                                                                                                        val,
-                                                                                                                    )}
-                                                                                                                </span>
-                                                                                                            ),
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                ) : (
-                                                                                                    <div className="space-y-3 min-w-0">
-                                                                                                        <div className="pt-2 border-t border-[var(--border)] min-w-0">
-                                                                                                            <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-[var(--text-muted)]">
-                                                                                                                Inspect
-                                                                                                                Response
-                                                                                                                Schema
-                                                                                                            </h4>
-                                                                                                            <div className="flex flex-col gap-2 min-w-0">
-                                                                                                                <div className="min-w-0 overflow-x-auto scrollbar-thin">
-                                                                                                                    {renderSchemaTypeExample(
-                                                                                                                        cObj.schema,
-                                                                                                                        code,
-                                                                                                                    )}
-                                                                                                                </div>
-                                                                                                                {activeSchemaWithSelections?.description && (
-                                                                                                                    <div className="text-xs p-3 rounded-lg border border-[var(--primary)]/10 bg-[var(--primary)]/5 mt-1">
-                                                                                                                        <div className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--primary)] mb-1">
-                                                                                                                            Schema
-                                                                                                                            Description:
-                                                                                                                        </div>
-                                                                                                                        <div className="markdown-body">
-                                                                                                                            <Markdown
-                                                                                                                                text={
-                                                                                                                                    activeSchemaWithSelections.description
-                                                                                                                                }
-                                                                                                                            />
-                                                                                                                        </div>
-                                                                                                                    </div>
-                                                                                                                )}
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                        {renderSchemaPropertiesTable(
-                                                                                                            activeSchema,
-                                                                                                            viewerExampleNames[
-                                                                                                                code
-                                                                                                            ] ||
-                                                                                                                (cObj
-                                                                                                                    .schema
-                                                                                                                    ?.$ref
-                                                                                                                    ? getRefName(
-                                                                                                                          cObj
-                                                                                                                              .schema
-                                                                                                                              .$ref,
-                                                                                                                      )
-                                                                                                                    : cObj
-                                                                                                                          .schema
-                                                                                                                          ?.title ||
-                                                                                                                      null),
-                                                                                                            responseSelectionScopeKey,
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        );
-                                                                                    })()}
-                                                                                </div>
-                                                                            </DevTooltip>
-                                                                        </>
+                                                                                        ),
+                                                                                    )}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
                                                                     </DevTooltip>
                                                                 ) : (
                                                                     <p className="text-xs italic text-[11px] text-[var(--text-muted)]">
