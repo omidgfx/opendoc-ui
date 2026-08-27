@@ -769,43 +769,57 @@ export default function Sidebar(props: SidebarProps) {
                 </div>
             )}
 
-            <div className="px-3 py-1 border-b shrink-0 border-[var(--border)]">
-                {spec?.servers && spec.servers.length > 0 && (
-                    <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
-                            Active Server
-                        </label>
-                        <div className="flex items-center gap-1">
-                            <CustomDropdown
-                                value={selectedServerDefinition?.url || selectedServer}
-                                onChange={onSelectServer}
-                                options={spec.servers.map(s => ({value: s.url, label: s.description || s.url}))}
-                                icon="ph ph-hard-drives text-[14px]"
-                                className="flex-1 min-w-0 h-7"
-                            />
-                            {selectedServerDefinition?.variables &&
-                                Object.keys(selectedServerDefinition.variables).length > 0 && (
-                                    <Tip content="Configure server variables">
-                                        <button
-                                            type="button"
-                                            onClick={onOpenServerVariables}
-                                            aria-label="Configure server variables"
-                                            className="shrink-0 size-7.5 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:border-[var(--primary)] transition-colors cursor-pointer"
-                                        >
-                                            <i className="ph ph-sliders-horizontal text-[14px]"></i>
-                                        </button>
-                                    </Tip>
-                                )}
-                        </div>
-                        <Tip content={resolvedServerUrl}>
-                            <div className="mt-1 text-[10px] leading-none truncate flex items-center gap-1 text-[var(--text-muted)]">
-                                <i className="ph ph-globe text-[12px]"></i>
-                                <span className="font-mono select-text truncate">{resolvedServerUrl}</span>
+            {hasSpec && (
+                <div className="px-3 py-1.5 border-b shrink-0 border-[var(--border)]">
+                    {spec?.servers && spec.servers.length > 0 ? (
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
+                                Active Server
+                            </label>
+                            <div className="flex items-center gap-1">
+                                <CustomDropdown
+                                    value={selectedServerDefinition?.url || selectedServer}
+                                    onChange={onSelectServer}
+                                    options={spec.servers.map(s => ({
+                                        value: s.url,
+                                        label: s.description || s.url,
+                                    }))}
+                                    icon="ph ph-hard-drives text-[14px]"
+                                    className="flex-1 min-w-0 h-7"
+                                />
+                                {selectedServerDefinition?.variables &&
+                                    Object.keys(selectedServerDefinition.variables).length > 0 && (
+                                        <Tip content="Configure server variables">
+                                            <button
+                                                type="button"
+                                                onClick={onOpenServerVariables}
+                                                aria-label="Configure server variables"
+                                                className="shrink-0 size-7.5 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+                                            >
+                                                <i className="ph ph-sliders-horizontal text-[14px]"></i>
+                                            </button>
+                                        </Tip>
+                                    )}
                             </div>
-                        </Tip>
-                    </div>
-                )}
-            </div>
+                            <Tip content={resolvedServerUrl}>
+                                <div className="mt-1 text-[10px] leading-none truncate flex items-center gap-1 text-[var(--text-muted)]">
+                                    <i className="ph ph-globe text-[12px]"></i>
+                                    <span className="font-mono select-text truncate">{resolvedServerUrl}</span>
+                                </div>
+                            </Tip>
+                        </div>
+                    ) : (
+                        <div
+                            className="flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-muted)] opacity-70"
+                            title="This OpenAPI document does not declare any servers"
+                        >
+                            <i className="ph ph-hard-drives text-[12px] shrink-0" />
+                            <span className="font-semibold uppercase tracking-wider">No servers</span>
+                            <span className="font-normal normal-case tracking-normal truncate">· none declared</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div
                 data-sidebar-navigation-header

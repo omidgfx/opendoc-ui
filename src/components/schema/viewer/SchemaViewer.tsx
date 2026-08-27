@@ -488,16 +488,14 @@ export default function SchemaViewer({
     );
 
     const formatToolbar = (
-        
-            <CustomDropdown
-                value={exampleEncodingId}
-                onChange={setExampleEncodingId}
-                options={encodingOptions}
-                className="w-auto max-w-[11rem]"
-                triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
-                ariaLabel="Generated example format"
-            />
-        
+        <CustomDropdown
+            value={exampleEncodingId}
+            onChange={setExampleEncodingId}
+            options={encodingOptions}
+            className="w-auto max-w-[11rem]"
+            triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
+            ariaLabel="Generated example format"
+        />
     );
 
     const renderBranchRail = () => {
@@ -505,29 +503,26 @@ export default function SchemaViewer({
             return (
                 <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        
-                            <CombinatorLabel meta={COMBINATOR_META.oneOf} />
-                        
+                        <CombinatorLabel meta={COMBINATOR_META.oneOf} />
+
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
                                 {choiceBranches.map((branch, index) => {
                                     const active = branchIndex === index;
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        
-                                            <button
-                                                type="button"
-                                                aria-pressed={active}
-                                                onClick={() => onBranchIndexChange?.(index)}
-                                                className={branchChipClass(active)}
-                                                style={combinatorActiveSurfaceStyle('oneOf', active)}
-                                            >
-                                                <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                                    {selectionGlyph('oneOf', active)}
-                                                </span>
-                                                <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                            </button>
-                                        
+                                        <button
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => onBranchIndexChange?.(index)}
+                                            className={branchChipClass(active)}
+                                            style={combinatorActiveSurfaceStyle('oneOf', active)}
+                                        >
+                                            <span className="relative flex h-[12px] w-[12px] items-center justify-center">
+                                                {selectionGlyph('oneOf', active)}
+                                            </span>
+                                            <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -542,49 +537,45 @@ export default function SchemaViewer({
             return (
                 <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        
-                            <CombinatorLabel meta={COMBINATOR_META.anyOf} />
-                        
+                        <CombinatorLabel meta={COMBINATOR_META.anyOf} />
+
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
-                                
-                                    <button
-                                        type="button"
-                                        aria-pressed={allSelected}
-                                        onClick={() =>
-                                            setAnyOfSelected(allSelected ? [] : choiceBranches.map((_, index) => index))
-                                        }
-                                        className={branchChipClass(allSelected)}
-                                        style={combinatorActiveSurfaceStyle('anyOf', allSelected)}
-                                    >
-                                        {selectionGlyph('anyOf', allSelected)}
-                                        All
-                                    </button>
-                                
+                                <button
+                                    type="button"
+                                    aria-pressed={allSelected}
+                                    onClick={() =>
+                                        setAnyOfSelected(allSelected ? [] : choiceBranches.map((_, index) => index))
+                                    }
+                                    className={branchChipClass(allSelected)}
+                                    style={combinatorActiveSurfaceStyle('anyOf', allSelected)}
+                                >
+                                    {selectionGlyph('anyOf', allSelected)}
+                                    All
+                                </button>
+
                                 {choiceBranches.map((branch, index) => {
                                     const active = anyOfSelected.includes(index);
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        
-                                            <button
-                                                type="button"
-                                                aria-pressed={active}
-                                                onClick={() => {
-                                                    if (active) {
-                                                        setAnyOfSelected(anyOfSelected.filter(item => item !== index));
-                                                    } else {
-                                                        setAnyOfSelected(
-                                                            unique([...anyOfSelected, index].map(String)).map(Number),
-                                                        );
-                                                    }
-                                                }}
-                                                className={branchChipClass(active)}
-                                                style={combinatorActiveSurfaceStyle('anyOf', active)}
-                                            >
-                                                {selectionGlyph('anyOf', active)}
-                                                <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                            </button>
-                                        
+                                        <button
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => {
+                                                if (active) {
+                                                    setAnyOfSelected(anyOfSelected.filter(item => item !== index));
+                                                } else {
+                                                    setAnyOfSelected(
+                                                        unique([...anyOfSelected, index].map(String)).map(Number),
+                                                    );
+                                                }
+                                            }}
+                                            className={branchChipClass(active)}
+                                            style={combinatorActiveSurfaceStyle('anyOf', active)}
+                                        >
+                                            {selectionGlyph('anyOf', active)}
+                                            <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -598,41 +589,37 @@ export default function SchemaViewer({
             return (
                 <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                        
-                            <CombinatorLabel meta={COMBINATOR_META.allOf} />
-                        
+                        <CombinatorLabel meta={COMBINATOR_META.allOf} />
+
                         <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
                             <div className="flex items-center gap-1.5">
-                                
-                                    <button
-                                        type="button"
-                                        aria-pressed={allOfFocusIndex === null}
-                                        onClick={() => onAllOfFocusIndexChange?.(null)}
-                                        className={branchChipClass(allOfFocusIndex === null)}
-                                        style={combinatorActiveSurfaceStyle('allOf', allOfFocusIndex === null)}
-                                    >
-                                        {selectionGlyph('allOf', allOfFocusIndex === null)}
-                                        Combined
-                                    </button>
-                                
+                                <button
+                                    type="button"
+                                    aria-pressed={allOfFocusIndex === null}
+                                    onClick={() => onAllOfFocusIndexChange?.(null)}
+                                    className={branchChipClass(allOfFocusIndex === null)}
+                                    style={combinatorActiveSurfaceStyle('allOf', allOfFocusIndex === null)}
+                                >
+                                    {selectionGlyph('allOf', allOfFocusIndex === null)}
+                                    Combined
+                                </button>
+
                                 {allOfBranches.map((branch: any, index: number) => {
                                     const active = allOfFocusIndex === index;
                                     const label = branchLabelOf(branch, resolveReference, index);
                                     return (
-                                        
-                                            <button
-                                                type="button"
-                                                aria-pressed={active}
-                                                onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
-                                                className={branchChipClass(active, allOfFocusIndex !== null && !active)}
-                                                style={combinatorActiveSurfaceStyle('allOf', active)}
-                                            >
-                                                <span className="relative flex h-[12px] w-[12px] items-center justify-center">
-                                                    {selectionGlyph('allOf', active)}
-                                                </span>
-                                                <span className="max-w-[160px] truncate font-mono">{label}</span>
-                                            </button>
-                                        
+                                        <button
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
+                                            className={branchChipClass(active, allOfFocusIndex !== null && !active)}
+                                            style={combinatorActiveSurfaceStyle('allOf', active)}
+                                        >
+                                            <span className="relative flex h-[12px] w-[12px] items-center justify-center">
+                                                {selectionGlyph('allOf', active)}
+                                            </span>
+                                            <span className="max-w-[160px] truncate font-mono">{label}</span>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -643,25 +630,31 @@ export default function SchemaViewer({
         }
 
         if (rootCombinator?.meta.kind === 'not') {
+            const negated = rootCombinator.branches[0];
+            const negatedRef = typeof negated?.$ref === 'string' ? getRefName(negated.$ref) : '';
             return (
-                
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CombinatorLabel meta={COMBINATOR_META.not} />
-                        <span className="text-[10px] text-[var(--text-muted)]">
-                            Values matching the negated schema are rejected.
-                        </span>
-                        {rootCombinator.branches[0]?.$ref && onOpenSchema && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <CombinatorLabel meta={COMBINATOR_META.not} />
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                        Values matching the negated schema are rejected.
+                    </span>
+                    {negatedRef ? (
+                        onOpenSchema ? (
                             <button
                                 type="button"
-                                onClick={() => onOpenSchema(getRefName(rootCombinator.branches[0].$ref))}
+                                onClick={() => onOpenSchema(negatedRef)}
                                 className="inline-flex items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--method-delete)] cursor-pointer"
                             >
                                 <i className="ph ph-diamonds-four text-[11px]" />
-                                Inspect
+                                {negatedRef}
                             </button>
-                        )}
-                    </div>
-                
+                        ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--method-delete)]">
+                                {negatedRef}
+                            </span>
+                        )
+                    ) : null}
+                </div>
             );
         }
 
@@ -723,329 +716,312 @@ export default function SchemaViewer({
     };
 
     const metaHeader = (
-        
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden shadow-sm">
-                
-                    <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <div className="min-w-0">
-                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                <span className="mr-0.5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                                    <i className="ph ph-diamonds-four text-[12px] text-[var(--primary)]" />
-                                    Schema
-                                </span>
-                                {schemaName
-                                    ? metaStat({
-                                          name: 'SchemaViewer.metaHeaderName',
-                                          label: 'Name',
-                                          value: schemaName,
-                                          mono: true,
-                                          tip: `Component / title: ${schemaName}`,
-                                          icon: 'ph ph-tag',
-                                      })
-                                    : null}
-                                {metaStat({
-                                    name: 'SchemaViewer.metaHeaderType',
-                                    label: 'Type',
-                                    value: typeLabel,
-                                    mono: true,
-                                    tip: 'JSON Schema type after branch selection',
-                                    icon: 'ph ph-cube',
-                                })}
-                                {combinatorBadge
-                                    ? metaStat({
-                                          name: 'SchemaViewer.metaHeaderCombinator',
-                                          label: 'Shape',
-                                          value: combinatorBadge.label,
-                                          mono: true,
-                                          tip: combinatorBadge.tip,
-                                          icon: combinatorBadge.icon,
-                                          accent: combinatorBadge.color,
-                                      })
-                                    : null}
-                                {mediaType
-                                    ? metaStat({
-                                          name: 'SchemaViewer.metaHeaderEncoding',
-                                          label: 'Media',
-                                          value: mediaType,
-                                          mono: true,
-                                          tip: 'Media type (Content-Type) for this body',
-                                          icon: 'ph ph-file-code',
-                                      })
-                                    : null}
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
-                            {composition
-                                ? metaStat({
-                                      name: 'SchemaViewer.metaHeaderFieldCount',
-                                      label: 'Fields',
-                                      value: (
-                                          <>
-                                              {composition.fieldCount}
-                                              {composition.requiredCount > 0 ? (
-                                                  <span className="opacity-80"> · {composition.requiredCount} req</span>
-                                              ) : null}
-                                          </>
-                                      ),
-                                      tip:
-                                          composition.requiredCount > 0
-                                              ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf · ${composition.requiredCount} required`
-                                              : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf`,
-                                      icon: 'ph ph-stack-simple',
-                                  })
-                                : null}
-                            {composition && composition.parts.length > 0
-                                ? metaStat({
-                                      name: 'SchemaViewer.metaHeaderPartCount',
-                                      label: 'Parts',
-                                      value: composition.parts.length,
-                                      tip: 'allOf composition parts (use the rail below to focus one)',
-                                      icon: 'ph ph-intersect',
-                                      accent: 'var(--primary)',
-                                  })
-                                : null}
-                            {choiceKind && choiceBranches.length > 0
-                                ? metaStat({
-                                      name: 'SchemaViewer.metaHeaderBranchCount',
-                                      label: choiceKind,
-                                      value: choiceBranches.length,
-                                      tip: rootCombinator?.meta.hint,
-                                      icon: rootCombinator?.meta.icon,
-                                      accent: rootCombinator?.meta.color,
-                                  })
-                                : null}
-                        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden shadow-sm">
+            <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="mr-0.5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                            <i className="ph ph-diamonds-four text-[12px] text-[var(--primary)]" />
+                            Schema
+                        </span>
+                        {schemaName
+                            ? metaStat({
+                                  name: 'SchemaViewer.metaHeaderName',
+                                  label: 'Name',
+                                  value: schemaName,
+                                  mono: true,
+                                  tip: `Component / title: ${schemaName}`,
+                                  icon: 'ph ph-tag',
+                              })
+                            : null}
+                        {metaStat({
+                            name: 'SchemaViewer.metaHeaderType',
+                            label: 'Type',
+                            value: typeLabel,
+                            mono: true,
+                            tip: 'JSON Schema type after branch selection',
+                            icon: 'ph ph-cube',
+                        })}
+                        {combinatorBadge
+                            ? metaStat({
+                                  name: 'SchemaViewer.metaHeaderCombinator',
+                                  label: 'Shape',
+                                  value: combinatorBadge.label,
+                                  mono: true,
+                                  tip: combinatorBadge.tip,
+                                  icon: combinatorBadge.icon,
+                                  accent: combinatorBadge.color,
+                              })
+                            : null}
+                        {mediaType
+                            ? metaStat({
+                                  name: 'SchemaViewer.metaHeaderEncoding',
+                                  label: 'Media',
+                                  value: mediaType,
+                                  mono: true,
+                                  tip: 'Media type (Content-Type) for this body',
+                                  icon: 'ph ph-file-code',
+                              })
+                            : null}
                     </div>
-                
-                {(branchRailNode || resolvedEffective?.description) && (
-                    <div className="min-w-0">
-                        <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
-                            {branchRailNode ? (
-                                <div className="min-w-0">
-                                    {branchRailNode}
-                                </div>
-                            ) : null}
-                            {resolvedEffective?.description && (
-                                
-                                    <div className="text-xs leading-relaxed text-[var(--text)]">
-                                        <Markdown text={resolvedEffective.description} />
-                                    </div>
-                                
-                            )}
-                        </div>
-                    </div>
-                )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
+                    {composition
+                        ? metaStat({
+                              name: 'SchemaViewer.metaHeaderFieldCount',
+                              label: 'Fields',
+                              value: (
+                                  <>
+                                      {composition.fieldCount}
+                                      {composition.requiredCount > 0 ? (
+                                          <span className="opacity-80"> · {composition.requiredCount} req</span>
+                                      ) : null}
+                                  </>
+                              ),
+                              tip:
+                                  composition.requiredCount > 0
+                                      ? `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf · ${composition.requiredCount} required`
+                                      : `${composition.fieldCount} field${composition.fieldCount === 1 ? '' : 's'} assembled from allOf`,
+                              icon: 'ph ph-stack-simple',
+                          })
+                        : null}
+                    {composition && composition.parts.length > 0
+                        ? metaStat({
+                              name: 'SchemaViewer.metaHeaderPartCount',
+                              label: 'Parts',
+                              value: composition.parts.length,
+                              tip: 'allOf composition parts (use the rail below to focus one)',
+                              icon: 'ph ph-intersect',
+                              accent: 'var(--primary)',
+                          })
+                        : null}
+                    {choiceKind && choiceBranches.length > 0
+                        ? metaStat({
+                              name: 'SchemaViewer.metaHeaderBranchCount',
+                              label: choiceKind,
+                              value: choiceBranches.length,
+                              tip: rootCombinator?.meta.hint,
+                              icon: rootCombinator?.meta.icon,
+                              accent: rootCombinator?.meta.color,
+                          })
+                        : null}
+                </div>
             </div>
-        
+
+            {(branchRailNode || resolvedEffective?.description) && (
+                <div className="min-w-0">
+                    <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
+                        {branchRailNode ? <div className="min-w-0">{branchRailNode}</div> : null}
+                        {resolvedEffective?.description && (
+                            <div className="text-xs leading-relaxed text-[var(--text)]">
+                                <Markdown text={resolvedEffective.description} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
     );
 
     const tabStrip = (
         <div className="min-w-0">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-                
-                    <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
+                <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] flex-wrap items-center">
+                    <button
+                        type="button"
+                        onClick={() => selectTab('example')}
+                        aria-pressed={activeTab === 'example'}
+                        className={tabButtonClass(activeTab === 'example')}
+                    >
+                        <span className="hidden sm:inline">Generated Example</span>
+                        <span className="sm:hidden">Example</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => selectTab('schema')}
+                        aria-pressed={activeTab === 'schema'}
+                        className={tabButtonClass(activeTab === 'schema')}
+                    >
+                        <span className="hidden sm:inline">Unified Schema</span>
+                        <span className="sm:hidden">Schema</span>
+                    </button>
+                    {hasEnum && (
                         <button
                             type="button"
-                            onClick={() => selectTab('example')}
-                            aria-pressed={activeTab === 'example'}
-                            className={tabButtonClass(activeTab === 'example')}
+                            onClick={() => selectTab('enum')}
+                            aria-pressed={activeTab === 'enum'}
+                            className={tabButtonClass(activeTab === 'enum')}
                         >
-                            <span className="hidden sm:inline">Generated Example</span>
-                            <span className="sm:hidden">Example</span>
+                            Enum
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => selectTab('schema')}
-                            aria-pressed={activeTab === 'schema'}
-                            className={tabButtonClass(activeTab === 'schema')}
+                    )}
+                    {specExamples.length > 0 && (
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => selectTab('spec-example')}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    selectTab('spec-example');
+                                }
+                            }}
+                            className={clsx(
+                                'px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1',
+                                activeTab === 'spec-example'
+                                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
+                                    : 'hover:opacity-80',
+                            )}
                         >
-                            <span className="hidden sm:inline">Unified Schema</span>
-                            <span className="sm:hidden">Schema</span>
-                        </button>
-                        {hasEnum && (
-                            <button
-                                type="button"
-                                onClick={() => selectTab('enum')}
-                                aria-pressed={activeTab === 'enum'}
-                                className={tabButtonClass(activeTab === 'enum')}
-                            >
-                                Enum
-                            </button>
-                        )}
-                        {specExamples.length > 0 && (
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => selectTab('spec-example')}
-                                onKeyDown={event => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        selectTab('spec-example');
-                                    }
-                                }}
-                                className={clsx(
-                                    'px-2 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1',
-                                    activeTab === 'spec-example'
-                                        ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                        : 'hover:opacity-80',
-                                )}
-                            >
-                                <span>Example:</span>
-                                {specExamples.length > 1 && activeTab === 'spec-example' ? (
-                                    <span className="inline-flex min-w-0 items-center gap-1">
-                                        <CustomDropdown
-                                            value={activeSpecExampleKey || specExamples[0].key}
-                                            onChange={value => onSpecExampleKeyChange?.(value)}
-                                            options={specExampleOptions}
-                                            className="w-auto min-w-0 max-w-[220px]"
-                                            ariaLabel="Specification examples"
-                                            plainTrigger
-                                        />
-                                    </span>
-                                ) : (
-                                    <span>{activeSpecExample?.label || 'Example'}</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                
-                {headerActions && (
-                    
-                        <div className="flex items-center gap-2 flex-wrap justify-end">{headerActions}</div>
-                    
-                )}
+                            <span>Example:</span>
+                            {specExamples.length > 1 && activeTab === 'spec-example' ? (
+                                <span className="inline-flex min-w-0 items-center gap-1">
+                                    <CustomDropdown
+                                        value={activeSpecExampleKey || specExamples[0].key}
+                                        onChange={value => onSpecExampleKeyChange?.(value)}
+                                        options={specExampleOptions}
+                                        className="w-auto min-w-0 max-w-[220px]"
+                                        ariaLabel="Specification examples"
+                                        plainTrigger
+                                    />
+                                </span>
+                            ) : (
+                                <span>{activeSpecExample?.label || 'Example'}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {headerActions && <div className="flex items-center gap-2 flex-wrap justify-end">{headerActions}</div>}
             </div>
         </div>
     );
 
     return (
-        
-            <div className={clsx('space-y-3 min-w-0', className)}>
-                {metaHeader}
-                {tabStrip}
+        <div className={clsx('space-y-3 min-w-0', className)}>
+            {metaHeader}
+            {tabStrip}
 
-                {activeTab === 'example' && (
-                    <div className="min-w-0">
-                        <div className="space-y-3 min-w-0">
-                            <CodeViewer
-                                code={inlineMenus.code}
-                                language={generated.language}
-                                maxHeight="none"
-                                lineMarkers={mockMarkersToLineMarkers(generated.markers, {
-                                    onOpenSchema,
-                                    onTestPattern,
-                                })}
-                                inlineMenus={inlineMenus.menus}
-                                toolbarEnd={formatToolbar}
-                                dimmedLines={dimmedCodeLines}
-                            />
-                        </div>
+            {activeTab === 'example' && (
+                <div className="min-w-0">
+                    <div className="space-y-3 min-w-0">
+                        <CodeViewer
+                            code={inlineMenus.code}
+                            language={generated.language}
+                            maxHeight="none"
+                            lineMarkers={mockMarkersToLineMarkers(generated.markers, {
+                                onOpenSchema,
+                                onTestPattern,
+                            })}
+                            inlineMenus={inlineMenus.menus}
+                            toolbarEnd={formatToolbar}
+                            dimmedLines={dimmedCodeLines}
+                        />
                     </div>
-                )}
+                </div>
+            )}
 
-                {activeTab === 'spec-example' && activeSpecExample && (
-                    <div className="min-w-0">
-                        <div className="space-y-3 min-w-0">
-                            <CodeViewer
-                                code={formatExample(
-                                    activeSpecExample.value,
-                                    activeSpecExample.mediaType || mediaType,
-                                    rootName,
-                                )}
-                                language={exampleLanguageFor(activeSpecExample.mediaType || mediaType)}
-                                maxHeight="320px"
-                            />
-                        </div>
+            {activeTab === 'spec-example' && activeSpecExample && (
+                <div className="min-w-0">
+                    <div className="space-y-3 min-w-0">
+                        <CodeViewer
+                            code={formatExample(
+                                activeSpecExample.value,
+                                activeSpecExample.mediaType || mediaType,
+                                rootName,
+                            )}
+                            language={exampleLanguageFor(activeSpecExample.mediaType || mediaType)}
+                            maxHeight="320px"
+                        />
                     </div>
-                )}
+                </div>
+            )}
 
-                {activeTab === 'enum' && hasEnum && (
-                    
-                        <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                            {resolvedEffective.enum.map((val: any) => (
-                                <span
-                                    key={JSON.stringify(val)}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
-                                >
-                                    {JSON.stringify(val)}
-                                </span>
-                            ))}
-                        </div>
-                    
-                )}
+            {activeTab === 'enum' && hasEnum && (
+                <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]">
+                    {resolvedEffective.enum.map((val: any) => (
+                        <span
+                            key={JSON.stringify(val)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-mono border bg-[var(--surface)] border-[var(--border)] text-[var(--text)] break-all"
+                        >
+                            {JSON.stringify(val)}
+                        </span>
+                    ))}
+                </div>
+            )}
 
-                {activeTab === 'schema' && (
-                    <div className="min-w-0">
-                        <div className="space-y-3 min-w-0">
-                            {(() => {
-                                const pureNull =
-                                    matrixSchema === null ||
-                                    matrixSchema === undefined ||
-                                    resolvedEffective?.type === 'null' ||
-                                    (Array.isArray(resolvedEffective?.type) &&
-                                        resolvedEffective.type.length > 0 &&
-                                        resolvedEffective.type.every((item: string) => item === 'null'));
-                                if (pureNull) {
-                                    return (
-                                        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-xs leading-relaxed text-[var(--text-muted)]">
-                                            <strong className="text-[var(--text-heading)]">Null schema</strong>
-                                            <p className="mt-1">
-                                                This branch only accepts JSON <code className="font-mono">null</code>{' '}
-                                                and declares no properties.
-                                            </p>
-                                        </div>
-                                    );
-                                }
-                                if (matrixSchema === true) {
-                                    return (
-                                        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
-                                            <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
-                                            <p className="mt-1 text-[var(--text-muted)]">
-                                                Any JSON value satisfies this boolean schema.
-                                            </p>
-                                        </div>
-                                    );
-                                }
-                                if (matrixSchema === false) {
-                                    return (
-                                        <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
-                                            <strong className="text-[var(--method-delete)]">Impossible schema</strong>
-                                            <p className="mt-1 text-[var(--text-muted)]">
-                                                No JSON value satisfies this boolean schema.
-                                            </p>
-                                        </div>
-                                    );
-                                }
+            {activeTab === 'schema' && (
+                <div className="min-w-0">
+                    <div className="space-y-3 min-w-0">
+                        {(() => {
+                            const pureNull =
+                                matrixSchema === null ||
+                                matrixSchema === undefined ||
+                                resolvedEffective?.type === 'null' ||
+                                (Array.isArray(resolvedEffective?.type) &&
+                                    resolvedEffective.type.length > 0 &&
+                                    resolvedEffective.type.every((item: string) => item === 'null'));
+                            if (pureNull) {
                                 return (
-                                    <div
-                                        className={clsx(
-                                            'pt-1 min-w-0',
-                                            dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus',
-                                        )}
-                                        data-dimmed-fields={[...dimmedPropertyNames].join(',')}
-                                    >
-                                        <SchemaPropertiesTable
-                                            properties={tableProperties}
-                                            schema={matrixSchema ?? {type: 'null'}}
-                                            resolveReference={resolveReference}
-                                            getRefName={getRefName}
-                                            onPushSchema={name => onOpenSchema?.(name)}
-                                            inspectName={schemaName}
-                                            onTestPattern={pattern => onTestPattern?.(pattern)}
-                                            selectionScopeKey={selectionScopeKey}
-                                            showSchemaWide={showSchemaWide}
-                                        />
+                                    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-xs leading-relaxed text-[var(--text-muted)]">
+                                        <strong className="text-[var(--text-heading)]">Null schema</strong>
+                                        <p className="mt-1">
+                                            This branch only accepts JSON <code className="font-mono">null</code> and
+                                            declares no properties.
+                                        </p>
                                     </div>
                                 );
-                            })()}
-                            {schemaFooter}
-                        </div>
+                            }
+                            if (matrixSchema === true) {
+                                return (
+                                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
+                                        <strong className="text-[var(--text-heading)]">Unrestricted schema</strong>
+                                        <p className="mt-1 text-[var(--text-muted)]">
+                                            Any JSON value satisfies this boolean schema.
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            if (matrixSchema === false) {
+                                return (
+                                    <div className="rounded-xl border border-[var(--method-delete)]/30 bg-[var(--method-delete)]/5 p-4 text-xs">
+                                        <strong className="text-[var(--method-delete)]">Impossible schema</strong>
+                                        <p className="mt-1 text-[var(--text-muted)]">
+                                            No JSON value satisfies this boolean schema.
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div
+                                    className={clsx(
+                                        'pt-1 min-w-0',
+                                        dimmedPropertyNames.size > 0 && 'schema-viewer-allof-focus',
+                                    )}
+                                    data-dimmed-fields={[...dimmedPropertyNames].join(',')}
+                                >
+                                    <SchemaPropertiesTable
+                                        properties={tableProperties}
+                                        schema={matrixSchema ?? {type: 'null'}}
+                                        resolveReference={resolveReference}
+                                        getRefName={getRefName}
+                                        onPushSchema={name => onOpenSchema?.(name)}
+                                        inspectName={schemaName}
+                                        onTestPattern={pattern => onTestPattern?.(pattern)}
+                                        selectionScopeKey={selectionScopeKey}
+                                        showSchemaWide={showSchemaWide}
+                                    />
+                                </div>
+                            );
+                        })()}
+                        {schemaFooter}
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* Dim unrelated property rows when an allOf part is focused. */}
-                {dimmedPropertyNames.size > 0 && (
-                    <style>{`
+            {/* Dim unrelated property rows when an allOf part is focused. */}
+            {dimmedPropertyNames.size > 0 && (
+                <style>{`
                     .schema-viewer-allof-focus tr[data-field-name],
                     .schema-viewer-allof-focus [data-field-name] {
                         transition: opacity 120ms ease;
@@ -1062,8 +1038,7 @@ export default function SchemaViewer({
                         )
                         .join('\n')}
                 `}</style>
-                )}
-            </div>
-        
+            )}
+        </div>
     );
 }

@@ -26,7 +26,8 @@ interface SchemaOneOfMenuButtonProps {
 
 /**
  * Header caret for parameter / nested schema pickers. Handles oneOf
- * (exclusive), anyOf (multi-select), and allOf (Combined vs part focus).
+ * (exclusive), anyOf (multi-select), allOf (Combined vs part focus), and
+ * not (inspection-only negated schema).
  */
 export default function SchemaOneOfMenuButton({selectionKey, choices, className}: SchemaOneOfMenuButtonProps) {
     const [open, setOpen] = useState(false);
@@ -59,12 +60,14 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
     const kinds = new Set(choices.map(c => c.kind || 'oneOf'));
     const tip =
         kinds.size > 1
-            ? 'Select oneOf / anyOf / focus allOf'
+            ? 'Select oneOf / anyOf / focus allOf / inspect not'
             : kinds.has('allOf')
               ? 'Focus allOf part'
               : kinds.has('anyOf')
                 ? 'Select anyOf branches'
-                : 'Select oneOf schema';
+                : kinds.has('not')
+                  ? 'Inspect negated schema'
+                  : 'Select oneOf schema';
 
     return (
         <div ref={ref} className={clsx('relative shrink-0 select-none', className)}>
@@ -94,16 +97,34 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                     className="px-2.5 py-2 text-[9px] font-black uppercase tracking-wider"
                                     style={{
                                         color: COMBINATOR_META[
-                                            kind === 'allOf' ? 'allOf' : kind === 'anyOf' ? 'anyOf' : 'oneOf'
+                                            kind === 'allOf'
+                                                ? 'allOf'
+                                                : kind === 'anyOf'
+                                                  ? 'anyOf'
+                                                  : kind === 'not'
+                                                    ? 'not'
+                                                    : 'oneOf'
                                         ].color,
                                     }}
                                 >
-                                    {kind === 'allOf' ? 'allOf · ' : kind === 'anyOf' ? 'anyOf · ' : 'oneOf · '}
+                                    {kind === 'allOf'
+                                        ? 'allOf · '
+                                        : kind === 'anyOf'
+                                          ? 'anyOf · '
+                                          : kind === 'not'
+                                            ? 'not · '
+                                            : 'oneOf · '}
                                     {choice.title}
                                 </div>
                                 {choice.options.map(option => {
                                     const combinatorKind: CombinatorKind =
-                                        kind === 'allOf' ? 'allOf' : kind === 'anyOf' ? 'anyOf' : 'oneOf';
+                                        kind === 'allOf'
+                                            ? 'allOf'
+                                            : kind === 'anyOf'
+                                              ? 'anyOf'
+                                              : kind === 'not'
+                                                ? 'not'
+                                                : 'oneOf';
                                     const meta = COMBINATOR_META[combinatorKind];
                                     const branchCount = choice.options.filter(item => item.index >= 0).length;
                                     const anySelected = anyOfSelections[choice.path];
@@ -121,7 +142,9 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                   : anyAll
                                                     ? true
                                                     : (anySelected || []).includes(option.index)
-                                              : (oneOfSelections[choice.path] ?? 0) === option.index;
+                                              : kind === 'not'
+                                                ? true
+                                                : (oneOfSelections[choice.path] ?? 0) === option.index;
                                     return (
                                         <button
                                             key={`${choice.path}:${option.index}`}
@@ -147,6 +170,9 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                         );
                                                     }
                                                     // keep open for multi-toggle
+                                                } else if (kind === 'not') {
+                                                    // Inspection only — no selection state to write.
+                                                    setOpen(false);
                                                 } else {
                                                     writeSchemaBranchSelection(selectionKey, choice.path, option.index);
                                                     setOpen(false);
@@ -162,7 +188,9 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                             <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
                                                 <i
                                                     className={clsx(
-                                                        combinatorSelectionIconClass(combinatorKind, active),
+                                                        kind === 'not'
+                                                            ? meta.icon
+                                                            : combinatorSelectionIconClass(combinatorKind, active),
                                                         'text-[14px]',
                                                     )}
                                                     style={active ? {color: meta.color} : undefined}

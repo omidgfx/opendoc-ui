@@ -436,7 +436,8 @@ export const mergeAnyOfBranchSchemas = (
  * row, not on the body-level branch rail.
  *
  * When `resolve` is provided, pure allOf wrappers (`allOf: [ $ref → allOf ]`)
- * are expanded so the branch rail lists the real composed parts.
+ * are expanded so the branch rail lists the real composed parts, and bare
+ * `$ref`s to oneOf/anyOf/allOf/not components surface those keywords.
  */
 export const detectSchemaCombinator = (schema: any, resolve?: SchemaBranchResolver): SchemaCombinator | null => {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
@@ -451,12 +452,27 @@ export const detectSchemaCombinator = (schema: any, resolve?: SchemaBranchResolv
         return {meta: COMBINATOR_META.allOf, branches: branches.length > 0 ? branches : schema.allOf};
     }
     if (schema.not && typeof schema.not === 'object') return {meta: COMBINATOR_META.not, branches: [schema.not]};
-    // Body is often a bare $ref to an allOf schema — surface it when resolve is given.
+    // Body is often a bare $ref to a combinator schema — surface oneOf/anyOf/allOf/not
+    // the same way so StandaloneOneOfConceptSchema etc. get a branch rail.
     if (resolve && typeof schema.$ref === 'string') {
         const resolved = resolve(schema);
-        if (resolved && resolved !== schema && Array.isArray(resolved.allOf) && resolved.allOf.length) {
-            const branches = expandAllOfBranches(resolved, resolve);
-            return {meta: COMBINATOR_META.allOf, branches: branches.length > 0 ? branches : resolved.allOf};
+        if (resolved && resolved !== schema && typeof resolved === 'object') {
+            if (Array.isArray(resolved.oneOf) && resolved.oneOf.length) {
+                return {meta: COMBINATOR_META.oneOf, branches: resolved.oneOf};
+            }
+            if (Array.isArray(resolved.anyOf) && resolved.anyOf.length) {
+                return {meta: COMBINATOR_META.anyOf, branches: resolved.anyOf};
+            }
+            if (Array.isArray(resolved.allOf) && resolved.allOf.length) {
+                const branches = expandAllOfBranches(resolved, resolve);
+                return {
+                    meta: COMBINATOR_META.allOf,
+                    branches: branches.length > 0 ? branches : resolved.allOf,
+                };
+            }
+            if (resolved.not && typeof resolved.not === 'object') {
+                return {meta: COMBINATOR_META.not, branches: [resolved.not]};
+            }
         }
     }
     return null;

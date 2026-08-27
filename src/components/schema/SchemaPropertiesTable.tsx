@@ -249,6 +249,7 @@ export default function SchemaPropertiesTable({
         if (resolved?.oneOf) return 'oneOf';
         if (resolved?.anyOf) return 'anyOf';
         if (resolved?.allOf) return 'allOf';
+        if (resolved?.not) return 'not';
         if (resolved?.type === 'array') return 'array';
         const type = resolved?.type;
         if (Array.isArray(type)) return type.join(' | ');
@@ -266,6 +267,7 @@ export default function SchemaPropertiesTable({
         if (resolved?.oneOf) return `oneOf(${resolved.oneOf.length})`;
         if (resolved?.anyOf) return `anyOf(${resolved.anyOf.length})`;
         if (resolved?.allOf) return `allOf(${resolved.allOf.length})`;
+        if (resolved?.not) return `not(${describeNotConstraint(resolved.not)})`;
         if (resolved?.type === 'array') {
             if (Array.isArray(resolved?.prefixItems) && resolved.prefixItems.length > 0)
                 return `tuple[${resolved.prefixItems.length}]`;
@@ -331,6 +333,7 @@ export default function SchemaPropertiesTable({
         ['oneOf', 'anyOf', 'allOf'].forEach(key => {
             if (Array.isArray(prop[key])) prop[key].forEach((item: any) => pushRef(item));
         });
+        if (prop.not) pushRef(prop.not);
         if (prop.items) pushRef(prop.items);
         if (prop.additionalProperties && typeof prop.additionalProperties === 'object')
             pushRef(prop.additionalProperties);
@@ -373,6 +376,12 @@ export default function SchemaPropertiesTable({
                     allOf
                 </span>
             );
+        if (resolved?.not)
+            return (
+                <span className="font-mono text-[10px]" style={{color: COMBINATOR_META.not.color}}>
+                    not
+                </span>
+            );
         if (resolved?.type === 'array') return <span className="font-mono text-[10px] text-[var(--text)]">array</span>;
         if (
             resolved?.type === 'object' &&
@@ -405,10 +414,19 @@ export default function SchemaPropertiesTable({
         </div>
     );
 
-    const combinatorTitle = (kind: 'oneOf' | 'anyOf' | 'allOf', count: number) => {
+    const combinatorTitle = (kind: 'oneOf' | 'anyOf' | 'allOf' | 'not', count: number) => {
         const meta = COMBINATOR_META[kind];
-        const title = kind === 'oneOf' ? 'ONE OF' : kind === 'anyOf' ? 'ANY OF' : 'ALL OF';
-        const hint = kind === 'allOf' ? 'focus' : kind === 'oneOf' ? 'pick one' : kind === 'anyOf' ? 'pick any' : '';
+        const title = kind === 'oneOf' ? 'ONE OF' : kind === 'anyOf' ? 'ANY OF' : kind === 'allOf' ? 'ALL OF' : 'NOT';
+        const hint =
+            kind === 'allOf'
+                ? 'focus'
+                : kind === 'oneOf'
+                  ? 'pick one'
+                  : kind === 'anyOf'
+                    ? 'pick any'
+                    : kind === 'not'
+                      ? 'must not match'
+                      : '';
         return (
             <div
                 className="inline-flex items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider"
@@ -423,7 +441,7 @@ export default function SchemaPropertiesTable({
 
     const renderCombinatorOptions = (
         name: string,
-        kind: 'oneOf' | 'anyOf' | 'allOf',
+        kind: 'oneOf' | 'anyOf' | 'allOf' | 'not',
         branches: any[],
         controlScope: 'table' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
@@ -487,7 +505,9 @@ export default function SchemaPropertiesTable({
                                   ? focusAllOf === index
                                   : kind === 'anyOf'
                                     ? anyAllActive || anySelectedIndices.includes(index)
-                                    : false;
+                                    : kind === 'not'
+                                      ? true
+                                      : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
                         const interactive = kind === 'oneOf' || kind === 'allOf' || kind === 'anyOf';
                         return (
@@ -521,7 +541,7 @@ export default function SchemaPropertiesTable({
                                         />
                                         {selectionIcon(active)}
                                     </span>
-                                ) : (
+                                ) : kind === 'anyOf' ? (
                                     <span className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none">
                                         <input
                                             type="checkbox"
@@ -531,6 +551,14 @@ export default function SchemaPropertiesTable({
                                             className="absolute inset-0 m-0 cursor-pointer opacity-0"
                                         />
                                         {selectionIcon(active)}
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="relative mt-[1px] flex h-[14px] w-[14px] shrink-0 items-center justify-center leading-none"
+                                        style={{color: meta.color}}
+                                        aria-hidden
+                                    >
+                                        <i className={`${meta.icon} text-[14px]`} />
                                     </span>
                                 )}
                                 <span className="min-w-0 break-words">
@@ -549,8 +577,10 @@ export default function SchemaPropertiesTable({
         prop: any,
         controlScope: 'table' | 'details' | 'mobile' = 'table',
     ): React.ReactNode => {
-        if (!prop || prop === true || prop === false || prop.$ref) return null;
+        if (!prop || prop === true || prop === false) return null;
+        // Bare $ref to a combinator component still needs structure rows.
         const resolved = resolveReference(prop) || prop;
+        if (!resolved || resolved === true || resolved === false) return null;
         const rows: React.ReactNode[] = [];
         if (Array.isArray(resolved?.oneOf) && resolved.oneOf.length > 0)
             rows.push(
@@ -573,6 +603,12 @@ export default function SchemaPropertiesTable({
                 </div>,
             );
         }
+        if (resolved?.not && typeof resolved.not === 'object')
+            rows.push(
+                <div key={`${name}:not`} className="flex flex-col gap-1.5">
+                    {renderCombinatorOptions(name, 'not', [resolved.not], controlScope)}
+                </div>,
+            );
         if (
             resolved?.type === 'object' &&
             !resolved?.properties &&
@@ -697,6 +733,8 @@ export default function SchemaPropertiesTable({
             rows.push({label: 'anyOf', value: `${(effectiveSchema as any).anyOf.length}`});
         if (Array.isArray((effectiveSchema as any)?.oneOf) && (effectiveSchema as any).oneOf.length > 0)
             rows.push({label: 'oneOf', value: `${(effectiveSchema as any).oneOf.length}`});
+        if ((effectiveSchema as any)?.not)
+            rows.push({label: 'not', value: describeNotConstraint((effectiveSchema as any).not)});
         if ((effectiveSchema as any)?.discriminator?.propertyName)
             rows.push({label: 'Discriminator', value: (effectiveSchema as any).discriminator.propertyName});
         return rows;
@@ -779,7 +817,8 @@ export default function SchemaPropertiesTable({
             resolved?.items ||
             resolved?.allOf ||
             resolved?.anyOf ||
-            resolved?.oneOf;
+            resolved?.oneOf ||
+            resolved?.not;
         const pattern = resolvePattern(pVal);
         const referenceNames = directReferenceNames(pVal);
         return {
@@ -1019,7 +1058,14 @@ export default function SchemaPropertiesTable({
             rows.push({label: 'Discriminator', value: facts.resolved.discriminator.propertyName});
 
         if (facts.resolved?.not)
-            rows.push({label: 'Not', value: `Must not match ${describeNotConstraint(facts.resolved.not)}`});
+            rows.push({
+                label: 'Not',
+                value: (
+                    <span style={{color: COMBINATOR_META.not.color}}>
+                        Must not match {describeNotConstraint(facts.resolved.not)}
+                    </span>
+                ),
+            });
 
         if (facts.resolved?.if || facts.resolved?.then || facts.resolved?.else)
             rows.push({label: 'if/then/else', value: 'present'});

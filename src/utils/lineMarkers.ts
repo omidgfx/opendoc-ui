@@ -137,6 +137,18 @@ export const mockMarkersToLineMarkers = (markers: MockLineMarker[], options?: Mo
                         tip: 'Nesting depth limit reached — deeper content is omitted from this example.',
                     },
                 ];
+            case 'not':
+                return [
+                    {
+                        line,
+                        kind: 'branch',
+                        icon: COMBINATOR_META.not.icon,
+                        accentColor: COMBINATOR_META.not.color,
+                        tip: marker.ref
+                            ? `not — value must not match ${marker.ref}. Example shows an empty placeholder.`
+                            : 'not — value must not match the negated schema. Example shows an empty placeholder.',
+                    },
+                ];
             case 'ref': {
                 if (recursiveLines.has(line)) return [];
                 const ref = marker.ref;

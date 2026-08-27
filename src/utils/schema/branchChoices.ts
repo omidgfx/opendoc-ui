@@ -1,7 +1,7 @@
 import {schemaVariantLabel, type SchemaReferenceResolver} from '../schemaProperties';
 import {expandAllOfBranches} from './combinators';
 
-export type SchemaBranchKind = 'oneOf' | 'anyOf' | 'allOf';
+export type SchemaBranchKind = 'oneOf' | 'anyOf' | 'allOf' | 'not';
 
 export interface SchemaBranchChoiceOption {
     index: number;
@@ -34,15 +34,20 @@ const optionOf = (
 
 /**
  * Walk a schema tree and collect every field-level oneOf (exclusive pick),
- * anyOf (multi-select merge), and allOf (focus a composed part) the reader can
- * act on. Root-level combinators (empty path) are intentionally skipped — the
- * body rail owns those.
+ * anyOf (multi-select merge), allOf (focus a composed part), and not
+ * (negated schema, inspection only) the reader can act on. Root-level
+ * combinators (empty path) are intentionally skipped — the body rail owns
+ * those.
  *
  * allOf is never collapsed to a single branch here: composition still applies
  * fully to mocks/tables; the choice only drives focus/dimming (see
  * `readSchemaAllOfFocus` / SchemaViewer allOf chips).
  * anyOf keeps several branches selected and merges their shapes into the mock
  * and table (same idea as the body-level anyOf rail).
+ * not has no selection — the single option names the schema that must not match.
+ *
+ * `skipSamePathAllOf` is set when descending into an allOf list at the same
+ * path so a wrapper `allOf: [ $ref → multi-part allOf ]` is not registered twice.
  */
 export const collectSchemaBranchChoices = (
     input: any,
@@ -51,6 +56,7 @@ export const collectSchemaBranchChoices = (
     path = '',
     ancestorRefs = new Set<string>(),
     ancestorObjects = new Set<object>(),
+    skipSamePathAllOf = false,
 ): SchemaBranchChoice[] => {
     if (!input || typeof input !== 'object') return [];
 
@@ -99,7 +105,7 @@ export const collectSchemaBranchChoices = (
             ],
         });
     }
-    if (path && Array.isArray(schema.allOf) && schema.allOf.length > 0) {
+    if (path && !skipSamePathAllOf && Array.isArray(schema.allOf) && schema.allOf.length > 0) {
         // Expand pure allOf wrappers (`allOf: [ $ref → multi-part allOf ]`) so
         // field menus list every composed part, not a single opaque $ref.
         const allOfParts = expandAllOfBranches(schema, resolveReference);
@@ -119,9 +125,20 @@ export const collectSchemaBranchChoices = (
             ],
         });
     }
+    if (path && schema.not && typeof schema.not === 'object' && !Array.isArray(schema.not)) {
+        // Single inspection option — `not` has no exclusive/multi pick.
+        choices.push({
+            path,
+            title: path,
+            kind: 'not',
+            options: [optionOf(schema.not, 0, resolveReference, getRefName)],
+        });
+    }
 
-    const collectChild = (child: any, childPath: string) => {
-        choices.push(...collectSchemaBranchChoices(child, resolveReference, getRefName, childPath, refs, objects));
+    const collectChild = (child: any, childPath: string, skipAllOf = false) => {
+        choices.push(
+            ...collectSchemaBranchChoices(child, resolveReference, getRefName, childPath, refs, objects, skipAllOf),
+        );
     };
 
     if (schema.properties && typeof schema.properties === 'object') {
@@ -145,10 +162,15 @@ export const collectSchemaBranchChoices = (
     }
     // Descend into allOf wrappers without a new path segment so a property
     // whose schema is `{ allOf: […, { oneOf: […] }] }` still surfaces nested
-    // oneOf/anyOf/allOf under that property name. Do not walk `oneOf`/`anyOf`
-    // here — those are already recorded above; walking them would re-enter
-    // the same path and double-register.
-    if (Array.isArray(schema.allOf)) schema.allOf.forEach((item: any) => collectChild(item, path));
+    // oneOf/anyOf/allOf/not under that property name. Skip re-recording allOf
+    // at the same path (wrapper expansion already listed the real parts).
+    // Do not walk `oneOf`/`anyOf` here — those are already recorded above.
+    if (Array.isArray(schema.allOf)) schema.allOf.forEach((item: any) => collectChild(item, path, true));
+    // Descend into `not` at the same path only for nested combinators inside
+    // the negated schema; the field-level `not` choice is already recorded.
+    if (schema.not && typeof schema.not === 'object' && !Array.isArray(schema.not)) {
+        collectChild(schema.not, path, true);
+    }
 
     return choices;
 };
@@ -188,4 +210,16 @@ export const collectSchemaAllOfChoices = (
 ): SchemaBranchChoice[] =>
     collectSchemaBranchChoices(input, resolveReference, getRefName, path, ancestorRefs, ancestorObjects).filter(
         choice => choice.kind === 'allOf',
+    );
+
+export const collectSchemaNotChoices = (
+    input: any,
+    resolveReference: SchemaReferenceResolver,
+    getRefName: (refStr: string) => string,
+    path = '',
+    ancestorRefs = new Set<string>(),
+    ancestorObjects = new Set<object>(),
+): SchemaBranchChoice[] =>
+    collectSchemaBranchChoices(input, resolveReference, getRefName, path, ancestorRefs, ancestorObjects).filter(
+        choice => choice.kind === 'not',
     );

@@ -32,7 +32,7 @@ export interface CodeInlineMenuOption {
 export interface CodeInlineMenu {
     id: string;
     /** oneOf exclusive pick / anyOf multi / allOf focus — drives selection icon/color. */
-    kind?: 'oneOf' | 'anyOf' | 'allOf';
+    kind?: 'oneOf' | 'anyOf' | 'allOf' | 'not';
     /** Multi-select active indices (anyOf). When set, checkboxes stay open on click. */
     activeIndices?: number[];
     multiSelect?: boolean;
@@ -493,7 +493,13 @@ export default function CodeViewer({
                   >
                       {openMenu.options.map(option => {
                           const combinatorKind =
-                              openMenu.kind === 'allOf' ? 'allOf' : openMenu.kind === 'anyOf' ? 'anyOf' : 'oneOf';
+                              openMenu.kind === 'allOf'
+                                  ? 'allOf'
+                                  : openMenu.kind === 'anyOf'
+                                    ? 'anyOf'
+                                    : openMenu.kind === 'not'
+                                      ? 'not'
+                                      : 'oneOf';
                           const meta = COMBINATOR_META[combinatorKind];
                           const branchOptionCount = openMenu.options.filter(item => item.index >= 0).length;
                           const active = openMenu.multiSelect
@@ -716,7 +722,7 @@ export default function CodeViewer({
                                                             paddingRight: 0,
                                                             // Soft wash uses the branch keyword color (oneOf orange / allOf blue).
                                                             backgroundColor: open
-                                                                ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : menu.kind === 'anyOf' ? 'anyOf' : 'oneOf'].color} 12%, transparent)`
+                                                                ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : menu.kind === 'anyOf' ? 'anyOf' : menu.kind === 'not' ? 'not' : 'oneOf'].color} 12%, transparent)`
                                                                 : undefined,
                                                         } as React.CSSProperties
                                                     }
@@ -728,7 +734,9 @@ export default function CodeViewer({
                                                                     ? 'allOf'
                                                                     : menu.kind === 'anyOf'
                                                                       ? 'anyOf'
-                                                                      : 'oneOf'
+                                                                      : menu.kind === 'not'
+                                                                        ? 'not'
+                                                                        : 'oneOf'
                                                             ].color;
                                                         (
                                                             event.currentTarget as HTMLButtonElement
@@ -740,7 +748,7 @@ export default function CodeViewer({
                                                         (
                                                             event.currentTarget as HTMLButtonElement
                                                         ).style.backgroundColor = open
-                                                            ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : menu.kind === 'anyOf' ? 'anyOf' : 'oneOf'].color} 12%, transparent)`
+                                                            ? `color-mix(in srgb, ${COMBINATOR_META[menu.kind === 'allOf' ? 'allOf' : menu.kind === 'anyOf' ? 'anyOf' : menu.kind === 'not' ? 'not' : 'oneOf'].color} 12%, transparent)`
                                                             : '';
                                                     }}
                                                     aria-label={menu.ariaLabel || 'Select schema branch'}
@@ -775,7 +783,9 @@ export default function CodeViewer({
                                                                     ? 'allOf'
                                                                     : menu.kind === 'anyOf'
                                                                       ? 'anyOf'
-                                                                      : 'oneOf'
+                                                                      : menu.kind === 'not'
+                                                                        ? 'not'
+                                                                        : 'oneOf'
                                                             ].color,
                                                         }}
                                                         data-dev="CodeViewer.handleCaretIcon"

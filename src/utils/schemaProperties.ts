@@ -124,6 +124,10 @@ export const schemaIsRecursive = (schema: any, resolveReference: SchemaReference
 export const describeNotConstraint = (notSchema: any): string => {
     if (!notSchema || typeof notSchema !== 'object') return 'the listed values';
     const parts: string[] = [];
+    if (typeof notSchema.$ref === 'string') {
+        const name = notSchema.$ref.split('/').pop() || notSchema.$ref;
+        parts.push(name);
+    }
     if (notSchema.const !== undefined) parts.push(JSON.stringify(notSchema.const));
     if (Array.isArray(notSchema.enum)) parts.push(notSchema.enum.map(value => JSON.stringify(value)).join(' or '));
     if (notSchema.type) {
@@ -131,6 +135,9 @@ export const describeNotConstraint = (notSchema: any): string => {
         parts.push(`values of type ${types}`);
     }
     if (notSchema.pattern) parts.push(`values matching ${notSchema.pattern}`);
+    if (Array.isArray(notSchema.oneOf) && notSchema.oneOf.length) parts.push(`oneOf(${notSchema.oneOf.length})`);
+    if (Array.isArray(notSchema.anyOf) && notSchema.anyOf.length) parts.push(`anyOf(${notSchema.anyOf.length})`);
+    if (Array.isArray(notSchema.allOf) && notSchema.allOf.length) parts.push(`allOf(${notSchema.allOf.length})`);
     return parts.length > 0 ? parts.join(', ') : 'the listed values';
 };
 

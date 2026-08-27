@@ -118,6 +118,7 @@ import {
 import {analyzeRunnerCompatibility} from '@/src/utils/runner/runnerCompatibility';
 import {generateSmartRoute, parseSmartRoute} from '@/src/utils/routing';
 import {
+    describeNotConstraint,
     flattenSchemaProperties,
     RECURSIVE_SCHEMA_ICON,
     schemaIsRecursive,
@@ -1115,6 +1116,78 @@ test('collects field-level anyOf choices and merges selected branches', () => {
     assert.equal(anyOf!.options[0].label, 'All');
 });
 
+test('collects field-level not choices and does not double-register expanded allOf', () => {
+    const components = {
+        Combined: {
+            allOf: [
+                {type: 'object', properties: {a: {type: 'string'}}},
+                {type: 'object', properties: {b: {type: 'integer'}}},
+            ],
+        },
+        Forbidden: {type: 'object', properties: {secret: {type: 'string'}}},
+    };
+    const resolve = (item: any) => {
+        if (item?.$ref?.startsWith('#/components/schemas/')) {
+            return components[item.$ref.split('/').pop() as keyof typeof components] || item;
+        }
+        return item;
+    };
+    const getRefName = (ref: string) => ref.split('/').pop() || ref;
+
+    const notField = {not: {$ref: '#/components/schemas/Forbidden'}};
+    const notChoices = collectSchemaBranchChoices(
+        {type: 'object', properties: {notPayload: notField}},
+        resolve,
+        getRefName,
+    );
+    const notChoice = notChoices.find(c => c.kind === 'not' && c.path === 'notPayload');
+    assert.ok(notChoice);
+    assert.equal(notChoice!.options.length, 1);
+    assert.equal(notChoice!.options[0].label, 'Forbidden');
+
+    // Wrapper allOf: [ $ref → multi-part allOf ] must register once with expanded parts.
+    const wrapped = {allOf: [{$ref: '#/components/schemas/Combined'}]};
+    const allOfChoices = collectSchemaBranchChoices(
+        {type: 'object', properties: {combinedPayload: wrapped}},
+        resolve,
+        getRefName,
+    ).filter(c => c.kind === 'allOf' && c.path === 'combinedPayload');
+    assert.equal(allOfChoices.length, 1);
+    // Combined + 2 parts
+    assert.equal(allOfChoices[0].options.length, 3);
+
+    const menus = inlineMenusForCode('{\n  "notPayload": {}\n}\n', 'test:not-field', notChoices, 'json');
+    assert.ok(menus.menus.some(m => m.id.includes('not:notPayload') && m.kind === 'not'));
+});
+
+test('detects bare $ref bodies for oneOf/anyOf/allOf/not', () => {
+    const components: Record<string, any> = {
+        StandaloneOneOf: {
+            oneOf: [
+                {type: 'object', properties: {a: {type: 'string'}}},
+                {type: 'object', properties: {b: {type: 'integer'}}},
+            ],
+        },
+        StandaloneAnyOf: {
+            anyOf: [
+                {type: 'object', properties: {x: {type: 'string'}}},
+                {type: 'object', properties: {y: {type: 'boolean'}}},
+            ],
+        },
+        StandaloneNot: {not: {type: 'string'}},
+    };
+    const resolve = (item: any) => {
+        if (item?.$ref?.startsWith('#/components/schemas/')) {
+            return components[item.$ref.split('/').pop()!] || item;
+        }
+        return item;
+    };
+    assert.equal(detectSchemaCombinator({$ref: '#/components/schemas/StandaloneOneOf'}, resolve)?.meta.kind, 'oneOf');
+    assert.equal(detectSchemaCombinator({$ref: '#/components/schemas/StandaloneAnyOf'}, resolve)?.meta.kind, 'anyOf');
+    assert.equal(detectSchemaCombinator({$ref: '#/components/schemas/StandaloneNot'}, resolve)?.meta.kind, 'not');
+    assert.equal(describeNotConstraint({$ref: '#/components/schemas/Forbidden'}), 'Forbidden');
+});
+
 test('dims code-viewer lines for body and field-level allOf focus the same way', () => {
     const rootCode = `{
   "fromA": 1,
@@ -1170,13 +1243,15 @@ test('defaults documentation switches to per-schema and schema modal to per-sche
     assert.equal(normalized.modalRepresentationScope, 'schema');
 });
 
-test('locks oneOf/anyOf/allOf to distinct method colors and selection controls', () => {
+test('locks oneOf/anyOf/allOf/not to distinct method colors and selection controls', () => {
     assert.equal(COMBINATOR_META.oneOf.color, 'var(--method-put)');
     assert.equal(COMBINATOR_META.anyOf.color, 'var(--method-get)');
     assert.equal(COMBINATOR_META.allOf.color, 'var(--method-post)');
+    assert.equal(COMBINATOR_META.not.color, 'var(--method-delete)');
     assert.equal(COMBINATOR_META.oneOf.selectionControl, 'radio');
     assert.equal(COMBINATOR_META.anyOf.selectionControl, 'checkbox');
     assert.equal(COMBINATOR_META.allOf.selectionControl, 'radio');
+    assert.equal(COMBINATOR_META.not.selectionControl, 'none');
     assert.match(COMBINATOR_META.oneOf.selectionIconActive, /radio-button/);
     assert.match(COMBINATOR_META.anyOf.selectionIconActive, /check-square/);
     assert.match(COMBINATOR_META.allOf.selectionIconActive, /radio-button/);

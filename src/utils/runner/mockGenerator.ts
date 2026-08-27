@@ -17,7 +17,7 @@ export const MOCK_STUB: unique symbol = Symbol('opendoc.mockStub');
  */
 export const MOCK_KEY_META: unique symbol = Symbol('opendoc.mockKeyMeta');
 
-export type MockStubKind = 'recursive' | 'max-depth';
+export type MockStubKind = 'recursive' | 'max-depth' | 'not';
 
 /** Kinds a gutter marker can report for a serialized mock line. */
 export type MockLineMarkerKind =
@@ -465,6 +465,11 @@ export function generateMock(
         return generateMock(pickCombinatorBranch(schema.oneOf), spec, depth + 1, new Set(visited), usage);
     if (Array.isArray(schema.anyOf) && schema.anyOf.length)
         return generateMock(pickCombinatorBranch(schema.anyOf), spec, depth + 1, new Set(visited), usage);
+    // Pure `not` has no positive shape to mock — emit a stub so the field still
+    // appears in examples (and field menus can attach to the key).
+    if (schema.not && typeof schema.not === 'object' && !schema.properties && !schema.type && !schema.allOf) {
+        return createMockStub('not', schema.not?.$ref ? refDisplayName(String(schema.not.$ref)) : undefined);
+    }
 
     const type = schemaType(schema);
     if (type === 'object' || schema.properties || schema.additionalProperties) {
