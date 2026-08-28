@@ -28,7 +28,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#f59e0b',
             methodTrace: '#6b7280',
             methodPatch: '#7c3aed',
-            methodQuery: '#4f46e5',
+            methodQuery: '#0d9488',
         },
         dark: {
             background: '#181a20',
@@ -55,7 +55,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#fbbf24',
             methodTrace: '#9ca3af',
             methodPatch: '#a78bfa',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#14b8a6',
         },
     },
     {
@@ -85,7 +85,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#b08a3a',
             methodTrace: '#808080',
             methodPatch: '#7a4a8a',
-            methodQuery: '#4f46e5',
+            methodQuery: '#3a7a5a',
         },
         dark: {
             background: '#2b2b2b',
@@ -112,7 +112,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ccb85a',
             methodTrace: '#7a7f85',
             methodPatch: '#b07bc0',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#6aab73',
         },
     },
     {
@@ -142,7 +142,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#c18401',
             methodTrace: '#7a7f88',
             methodPatch: '#a626a4',
-            methodQuery: '#4f46e5',
+            methodQuery: '#0184bc',
         },
         dark: {
             background: '#1e2127',
@@ -169,7 +169,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#e5c07b',
             methodTrace: '#636d83',
             methodPatch: '#c678dd',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#56b6c2',
         },
     },
     {
@@ -199,7 +199,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#cb4b16',
             methodTrace: '#93a1a1',
             methodPatch: '#6c71c4',
-            methodQuery: '#4f46e5',
+            methodQuery: '#2aa198',
         },
         dark: {
             background: '#002b36',
@@ -226,7 +226,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#cb4b16',
             methodTrace: '#586e75',
             methodPatch: '#6c71c4',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#2aa198',
         },
     },
     {
@@ -256,7 +256,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#b57614',
             methodTrace: '#7c6f64',
             methodPatch: '#8f3f71',
-            methodQuery: '#4f46e5',
+            methodQuery: '#427b58',
         },
         dark: {
             background: '#1d2021',
@@ -283,7 +283,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#fabd2f',
             methodTrace: '#928374',
             methodPatch: '#d3869b',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#8ec07c',
         },
     },
     {
@@ -313,7 +313,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#b15c00',
             methodTrace: '#8990b3',
             methodPatch: '#7847bd',
-            methodQuery: '#4f46e5',
+            methodQuery: '#118c74',
         },
         dark: {
             background: '#1a1b26',
@@ -340,7 +340,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ff9e64',
             methodTrace: '#565f89',
             methodPatch: '#bb9af7',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#73daca',
         },
     },
     {
@@ -370,7 +370,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#bf8700',
             methodTrace: '#656d76',
             methodPatch: '#8250df',
-            methodQuery: '#4f46e5',
+            methodQuery: '#1a7f37',
         },
         dark: {
             background: '#0d1117',
@@ -397,7 +397,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#e3b341',
             methodTrace: '#768390',
             methodPatch: '#bc8cff',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#3fb950',
         },
     },
     {
@@ -427,7 +427,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#fe640b',
             methodTrace: '#8c8fa1',
             methodPatch: '#8839ef',
-            methodQuery: '#4f46e5',
+            methodQuery: '#179299',
         },
         dark: {
             background: '#1e1e2e',
@@ -454,7 +454,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#fab387',
             methodTrace: '#7f849c',
             methodPatch: '#cba6f7',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#94e2d5',
         },
     },
     {
@@ -484,7 +484,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ff9940',
             methodTrace: '#8a9199',
             methodPatch: '#9f7be8',
-            methodQuery: '#4f46e5',
+            methodQuery: '#4cbf99',
         },
         dark: {
             background: '#1f2430',
@@ -511,7 +511,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ffcc66',
             methodTrace: '#6c7a88',
             methodPatch: '#d4bfff',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#95e6cb',
         },
     },
     {
@@ -541,7 +541,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#e6db74',
             methodTrace: '#8a8a8a',
             methodPatch: '#b15ae4',
-            methodQuery: '#4f46e5',
+            methodQuery: '#22d5a5',
         },
         dark: {
             background: '#19181a',
@@ -568,7 +568,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#fc9867',
             methodTrace: '#727072',
             methodPatch: '#ab9df2',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#22d5a5',
         },
     },
     {
@@ -598,7 +598,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#b08040',
             methodTrace: '#8a8a7a',
             methodPatch: '#706090',
-            methodQuery: '#4f46e5',
+            methodQuery: '#387850',
         },
         dark: {
             background: '#2b2b2b',
@@ -625,7 +625,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#dfaf8f',
             methodTrace: '#8f8f7f',
             methodPatch: '#dc8cc3',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#7f9f7f',
         },
     },
     {
@@ -655,7 +655,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#d4a050',
             methodTrace: '#8790a0',
             methodPatch: '#8866bb',
-            methodQuery: '#4f46e5',
+            methodQuery: '#008080',
         },
         dark: {
             background: '#1b2b34',
@@ -682,7 +682,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#f99157',
             methodTrace: '#65737e',
             methodPatch: '#c594c5',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#5fb3b3',
         },
     },
     {
@@ -712,7 +712,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#df9850',
             methodTrace: '#899288',
             methodPatch: '#df69ba',
-            methodQuery: '#4f46e5',
+            methodQuery: '#35a770',
         },
         dark: {
             background: '#1e2326',
@@ -739,7 +739,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#e69875',
             methodTrace: '#7a8478',
             methodPatch: '#d699b6',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#83c092',
         },
     },
     {
@@ -769,7 +769,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#d7827e',
             methodTrace: '#9893a5',
             methodPatch: '#907aa9',
-            methodQuery: '#4f46e5',
+            methodQuery: '#56949f',
         },
         dark: {
             background: '#191724',
@@ -796,7 +796,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ea9d34',
             methodTrace: '#6e6a86',
             methodPatch: '#c4a7e7',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#9ccfd8',
         },
     },
     {
@@ -826,7 +826,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ebcb8b',
             methodTrace: '#4c566a',
             methodPatch: '#b48ead',
-            methodQuery: '#4f46e5',
+            methodQuery: '#a3be8c',
         },
         dark: {
             background: '#2e3440',
@@ -853,7 +853,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ebcb8b',
             methodTrace: '#888f9b',
             methodPatch: '#b48ead',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#a3be8c',
         },
     },
     {
@@ -883,7 +883,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#f9a825',
             methodTrace: '#7f8c8d',
             methodPatch: '#8e24aa',
-            methodQuery: '#4f46e5',
+            methodQuery: '#2e7d32',
         },
         dark: {
             background: '#212121',
@@ -910,7 +910,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ffca28',
             methodTrace: '#8a8a8a',
             methodPatch: '#ab47bc',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#66bb6a',
         },
     },
     {
@@ -940,7 +940,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#b38f00',
             methodTrace: '#333333',
             methodPatch: '#6600cc',
-            methodQuery: '#4f46e5',
+            methodQuery: '#006600',
         },
         dark: {
             background: '#000000',
@@ -967,7 +967,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ffcc00',
             methodTrace: '#cccccc',
             methodPatch: '#cc88ff',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#66ff66',
         },
     },
     {
@@ -997,7 +997,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ffb74d',
             methodTrace: '#8a8a9e',
             methodPatch: '#b388ff',
-            methodQuery: '#4f46e5',
+            methodQuery: '#4caf50',
         },
         dark: {
             background: '#0a0e14',
@@ -1024,7 +1024,7 @@ export const THEME_LIST: AppTheme[] = [
             methodOptions: '#ffb74d',
             methodTrace: '#6b6b7a',
             methodPatch: '#b388ff',
-            methodQuery: '#a5b4fc',
+            methodQuery: '#4caf50',
         },
     },
 ];
@@ -1055,7 +1055,7 @@ export const VESPER_THEME: AppTheme = {
         methodOptions: '#a56a2c',
         methodTrace: '#89847a',
         methodPatch: '#8059a8',
-        methodQuery: '#4f46e5',
+        methodQuery: '#3f7f78',
     },
     dark: {
         background: '#101010',
@@ -1082,7 +1082,7 @@ export const VESPER_THEME: AppTheme = {
         methodOptions: '#e5b567',
         methodTrace: '#77736c',
         methodPatch: '#c5a0e6',
-        methodQuery: '#a5b4fc',
+        methodQuery: '#8ac6bf',
     },
 };
 THEME_LIST.push(VESPER_THEME);
