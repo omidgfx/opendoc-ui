@@ -220,7 +220,7 @@ PAGES["features.html"] = (
       </div>
       <div class="info-card reveal d2" id="themes">
         <h3><i class="ph ph-palette"></i>Theme system</h3>
-        <p>15+ hand-picked palettes with per-spec memory and light / dark / system modes. Notes, badges and code views stay legible in every one — pick them from Settings.</p>
+        <p>35+ hand-picked palettes with per-spec memory and light / dark / system modes. Notes, badges and code views stay legible in every one — pick them from Settings.</p>
       </div>
       <div class="info-card reveal">
         <h3><i class="ph ph-eye-slash"></i>Hidden endpoints</h3>
@@ -381,7 +381,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="themes">
         <h2><i class="ph-fill ph-palette"></i>Themes &amp; appearance</h2>
-        <p>Choose from 15+ hand-picked palettes in the <b>Settings → Appearance</b> gallery (the old theme-only modal is gone); light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
+        <p>Choose from 35+ hand-picked palettes in the <b>Settings → Appearance</b> gallery (the old theme-only modal is gone); light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
       </div>
 
       <div class="doc-sec" id="shortcuts">
