@@ -2128,7 +2128,19 @@ test('highlightPathAccessor paints path tokens with Prism token classes', () => 
 
 test('pathStylesForEncoding scopes walkers by language with JSONPath everywhere', () => {
     const jsonStyles = pathStylesForEncoding('json').map(style => style.id);
-    assert.deepEqual(jsonStyles, ['jsonpath']);
+    assert.ok(jsonStyles.includes('jsonpath'));
+    assert.ok(jsonStyles.includes('js-dot'));
+    assert.ok(jsonStyles.includes('js-optional-dot'));
+    assert.ok(jsonStyles.includes('php-array'));
+    assert.ok(jsonStyles.includes('php-nullsafe'));
+    assert.ok(jsonStyles.includes('python-dict'));
+    assert.ok(jsonStyles.includes('go-map'));
+    assert.ok(jsonStyles.includes('csharp-index'));
+    assert.ok(jsonStyles.includes('java-map'));
+    assert.ok(jsonStyles.includes('ruby-dig'));
+    // Format-only styles stay off JSON.
+    assert.equal(jsonStyles.includes('xpath'), false);
+    assert.equal(jsonStyles.includes('form-key'), false);
 
     const jsStyles = pathStylesForEncoding('js-object').map(style => style.id);
     assert.ok(jsStyles.includes('jsonpath'));

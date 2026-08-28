@@ -444,16 +444,38 @@ const PATH_STYLE_META: Record<CodePathStyleId, Omit<CodePathStyle, 'id'>> = {
     'form-key': {label: 'Form key', example: 'error[code]'},
 };
 
+/** Every language accessor style (excludes format-only xpath / form-key). */
+const ALL_LANGUAGE_PATH_STYLES: CodePathStyleId[] = [
+    'jsonpath',
+    'js-dot',
+    'js-bracket',
+    'js-optional-dot',
+    'js-optional-bracket',
+    'php-array',
+    'php-object',
+    'php-nullsafe',
+    'python-dict',
+    'python-get',
+    'go-map',
+    'csharp-index',
+    'java-map',
+    'java-path',
+    'ruby-hash',
+    'ruby-dig',
+];
+
 /**
  * Path styles for a generated-example encoding.
- * JSONPath is offered everywhere; other walkers stay language-scoped
- * (JS only on js/ts, PHP only on php, …).
+ * JSON offers every language walker; other encodings stay language-scoped
+ * with JSONPath always available as a common option.
  */
 export const pathStylesForEncoding = (encodingId: string): CodePathStyle[] => {
     // Language-native walkers first; JSONPath is always offered as a common option.
     const ids = ((): CodePathStyleId[] => {
         switch (encodingId) {
             case 'json':
+                // JSON is the interchange baseline — expose every language accessor.
+                return [...ALL_LANGUAGE_PATH_STYLES];
             case 'yaml':
             case 'toml':
             case 'rust-json':
