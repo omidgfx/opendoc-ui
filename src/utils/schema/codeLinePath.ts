@@ -918,6 +918,8 @@ export const buildCodeLinePaths = (
     rootName = ROOT_DEFAULT,
     pathStyleId?: string | null,
 ): CodeLinePathResult => {
+    // Drop private-use caret-gap markers CodeViewer may leave in display streams.
+    code = String(code ?? '').replace(//g, '');
     const root = safeRootName(rootName);
     const styleId = resolvePathStyleId(encodingId, pathStyleId);
     const styleLabel = PATH_STYLE_META[styleId]?.label || 'Path';

@@ -543,9 +543,13 @@ export default function CodeViewer({
 
     const linePaths = useMemo(() => {
         if (!pathEncodingId || !activePathStyleId) return null;
-        // Walk the displayed source so line indices match the rendered rows.
-        return buildCodeLinePaths(displayCode, pathEncodingId, pathRootName, activePathStyleId);
-    }, [displayCode, pathEncodingId, pathRootName, activePathStyleId]);
+        // Walk the clean copy source (no caret-gap tokens). Combinator field
+        // lines inject a private-use slot into displayCode for the inline menu
+        // handle; that breaks JSON/language key parsing and left oneOf/allOf/
+        // anyOf/not field lines without a path. copyCode stays pure source and
+        // keeps the same line count as displayCode.
+        return buildCodeLinePaths(copyCode, pathEncodingId, pathRootName, activePathStyleId);
+    }, [copyCode, pathEncodingId, pathRootName, activePathStyleId]);
     const selectedPath = linePaths && selectedLine ? pathForLine(linePaths, selectedLine) : '';
     const selectedPathHtml = useMemo(() => {
         if (!selectedPath) return '';

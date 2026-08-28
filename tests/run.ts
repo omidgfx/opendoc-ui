@@ -2074,6 +2074,29 @@ test('flattenTags collapses slash nesting and x-tagGroups into a single folder l
     assert.equal(Object.keys(flat.children['01 Tour/HTTP methods'].children).length, 0);
 });
 
+test('buildCodeLinePaths ignores CodeViewer caret-gap tokens on combinator fields', () => {
+    const clean = `{
+  "cover_photo": {
+    "url": "x"
+  },
+  "vendor": {
+    "cover_photo": {
+      "url": "y"
+    }
+  }
+}`;
+    const withCarets = clean
+        .replace('"cover_photo": {', '"cover_photo"\uE000: {')
+        .replace('  "vendor": {\n    "cover_photo": {', '  "vendor": {\n    "cover_photo"\uE000: {');
+    const a = buildCodeLinePaths(clean, 'json', 'payload');
+    const b = buildCodeLinePaths(withCarets, 'json', 'payload');
+    assert.equal(b.paths[1], '$.cover_photo');
+    assert.equal(b.paths[2], '$.cover_photo.url');
+    assert.ok(b.paths.some(path => path === '$.vendor.cover_photo'));
+    assert.ok(b.paths.some(path => path === '$.vendor.cover_photo.url'));
+    assert.deepEqual(a.paths, b.paths);
+});
+
 test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
     const code = `{
   "venue": {
