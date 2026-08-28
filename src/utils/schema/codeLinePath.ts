@@ -5,12 +5,6 @@
 
 export type CodePathSegment = {kind: 'key'; name: string} | {kind: 'index'; index: number};
 
-export interface CodeLinePathResult {
-    /** 1-based index via paths[line - 1] */
-    paths: string[];
-    styleLabel: string;
-}
-
 const ROOT_DEFAULT = 'payload';
 
 const isIdent = (name: string): boolean => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
@@ -331,64 +325,245 @@ const yamlSegmentsPerLine = (code: string): CodePathSegment[][] => {
     });
 };
 
-const styleLabelOf = (encodingId: string): string => {
-    switch (encodingId) {
-        case 'json':
-        case 'yaml':
-        case 'toml':
-        case 'form':
-        case 'rust-json':
-            return 'JSONPath';
-        case 'xml':
-            return 'XPath';
-        case 'php-array':
-        case 'php-json':
-            return 'PHP';
-        case 'php-object':
-            return 'PHP';
-        case 'python-dict':
-            return 'Python';
-        case 'js-object':
-        case 'ts-as-const':
-            return 'JavaScript';
-        case 'go-map':
-            return 'Go';
-        case 'csharp-dict':
-            return 'C#';
-        case 'java-map':
-            return 'Java';
-        case 'ruby-hash':
-            return 'Ruby';
-        default:
-            return 'Path';
-    }
+export type CodePathStyleId =
+    | 'jsonpath'
+    | 'js-dot'
+    | 'js-bracket'
+    | 'js-optional-dot'
+    | 'js-optional-bracket'
+    | 'php-array'
+    | 'php-object'
+    | 'python-dict'
+    | 'python-get'
+    | 'go-map'
+    | 'csharp-index'
+    | 'java-map'
+    | 'java-path'
+    | 'ruby-hash'
+    | 'ruby-dig'
+    | 'xpath'
+    | 'form-key';
+
+export interface CodePathStyle {
+    id: CodePathStyleId;
+    /** Short label in the path-style selector. */
+    label: string;
+    /** One-line sample shown as the option description. */
+    example: string;
+}
+
+export interface CodeLinePathResult {
+    /** 1-based index via paths[line - 1] */
+    paths: string[];
+    styleId: CodePathStyleId;
+    styleLabel: string;
+}
+
+const PATH_STYLE_META: Record<CodePathStyleId, Omit<CodePathStyle, 'id'>> = {
+    jsonpath: {label: 'JSONPath', example: '$.error.code'},
+    'js-dot': {label: 'JS · dot', example: 'payload.error.code'},
+    'js-bracket': {label: 'JS · bracket', example: "payload['error']['code']"},
+    'js-optional-dot': {label: 'JS · optional', example: 'payload?.error?.code'},
+    'js-optional-bracket': {label: 'JS · optional []', example: "payload?.['error']?.['code']"},
+    'php-array': {label: 'PHP · array', example: "$payload['error']['code']"},
+    'php-object': {label: 'PHP · object', example: '$payload->error->code'},
+    'python-dict': {label: 'Python · []', example: 'payload["error"]["code"]'},
+    'python-get': {label: 'Python · get', example: 'payload.get("error", {}).get("code")'},
+    'go-map': {label: 'Go · map', example: 'payload["error"].(map[string]any)["code"]'},
+    'csharp-index': {label: 'C# · index', example: 'payload["error"]["code"]'},
+    'java-map': {label: 'Java · get', example: 'payload.get("error").get("code")'},
+    'java-path': {label: 'Java · path', example: 'payload.at("/error/code")'},
+    'ruby-hash': {label: 'Ruby · []', example: 'payload[:error][:code]'},
+    'ruby-dig': {label: 'Ruby · dig', example: 'payload.dig(:error, :code)'},
+    xpath: {label: 'XPath', example: '/root[1]/error[1]/code[1]'},
+    'form-key': {label: 'Form key', example: 'error[code]'},
 };
 
-const formatSegments = (encodingId: string, segments: CodePathSegment[], root: string): string => {
-    switch (encodingId) {
+/** Path styles offered for a generated-example encoding. */
+export const pathStylesForEncoding = (encodingId: string): CodePathStyle[] => {
+    const ids = ((): CodePathStyleId[] => {
+        switch (encodingId) {
+            case 'json':
+            case 'yaml':
+            case 'toml':
+            case 'rust-json':
+                return [
+                    'jsonpath',
+                    'js-dot',
+                    'js-bracket',
+                    'js-optional-dot',
+                    'js-optional-bracket',
+                    'php-array',
+                    'php-object',
+                    'python-dict',
+                ];
+            case 'form':
+                return ['form-key', 'jsonpath', 'js-dot', 'php-array'];
+            case 'xml':
+                return ['xpath'];
+            case 'js-object':
+            case 'ts-as-const':
+                return ['js-dot', 'js-bracket', 'js-optional-dot', 'js-optional-bracket', 'jsonpath'];
+            case 'php-array':
+            case 'php-json':
+                return ['php-array', 'php-object', 'jsonpath'];
+            case 'php-object':
+                return ['php-object', 'php-array', 'jsonpath'];
+            case 'python-dict':
+                return ['python-dict', 'python-get', 'jsonpath', 'js-dot'];
+            case 'go-map':
+                return ['go-map', 'jsonpath', 'js-bracket'];
+            case 'csharp-dict':
+                return ['csharp-index', 'jsonpath', 'js-bracket'];
+            case 'java-map':
+                return ['java-map', 'java-path', 'jsonpath'];
+            case 'ruby-hash':
+                return ['ruby-hash', 'ruby-dig', 'jsonpath'];
+            default:
+                return ['jsonpath', 'js-dot', 'php-array', 'python-dict'];
+        }
+    })();
+    return ids.map(id => ({id, ...PATH_STYLE_META[id]}));
+};
+
+export const defaultPathStyleId = (encodingId: string): CodePathStyleId =>
+    pathStylesForEncoding(encodingId)[0]?.id || 'jsonpath';
+
+export const resolvePathStyleId = (encodingId: string, preferred?: string | null): CodePathStyleId => {
+    const styles = pathStylesForEncoding(encodingId);
+    if (preferred && styles.some(style => style.id === preferred)) {
+        return preferred as CodePathStyleId;
+    }
+    return styles[0]?.id || 'jsonpath';
+};
+
+const formatJsBracket = (segments: CodePathSegment[], root: string): string => {
+    let path = root;
+    for (const segment of segments) {
+        if (segment.kind === 'key') path += `['${escapeSingle(segment.name)}']`;
+        else path += `[${segment.index}]`;
+    }
+    return path;
+};
+
+const formatJsOptionalDot = (segments: CodePathSegment[], root: string): string => {
+    let path = root;
+    for (const segment of segments) {
+        if (segment.kind === 'key') {
+            path += isIdent(segment.name) ? `?.${segment.name}` : `?.['${escapeSingle(segment.name)}']`;
+        } else path += `?.[${segment.index}]`;
+    }
+    return path;
+};
+
+const formatJsOptionalBracket = (segments: CodePathSegment[], root: string): string => {
+    let path = root;
+    for (const segment of segments) {
+        if (segment.kind === 'key') path += `?.['${escapeSingle(segment.name)}']`;
+        else path += `?.[${segment.index}]`;
+    }
+    return path;
+};
+
+const formatPythonGet = (segments: CodePathSegment[], root: string): string => {
+    if (!segments.length) return root;
+    let path = root;
+    for (let i = 0; i < segments.length; i += 1) {
+        const segment = segments[i];
+        const isLast = i === segments.length - 1;
+        if (segment.kind === 'key') {
+            const key = `"${escapeDouble(segment.name)}"`;
+            path += isLast ? `.get(${key})` : `.get(${key}, {})`;
+        } else {
+            path += `[${segment.index}]`;
+        }
+    }
+    return path;
+};
+
+const formatGoMap = (segments: CodePathSegment[], root: string): string => {
+    if (!segments.length) return root;
+    let path = root;
+    for (let i = 0; i < segments.length; i += 1) {
+        const segment = segments[i];
+        const next = segments[i + 1];
+        if (segment.kind === 'key') {
+            path += `["${escapeDouble(segment.name)}"]`;
+            if (next) path += '.(map[string]any)';
+        } else {
+            path += `.([]any)[${segment.index}]`;
+            if (next?.kind === 'key') path += '.(map[string]any)';
+        }
+    }
+    return path;
+};
+
+const formatJavaPath = (segments: CodePathSegment[], root: string): string => {
+    if (!segments.length) return root;
+    const parts = segments.map(segment => (segment.kind === 'key' ? `/${segment.name}` : `/${segment.index}`));
+    return `${root}.at("${parts.join('')}")`;
+};
+
+const formatRubyDig = (segments: CodePathSegment[], root: string): string => {
+    if (!segments.length) return root;
+    const args = segments
+        .map(segment => {
+            if (segment.kind === 'index') return String(segment.index);
+            return isIdent(segment.name) ? `:${segment.name}` : `:'${escapeSingle(segment.name)}'`;
+        })
+        .join(', ');
+    return `${root}.dig(${args})`;
+};
+
+const formatFormKey = (segments: CodePathSegment[]): string => {
+    if (!segments.length) return '';
+    let path = '';
+    for (const segment of segments) {
+        if (segment.kind === 'key') {
+            path = path ? `${path}[${segment.name}]` : segment.name;
+        } else {
+            path = path ? `${path}[${segment.index}]` : String(segment.index);
+        }
+    }
+    return path;
+};
+
+const formatByStyle = (styleId: CodePathStyleId, segments: CodePathSegment[], root: string): string => {
+    switch (styleId) {
+        case 'js-dot':
+            return formatJs(segments, root);
+        case 'js-bracket':
+            return formatJsBracket(segments, root);
+        case 'js-optional-dot':
+            return formatJsOptionalDot(segments, root);
+        case 'js-optional-bracket':
+            return formatJsOptionalBracket(segments, root);
         case 'php-array':
-        case 'php-json':
             return formatPhpArray(segments, root);
         case 'php-object':
             return formatPhpObject(segments, root);
         case 'python-dict':
             return formatPython(segments, root);
-        case 'js-object':
-        case 'ts-as-const':
-            return formatJs(segments, root);
+        case 'python-get':
+            return formatPythonGet(segments, root);
         case 'go-map':
-            return formatGo(segments, root);
-        case 'csharp-dict':
+            return formatGoMap(segments, root);
+        case 'csharp-index':
             return formatCSharp(segments, root);
         case 'java-map':
             return formatJava(segments, root);
+        case 'java-path':
+            return formatJavaPath(segments, root);
         case 'ruby-hash':
             return formatRuby(segments, root);
-        case 'json':
-        case 'yaml':
-        case 'toml':
-        case 'form':
-        case 'rust-json':
+        case 'ruby-dig':
+            return formatRubyDig(segments, root);
+        case 'form-key':
+            return formatFormKey(segments);
+        case 'xpath':
+            // XPath is produced line-by-line, not from segments.
+            return formatJsonPath(segments);
+        case 'jsonpath':
         default:
             return formatJsonPath(segments);
     }
@@ -414,7 +589,6 @@ const toJsonish = (code: string): string => {
         .replace(/\bNone\b/g, 'null')
         .replace(/\(object\)\s*/g, '');
 
-    // Ruby symbols :key => / "key" => already handled after => rewrite
     // PHP / Ruby hash rockets → colon
     s = s.replace(/\s*=>\s*/g, ': ');
 
@@ -425,7 +599,6 @@ const toJsonish = (code: string): string => {
     });
 
     // Convert associative `[` that introduce string keys into `{` (and matching `]` → `}`).
-    // List brackets that introduce values / nested containers stay as arrays.
     const out: string[] = [];
     const closerStack: Array<'}' | ']'> = [];
     let i = 0;
@@ -456,7 +629,6 @@ const toJsonish = (code: string): string => {
         }
         if (ch === '[') {
             const next = peekNonWs(i + 1);
-            // Associative if next token looks like a JSON/JS key: "key": or ident:
             const isAssoc = /^"[^"]*"\s*:/.test(next) || /^[A-Za-z_][\w$]*\s*:/.test(next);
             if (isAssoc) {
                 out.push('{');
@@ -494,27 +666,38 @@ const toJsonish = (code: string): string => {
 
 /**
  * Build per-line accessor strings for a generated example.
+ * `pathStyleId` selects the formatter; `encodingId` picks how source is walked.
  */
-export const buildCodeLinePaths = (code: string, encodingId: string, rootName = ROOT_DEFAULT): CodeLinePathResult => {
+export const buildCodeLinePaths = (
+    code: string,
+    encodingId: string,
+    rootName = ROOT_DEFAULT,
+    pathStyleId?: string | null,
+): CodeLinePathResult => {
     const root = safeRootName(rootName);
-    const styleLabel = styleLabelOf(encodingId);
+    const styleId = resolvePathStyleId(encodingId, pathStyleId);
+    const styleLabel = PATH_STYLE_META[styleId]?.label || 'Path';
     const lines = String(code ?? '').split('\n');
-    if (lines.length === 0) return {paths: [], styleLabel};
+    if (lines.length === 0) return {paths: [], styleId, styleLabel};
 
-    if (encodingId === 'xml') {
-        return {paths: formatXmlXPath(code), styleLabel};
+    if (encodingId === 'xml' || styleId === 'xpath') {
+        // Prefer XML structure walk when the source is XML; otherwise fall through.
+        if (encodingId === 'xml' || /<\w/.test(code)) {
+            return {paths: formatXmlXPath(code), styleId, styleLabel};
+        }
     }
 
-    if (encodingId === 'form') {
+    if (encodingId === 'form' && (styleId === 'form-key' || !pathStyleId)) {
         return {
+            styleId,
             styleLabel,
             paths: lines.map(line => {
                 const key = line.split('=')[0]?.trim();
                 if (!key) return '';
                 try {
-                    return formatJsonPath([{kind: 'key', name: decodeURIComponent(key)}]);
+                    return decodeURIComponent(key);
                 } catch {
-                    return formatJsonPath([{kind: 'key', name: key}]);
+                    return key;
                 }
             }),
         };
@@ -525,8 +708,18 @@ export const buildCodeLinePaths = (code: string, encodingId: string, rootName = 
         segmentsPerLine = yamlSegmentsPerLine(code);
     } else if (encodingId === 'json') {
         segmentsPerLine = jsonSegmentsPerLine(code);
+    } else if (encodingId === 'form') {
+        // Style other than form-key: treat each key= as a single key segment.
+        segmentsPerLine = lines.map(line => {
+            const key = line.split('=')[0]?.trim();
+            if (!key) return [];
+            try {
+                return [{kind: 'key' as const, name: decodeURIComponent(key)}];
+            } catch {
+                return [{kind: 'key' as const, name: key}];
+            }
+        });
     } else {
-        // Language formats: normalize toward JSON structure then walk (line count preserved).
         const jsonish = toJsonish(code);
         segmentsPerLine = jsonSegmentsPerLine(jsonish);
     }
@@ -537,17 +730,16 @@ export const buildCodeLinePaths = (code: string, encodingId: string, rootName = 
         const segments = segmentsPerLine[index] || [];
         const trimmed = line.trim();
         if (!trimmed) return '';
-        // Closing braces alone: still show parent path if useful
         if (!segments.length) {
             if (index === 0 || trimmed === '{' || trimmed === '[' || trimmed === '<?xml' || /=\s*[\[{]/.test(trimmed)) {
-                return formatSegments(encodingId, [], root);
+                return formatByStyle(styleId, [], root);
             }
             return '';
         }
-        return formatSegments(encodingId, segments, root);
+        return formatByStyle(styleId, segments, root);
     });
 
-    return {paths, styleLabel};
+    return {paths, styleId, styleLabel};
 };
 
 export const pathForLine = (result: CodeLinePathResult, line: number): string => {

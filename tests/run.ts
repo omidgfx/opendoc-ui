@@ -87,7 +87,7 @@ import {getRawSpecDocument} from '@/src/utils/specification/specSource';
 import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
-import {buildCodeLinePaths} from '@/src/utils/schema/codeLinePath';
+import {buildCodeLinePaths, pathStylesForEncoding} from '@/src/utils/schema/codeLinePath';
 import {
     createEndpointNote,
     ENDPOINT_NOTE_COLORS,
@@ -2068,11 +2068,18 @@ test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
   ]
 }`;
     const json = buildCodeLinePaths(code, 'json', 'payload');
-    assert.equal(json.styleLabel, 'JSONPath');
+    assert.equal(json.styleId, 'jsonpath');
     assert.equal(json.paths[2], '$.venue.cover_photo');
     assert.equal(json.paths[4], '$.venue.vendor.cover_photo');
     assert.ok(json.paths.some(path => path === '$.items[0]'));
     assert.ok(json.paths.some(path => path === '$.items[1]'));
+
+    const optional = buildCodeLinePaths(code, 'json', 'payload', 'js-optional-dot');
+    assert.equal(optional.paths[2], 'payload?.venue?.cover_photo');
+    assert.equal(optional.paths[4], 'payload?.venue?.vendor?.cover_photo');
+
+    const bracket = buildCodeLinePaths(code, 'json', 'payload', 'js-optional-bracket');
+    assert.equal(bracket.paths[2], "payload?.['venue']?.['cover_photo']");
 
     const phpSource = `$payload = [
     'venue' => [
@@ -2091,11 +2098,24 @@ test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
     ],
 ];`;
     const php = buildCodeLinePaths(phpSource, 'php-array', 'payload');
-    assert.equal(php.styleLabel, 'PHP');
+    assert.equal(php.styleId, 'php-array');
     assert.equal(php.paths[2], "$payload['venue']['cover_photo']");
     assert.equal(php.paths[4], "$payload['venue']['vendor']['cover_photo']");
     assert.equal(php.paths[9], "$payload['items'][0]['id']");
     assert.equal(php.paths[12], "$payload['items'][1]['id']");
+
+    const phpObj = buildCodeLinePaths(phpSource, 'php-array', 'payload', 'php-object');
+    assert.equal(phpObj.paths[2], '$payload->venue->cover_photo');
+});
+
+test('pathStylesForEncoding offers multiple walkers per encoding', () => {
+    const jsonStyles = pathStylesForEncoding('json').map(style => style.id);
+    assert.ok(jsonStyles.includes('jsonpath'));
+    assert.ok(jsonStyles.includes('js-optional-dot'));
+    assert.ok(jsonStyles.includes('php-array'));
+    const phpStyles = pathStylesForEncoding('php-array').map(style => style.id);
+    assert.ok(phpStyles.includes('php-array'));
+    assert.ok(phpStyles.includes('php-object'));
 });
 
 test('findFieldBySchemaPath distinguishes nested keys that share a leaf name', () => {

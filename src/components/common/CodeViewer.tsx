@@ -10,7 +10,16 @@ import {
 import {Tip} from './Tooltip';
 import DescriptionTip from '../endpoint/ExamineTab/recursive/DescriptionTip';
 import ScrollableRow from './ScrollableRow';
-import {buildCodeLinePaths, pathForLine} from '../../utils/schema/codeLinePath';
+import CustomDropdown from './CustomDropdown';
+import {
+    buildCodeLinePaths,
+    defaultPathStyleId,
+    pathForLine,
+    pathStylesForEncoding,
+    resolvePathStyleId,
+    type CodePathStyleId,
+} from '../../utils/schema/codeLinePath';
+import type {CustomDropdownOption} from '../../types/ui';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {usePreferences} from '../../contexts/PreferencesContext';
 import 'prismjs/components/prism-json';
@@ -263,6 +272,7 @@ export default function CodeViewer({
     const [openInlineMenuId, setOpenInlineMenuId] = useState<string | null>(null);
     const [selectedLine, setSelectedLine] = useState<number | null>(null);
     const [pathCopied, setPathCopied] = useState(false);
+    const [pathStyleId, setPathStyleId] = useState<CodePathStyleId | null>(null);
     const [menuPosition, setMenuPosition] = useState<{top: number; left: number; openAbove: boolean} | null>(null);
     const viewerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -347,23 +357,42 @@ export default function CodeViewer({
     }, [displayCode, language]);
 
     const lineCount = useMemo(() => Math.max(1, displayCode.split('\n').length), [displayCode]);
-    const linePaths = useMemo(() => {
+    const pathStyleOptions = useMemo((): CustomDropdownOption[] => {
+        if (!pathEncodingId) return [];
+        return pathStylesForEncoding(pathEncodingId).map(style => ({
+            value: style.id,
+            label: style.label,
+            description: style.example,
+        }));
+    }, [pathEncodingId]);
+
+    const activePathStyleId = useMemo(() => {
         if (!pathEncodingId) return null;
+        return resolvePathStyleId(pathEncodingId, pathStyleId);
+    }, [pathEncodingId, pathStyleId]);
+
+    const linePaths = useMemo(() => {
+        if (!pathEncodingId || !activePathStyleId) return null;
         // Walk the displayed source so line indices match the rendered rows.
-        return buildCodeLinePaths(displayCode, pathEncodingId, pathRootName);
-    }, [displayCode, pathEncodingId, pathRootName]);
+        return buildCodeLinePaths(displayCode, pathEncodingId, pathRootName, activePathStyleId);
+    }, [displayCode, pathEncodingId, pathRootName, activePathStyleId]);
     const selectedPath = linePaths && selectedLine ? pathForLine(linePaths, selectedLine) : '';
 
     useEffect(() => {
-        // Reset selection when the example/format changes.
+        // Reset selection when the example/format changes; keep path style if still valid.
         setSelectedLine(null);
         setPathCopied(false);
+        if (pathEncodingId) {
+            setPathStyleId(current => resolvePathStyleId(pathEncodingId, current));
+        } else {
+            setPathStyleId(null);
+        }
     }, [displayCode, pathEncodingId]);
 
     const handleSelectLine = useCallback(
         (event: React.MouseEvent) => {
             if (!pathEncodingId) return;
-            // Ignore clicks that open combinator menus.
+            // Ignore clicks that open combinator menus / path chrome.
             if ((event.target as HTMLElement | null)?.closest('button')) return;
             const scroller = scrollRef.current;
             if (!scroller) return;
@@ -644,11 +673,49 @@ export default function CodeViewer({
             ref={viewerRef}
             className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
         >
+            <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
+                <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
+                    {language}
+                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    {toolbarEnd ? <div className="min-w-0">{toolbarEnd}</div> : null}
+
+                    <button
+                        onClick={handleCopy}
+                        className={clsx(
+                            'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
+                            copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
+                        )}
+                    >
+                        {copied ? (
+                            <>
+                                <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
+                                <span className="text-[var(--method-get)] font-bold">Copied!</span>
+                            </>
+                        ) : (
+                            <>
+                                <i className="ph ph-copy text-[14px]"></i>
+                                <span className="font-semibold">Copy</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
             {pathEncodingId ? (
-                <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
-                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                        {linePaths?.styleLabel || 'Path'}
-                    </span>
+                <div
+                    className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5"
+                    onClick={event => event.stopPropagation()}
+                    onMouseDown={event => event.stopPropagation()}
+                >
+                    <CustomDropdown
+                        value={activePathStyleId || defaultPathStyleId(pathEncodingId)}
+                        onChange={value => setPathStyleId(value as CodePathStyleId)}
+                        options={pathStyleOptions}
+                        className="w-auto max-w-[9.5rem] shrink-0"
+                        triggerClassName="flex w-auto min-w-0 items-center justify-between gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans font-black uppercase tracking-wider cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none"
+                        ariaLabel="Path accessor style"
+                    />
                     <div className="min-w-0 flex-1">
                         <ScrollableRow className="font-mono text-[11px] font-semibold text-[var(--text-heading)]">
                             <span className="select-all">
@@ -679,35 +746,6 @@ export default function CodeViewer({
                     </button>
                 </div>
             ) : null}
-            <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
-                <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
-                    {language}
-                </span>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    {toolbarEnd ? <div className="min-w-0">{toolbarEnd}</div> : null}
-
-                    <button
-                        onClick={handleCopy}
-                        className={clsx(
-                            'px-2 py-0.5 rounded-md text-[10px] font-sans flex items-center gap-1.5 transition-all cursor-pointer border hover:bg-[var(--background)] bg-[var(--surface)] border-[var(--border)]',
-                            copied ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
-                        )}
-                    >
-                        {copied ? (
-                            <>
-                                <i className="ph ph-check text-[10px] text-[var(--method-get)]"></i>
-                                <span className="text-[var(--method-get)] font-bold">Copied!</span>
-                            </>
-                        ) : (
-                            <>
-                                <i className="ph ph-copy text-[14px]"></i>
-                                <span className="font-semibold">Copy</span>
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-
             <div className="min-w-0">
                 <div
                     ref={scrollRef}
@@ -736,30 +774,6 @@ export default function CodeViewer({
                                 backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
                             }}
                         />
-                        {pathEncodingId
-                            ? Array.from({length: lineCount}, (_, index) => {
-                                  const line = index + 1;
-                                  const selected = selectedLine === line;
-                                  return (
-                                      <div
-                                          key={`line-select-${line}`}
-                                          aria-hidden="true"
-                                          className="pointer-events-none absolute left-0 z-0 box-border"
-                                          style={{
-                                              height: `${LINE_HEIGHT_PX}px`,
-                                              top: `${PAD_TOP_PX + index * LINE_HEIGHT_PX}px`,
-                                              width: '100%',
-                                              borderLeft: selected
-                                                  ? '2px solid var(--primary)'
-                                                  : '2px solid transparent',
-                                              backgroundColor: selected
-                                                  ? 'color-mix(in srgb, var(--text) 5%, transparent)'
-                                                  : undefined,
-                                          }}
-                                      />
-                                  );
-                              })
-                            : null}
                         {showLineNumbers && (
                             <div className="sticky left-0 z-20 shrink-0">
                                 <div
@@ -783,20 +797,7 @@ export default function CodeViewer({
                                         const icons = bucket?.filter(marker => !marker.dot);
                                         const dot = bucket?.find(marker => marker.dot);
                                         return (
-                                            <div
-                                                key={line}
-                                                className="relative z-[1] flex h-[1.5em] items-center box-border"
-                                                style={{
-                                                    borderLeft:
-                                                        pathEncodingId && selectedLine === line
-                                                            ? '2px solid var(--primary)'
-                                                            : '2px solid transparent',
-                                                    backgroundColor:
-                                                        pathEncodingId && selectedLine === line
-                                                            ? 'color-mix(in srgb, var(--text) 5%, transparent)'
-                                                            : undefined,
-                                                }}
-                                            >
+                                            <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
                                                 {iconSlotWidth > 0 && (
                                                     <span
                                                         className="flex items-center justify-start gap-[3px] shrink-0"
@@ -808,7 +809,12 @@ export default function CodeViewer({
                                                     </span>
                                                 )}
                                                 <span
-                                                    className="inline-block text-right text-[10px] opacity-70 pl-1.5 ml-auto"
+                                                    className={clsx(
+                                                        'inline-block text-right text-[10px] pl-1.5 ml-auto',
+                                                        pathEncodingId && selectedLine === line
+                                                            ? 'font-bold text-[var(--primary)] opacity-100'
+                                                            : 'opacity-70',
+                                                    )}
                                                     style={{minWidth: `${gutterDigits}ch`}}
                                                 >
                                                     {line}
@@ -832,6 +838,30 @@ export default function CodeViewer({
                         )}
                         <div className="relative z-0 min-w-0 flex-1">
                             <pre className="relative z-0 p-4 flex-1" style={{tabSize: TAB_SIZE_CH}}>
+                                {pathEncodingId
+                                    ? Array.from({length: lineCount}, (_, index) => {
+                                          const line = index + 1;
+                                          const selected = selectedLine === line;
+                                          return (
+                                              <div
+                                                  key={`line-select-${line}`}
+                                                  aria-hidden="true"
+                                                  className="pointer-events-none absolute left-0 z-0 box-border"
+                                                  style={{
+                                                      height: `${LINE_HEIGHT_PX}px`,
+                                                      top: `${PAD_TOP_PX + index * LINE_HEIGHT_PX}px`,
+                                                      width: '100%',
+                                                      borderLeft: selected
+                                                          ? '2px solid var(--primary)'
+                                                          : '2px solid transparent',
+                                                      backgroundColor: selected
+                                                          ? 'color-mix(in srgb, var(--text) 5%, transparent)'
+                                                          : undefined,
+                                                  }}
+                                              />
+                                          );
+                                      })
+                                    : null}
                                 {visibleInlineMenus.map(menu => {
                                     const open = openInlineMenuId === menu.id;
                                     const start = Math.max(0, menu.column ?? 0);
