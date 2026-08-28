@@ -3,6 +3,15 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.2] — 2026-08-28
+
+Curated theme gallery with stable config tags, schema meta table layout, and CI contract polish.
+
+- curates **17 product themes** (including Persian Red) with stable slug tags for `config.json`, a redesigned appearance picker with copyable tags, and legacy name/alias resolution;
+- rebuilds the SchemaViewer **meta info box** as a two-column table (Schema / Required / combinator / About), drops the duplicate schema-wide table banner, and keeps required fields on a scrollable rail;
+- mutes meta row labels while coloring icons only; sizes the label column to the longest header without collapsing width;
+- satisfies CI **Prettier** on README and the **no native `title` tooltip** UI contract (Tip on required field names).
+
 ## [0.3.1] — 2026-08-28
 
 Recursive schema guard, richer capability showcase, and marketing-site refresh.
