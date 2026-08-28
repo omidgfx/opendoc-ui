@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {Tip} from '../common/Tooltip';
-import Markdown from '../common/Markdown';
+import DescriptionTip from '../endpoint/ExamineTab/recursive/DescriptionTip';
 import type {SchemaBranchChoice} from '../../utils/schema/branchChoices';
 import {
     readSchemaAllOfFocus,
@@ -174,15 +174,16 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                 {option.label}
                                             </span>
                                             {option.description ? (
-                                                <Tip content={<Markdown text={option.description} />} placement="left">
-                                                    <span
-                                                        className="inline-flex size-4 shrink-0 items-center justify-center"
-                                                        onClick={event => event.stopPropagation()}
-                                                        onMouseDown={event => event.stopPropagation()}
-                                                    >
-                                                        <i className="ph ph-info text-[12px]" aria-hidden="true" />
-                                                    </span>
-                                                </Tip>
+                                                <span
+                                                    className="shrink-0"
+                                                    onClick={event => event.stopPropagation()}
+                                                    onMouseDown={event => event.stopPropagation()}
+                                                >
+                                                    <DescriptionTip
+                                                        documents={[{text: option.description}]}
+                                                        fieldLabel={option.label}
+                                                    />
+                                                </span>
                                             ) : null}
                                         </span>
                                     );
