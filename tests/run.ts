@@ -87,7 +87,8 @@ import {getRawSpecDocument} from '@/src/utils/specification/specSource';
 import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
-import {buildCodeLinePaths, pathStylesForEncoding} from '@/src/utils/schema/codeLinePath';
+import {buildCodeLinePaths, pathStylesForEncoding, pathForLine} from '@/src/utils/schema/codeLinePath';
+import {EXAMPLE_ENCODINGS} from '@/src/utils/schema/exampleEncodings';
 import {highlightPathAccessor} from '@/src/components/common/CodeViewer';
 import {
     createEndpointNote,
@@ -2075,13 +2076,6 @@ test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
     assert.ok(json.paths.some(path => path === '$.items[0]'));
     assert.ok(json.paths.some(path => path === '$.items[1]'));
 
-    const optional = buildCodeLinePaths(code, 'json', 'payload', 'js-optional-dot');
-    assert.equal(optional.paths[2], 'payload?.venue?.cover_photo');
-    assert.equal(optional.paths[4], 'payload?.venue?.vendor?.cover_photo');
-
-    const bracket = buildCodeLinePaths(code, 'json', 'payload', 'js-optional-bracket');
-    assert.equal(bracket.paths[2], "payload?.['venue']?.['cover_photo']");
-
     const phpSource = `$payload = [
     'venue' => [
         'cover_photo' => 'a',
@@ -2107,6 +2101,10 @@ test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
 
     const phpObj = buildCodeLinePaths(phpSource, 'php-array', 'payload', 'php-object');
     assert.equal(phpObj.paths[2], '$payload->venue->cover_photo');
+
+    const phpNull = buildCodeLinePaths(phpSource, 'php-array', 'payload', 'php-nullsafe');
+    assert.equal(phpNull.paths[2], '$payload?->venue?->cover_photo');
+    assert.equal(phpNull.paths[4], '$payload?->venue?->vendor?->cover_photo');
 });
 
 test('highlightPathAccessor paints path tokens with Prism token classes', () => {
@@ -2122,16 +2120,110 @@ test('highlightPathAccessor paints path tokens with Prism token classes', () => 
     const php = highlightPathAccessor("$payload['error']['code']", 'php-array');
     assert.ok(php.includes('token variable'), php);
     assert.ok(php.includes('token string'), php);
+
+    const nullsafe = highlightPathAccessor('$request?->status?->error', 'php-nullsafe');
+    assert.ok(nullsafe.includes('token operator'), nullsafe);
+    assert.ok(nullsafe.includes('?-&gt;') || nullsafe.includes('?->'), nullsafe);
 });
 
-test('pathStylesForEncoding offers multiple walkers per encoding', () => {
+test('pathStylesForEncoding scopes walkers by language with JSONPath everywhere', () => {
     const jsonStyles = pathStylesForEncoding('json').map(style => style.id);
-    assert.ok(jsonStyles.includes('jsonpath'));
-    assert.ok(jsonStyles.includes('js-optional-dot'));
-    assert.ok(jsonStyles.includes('php-array'));
+    assert.deepEqual(jsonStyles, ['jsonpath']);
+
+    const jsStyles = pathStylesForEncoding('js-object').map(style => style.id);
+    assert.ok(jsStyles.includes('jsonpath'));
+    assert.ok(jsStyles.includes('js-dot'));
+    assert.ok(jsStyles.includes('js-optional-dot'));
+    assert.equal(jsStyles.includes('php-array'), false);
+
+    const tsStyles = pathStylesForEncoding('ts-as-const').map(style => style.id);
+    assert.ok(tsStyles.includes('js-optional-bracket'));
+
     const phpStyles = pathStylesForEncoding('php-array').map(style => style.id);
+    assert.ok(phpStyles.includes('jsonpath'));
     assert.ok(phpStyles.includes('php-array'));
     assert.ok(phpStyles.includes('php-object'));
+    assert.ok(phpStyles.includes('php-nullsafe'));
+    assert.equal(phpStyles.includes('js-dot'), false);
+
+    const pyStyles = pathStylesForEncoding('python-dict').map(style => style.id);
+    assert.ok(pyStyles.includes('jsonpath'));
+    assert.ok(pyStyles.includes('python-dict'));
+    assert.equal(pyStyles.includes('js-dot'), false);
+
+    for (const encoding of EXAMPLE_ENCODINGS) {
+        const styles = pathStylesForEncoding(encoding.id).map(style => style.id);
+        if (encoding.id === 'xml') {
+            assert.ok(styles.includes('xpath'), encoding.id);
+            assert.ok(styles.includes('jsonpath'), encoding.id);
+        } else if (encoding.id === 'form') {
+            assert.ok(styles.includes('form-key'), encoding.id);
+            assert.ok(styles.includes('jsonpath'), encoding.id);
+        } else {
+            assert.ok(styles.includes('jsonpath'), `missing jsonpath on ${encoding.id}`);
+        }
+    }
+});
+
+test('path walker harness: every encoding style yields a nested accessor', () => {
+    const value = {
+        status: 401,
+        error: {code: 'unauthenticated', nested: {id: 1}},
+        items: [{id: 1}, {id: 2}],
+    };
+    const root = 'request';
+
+    for (const encoding of EXAMPLE_ENCODINGS) {
+        const code = encoding.format(value, root);
+        const styles = pathStylesForEncoding(encoding.id);
+        assert.ok(styles.length > 0, encoding.id);
+
+        for (const style of styles) {
+            const result = buildCodeLinePaths(code, encoding.id, root, style.id);
+            assert.equal(result.styleId, style.id, `${encoding.id}/${style.id}`);
+            assert.equal(result.paths.length, code.split('\n').length, `${encoding.id}/${style.id} line count`);
+
+            if (style.id === 'form-key') {
+                assert.ok(
+                    result.paths.some(path => path === 'status' || path.startsWith('status')),
+                    encoding.id,
+                );
+                continue;
+            }
+            if (style.id === 'xpath') {
+                assert.ok(
+                    result.paths.some(path => /status/.test(path) && path.includes('/')),
+                    `${encoding.id}/xpath ${JSON.stringify(result.paths.filter(Boolean).slice(0, 8))}`,
+                );
+                continue;
+            }
+
+            // Nested field must appear for every language walker.
+            const nestedHits = result.paths.filter(
+                path => path && (path.includes('code') || path.includes('nested') || path.includes('status')),
+            );
+            assert.ok(
+                nestedHits.length > 0,
+                `${encoding.id}/${style.id} produced no nested path. sample=${JSON.stringify(
+                    result.paths.filter(Boolean).slice(0, 12),
+                )} codeHead=${JSON.stringify(code.split('\n').slice(0, 8))}`,
+            );
+
+            // Style-specific shape checks on a status hit when present.
+            const statusHit = result.paths.find(path => path.includes('status') && !path.includes('code'));
+            if (!statusHit) continue;
+            if (style.id === 'jsonpath') assert.match(statusHit, /\$/);
+            if (style.id === 'php-array') assert.match(statusHit, /\$request\['status'\]/);
+            if (style.id === 'php-object') assert.equal(statusHit, '$request->status');
+            if (style.id === 'php-nullsafe') assert.equal(statusHit, '$request?->status');
+            if (style.id === 'js-dot') assert.equal(statusHit, 'request.status');
+            if (style.id === 'js-optional-dot') assert.equal(statusHit, 'request?.status');
+            if (style.id === 'python-dict') assert.equal(statusHit, 'request["status"]');
+            if (style.id === 'csharp-index') assert.equal(statusHit, 'request["status"]');
+            if (style.id === 'java-map') assert.equal(statusHit, 'request.get("status")');
+            if (style.id === 'go-map') assert.ok(statusHit.includes('status'), statusHit);
+        }
+    }
 });
 
 test('findFieldBySchemaPath distinguishes nested keys that share a leaf name', () => {

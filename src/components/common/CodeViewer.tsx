@@ -134,10 +134,16 @@ export const highlightPathAccessor = (path: string, styleId?: string | null): st
     }
 
     while (i < source.length) {
-        // Optional chain ?.
+        // JS optional chain ?.
         if (startsWith('?.')) {
             out.push(spanToken('operator', '?.'));
             i += 2;
+            continue;
+        }
+        // PHP 8 nullsafe ?->
+        if (startsWith('?->')) {
+            out.push(spanToken('operator', '?->'));
+            i += 3;
             continue;
         }
         // PHP object ->
