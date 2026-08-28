@@ -88,7 +88,7 @@ import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
 import {buildCodeLinePaths, pathStylesForEncoding, pathForLine} from '@/src/utils/schema/codeLinePath';
-import {EXAMPLE_ENCODINGS} from '@/src/utils/schema/exampleEncodings';
+import {EXAMPLE_ENCODINGS, defaultExampleEncodingId} from '@/src/utils/schema/exampleEncodings';
 import {highlightPathAccessor} from '@/src/components/common/CodeViewer';
 import {
     createEndpointNote,
@@ -1249,6 +1249,14 @@ other: 1
         containerPath: 'combinedPayload',
     });
     assert.deepEqual(yamlDimmed, [5, 6, 7]);
+});
+
+test('defaultExampleEncodingId follows declared media type', () => {
+    assert.equal(defaultExampleEncodingId('application/json'), 'json');
+    assert.equal(defaultExampleEncodingId('application/xml'), 'xml');
+    assert.equal(defaultExampleEncodingId('application/x-www-form-urlencoded'), 'form');
+    assert.equal(defaultExampleEncodingId('application/yaml'), 'yaml');
+    assert.equal(defaultExampleEncodingId('text/yaml'), 'yaml');
 });
 
 test('defaults documentation switches to per-schema and schema modal to per-schema', () => {

@@ -196,28 +196,31 @@ export default function SchemaViewer({
 }: SchemaViewerProps) {
     const resolveReference = (item: any) => resolveOpenApiReference(item, spec);
     const {preferences, setPreference} = usePreferences();
-    const [exampleEncodingId, setExampleEncodingId] = useState(() => {
-        const saved = preferences.lastExampleEncodingId;
-        if (saved && EXAMPLE_ENCODINGS.some(item => item.id === saved)) return saved;
-        return defaultExampleEncodingId(mediaType);
-    });
+    // Spec Content-Type is source of truth for the default example format.
+    // User may browse other encodings via the toolbar; never auto-override with a
+    // saved preference that ignores the declared media type.
+    const declaredExampleEncodingId = useMemo(() => defaultExampleEncodingId(mediaType), [mediaType]);
+    const [exampleEncodingId, setExampleEncodingId] = useState(declaredExampleEncodingId);
     const [internalAnyOf, setInternalAnyOf] = useState<number[]>([]);
     const [internalAnyOfTouched, setInternalAnyOfTouched] = useState(false);
     const [branchRevision, setBranchRevision] = useState(0);
 
-    // App-wide last encoding (IndexedDB via preferences) — not media-type scoped.
     useEffect(() => {
-        const saved = preferences.lastExampleEncodingId;
-        if (saved && EXAMPLE_ENCODINGS.some(item => item.id === saved)) {
-            setExampleEncodingId(saved);
-        }
-    }, [preferences.lastExampleEncodingId]);
+        setExampleEncodingId(declaredExampleEncodingId);
+    }, [declaredExampleEncodingId]);
 
     const handleExampleEncodingChange = (id: string) => {
         setExampleEncodingId(id);
+        // Remember last *manual* pick app-wide (e.g. for path walker), but media
+        // type still wins whenever the body/response encoding changes.
         if (EXAMPLE_ENCODINGS.some(item => item.id === id)) {
             setPreference('lastExampleEncodingId', id);
         }
+    };
+
+    const resetExampleEncodingToDeclared = () => {
+        setExampleEncodingId(declaredExampleEncodingId);
+        setPreference('lastExampleEncodingId', declaredExampleEncodingId);
     };
 
     useEffect(() => {
@@ -714,17 +717,21 @@ export default function SchemaViewer({
         icon?: string;
         accent?: string;
         name: string;
+        /** When set, the chip is a button (e.g. Media → reset example format). */
+        onClick?: () => void;
+        ariaLabel?: string;
     }) => {
-        const chip = (
-            <span
-                className={clsx(
-                    'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] leading-none',
-                    opts.accent
-                        ? 'border-current/20 bg-current/10'
-                        : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]',
-                )}
-                style={opts.accent ? {color: opts.accent} : undefined}
-            >
+        const interactive = typeof opts.onClick === 'function';
+        const className = clsx(
+            'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] leading-none',
+            opts.accent
+                ? 'border-current/20 bg-current/10'
+                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]',
+            interactive &&
+                'cursor-pointer transition-colors hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40',
+        );
+        const body = (
+            <>
                 {opts.icon ? <i className={`${opts.icon} text-[12px] shrink-0 opacity-90`} /> : null}
                 <span className="shrink-0 font-sans text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     {opts.label}
@@ -738,6 +745,21 @@ export default function SchemaViewer({
                 >
                     {opts.value}
                 </span>
+            </>
+        );
+        const chip = interactive ? (
+            <button
+                type="button"
+                className={className}
+                style={opts.accent ? {color: opts.accent} : undefined}
+                onClick={opts.onClick}
+                aria-label={opts.ariaLabel || opts.tip || opts.label}
+            >
+                {body}
+            </button>
+        ) : (
+            <span className={className} style={opts.accent ? {color: opts.accent} : undefined}>
+                {body}
             </span>
         );
         return (
@@ -827,8 +849,14 @@ export default function SchemaViewer({
                       label: 'Media',
                       value: mediaType,
                       mono: true,
-                      tip: 'Media type (Content-Type) for this body',
+                      tip:
+                          exampleEncodingId === declaredExampleEncodingId
+                              ? `Declared media type (example format: ${declaredExampleEncodingId}). Click to re-apply.`
+                              : `Reset generated example to the declared media type (${declaredExampleEncodingId}). Currently showing ${exampleEncodingId}.`,
                       icon: 'ph ph-file-code',
+                      onClick: resetExampleEncodingToDeclared,
+                      ariaLabel: `Reset example format to declared media type ${mediaType}`,
+                      accent: exampleEncodingId !== declaredExampleEncodingId ? 'var(--primary)' : undefined,
                   })
                 : null}
             {additionalPropertiesLabel !== null
