@@ -851,22 +851,19 @@ export default function SchemaViewer({
                         {requiredFieldNames.length > 0 ? (
                             <div className="min-w-0">
                                 <div className="flex min-w-0 items-center gap-2">
-                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--method-delete)]">
-                                        <i className="ph ph-asterisk text-[10px]" />
+                                    <span className="inline-flex shrink-0 items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider text-[var(--method-delete)]">
+                                        <i className="ph ph-asterisk text-[11px]" />
                                         Required
                                     </span>
                                     <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-2">
                                             {requiredFieldNames.map(name => (
                                                 <span
                                                     key={name}
-                                                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--method-delete)]/20 bg-[var(--surface)] px-2.5 py-1 font-mono text-[10px] font-bold text-[var(--text-heading)]"
+                                                    className="shrink-0 max-w-[180px] truncate font-mono text-[10px] font-bold text-[var(--method-delete)]"
                                                     title={`${name} is required`}
                                                 >
-                                                    <span className="max-w-[180px] truncate">{name}</span>
-                                                    <span className="text-[var(--method-delete)]" aria-hidden="true">
-                                                        *
-                                                    </span>
+                                                    {name}
                                                 </span>
                                             ))}
                                         </div>
