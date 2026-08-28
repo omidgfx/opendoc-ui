@@ -28,7 +28,10 @@ export interface ThemeItem {
 }
 
 export interface AppTheme {
+    /** Human-readable label shown in the gallery. */
     name: string;
+    /** Stable slug for configs (`theme: "dracula"`). Prefer this over the display name. */
+    id: string;
     light: ThemeItem;
     dark: ThemeItem;
 }

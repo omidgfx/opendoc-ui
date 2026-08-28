@@ -1,11 +1,11 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {ThemeMode} from '../types';
-import {THEME_LIST} from '../data/themes';
+import {THEME_LIST, isKnownThemeRef, resolveTheme} from '../data/themes';
 import {specStorage} from '../utils/storage/index';
 import {applyThemeCssVariables, createThemeCssVariables} from '../utils/theme/themeCss';
 
-export function useThemeController(selectedSpecKey: string) {
-    const [selectedThemeName, setSelectedThemeName] = useState('Default Slate');
+export function useThemeController(selectedSpecKey: string, configThemeRef?: string) {
+    const [selectedThemeName, setSelectedThemeName] = useState(THEME_LIST[0].name);
     const [currentThemeMode, setCurrentThemeMode] = useState<ThemeMode>('system');
     const [systemPrefersLight, setSystemPrefersLight] = useState<boolean>(
         () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches,
@@ -28,15 +28,18 @@ export function useThemeController(selectedSpecKey: string) {
     }, [systemPrefersLight]);
     useEffect(() => {
         if (!selectedSpecKey) return;
-        const theme = specStorage.get(selectedSpecKey, 'theme');
-        setSelectedThemeName(theme && THEME_LIST.some(item => item.name === theme) ? theme : 'Default Slate');
+        const stored = specStorage.get(selectedSpecKey, 'theme');
+        const fromStorage = isKnownThemeRef(stored) ? resolveTheme(stored).name : '';
+        const fromConfig = isKnownThemeRef(configThemeRef) ? resolveTheme(configThemeRef).name : '';
+        setSelectedThemeName(fromStorage || fromConfig || THEME_LIST[0].name);
         const mode = specStorage.get(selectedSpecKey, 'theme_mode');
         setCurrentThemeMode(mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'system');
         setRestoredForKey(selectedSpecKey);
-    }, [selectedSpecKey]);
+    }, [selectedSpecKey, configThemeRef]);
     useEffect(() => {
         if (selectedSpecKey && restoredForKey === selectedSpecKey) {
-            specStorage.set(selectedSpecKey, 'theme', selectedThemeName);
+            // Persist the stable slug so configs and storage share one vocabulary.
+            specStorage.set(selectedSpecKey, 'theme', resolveTheme(selectedThemeName).id);
         }
     }, [selectedThemeName, selectedSpecKey, restoredForKey]);
     useEffect(() => {
@@ -44,10 +47,7 @@ export function useThemeController(selectedSpecKey: string) {
             specStorage.set(selectedSpecKey, 'theme_mode', currentThemeMode);
         }
     }, [currentThemeMode, selectedSpecKey, restoredForKey]);
-    const activeTheme = useMemo(
-        () => THEME_LIST.find(theme => theme.name === selectedThemeName) || THEME_LIST[0],
-        [selectedThemeName],
-    );
+    const activeTheme = useMemo(() => resolveTheme(selectedThemeName), [selectedThemeName]);
     const activePalette = resolvedThemeMode === 'light' ? activeTheme.light : activeTheme.dark;
     useEffect(() => applyThemeCssVariables(activePalette), [activePalette]);
     const styleVars = useMemo(() => createThemeCssVariables(activePalette), [activePalette]);

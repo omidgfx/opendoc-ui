@@ -291,15 +291,15 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 ```jsonc
 {
-  // Theme used for every spec in this file ("default" falls back to the first built-in theme)
-  "theme": "default",
+  // Theme tag used for every spec in this file ("default" / "default-slate" = first built-in)
+  "theme": "default-slate",
 
   // Optional: keep configured specs and also let visitors open local files
   "allowLocalSpecifications": true,
 
   "parsables": {
     "Player API": {
-      "theme": "default", // optional, per-spec theme
+      "theme": "default-slate", // optional, per-spec theme tag
       "url": "https://api.example.com/docs-json", // remote JSON or YAML
       "title": "Player API", // optional, shown in the selector
     },
@@ -320,7 +320,7 @@ Supported keys per entry:
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
 | `title`    | string  | Display name in the selector and navbar. Defaults to the object key.                                                                                |
-| `theme`    | string  | Theme name applied when this spec is opened. Defaults to the file-level `theme` / first built-in theme.                                             |
+| `theme`    | string  | Theme **tag** (slug) applied when this spec is opened, e.g. `dracula` or `persian-red`. Display names still resolve. Defaults to the file-level `theme` / first built-in theme. |
 | `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
 | `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
 
@@ -335,7 +335,7 @@ script runs, e.g. in `index.html`:
 ```html
 <script>
   window.INITIAL_CONFIG = {
-    theme: 'default',
+    theme: 'default-slate',
     parsables: {
       'Pet Store': {url: '/specs/pet-store.json'},
     },
@@ -970,8 +970,11 @@ before deleting every remote-history/cache pair.
 
 ## Theme system
 
-Themes come from `src/data/themes.ts`. Each theme defines full **light** and **dark**
-palettes. The **mode** can be:
+Themes come from `src/data/themes.ts`. Each theme has a display **name**, a stable **tag**
+(`id` slug such as `dracula` or `ink-and-paper`), and full **light** / **dark** palettes.
+Copy the tag from **Settings → Appearance** (or the gallery card) and paste it into
+`config.json` as `"theme": "dracula"`. Display names and a few legacy aliases still resolve.
+The **mode** can be:
 
 | Mode     | Behavior                                                                       |
 | -------- | ------------------------------------------------------------------------------ |
@@ -984,8 +987,9 @@ while in system mode, and the palette updates immediately if the OS theme change
 app is open. The palette button in the navbar opens the theme picker, whose segmented
 control offers the same `system / light / dark` modes next to the theme gallery.
 
-Theme name and mode are remembered **per spec** (`selected_theme_name_<key>` and
-`theme_mode_<key>`), so switching between APIs restores each one's own look.
+Theme tag and mode are remembered **per spec** (`theme` and `theme_mode` under the
+spec storage key), so switching between APIs restores each one's own look. Stored values
+use the stable tag (e.g. `nord`); older display-name values still resolve.
 
 ---
 

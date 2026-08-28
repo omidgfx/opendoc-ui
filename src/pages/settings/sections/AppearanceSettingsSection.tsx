@@ -1,5 +1,5 @@
 import type {AppTheme, ThemeMode} from '@/src/types';
-import {THEME_LIST} from '@/src/data/themes';
+import {THEME_LIST, resolveTheme} from '@/src/data/themes';
 import ThemePreviewCard from '@/src/components/theme/ThemePreviewCard';
 import ThemeIdentityPanel from '@/src/components/theme/ThemeIdentityPanel';
 import SettingsGroup from '../controls/SettingsGroup';
@@ -29,7 +29,7 @@ export default function AppearanceSettingsSection({
     onSelectTheme,
     onSetThemeMode,
 }: AppearanceSettingsProps) {
-    const selectedTheme: AppTheme = THEME_LIST.find(theme => theme.name === selectedThemeName) || THEME_LIST[0];
+    const selectedTheme: AppTheme = resolveTheme(selectedThemeName);
     return (
         <div className="space-y-4">
             <SettingsGroup
@@ -54,17 +54,17 @@ export default function AppearanceSettingsSection({
 
             <SettingsGroup
                 title="Theme"
-                description={`${THEME_LIST.length} palettes, applied instantly and remembered per specification.`}
+                description={`${THEME_LIST.length} palettes with stable tags you can paste into config.json. Applied instantly and remembered per specification.`}
                 icon="ph-fill ph-palette"
             >
                 <div className="px-4 py-4 sm:px-5">
                     <ThemeIdentityPanel theme={selectedTheme} mode={resolvedThemeMode} />
-                    <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
                         {THEME_LIST.map(theme => (
                             <ThemePreviewCard
-                                key={theme.name}
+                                key={theme.id}
                                 theme={theme}
-                                selected={theme.name === selectedThemeName}
+                                selected={theme.name === selectedTheme.name || theme.id === selectedTheme.id}
                                 resolvedThemeMode={resolvedThemeMode}
                                 onSelect={() => onSelectTheme(theme.name)}
                             />

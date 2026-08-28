@@ -1,7 +1,39 @@
 import type {ThemeItem} from '../../types';
 import {alpha, METHOD_ITEMS} from '@/src/utils/theme/selector';
 
-export default function MethodColorsPreview({palette, roomy = false}: {palette: ThemeItem; roomy?: boolean}) {
+export default function MethodColorsPreview({
+    palette,
+    roomy = false,
+    compact = false,
+}: {
+    palette: ThemeItem;
+    roomy?: boolean;
+    compact?: boolean;
+}) {
+    if (compact) {
+        return (
+            <div className="flex flex-wrap gap-1 rounded-lg px-0.5 py-0.5">
+                {METHOD_ITEMS.map(method => {
+                    const color = palette[method.key];
+                    return (
+                        <span
+                            key={method.label}
+                            className="inline-flex items-center justify-center rounded font-black tracking-wide"
+                            style={{
+                                padding: '2px 4px',
+                                fontSize: 5.5,
+                                color,
+                                backgroundColor: alpha(color, '18'),
+                            }}
+                        >
+                            {method.label}
+                        </span>
+                    );
+                })}
+            </div>
+        );
+    }
+
     return (
         <div
             className="h-full overflow-hidden rounded-lg border"

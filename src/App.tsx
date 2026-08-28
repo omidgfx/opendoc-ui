@@ -122,7 +122,7 @@ export default function App() {
         resolvedThemeMode,
         toggleThemeMode,
         styleVars,
-    } = useThemeController(selectedParsableKey);
+    } = useThemeController(selectedParsableKey, parsables[selectedParsableKey]?.theme);
     const [modalsStack, setModalsStack] = useState<string[]>([]);
     const [codeGenEndpoint, setCodeGenEndpoint] = useState<{
         path: string;

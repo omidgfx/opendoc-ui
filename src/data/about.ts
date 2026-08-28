@@ -65,7 +65,7 @@ export const FEATURES: Array<{
     {
         icon: 'ph-fill ph-paint-bucket',
         title: 'Themes & Dark Mode',
-        desc: '35+ hand-picked editor themes with per-spec preferences and instant light/dark toggling.',
+        desc: '17 hand-picked editor themes with stable config tags, per-spec preferences, and instant light/dark toggling.',
     },
     {
         icon: 'ph-fill ph-magnifying-glass',

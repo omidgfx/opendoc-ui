@@ -72,7 +72,7 @@ export function useConfigBootstrap({
                 Object.entries(data.parsables).forEach(([key, value]: [string, any]) => {
                     const configuredUrl = String(value.url || '').trim();
                     loaded[key] = {
-                        theme: value.theme || 'Default Slate',
+                        theme: value.theme || 'default-slate',
                         url: configuredUrl ? new URL(configuredUrl, configBaseUrl).href : '',
                         title: value.title || key,
                         isCustom: value.isCustom === true || !!value.rawSpec,
