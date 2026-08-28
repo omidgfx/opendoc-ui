@@ -9,6 +9,8 @@ import {
 } from '../../utils/schema/combinators';
 import {Tip} from './Tooltip';
 import DescriptionTip from '../endpoint/ExamineTab/recursive/DescriptionTip';
+import ScrollableRow from './ScrollableRow';
+import {buildCodeLinePaths, pathForLine} from '../../utils/schema/codeLinePath';
 import type {CodeLineMarker} from '../../utils/lineMarkers';
 import {usePreferences} from '../../contexts/PreferencesContext';
 import 'prismjs/components/prism-json';
@@ -59,6 +61,13 @@ interface CodeViewerProps {
     code: string;
     language: string;
     maxHeight?: string;
+    /**
+     * When set, shows the Generated Example navbar with a copyable path for the
+     * selected line (JSONPath / PHP / …). Schema generated-example only.
+     */
+    pathEncodingId?: string;
+    /** Root identifier used in language accessors (`$payload`, `payload.a`, …). */
+    pathRootName?: string;
     /**
      * Gutter annotations: icons rendered beside specific line numbers
      * (e.g. the recursion icon on a line whose value was pruned because the
@@ -239,6 +248,8 @@ export default function CodeViewer({
     showLineNumbers: showLineNumbersProp = true,
     toolbarEnd,
     dimmedLines,
+    pathEncodingId,
+    pathRootName,
 }: CodeViewerProps) {
     const {preferences} = usePreferences();
     const showLineNumbers = showLineNumbersProp && preferences.codeGutterEnabled;
@@ -250,6 +261,8 @@ export default function CodeViewer({
     }, [lineMarkers, preferences.indicatorIconsEnabled, preferences.disabledIndicatorIcons]);
     const [copied, setCopied] = useState(false);
     const [openInlineMenuId, setOpenInlineMenuId] = useState<string | null>(null);
+    const [selectedLine, setSelectedLine] = useState<number | null>(null);
+    const [pathCopied, setPathCopied] = useState(false);
     const [menuPosition, setMenuPosition] = useState<{top: number; left: number; openAbove: boolean} | null>(null);
     const viewerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -332,7 +345,45 @@ export default function CodeViewer({
         const gapHtml = `<span class="odui-caret-gap" aria-hidden="true" style="display:inline-block;width:${CARET_SLOT_CH}ch;user-select:none;-webkit-user-select:none;vertical-align:baseline"></span>`;
         return raw.split(CARET_GAP_TOKEN).join(gapHtml);
     }, [displayCode, language]);
+
     const lineCount = useMemo(() => Math.max(1, displayCode.split('\n').length), [displayCode]);
+    const linePaths = useMemo(() => {
+        if (!pathEncodingId) return null;
+        // Walk the displayed source so line indices match the rendered rows.
+        return buildCodeLinePaths(displayCode, pathEncodingId, pathRootName);
+    }, [displayCode, pathEncodingId, pathRootName]);
+    const selectedPath = linePaths && selectedLine ? pathForLine(linePaths, selectedLine) : '';
+
+    useEffect(() => {
+        // Reset selection when the example/format changes.
+        setSelectedLine(null);
+        setPathCopied(false);
+    }, [displayCode, pathEncodingId]);
+
+    const handleSelectLine = useCallback(
+        (event: React.MouseEvent) => {
+            if (!pathEncodingId) return;
+            // Ignore clicks that open combinator menus.
+            if ((event.target as HTMLElement | null)?.closest('button')) return;
+            const scroller = scrollRef.current;
+            if (!scroller) return;
+            const rect = scroller.getBoundingClientRect();
+            const y = event.clientY - rect.top + scroller.scrollTop - PAD_TOP_PX;
+            const index = Math.floor(y / LINE_HEIGHT_PX);
+            if (index < 0 || index >= lineCount) return;
+            const line = index + 1;
+            setSelectedLine(current => (current === line ? null : line));
+        },
+        [pathEncodingId, lineCount],
+    );
+
+    const handleCopyPath = useCallback(() => {
+        if (!selectedPath) return;
+        void navigator.clipboard.writeText(selectedPath);
+        setPathCopied(true);
+        window.setTimeout(() => setPathCopied(false), 1600);
+    }, [selectedPath]);
+
     const dimmedLineSet = useMemo(() => new Set(dimmedLines || []), [dimmedLines]);
     const highlightedLines = useMemo(() => {
         // Split after highlight so each row can carry its own opacity for allOf focus.
@@ -593,6 +644,41 @@ export default function CodeViewer({
             ref={viewerRef}
             className="relative group rounded-xl border font-mono text-xs overflow-hidden leading-normal animate-in fade-in duration-100 bg-[var(--background)] border-[var(--border)]"
         >
+            {pathEncodingId ? (
+                <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
+                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                        {linePaths?.styleLabel || 'Path'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <ScrollableRow className="font-mono text-[11px] font-semibold text-[var(--text-heading)]">
+                            <span className="select-all">
+                                {selectedPath || (
+                                    <span className="font-sans text-[10px] font-medium italic text-[var(--text-muted)]">
+                                        Click a line to inspect its path
+                                    </span>
+                                )}
+                            </span>
+                        </ScrollableRow>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCopyPath}
+                        disabled={!selectedPath}
+                        className={clsx(
+                            'inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-colors',
+                            selectedPath
+                                ? pathCopied
+                                    ? 'border-[var(--method-get)]/30 bg-[var(--method-get)]/10 text-[var(--method-get)] cursor-pointer'
+                                    : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer'
+                                : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] opacity-40 cursor-not-allowed',
+                        )}
+                        aria-label="Copy path"
+                    >
+                        <i className={`ph ${pathCopied ? 'ph-check' : 'ph-copy'} text-[12px]`} />
+                        {pathCopied ? 'Copied' : 'Copy'}
+                    </button>
+                </div>
+            ) : null}
             <div className="px-4 py-1.5 border-b flex items-center justify-between gap-2 bg-[var(--surface-hover)] border-[var(--border)]">
                 <span className="text-[10px] uppercase font-bold tracking-wider font-sans select-none text-[var(--text-muted)]">
                     {language}
@@ -629,7 +715,11 @@ export default function CodeViewer({
                     onKeyDown={handleKeyDown}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
-                    className="relative overflow-auto scrollbar-thin outline-none"
+                    onClick={handleSelectLine}
+                    className={clsx(
+                        'relative overflow-auto scrollbar-thin outline-none',
+                        pathEncodingId && 'cursor-text',
+                    )}
                     style={{
                         maxHeight: maxHeight || '450px',
                         ...stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)'),
@@ -646,6 +736,30 @@ export default function CodeViewer({
                                 backgroundColor: 'color-mix(in srgb, var(--text) 5%, transparent)',
                             }}
                         />
+                        {pathEncodingId
+                            ? Array.from({length: lineCount}, (_, index) => {
+                                  const line = index + 1;
+                                  const selected = selectedLine === line;
+                                  return (
+                                      <div
+                                          key={`line-select-${line}`}
+                                          aria-hidden="true"
+                                          className="pointer-events-none absolute left-0 z-0 box-border"
+                                          style={{
+                                              height: `${LINE_HEIGHT_PX}px`,
+                                              top: `${PAD_TOP_PX + index * LINE_HEIGHT_PX}px`,
+                                              width: '100%',
+                                              borderLeft: selected
+                                                  ? '2px solid var(--primary)'
+                                                  : '2px solid transparent',
+                                              backgroundColor: selected
+                                                  ? 'color-mix(in srgb, var(--text) 5%, transparent)'
+                                                  : undefined,
+                                          }}
+                                      />
+                                  );
+                              })
+                            : null}
                         {showLineNumbers && (
                             <div className="sticky left-0 z-20 shrink-0">
                                 <div
@@ -669,7 +783,20 @@ export default function CodeViewer({
                                         const icons = bucket?.filter(marker => !marker.dot);
                                         const dot = bucket?.find(marker => marker.dot);
                                         return (
-                                            <div key={line} className="relative z-[1] flex h-[1.5em] items-center">
+                                            <div
+                                                key={line}
+                                                className="relative z-[1] flex h-[1.5em] items-center box-border"
+                                                style={{
+                                                    borderLeft:
+                                                        pathEncodingId && selectedLine === line
+                                                            ? '2px solid var(--primary)'
+                                                            : '2px solid transparent',
+                                                    backgroundColor:
+                                                        pathEncodingId && selectedLine === line
+                                                            ? 'color-mix(in srgb, var(--text) 5%, transparent)'
+                                                            : undefined,
+                                                }}
+                                            >
                                                 {iconSlotWidth > 0 && (
                                                     <span
                                                         className="flex items-center justify-start gap-[3px] shrink-0"
@@ -847,22 +974,18 @@ export default function CodeViewer({
                                 })}
 
                                 <code ref={codeRef} className="block">
-                                    {dimmedLineSet.size > 0
-                                        ? highlightedLines.map((lineHtml, index) => (
-                                              <span
-                                                  key={index}
-                                                  className={clsx(
-                                                      'block',
-                                                      dimmedLineSet.has(index + 1) && 'opacity-35',
-                                                  )}
-                                                  dangerouslySetInnerHTML={{
-                                                      __html:
-                                                          lineHtml + (index < highlightedLines.length - 1 ? '\n' : ''),
-                                                  }}
-                                              />
-                                          ))
-                                        : null}
-                                    {dimmedLineSet.size === 0 && (
+                                    {pathEncodingId || dimmedLineSet.size > 0 ? (
+                                        highlightedLines.map((lineHtml, index) => (
+                                            <span
+                                                key={index}
+                                                className={clsx('block', dimmedLineSet.has(index + 1) && 'opacity-35')}
+                                                dangerouslySetInnerHTML={{
+                                                    __html:
+                                                        lineHtml + (index < highlightedLines.length - 1 ? '\n' : ''),
+                                                }}
+                                            />
+                                        ))
+                                    ) : (
                                         <span dangerouslySetInnerHTML={{__html: highlightedHtml}} />
                                     )}
                                 </code>

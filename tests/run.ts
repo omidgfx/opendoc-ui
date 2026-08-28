@@ -87,6 +87,7 @@ import {getRawSpecDocument} from '@/src/utils/specification/specSource';
 import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
+import {buildCodeLinePaths} from '@/src/utils/schema/codeLinePath';
 import {
     createEndpointNote,
     ENDPOINT_NOTE_COLORS,
@@ -2051,6 +2052,50 @@ test('flattenTags collapses slash nesting and x-tagGroups into a single folder l
     assert.equal(flat.children['01 Tour/HTTP methods'].endpoints[0].path, '/methods');
     assert.equal(Object.keys(flat.children['01 Tour/Servers'].children).length, 0);
     assert.equal(Object.keys(flat.children['01 Tour/HTTP methods'].children).length, 0);
+});
+
+test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
+    const code = `{
+  "venue": {
+    "cover_photo": "a",
+    "vendor": {
+      "cover_photo": "b"
+    }
+  },
+  "items": [
+    { "id": 1 },
+    { "id": 2 }
+  ]
+}`;
+    const json = buildCodeLinePaths(code, 'json', 'payload');
+    assert.equal(json.styleLabel, 'JSONPath');
+    assert.equal(json.paths[2], '$.venue.cover_photo');
+    assert.equal(json.paths[4], '$.venue.vendor.cover_photo');
+    assert.ok(json.paths.some(path => path === '$.items[0]'));
+    assert.ok(json.paths.some(path => path === '$.items[1]'));
+
+    const phpSource = `$payload = [
+    'venue' => [
+        'cover_photo' => 'a',
+        'vendor' => [
+            'cover_photo' => 'b',
+        ],
+    ],
+    'items' => [
+        [
+            'id' => 1,
+        ],
+        [
+            'id' => 2,
+        ],
+    ],
+];`;
+    const php = buildCodeLinePaths(phpSource, 'php-array', 'payload');
+    assert.equal(php.styleLabel, 'PHP');
+    assert.equal(php.paths[2], "$payload['venue']['cover_photo']");
+    assert.equal(php.paths[4], "$payload['venue']['vendor']['cover_photo']");
+    assert.equal(php.paths[9], "$payload['items'][0]['id']");
+    assert.equal(php.paths[12], "$payload['items'][1]['id']");
 });
 
 test('findFieldBySchemaPath distinguishes nested keys that share a leaf name', () => {

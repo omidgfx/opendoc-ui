@@ -1036,6 +1036,8 @@ export default function SchemaViewer({
                             inlineMenus={inlineMenus.menus}
                             toolbarEnd={formatToolbar}
                             dimmedLines={dimmedCodeLines}
+                            pathEncodingId={exampleEncodingId}
+                            pathRootName={rootName || schemaName || 'payload'}
                         />
                     </div>
                 </div>
