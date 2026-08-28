@@ -90,7 +90,6 @@ export interface SchemaViewerProps {
     schemaFooter?: React.ReactNode;
     /** Mock generation usage — request omits readOnly; response omits writeOnly. */
     usage?: MockUsage;
-    showSchemaWide?: boolean;
     className?: string;
 }
 
@@ -193,7 +192,6 @@ export default function SchemaViewer({
     headerActions,
     schemaFooter,
     usage = 'request',
-    showSchemaWide = true,
     className,
 }: SchemaViewerProps) {
     const resolveReference = (item: any) => resolveOpenApiReference(item, spec);
@@ -685,6 +683,19 @@ export default function SchemaViewer({
           }
         : null;
 
+    const requiredFieldNames: string[] = Array.isArray(resolvedEffective?.required)
+        ? resolvedEffective.required.filter(
+              (name: unknown): name is string => typeof name === 'string' && name.length > 0,
+          )
+        : [];
+    const additionalPropertiesValue = resolvedEffective?.additionalProperties;
+    const additionalPropertiesLabel =
+        additionalPropertiesValue === undefined
+            ? null
+            : typeof additionalPropertiesValue === 'boolean'
+              ? String(additionalPropertiesValue)
+              : displayTypeOf(additionalPropertiesValue, resolveReference);
+
     const metaStat = (opts: {
         label: string;
         value: React.ReactNode;
@@ -774,6 +785,21 @@ export default function SchemaViewer({
                                   icon: 'ph ph-file-code',
                               })
                             : null}
+                        {additionalPropertiesLabel !== null
+                            ? metaStat({
+                                  name: 'SchemaViewer.metaHeaderAdditional',
+                                  label: 'Addl. props',
+                                  value: additionalPropertiesLabel,
+                                  mono: true,
+                                  tip:
+                                      typeof additionalPropertiesValue === 'boolean'
+                                          ? additionalPropertiesValue
+                                              ? 'Objects may include properties beyond those listed'
+                                              : 'Objects must not include undeclared properties'
+                                          : 'Schema for undeclared (additional) properties',
+                                  icon: 'ph ph-plus-circle',
+                              })
+                            : null}
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
@@ -819,9 +845,35 @@ export default function SchemaViewer({
                 </div>
             </div>
 
-            {(branchRailNode || resolvedEffective?.description) && (
+            {(requiredFieldNames.length > 0 || branchRailNode || resolvedEffective?.description) && (
                 <div className="min-w-0">
                     <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
+                        {requiredFieldNames.length > 0 ? (
+                            <div className="min-w-0">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--method-delete)]/25 bg-[var(--method-delete)]/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--method-delete)]">
+                                        <i className="ph ph-asterisk text-[10px]" />
+                                        Required
+                                    </span>
+                                    <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                            {requiredFieldNames.map(name => (
+                                                <span
+                                                    key={name}
+                                                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--method-delete)]/20 bg-[var(--surface)] px-2.5 py-1 font-mono text-[10px] font-bold text-[var(--text-heading)]"
+                                                    title={`${name} is required`}
+                                                >
+                                                    <span className="max-w-[180px] truncate">{name}</span>
+                                                    <span className="text-[var(--method-delete)]" aria-hidden="true">
+                                                        *
+                                                    </span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </ScrollableRow>
+                                </div>
+                            </div>
+                        ) : null}
                         {branchRailNode ? <div className="min-w-0">{branchRailNode}</div> : null}
                         {resolvedEffective?.description && (
                             <div className="text-xs leading-relaxed text-[var(--text)]">
@@ -1020,7 +1072,6 @@ export default function SchemaViewer({
                                         inspectName={schemaName}
                                         onTestPattern={pattern => onTestPattern?.(pattern)}
                                         selectionScopeKey={selectionScopeKey}
-                                        showSchemaWide={showSchemaWide}
                                     />
                                 </div>
                             );

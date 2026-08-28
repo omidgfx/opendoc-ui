@@ -1175,7 +1175,6 @@ export default function ViewTab({
                                                             onOpenSchema={onOpenSchemaModal}
                                                             onTestPattern={setPatternToTest}
                                                             usage="request"
-                                                            showSchemaWide={true}
                                                             headerActions={renderViewSchemaButton(
                                                                 schemaModalNameOf(
                                                                     requestBodyMatrixSchema,
@@ -1691,7 +1690,6 @@ export default function ViewTab({
                                                                                     onOpenSchema={onOpenSchemaModal}
                                                                                     onTestPattern={setPatternToTest}
                                                                                     usage="response"
-                                                                                    showSchemaWide={true}
                                                                                     headerActions={renderViewSchemaButton(
                                                                                         schemaModalNameOf(
                                                                                             responseMatrixSchema,

@@ -463,7 +463,6 @@ export default function ModalsStack({
                                 inspectName={activeSchemaObj.schemaName}
                                 onOpenSchema={onPushSchema}
                                 onTestPattern={setPatternToTest}
-                                showSchemaWide
                                 usage="generic"
                             />
                         )}

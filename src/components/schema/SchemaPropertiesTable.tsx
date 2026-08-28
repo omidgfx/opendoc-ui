@@ -54,7 +54,6 @@ interface SchemaPropertiesTableProps {
     useModal?: boolean;
     inspectName?: string | null;
     selectionScopeKey?: string;
-    showSchemaWide?: boolean;
 }
 
 const KNOWN_SCHEMA_KEYS = new Set([
@@ -147,7 +146,6 @@ export default function SchemaPropertiesTable({
     useModal = false,
     inspectName = null,
     selectionScopeKey,
-    showSchemaWide = false,
 }: SchemaPropertiesTableProps) {
     const {preferences} = usePreferences();
     const bp = useBreakpoint();
@@ -691,54 +689,6 @@ export default function SchemaPropertiesTable({
         !!schemaContentEncoding ||
         !!schemaContentMediaType ||
         !!arrayItemsSchema;
-
-    const schemaWideRows = useMemo(() => {
-        const rows: Array<{label: string; value: React.ReactNode}> = [];
-        if ((effectiveSchema as any)?.title || inspectName || schemaName)
-            rows.push({
-                label: 'Name',
-                value: inspectName || schemaName || (effectiveSchema as any)?.title || 'Schema',
-            });
-        rows.push({label: 'Type', value: displayType(effectiveSchema)});
-        if (Array.isArray((effectiveSchema as any)?.required) && (effectiveSchema as any).required.length > 0)
-            rows.push({label: 'Required', value: (effectiveSchema as any).required.join(', ')});
-        if ((effectiveSchema as any)?.minProperties !== undefined)
-            rows.push({label: 'Min props', value: String((effectiveSchema as any).minProperties)});
-        if ((effectiveSchema as any)?.maxProperties !== undefined)
-            rows.push({label: 'Max props', value: String((effectiveSchema as any).maxProperties)});
-        if (Object.keys((effectiveSchema as any)?.patternProperties || {}).length > 0)
-            rows.push({
-                label: 'Pattern props',
-                value: `${Object.keys((effectiveSchema as any).patternProperties).length} patterns`,
-            });
-        if ((effectiveSchema as any)?.additionalProperties !== undefined)
-            rows.push({
-                label: 'Addl. props',
-                value:
-                    typeof (effectiveSchema as any).additionalProperties === 'boolean'
-                        ? String((effectiveSchema as any).additionalProperties)
-                        : typeSummary((effectiveSchema as any).additionalProperties),
-            });
-        if ((effectiveSchema as any)?.unevaluatedProperties !== undefined)
-            rows.push({
-                label: 'Unevaluated',
-                value:
-                    typeof (effectiveSchema as any).unevaluatedProperties === 'boolean'
-                        ? String((effectiveSchema as any).unevaluatedProperties)
-                        : typeSummary((effectiveSchema as any).unevaluatedProperties),
-            });
-        if (Array.isArray((effectiveSchema as any)?.allOf) && (effectiveSchema as any).allOf.length > 0)
-            rows.push({label: 'allOf', value: `${(effectiveSchema as any).allOf.length}`});
-        if (Array.isArray((effectiveSchema as any)?.anyOf) && (effectiveSchema as any).anyOf.length > 0)
-            rows.push({label: 'anyOf', value: `${(effectiveSchema as any).anyOf.length}`});
-        if (Array.isArray((effectiveSchema as any)?.oneOf) && (effectiveSchema as any).oneOf.length > 0)
-            rows.push({label: 'oneOf', value: `${(effectiveSchema as any).oneOf.length}`});
-        if ((effectiveSchema as any)?.not)
-            rows.push({label: 'not', value: describeNotConstraint((effectiveSchema as any).not)});
-        if ((effectiveSchema as any)?.discriminator?.propertyName)
-            rows.push({label: 'Discriminator', value: (effectiveSchema as any).discriminator.propertyName});
-        return rows;
-    }, [effectiveSchema, inspectName, schemaName]);
 
     if (Object.keys(effectiveProperties).length === 0 && patternEntries.length === 0 && !notSchema && !hasSchemaNotes) {
         return <p className="text-xs italic py-4 text-[var(--text-muted)]">No properties specified for this schema.</p>;
@@ -1321,24 +1271,6 @@ export default function SchemaPropertiesTable({
     return (
         <>
             <div className="flex max-h-[calc(100vh-12.5rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in">
-                {showSchemaWide && schemaWideRows.length > 0 && (
-                    <div className="border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2 shrink-0">
-                        <div className="flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mr-1">
-                                Schema:
-                            </span>
-                            {schemaWideRows.map(row => (
-                                <div
-                                    key={row.label}
-                                    className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px]"
-                                >
-                                    <span className="font-semibold text-[var(--text-muted)]">{row.label}:</span>
-                                    <span className="text-[var(--text)] font-medium">{row.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
                 {notSchema ? (
                     <div className="shrink-0 border-b border-[var(--border)] bg-[var(--method-delete)]/5 px-3 py-2.5">
                         <div className="flex flex-wrap items-start gap-2">
