@@ -408,6 +408,22 @@ pre[class*='language-'] {
     color: var(--method-put) !important;
 }
 
+@keyframes media-reset-breathe {
+    0%,
+    100% {
+        opacity: 0.55;
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+    }
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+    }
+}
+
+.animate-media-reset-breathe {
+    animation: media-reset-breathe 1.8s ease-in-out infinite;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

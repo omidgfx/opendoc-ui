@@ -720,6 +720,8 @@ export default function SchemaViewer({
         /** When set, the chip is a button (e.g. Media → reset example format). */
         onClick?: () => void;
         ariaLabel?: string;
+        /** Soft fade pulse when the control invites a reset click. */
+        breathe?: boolean;
     }) => {
         const interactive = typeof opts.onClick === 'function';
         const className = clsx(
@@ -729,6 +731,7 @@ export default function SchemaViewer({
                 : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-heading)]',
             interactive &&
                 'cursor-pointer transition-colors hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40',
+            opts.breathe && 'animate-media-reset-breathe',
         );
         const body = (
             <>
@@ -844,20 +847,23 @@ export default function SchemaViewer({
                   })
                 : null}
             {mediaType
-                ? metaStat({
-                      name: 'SchemaViewer.metaHeaderEncoding',
-                      label: 'Media',
-                      value: mediaType,
-                      mono: true,
-                      tip:
-                          exampleEncodingId === declaredExampleEncodingId
-                              ? `Declared media type (example format: ${declaredExampleEncodingId}). Click to re-apply.`
-                              : `Reset generated example to the declared media type (${declaredExampleEncodingId}). Currently showing ${exampleEncodingId}.`,
-                      icon: 'ph ph-file-code',
-                      onClick: resetExampleEncodingToDeclared,
-                      ariaLabel: `Reset example format to declared media type ${mediaType}`,
-                      accent: exampleEncodingId !== declaredExampleEncodingId ? 'var(--primary)' : undefined,
-                  })
+                ? (() => {
+                      const canReset = exampleEncodingId !== declaredExampleEncodingId;
+                      return metaStat({
+                          name: 'SchemaViewer.metaHeaderEncoding',
+                          label: 'Media',
+                          value: mediaType,
+                          mono: true,
+                          tip: canReset
+                              ? `Reset generated example to the declared media type (${declaredExampleEncodingId}). Currently showing ${exampleEncodingId}.`
+                              : `Declared media type · example format ${declaredExampleEncodingId}`,
+                          icon: 'ph ph-file-code',
+                          onClick: canReset ? resetExampleEncodingToDeclared : undefined,
+                          ariaLabel: canReset ? `Reset example format to declared media type ${mediaType}` : undefined,
+                          accent: canReset ? 'var(--primary)' : undefined,
+                          breathe: canReset,
+                      });
+                  })()
                 : null}
             {additionalPropertiesLabel !== null
                 ? metaStat({

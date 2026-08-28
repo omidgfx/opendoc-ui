@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.3.2-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.3.3-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -21,7 +21,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.3.2](#version-032)
+- [Version 0.3.3](#version-033)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -93,15 +93,17 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.3.2
+## Version 0.3.3
 
-Theme gallery and schema meta chrome polish on top of 0.3.1:
+Generated-example path navbar, multi-style accessors, and schema media fidelity on top of 0.3.2:
 
-- **17 curated themes** with stable config tags (copy from Settings → Appearance), including
-  **Persian Red**, plus legacy name/alias resolution for stored prefs and `config.json`;
-- SchemaViewer **meta table** (Schema / Required / combinator / About), no duplicate schema banner,
-  scrollable required rail, muted labels with colored icons only;
-- CI contracts: Prettier-clean README and Tip instead of native `title` tooltips.
+- **line path navbar** on schema generated examples — click a line for JSONPath / language accessors
+  with copy, multi-style walkers (JSON offers every language; others stay language-scoped + JSONPath),
+  and PHP nullsafe (`?->`);
+- **declared media type** drives the default example format; Media badge resets to the spec encoding
+  with a soft breathing pulse when a reset is available;
+- app-wide **last encoding / path style** prefs (IndexedDB); property details reuse full SchemaViewer
+  combinator menus; path walker ignores caret handles on oneOf/allOf/anyOf/not fields.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 

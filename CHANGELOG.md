@@ -3,6 +3,20 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.3] — 2026-08-29
+
+Generated-example path navbar, multi-style accessors, and schema media fidelity.
+
+- adds a **path navbar** above schema generated examples: click a line for a copyable accessor
+  (JSONPath, JS optional, PHP array/object/nullsafe, Python, Go, C#, Java, Ruby, XPath, form keys);
+- scopes walkers by language with **JSONPath everywhere**; JSON examples expose every language walker;
+- keeps the **declared Content-Type** as the source of truth for example format; Media meta chip is a
+  reset button with a breathing fade when the format differs from the declaration;
+- persists last encoding and path style app-wide via preferences (IndexedDB-first);
+- reuses the documentation **SchemaViewer** inside property-details so inline oneOf/anyOf/allOf/not
+  menus match the doc page; path walker strips caret-gap tokens so combinator field lines still resolve;
+- drops unused direct deps (lucide-react, autoprefixer, sass, dotenv, esbuild).
+
 ## [0.3.2] — 2026-08-28
 
 Curated theme gallery with stable config tags, schema meta table layout, and CI contract polish.
