@@ -4,43 +4,47 @@ jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 
 info:
   title: OpenDoc UI — Complete Capability Showcase
-  summary: A deliberately feature-dense OpenAPI document built to demonstrate OpenDoc UI.
-  version: 1.0.0-demo
+  summary: A product-grade OpenAPI 3.2 showcase that exercises SchemaViewer, field combinators, QUERY, and the full workstation.
+  version: 2.0.0-demo
   description: |
-    # Welcome to the OpenDoc UI showcase
+    # Open a living OpenAPI workstation
 
-    This specification is a **guided product demo**, a **visual regression fixture**, and a
-    **Runner playground** in one file. It deliberately combines ordinary API design with difficult
-    OpenAPI and JSON Schema cases.
+    This document is the **public product demo** for OpenDoc UI: dense enough to stress every surface,
+    structured enough that a first-time visitor can follow a short tour and *feel* the product.
 
-    ## Suggested tour
+    ## Five-minute tour (start here)
 
-    1. Browse the nested tag folders in the sidebar.
-    2. Press **Ctrl/⌘ + K** and search for `serialization`, `binary`, `recursive`, or `OAuth`.
-    3. Open an endpoint in **Documentation**, **API Runner**, and **Split View**.
-    4. Save Runner inputs, send the same request several times, and inspect **Response History**.
-    5. Open **Schema Explorer** and inspect `RichRequest`, `CustomerCommand`, `TreeNode`, and `LocalizedLabels`.
-    6. Open **Runner Compatibility** to see A–D ratings and browser-specific findings.
-    7. Create Markdown notes or todos, hide an endpoint, and test the local workspace workflow.
-    8. Generate request snippets and export the TypeScript schema package.
+    | # | Open this | What you should notice |
+    |---|---|---|
+    | 1 | **00 Spotlight / Catalog draft** | Shared **SchemaViewer** on the request body — meta header, generated example formats, field-level **oneOf / anyOf / allOf / not** menus, and dimming on allOf focus |
+    | 2 | **00 Spotlight / Product search (QUERY)** | First-class **OAS 3.2 QUERY** with a real JSON body, named examples, and Runner send |
+    | 3 | **00 Spotlight / Bare $ref body** | A body that is only a `$ref` to a combinator still gets the same rails as an inline keyword |
+    | 4 | **00 Spotlight / Multi-format response** | Responses reuse the same SchemaViewer: Format picker, named examples, Unified Schema |
+    | 5 | **03 Request bodies / Rich JSON** | Deep recursive form, constraints, maps, arrays — Split View with Runner |
+    | 6 | **Ctrl/⌘ + K** | Search `QUERY`, `combinator`, `serialization`, `OAuth`, or a path fragment |
 
-    > **Live requests:** the first server is [HTTPBin](https://httpbin.org), a public echo service.
-    > Network execution still depends on its availability and current CORS policy. Documentation,
-    > examples, forms, schemas, code generation, notes, deep links, and compatibility analysis work
-    > without a successful network request.
+    Then explore freely: notes & todos, hide an endpoint, Settings → Appearance, Schema Explorer,
+    Runner Compatibility, code gen, and deep links (`#response-400`).
 
-    | Area | Included in this document |
+    > **Live requests:** the primary server is [HTTPBin](https://httpbin.org) (CORS echo).
+    > Some methods (QUERY, TRACE, PURGE) may fail at the transport layer — that is intentional and still
+    > useful in history and compatibility. **Everything else works offline**: docs, examples, forms,
+    > schemas, snippets, notes, and AI context.
+
+    | Surface | What this file exercises |
     |---|---|
-    | Navigation | Nested tags, every fixed HTTP method, OAS 3.2 `QUERY`, and `additionalOperations` |
-    | Parameters | Path, query, query-string, header, cookie, content-based, styles, and `explode` |
-    | Bodies | JSON, vendor JSON, YAML, XML, text, HTML, JavaScript, forms, multipart, and binary |
-    | Schemas | `$ref`, `allOf`, `oneOf`, `anyOf`, `not`, recursion, maps, enums, constraints, boolean schemas, `prefixItems`, `patternProperties`, `unevaluatedProperties`, and `if`/`then`/`else` |
-    | Security | Public overrides, Basic, Bearer, API keys, OAuth 2, OIDC, cookies, mTLS, AND, and OR |
-    | Responses | Named examples, multiple media types, headers, status families, links, and binary metadata |
-    | Events | Callbacks and provider-initiated webhooks |
+    | Navigation | Nested tags, **x-tagGroups**, every fixed method, OAS 3.2 **QUERY**, `additionalOperations`, deprecated TRACE |
+    | SchemaViewer | Shared request/response/modal surface, multi-format generated examples, named OpenAPI `examples` |
+    | Combinators | Body rails **and field menus** for `oneOf` / `anyOf` / `allOf` / `not`, bare `$ref`, discriminators |
+    | Parameters | Path/query/header/cookie/`querystring`, styles, explode, content-based, live final URL |
+    | Bodies | JSON, vendor JSON, YAML, XML, text, HTML, JS, forms, multipart, binary |
+    | Keywords | `$ref`, recursion, maps, enums, `const`, `prefixItems`, `patternProperties`, `unevaluatedProperties`, `if`/`then`/`else`, boolean schemas |
+    | Security | Public, Basic, Bearer, API keys, OAuth2 + PKCE, OIDC, cookies, mTLS, AND/OR |
+    | Responses | Status gallery, headers, links, binary/streaming, problem+json |
+    | Events | Callbacks + provider webhooks on Overview |
 
-    **Design note:** descriptions intentionally use headings, lists, tables, links, blockquotes,
-    inline `code`, and fenced code so OpenDoc's Markdown renderer can be demonstrated throughout.
+    Descriptions intentionally use headings, tables, lists, links, blockquotes, inline `code`, and
+    fenced blocks so the Markdown renderer stays visible everywhere.
   termsOfService: https://github.com/omidgfx/opendoc-ui
   contact:
     name: OpenDoc UI
@@ -49,6 +53,10 @@ info:
   license:
     name: MIT
     identifier: MIT
+  x-logo:
+    url: ../opendoc-logo.svg
+    altText: OpenDoc UI
+    backgroundColor: '#0B1020'
 
 externalDocs:
   description: OpenDoc UI repository and product documentation
@@ -89,7 +97,29 @@ servers:
 
 security: []
 
+x-tagGroups:
+  - name: Spotlight
+    tags: [00 Spotlight]
+  - name: Tour
+    tags: [01 Tour, 01 Tour/Servers, 01 Tour/Reusable paths, 01 Tour/HTTP methods]
+  - name: Parameters
+    tags: [02 Parameters/Path styles, 02 Parameters/Query styles, 02 Parameters/Headers & cookies, 02 Parameters/Merging & OAS 3.2]
+  - name: Request bodies
+    tags: [03 Request bodies/Rich JSON, 03 Request bodies/Composition, 03 Request bodies/Media types, 03 Request bodies/Forms & files, 03 Request bodies/Recursion]
+  - name: Responses
+    tags: [04 Responses/Status gallery, 04 Responses/Binary & streaming]
+  - name: Security
+    tags: [05 Security/Public & HTTP, 05 Security/API keys, 05 Security/OAuth & OIDC]
+  - name: Events
+    tags: [06 Events/Callbacks & links, 06 Events/Webhooks]
+  - name: Compatibility
+    tags: [07 Compatibility/Browser limits]
+
 tags:
+  - name: 00 Spotlight
+    description: |
+      Flagship OpenDoc UI moments — field combinators, SchemaViewer, and OAS 3.2 QUERY.
+      Start here if you only have a few minutes.
   - name: 01 Tour
     description: Start here for a compact overview of navigation, Markdown, servers, and references.
   - name: 01 Tour/Servers
@@ -152,6 +182,9 @@ paths:
         - Documentation, API Runner, and resizable Split View.
         - Code generation with credentials represented as safe placeholders.
         - Local Markdown notes, todos, endpoint hiding, and per-spec persistence.
+
+        When you are ready for the dense cases, jump to the **00 Spotlight** folder (catalog draft,
+        QUERY search, bare `$ref`, multi-format offer, allOf profile).
 
         ```bash
         curl https://httpbin.org/anything/tour/hello
@@ -374,21 +407,23 @@ paths:
               schema: {type: string}
     query:
       tags: [01 Tour/HTTP methods]
-      summary: OAS 3.2 QUERY operation
+      summary: Minimal OAS 3.2 QUERY badge
       operationId: methodQuery
       description: |
-        Demonstrates the OpenAPI **3.2 `QUERY` Operation Object**, including discovery, method badges,
-        search, routing, compatibility reporting, AI context, and code generation.
+        Minimal **QUERY** Operation Object for method badges, search, routing, and compatibility.
 
-        > The public HTTPBin deployment may not accept QUERY; a failure is still a useful Runner
-        > transport demonstration.
+        Prefer **00 Spotlight → Search the product catalog (QUERY)** for a body-rich RFC 10008 demo
+        with named examples and SchemaViewer.
+
+        > HTTPBin may reject QUERY; the failure is still useful in Response History.
       requestBody:
         content:
-          application/query+json:
+          application/json:
             schema:
               type: object
               properties:
                 where: {type: string, example: status = "active"}
+            example: {where: 'status = "active"'}
       responses:
         '200': {$ref: '#/components/responses/EchoResponse'}
     additionalOperations:
@@ -1672,6 +1707,347 @@ paths:
       responses:
         '200': {$ref: '#/components/responses/EchoResponse'}
 
+
+  # ─── 00 Spotlight — flagship OpenDoc UI moments ─────────────────
+  /anything/spotlight/catalog:
+    post:
+      tags: [00 Spotlight]
+      summary: Draft a catalog item with field combinators
+      operationId: draftCatalogItem
+      description: |
+        ## The SchemaViewer flagship
+
+        Open **Documentation** first. The request body is a single **SchemaViewer**:
+
+        1. **Meta header** — name, type, media, combinator badges (always open).
+        2. **Generated Example** — switch JSON / YAML / XML / form encodings; inline **oneOf** carets on fields.
+        3. **Unified Schema** — property table with the same field menus.
+        4. **Example:** tab — named OpenAPI `examples` without leaving the viewer.
+
+        ### Field-level combinators to try
+
+        | Field | Keyword | Try this |
+        |---|---|---|
+        | `payment` | **oneOf** | Exclusive Card vs Wire vs Store credit — caret in the example updates the mock |
+        | `fulfillment` | **anyOf** | Multi-select merge; **All** on/off (empty = none) |
+        | `identity` | **allOf** | Focus a composition part — sibling keys and code lines dim |
+        | `marker` | **not** | Inspection only (no exclusive collapse) |
+
+        Then open **Split View** and send to HTTPBin — the Runner form follows the same branch state.
+
+        > Search for `combinator` or `catalog` from **Ctrl/⌘ + K** to jump back here later.
+      externalDocs:
+        description: OpenAPI Schema Object
+        url: https://spec.openapis.org/oas/v3.2.0.html#schema-object
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem'
+            examples:
+              cardCheckout:
+                summary: Card payment · ship home
+                value:
+                  sku: SKU-1001
+                  title: OpenDoc field guide
+                  payment:
+                    method: card
+                    brand: visa
+                    last4: '4242'
+                  fulfillment:
+                    - mode: ship
+                      carrier: dhl
+                    - mode: email
+                      address: reader@example.com
+                  identity:
+                    displayName: Ada Lovelace
+                    email: ada@example.com
+                  notes: Gift wrap
+              wirePickup:
+                summary: Wire transfer · store pickup
+                value:
+                  sku: SKU-2048
+                  title: Combinator poster
+                  payment:
+                    method: wire
+                    iban: DE89370400440532013000
+                    reference: INV-77
+                  fulfillment:
+                    - mode: pickup
+                      storeId: store_ams_01
+                  identity:
+                    displayName: Guest
+                    email: guest@example.com
+          application/yaml:
+            schema:
+              $ref: '#/components/schemas/CatalogItem'
+            example: |
+              sku: SKU-1001
+              title: OpenDoc field guide
+              payment:
+                method: card
+                brand: visa
+                last4: "4242"
+      responses:
+        '200':
+          description: Echoed catalog draft (HTTPBin wraps the body)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EchoEnvelope'
+                  - type: object
+                    properties:
+                      json:
+                        $ref: '#/components/schemas/CatalogItem'
+              examples:
+                accepted:
+                  summary: Accepted draft echo
+                  value:
+                    json:
+                      sku: SKU-1001
+                      title: OpenDoc field guide
+        '400':
+          $ref: '#/components/responses/ProblemResponse'
+        '422':
+          description: Validation failure with field details
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                missingPayment:
+                  summary: Payment branch incomplete
+                  value:
+                    type: https://example.com/problems/validation
+                    title: Request validation failed
+                    status: 422
+                    errors:
+                      - {pointer: /payment/last4, code: required, message: Card last4 is required}
+
+  /anything/spotlight/search:
+    query:
+      tags: [00 Spotlight]
+      summary: Search the product catalog (QUERY)
+      operationId: searchProductCatalog
+      description: |
+        ## OAS 3.2 QUERY · RFC 10008
+
+        **QUERY** is safe and idempotent like GET, but carries a **structured body** like POST.
+        OpenDoc treats it as a first-class method:
+
+        - Sidebar method badge and global search
+        - Documentation request body via the same **SchemaViewer** as POST
+        - Runner sends QUERY with JSON when the browser allows it
+        - GET/HEAD body warnings stay strict — QUERY is the intentional exception
+
+        ### Try
+
+        1. Expand the body SchemaViewer — filters object, sort array, pagination.
+        2. Switch the named **Example:** (shoes vs electronics).
+        3. **Send** — HTTPBin may reject QUERY; inspect the transport outcome and history anyway.
+        4. Compare with **01 Tour/HTTP methods → Minimal OAS 3.2 QUERY badge** (badge-only).
+
+        ```http
+        QUERY /anything/spotlight/search HTTP/1.1
+        Content-Type: application/json
+
+        {"filter":{"category":"shoes","maxPrice":120},"limit":20}
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductSearch'
+            examples:
+              shoes:
+                summary: Shoes under €120
+                value:
+                  filter:
+                    category: shoes
+                    maxPrice: 120
+                    inStock: true
+                  sort: [price_asc, name]
+                  limit: 20
+                  cursor: null
+              electronics:
+                summary: Electronics · rating floor
+                value:
+                  filter:
+                    category: electronics
+                    minRating: 4
+                  sort: [rating_desc]
+                  limit: 10
+      responses:
+        '200':
+          description: Matching products (or HTTPBin echo)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductSearchResult'
+              examples:
+                page:
+                  summary: First page
+                  value:
+                    items:
+                      - {id: prod_1, name: Trail runner, price: 89.0, category: shoes}
+                      - {id: prod_2, name: City sneaker, price: 110.0, category: shoes}
+                    nextCursor: eyJvZmZzZXQiOjIwfQ
+                    total: 48
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/spotlight/bare-ref:
+    put:
+      tags: [00 Spotlight]
+      summary: Edit a bare $ref combinator body
+      operationId: putBareRefCommand
+      description: |
+        ## Bare `$ref` → same rails
+
+        The media type schema is **only** `{$ref: '#/components/schemas/CustomerCommand'}`.
+        There is no inline `oneOf` keyword on the media object.
+
+        OpenDoc still surfaces body-level **oneOf** rails (Create / Link / Delete / null) because the
+        resolved target is a combinator. This is the “generator emitted a ref, not a keyword” case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCommand'
+            examples:
+              create:
+                summary: Create customer
+                value:
+                  kind: create
+                  name: Ada Lovelace
+                  email: ada@example.com
+                  address:
+                    line1: Damrak 1
+                    city: Amsterdam
+                    postalCode: 1012 LG
+                    countryCode: NL
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/Customer'
+                  - $ref: '#/components/schemas/AsyncJob'
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
+  /anything/spotlight/offer:
+    get:
+      tags: [00 Spotlight]
+      summary: Read a multi-format polymorphic offer
+      operationId: getSpotlightOffer
+      description: |
+        ## Responses share SchemaViewer too
+
+        Expand the **200** response:
+
+        - **Format** switches `application/json` vs `application/yaml` vs `application/xml`
+        - **Generated Example** follows the active **oneOf** branch on `details`
+        - **Example:** tab holds named vendor examples
+        - **Unified Schema** is the same property table as the request side
+
+        Use the response code navigator (desktop rail / mobile pill) and deep-link `#response-200`.
+      responses:
+        '200':
+          description: Catalog offer with polymorphic details
+          headers:
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+            ETag:
+              description: Strong validator for conditional requests.
+              schema: {type: string}
+              example: '"offer-v3"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              examples:
+                book:
+                  summary: Book offer
+                  value:
+                    id: 123e4567-e89b-12d3-a456-426614174000
+                    name: OpenAPI field guide
+                    details: {format: hardcover, pages: 420}
+                gadget:
+                  summary: Electronics offer
+                  value:
+                    id: 123e4567-e89b-12d3-a456-426614174001
+                    name: USB-C hub
+                    details: {voltage: 5, wattage: 100}
+            application/yaml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+              example: |
+                id: 123e4567-e89b-12d3-a456-426614174000
+                name: OpenAPI field guide
+                details:
+                  format: hardcover
+                  pages: 420
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ShowcaseItemResponseReusable'
+        '304':
+          description: Not modified
+          headers:
+            ETag:
+              schema: {type: string}
+        '404':
+          $ref: '#/components/responses/ProblemResponse'
+        '406':
+          description: No acceptable representation
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /anything/spotlight/profile:
+    patch:
+      tags: [00 Spotlight]
+      summary: Patch a profile assembled with allOf
+      operationId: patchSpotlightProfile
+      description: |
+        ## allOf as a unified object
+
+        The body is an **allOf** of `UserProfile` + marketing preferences + audit stamp — not a choice
+        among parts. OpenDoc leads with the **combined** object (required list beside the keyword),
+        names the parts underneath, and still lets you **focus** a part so unrelated keys dim in the
+        example and table.
+
+        Empty / conflicting allOf samples live under Schema Explorer (`ConflictingAllOf`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotlightProfilePatch'
+            example:
+              id: user_42
+              displayName: Original Developer
+              address:
+                line1: Damrak 1
+                city: Amsterdam
+                postalCode: 1012 LG
+                countryCode: NL
+              roles: [editor]
+              marketingOptIn: true
+              locale: en-GB
+              patchNote: Prefer dark theme defaults
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpotlightProfilePatch'
+        '400': {$ref: '#/components/responses/ProblemResponse'}
+
 webhooks:
   paymentSettled:
     post:
@@ -2876,6 +3252,206 @@ components:
         code: {type: string, example: required}
         message: {type: string, example: Title is required}
         rejectedValue: {}
+
+    CatalogItem:
+      title: Catalog item draft
+      description: |
+        Field-level combinator laboratory used by **00 Spotlight / Draft a catalog item**.
+
+        - `payment` — exclusive **oneOf** (card / wire / store credit)
+        - `fulfillment` — **anyOf** array merge of ship / pickup / email channels
+        - `identity` — **allOf** composition focus
+        - `marker` — **not** (reject blank sentinel) for inspection-only UI
+      type: object
+      required: [sku, title, payment, identity]
+      properties:
+        sku:
+          type: string
+          pattern: '^SKU-[0-9]{3,6}$'
+          example: SKU-1001
+          description: Stock-keeping unit shown in the matrix and pattern tester.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: OpenDoc field guide
+        payment:
+          description: |
+            Exclusive payment rail. Use the field **oneOf** menu or the caret after `payment` in the
+            generated example — only one branch stays expanded for mocks.
+          oneOf:
+            - $ref: '#/components/schemas/CardPayment'
+            - $ref: '#/components/schemas/WirePayment'
+            - $ref: '#/components/schemas/StoreCreditPayment'
+          discriminator:
+            propertyName: method
+            mapping:
+              card: '#/components/schemas/CardPayment'
+              wire: '#/components/schemas/WirePayment'
+              store-credit: '#/components/schemas/StoreCreditPayment'
+        fulfillment:
+          description: |
+            Multi-select **anyOf** channels. Empty selection means none; **All** selects every branch.
+            OpenDoc merges selected object branches into one documentation view.
+          type: array
+          minItems: 1
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/ShipChannel'
+              - $ref: '#/components/schemas/PickupChannel'
+              - $ref: '#/components/schemas/EmailChannel'
+        identity:
+          description: allOf profile stamp — focus a part to dim the rest.
+          allOf:
+            - $ref: '#/components/schemas/UserProfile'
+            - type: object
+              title: Checkout contact override
+              properties:
+                phone:
+                  type: [string, 'null']
+                  pattern: '^\+?[0-9 \-]{7,20}$'
+                  example: '+31 6 1234 5678'
+                company:
+                  type: string
+                  example: Analytical Engines BV
+        marker:
+          description: |
+            JSON Schema **not** — values matching the negated schema are rejected.
+            OpenDoc shows this for inspection only (no exclusive collapse).
+          not:
+            const: __FORBIDDEN__
+        notes:
+          type: [string, 'null']
+          maxLength: 500
+          example: Gift wrap
+
+    CardPayment:
+      title: Card
+      type: object
+      required: [method, brand, last4]
+      properties:
+        method: {type: string, const: card}
+        brand: {type: string, enum: [visa, mastercard, amex], example: visa}
+        last4: {type: string, pattern: '^[0-9]{4}$', example: '4242'}
+        capture:
+          type: string
+          enum: [immediate, manual]
+          default: immediate
+
+    WirePayment:
+      title: Wire transfer
+      type: object
+      required: [method, iban, reference]
+      properties:
+        method: {type: string, const: wire}
+        iban: {type: string, pattern: '^[A-Z]{2}[0-9A-Z]+$', example: DE89370400440532013000}
+        reference: {type: string, minLength: 1, example: INV-77}
+
+    StoreCreditPayment:
+      title: Store credit
+      type: object
+      required: [method, creditId]
+      properties:
+        method: {type: string, const: store-credit}
+        creditId: {type: string, pattern: '^cred_[A-Za-z0-9]+$', example: cred_9f}
+        amount: {$ref: '#/components/schemas/Money'}
+
+    ShipChannel:
+      title: Ship
+      type: object
+      required: [mode, carrier]
+      properties:
+        mode: {type: string, const: ship}
+        carrier: {type: string, enum: [dhl, ups, postnl], example: dhl}
+        express: {type: boolean, default: false}
+
+    PickupChannel:
+      title: Store pickup
+      type: object
+      required: [mode, storeId]
+      properties:
+        mode: {type: string, const: pickup}
+        storeId: {type: string, example: store_ams_01}
+        holdDays: {type: integer, minimum: 1, maximum: 14, default: 3}
+
+    EmailChannel:
+      title: Email delivery
+      type: object
+      required: [mode, address]
+      properties:
+        mode: {type: string, const: email}
+        address: {type: string, format: email, example: reader@example.com}
+
+    ProductSearch:
+      title: Product search body
+      description: Structured QUERY body (RFC 10008) — filters live in JSON, not only in the URL.
+      type: object
+      required: [filter]
+      properties:
+        filter:
+          type: object
+          description: Free-form filter object; additional keys are allowed for negative tests.
+          properties:
+            category:
+              type: string
+              enum: [shoes, electronics, apparel, books]
+              example: shoes
+            maxPrice: {type: number, minimum: 0, example: 120}
+            minRating: {type: number, minimum: 0, maximum: 5, example: 4}
+            inStock: {type: boolean, default: true}
+          additionalProperties: true
+        sort:
+          type: array
+          maxItems: 4
+          items:
+            type: string
+            enum: [price_asc, price_desc, name, rating_desc, newest]
+          example: [price_asc]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: [string, 'null']
+          description: Opaque pagination cursor from a previous page.
+          example: null
+
+    ProductSearchResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, name, price]
+            properties:
+              id: {type: string, example: prod_1}
+              name: {type: string, example: Trail runner}
+              price: {type: number, example: 89.0}
+              category: {type: string, example: shoes}
+        nextCursor: {type: [string, 'null'], example: eyJvZmZzZXQiOjIwfQ}
+        total: {type: integer, minimum: 0, example: 48}
+
+    SpotlightProfilePatch:
+      title: Spotlight profile patch
+      description: allOf-assembled profile used by the Spotlight PATCH demo.
+      allOf:
+        - $ref: '#/components/schemas/UserProfile'
+        - type: object
+          title: Marketing preferences
+          properties:
+            marketingOptIn: {type: boolean, default: false}
+            locale: {type: string, pattern: '^[a-z]{2}(-[A-Z]{2})?$', example: en-GB}
+        - type: object
+          title: Audit
+          properties:
+            patchNote: {type: string, maxLength: 200, example: Prefer dark theme defaults}
+            revisedAt:
+              type: string
+              format: date-time
+              readOnly: true
 
     TupleExample:
       type: array

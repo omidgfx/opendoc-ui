@@ -3,7 +3,7 @@
   "allowLocalSpecifications": true,
   "parsables": {
     "OpenDoc UI Showcase": {
-      "title": "OpenDoc UI \u2014 Complete Capability Showcase",
+      "title": "OpenDoc UI \u2014 Capability Showcase",
       "url": "demo/openapi.yaml"
     }
   }
