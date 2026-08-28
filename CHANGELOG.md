@@ -3,6 +3,16 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.1] — 2026-08-28
+
+Recursive schema guard, richer capability showcase, and marketing-site refresh.
+
+- stops field-level **anyOf** (and oneOf) branch apply from overflowing the call stack on recursive shapes such as `TreeNode.parent: anyOf[null, TreeNode]` — cyclic `$ref` leaves stay unexpanded, safe branches still merge, and a depth fuse remains as a last resort;
+- hardens `effectiveBranchSchema` with a seen-set so combinator merges keep stable `$ref` leaves on cycles;
+- deepens the public **capability showcase** (v2 demo): Spotlight folder for SchemaViewer, field combinators, OAS 3.2 QUERY, bare `$ref` bodies, multi-format responses, `x-tagGroups`, and a clearer guided tour;
+- refreshes the marketing website copy for SchemaViewer, field combinators, QUERY, Settings, serialization, and experimental YAML auto-repair;
+- bumps the package, lockfile, README, and release metadata to `0.3.1`.
+
 ## [0.3.0] — 2026-08-28
 
 Shared schema viewer, field-level combinators, OAS 3.2 QUERY, and load-time YAML repair.

@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.3.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.3.1-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -21,7 +21,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
-- [Version 0.3.0](#version-030)
+- [Version 0.3.1](#version-031)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -93,22 +93,19 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.3.0
+## Version 0.3.1
 
-A minor release that unifies schema documentation and brings modern OpenAPI operations forward:
+A patch release on top of 0.3.0’s SchemaViewer / combinator / QUERY work:
 
-- one **SchemaViewer** for request bodies, responses, and the schema modal — generated examples,
-  always-open meta stats, body-level oneOf/anyOf/allOf/not rails, and the shared property table;
-- **field-level combinators** in the code viewer and schema table (exclusive oneOf, multi-select
-  anyOf with a real All toggle, allOf composition focus with dimming, inspection-only `not`), with
-  method-locked colours and controls;
-- first-class **OAS 3.2 QUERY** (RFC 10008) discovery, documentation, and Runner support without
-  weakening GET/HEAD body warnings;
-- **experimental** load-time YAML auto-repair for flow-style `oneOf`/`anyOf`/`allOf` missing sequence
-  brackets, plus bare `$ref` combinator rails, empty-servers label, natural name sort, form-urlencoded
-  nulls as empty values, IndexedDB-first preferences, and path-always sidebar search.
+- **recursive anyOf/oneOf guard** — applying field branch selections on shapes like
+  `TreeNode.parent: anyOf[null, TreeNode]` no longer overflows the stack; cyclic `$ref` leaves stay
+  unexpanded while safe branches still merge;
+- richer **capability showcase** with a Spotlight tour (field combinators, QUERY, bare `$ref`,
+  multi-format responses) and `x-tagGroups`;
+- marketing site copy aligned with SchemaViewer, field combinators, QUERY, Settings, and experimental
+  YAML auto-repair.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history, including the full 0.3.0 notes.
 
 ## Quick start
 
