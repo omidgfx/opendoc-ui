@@ -359,12 +359,33 @@ export const describeAllOfComposition = (
  * Branches are often `$ref`s to `allOf` compositions (no top-level `properties`);
  * walking only `resolved.properties` would yield an empty object.
  */
-export const effectiveBranchSchema = (branch: any, resolve: SchemaBranchResolver = value => value): any => {
+export const effectiveBranchSchema = (
+    branch: any,
+    resolve: SchemaBranchResolver = value => value,
+    seen: Set<object> = new Set(),
+): any => {
     if (branch === null || branch === undefined) return {type: 'null'};
     if (branch === true || branch === false) return branch;
     if (typeof branch !== 'object') return branch;
+    if (typeof branch.$ref === 'string') {
+        const resolved = resolve(branch) || branch;
+        if (!resolved || typeof resolved !== 'object' || resolved === branch) return branch;
+        if (seen.has(resolved)) return branch; // cycle → keep $ref leaf
+        seen.add(resolved);
+        if (Array.isArray(resolved.allOf) && resolved.allOf.length) {
+            return effectiveAllOfSchema(resolved, resolve) || branch;
+        }
+        return resolved;
+    }
+    if (seen.has(branch)) return branch;
     const resolved = resolve(branch) || branch;
     if (!resolved || typeof resolved !== 'object') return resolved;
+    if (resolved !== branch) {
+        if (seen.has(resolved)) return branch;
+        seen.add(resolved);
+    } else {
+        seen.add(branch);
+    }
     if (Array.isArray(resolved.allOf) && resolved.allOf.length) {
         return effectiveAllOfSchema(resolved, resolve) || resolved;
     }

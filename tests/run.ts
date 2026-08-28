@@ -77,6 +77,7 @@ import {
     propertyNamesOfSchema,
     readSchemaAllOfFocus,
     writeSchemaAllOfFocus,
+    writeSchemaAnyOfSelection,
     writeSchemaBranchSelection,
 } from '@/src/utils/schema/branchSelections';
 import {inlineMenusForCode} from '@/src/components/schema/inlineMenus';
@@ -1867,6 +1868,69 @@ test('bounds cyclic schema property matrices and recursive Runner defaults', () 
     assert.deepEqual(Object.keys(properties), ['role', 'role.customer']);
     assert.deepEqual(defaultBodyValue(root, cyclicSpec), {role: {customer: {}}});
     assert.equal(JSON.stringify(cyclicSpec), before);
+});
+
+test('guards TreeNode-style anyOf recursion when applying branch selections', () => {
+    const treeSpec: any = {
+        openapi: '3.1.1',
+        info: {title: 'Tree', version: '1'},
+        paths: {},
+        components: {
+            schemas: {
+                TreeNode: {
+                    type: 'object',
+                    required: ['id', 'children'],
+                    properties: {
+                        id: {type: 'string', example: 'root'},
+                        parent: {
+                            anyOf: [{type: 'null'}, {$ref: '#/components/schemas/TreeNode'}],
+                        },
+                        children: {
+                            type: 'array',
+                            items: {
+                                anyOf: [{type: 'null'}, {$ref: '#/components/schemas/TreeNode'}],
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+    const resolve = (item: any) => resolveReference(item, treeSpec);
+    const root = {$ref: '#/components/schemas/TreeNode'};
+    const key = 'unit-tree-node-recursion';
+
+    // Default All on parent/children must not explode (previously: Maximum call stack).
+    const applied = applySchemaBranchSelections(root, key, resolve);
+    assert.equal(typeof applied, 'object');
+    assert.deepEqual(Object.keys(applied.properties || {}).sort(), ['children', 'id', 'parent']);
+    // Safe anyOf branches only — parent collapses to null, not infinite TreeNode.
+    assert.equal(applied.properties.parent?.type, 'null');
+    assert.equal(applied.properties.children?.items?.type, 'null');
+
+    const mock = generateValidatedMock(applied, treeSpec);
+    assert.equal(mock.ok, true, mock.diagnostics.map((item: any) => item.message).join('; '));
+    const mockValue = mock.value as any;
+    assert.equal(mockValue.parent, null);
+    assert.ok(Array.isArray(mockValue.children));
+
+    // Explicit TreeNode branch keeps a $ref leaf instead of unfolding.
+    writeSchemaAnyOfSelection(key, 'parent', [1]);
+    writeSchemaAnyOfSelection(key, 'children.*', [1]);
+    const recursiveLeaf = applySchemaBranchSelections(root, key, resolve);
+    assert.equal(recursiveLeaf.properties.parent?.$ref, '#/components/schemas/TreeNode');
+    assert.equal(recursiveLeaf.properties.children?.items?.$ref, '#/components/schemas/TreeNode');
+    const leafMock = generateValidatedMock(recursiveLeaf, treeSpec);
+    assert.equal(leafMock.ok, true);
+    // Recursive $ref leaves become stubs, not nested trees.
+    const leafValue = leafMock.value as any;
+    assert.equal(typeof leafValue.parent, 'object');
+    assert.equal(Array.isArray(leafValue.children), true);
+
+    // Direct $ref cycle still bounds the property matrix.
+    const flat = flattenSchemaProperties(root, resolve);
+    assert.deepEqual(Object.keys(flat).sort(), ['children', 'id', 'parent']);
+    assert.equal(schemaIsRecursive(root, resolve), true);
 });
 test('creates local endpoint notes with fourteen predefined colors and stable endpoint keys', () => {
     assert.equal(ENDPOINT_NOTE_COLORS.length, 14);

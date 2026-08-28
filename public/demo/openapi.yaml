@@ -103,9 +103,22 @@ x-tagGroups:
   - name: Tour
     tags: [01 Tour, 01 Tour/Servers, 01 Tour/Reusable paths, 01 Tour/HTTP methods]
   - name: Parameters
-    tags: [02 Parameters/Path styles, 02 Parameters/Query styles, 02 Parameters/Headers & cookies, 02 Parameters/Merging & OAS 3.2]
+    tags:
+      [
+        02 Parameters/Path styles,
+        02 Parameters/Query styles,
+        02 Parameters/Headers & cookies,
+        02 Parameters/Merging & OAS 3.2,
+      ]
   - name: Request bodies
-    tags: [03 Request bodies/Rich JSON, 03 Request bodies/Composition, 03 Request bodies/Media types, 03 Request bodies/Forms & files, 03 Request bodies/Recursion]
+    tags:
+      [
+        03 Request bodies/Rich JSON,
+        03 Request bodies/Composition,
+        03 Request bodies/Media types,
+        03 Request bodies/Forms & files,
+        03 Request bodies/Recursion,
+      ]
   - name: Responses
     tags: [04 Responses/Status gallery, 04 Responses/Binary & streaming]
   - name: Security
@@ -1706,7 +1719,6 @@ paths:
                 diagnostic: {type: string, default: browser-body-test}
       responses:
         '200': {$ref: '#/components/responses/EchoResponse'}
-
 
   # ─── 00 Spotlight — flagship OpenDoc UI moments ─────────────────
   /anything/spotlight/catalog:

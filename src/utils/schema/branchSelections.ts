@@ -178,6 +178,29 @@ const schemaAtBranchPath = (input: any, path: string, resolveReference: (item: a
     return current;
 };
 
+/** True when following this branch would re-enter a schema already on the apply stack. */
+const branchReentersCycle = (
+    branch: any,
+    resolveReference: (item: any) => any,
+    ancestorRefs: Set<string>,
+    ancestorObjects: Set<object>,
+): boolean => {
+    if (!branch || typeof branch !== 'object') return false;
+    if (typeof branch.$ref === 'string' && ancestorRefs.has(branch.$ref)) return true;
+    try {
+        const resolved = typeof branch.$ref === 'string' ? resolveReference(branch) : branch;
+        return !!(resolved && typeof resolved === 'object' && ancestorObjects.has(resolved));
+    } catch {
+        return typeof branch.$ref === 'string' && ancestorRefs.has(branch.$ref);
+    }
+};
+
+/**
+ * Absolute ceiling on apply recursion depth. Cycle sets are the primary guard;
+ * this is a last-resort fuse against pathological specs or missed edges.
+ */
+const APPLY_MAX_DEPTH = 48;
+
 export const applySchemaBranchSelections = (
     input: any,
     selectionKey: string,
@@ -185,9 +208,11 @@ export const applySchemaBranchSelections = (
     path = '',
     ancestorRefs = new Set<string>(),
     ancestorObjects = new Set<object>(),
+    depth = 0,
 ): any => {
     if (!input || typeof input !== 'object' || input === true || input === false) return input;
-    if (Array.isArray(input))
+    if (depth > APPLY_MAX_DEPTH) return input;
+    if (Array.isArray(input)) {
         return input.map((item, index) =>
             applySchemaBranchSelections(
                 item,
@@ -196,12 +221,20 @@ export const applySchemaBranchSelections = (
                 `${path}[${index}]`,
                 new Set(ancestorRefs),
                 new Set(ancestorObjects),
+                depth + 1,
             ),
         );
+    }
+
     const selections = schemaBranchSelections.get(selectionKey) || {};
+
     if (path && Array.isArray(input.oneOf) && input.oneOf.length > 0) {
         const index = Math.max(0, Math.min(input.oneOf.length - 1, selections[path] ?? 0));
         const picked = input.oneOf[index];
+        // Recursive oneOf branch: keep the $ref leaf — do not re-expand the same component.
+        if (branchReentersCycle(picked, resolveReference, ancestorRefs, ancestorObjects)) {
+            return picked;
+        }
         const merged = {
             ...picked,
             ...(picked?.title === undefined && input.title ? {title: input.title} : {}),
@@ -219,8 +252,10 @@ export const applySchemaBranchSelections = (
             path,
             new Set(ancestorRefs),
             new Set(ancestorObjects),
+            depth + 1,
         );
     }
+
     if (path && Array.isArray(input.anyOf) && input.anyOf.length > 0) {
         const anyOfMap = schemaAnyOfSelections.get(selectionKey) || {};
         const selected = anyOfMap[path];
@@ -229,7 +264,27 @@ export const applySchemaBranchSelections = (
             !selected || selected.length === 0
                 ? input.anyOf.map((_: any, index: number) => index)
                 : selected.filter(index => index >= 0 && index < input.anyOf.length);
-        const merged = mergeAnyOfBranchSchemas(input.anyOf, indices, resolveReference, {
+
+        // Split cyclic vs safe branches. Expanding a $ref already on the stack
+        // (e.g. TreeNode.parent anyOf → TreeNode) re-enters forever via merge.
+        const safeIndices: number[] = [];
+        let cyclicBranch: any = null;
+        indices.forEach(index => {
+            const branch = input.anyOf[index];
+            if (branchReentersCycle(branch, resolveReference, ancestorRefs, ancestorObjects)) {
+                if (!cyclicBranch) cyclicBranch = branch;
+                return;
+            }
+            safeIndices.push(index);
+        });
+
+        // Only cyclic branch(es) remain: return the $ref leaf so mocks/tables stub.
+        if (safeIndices.length === 0) {
+            return cyclicBranch ?? input.anyOf[indices[0]] ?? input;
+        }
+
+        // Merge only non-cyclic branches. Recursive $refs stay unexpanded.
+        const merged = mergeAnyOfBranchSchemas(input.anyOf, safeIndices, resolveReference, {
             title: input.title,
             description: input.description,
         });
@@ -248,8 +303,10 @@ export const applySchemaBranchSelections = (
             path,
             new Set(ancestorRefs),
             new Set(ancestorObjects),
+            depth + 1,
         );
     }
+
     if (typeof input.$ref === 'string') {
         const ref = input.$ref;
         if (ancestorRefs.has(ref)) return input;
@@ -264,9 +321,11 @@ export const applySchemaBranchSelections = (
             path,
             nextRefs,
             new Set(ancestorObjects),
+            depth + 1,
         );
-        if (!selectedResolved || typeof selectedResolved !== 'object' || Array.isArray(selectedResolved))
+        if (!selectedResolved || typeof selectedResolved !== 'object' || Array.isArray(selectedResolved)) {
             return selectedResolved;
+        }
         return {
             ...selectedResolved,
             ...(input.title !== undefined ? {title: input.title} : {}),
@@ -278,10 +337,12 @@ export const applySchemaBranchSelections = (
             ...(input.externalDocs !== undefined ? {externalDocs: input.externalDocs} : {}),
         };
     }
+
     if (ancestorObjects.has(input)) return input;
     const nextObjects = new Set(ancestorObjects);
     nextObjects.add(input);
     const output: any = {...input};
+
     if (input.properties && typeof input.properties === 'object') {
         output.properties = Object.fromEntries(
             Object.entries(input.properties).map(([name, value]) => {
@@ -295,6 +356,7 @@ export const applySchemaBranchSelections = (
                         childPath,
                         new Set(ancestorRefs),
                         new Set(nextObjects),
+                        depth + 1,
                     ),
                 ];
             }),
@@ -309,6 +371,7 @@ export const applySchemaBranchSelections = (
             childPath,
             new Set(ancestorRefs),
             new Set(nextObjects),
+            depth + 1,
         );
     }
     if (input.items && typeof input.items === 'object') {
@@ -320,6 +383,7 @@ export const applySchemaBranchSelections = (
             childPath,
             new Set(ancestorRefs),
             new Set(nextObjects),
+            depth + 1,
         );
     }
     if (Array.isArray(input.prefixItems)) {
@@ -331,12 +395,13 @@ export const applySchemaBranchSelections = (
                 `${path}[${index}]`,
                 new Set(ancestorRefs),
                 new Set(nextObjects),
+                depth + 1,
             ),
         );
     }
     ['then', 'else', 'if', 'not', 'contains', 'contentSchema', 'unevaluatedItems', 'unevaluatedProperties'].forEach(
         key => {
-            if (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key]))
+            if (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key])) {
                 output[key] = applySchemaBranchSelections(
                     input[key],
                     selectionKey,
@@ -344,11 +409,16 @@ export const applySchemaBranchSelections = (
                     path ? `${path}.${key}` : key,
                     new Set(ancestorRefs),
                     new Set(nextObjects),
+                    depth + 1,
                 );
+            }
         },
     );
+    // Root-level (path === '') oneOf/anyOf/allOf stay on the body rail — still walk
+    // children so nested field menus inside each branch are applied. Field-level
+    // oneOf/anyOf were already collapsed above and never reach here with those keys.
     ['allOf', 'anyOf', 'oneOf'].forEach(key => {
-        if (Array.isArray(input[key]))
+        if (Array.isArray(input[key])) {
             output[key] = input[key].map((item: any) =>
                 applySchemaBranchSelections(
                     item,
@@ -357,8 +427,10 @@ export const applySchemaBranchSelections = (
                     path,
                     new Set(ancestorRefs),
                     new Set(nextObjects),
+                    depth + 1,
                 ),
             );
+        }
     });
     return output;
 };
