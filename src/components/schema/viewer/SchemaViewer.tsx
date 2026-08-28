@@ -717,7 +717,7 @@ export default function SchemaViewer({
     };
 
     const metaRowLabelClass =
-        'inline-flex items-center gap-1 whitespace-nowrap font-sans text-[10px] font-bold uppercase tracking-wider';
+        'inline-flex items-center gap-1.5 whitespace-nowrap font-sans text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]';
     // w-px + nowrap: label column shrinks to the longest header; td takes the rest.
     const metaThClass = 'w-px whitespace-nowrap bg-[var(--background)] px-3 py-2.5 text-left align-middle';
     // max-w-0 keeps the value column inside the table so ScrollableRow can overflow-x.
@@ -732,9 +732,13 @@ export default function SchemaViewer({
         children: React.ReactNode;
     }) => {
         const labelNode = (
-            <span className={metaRowLabelClass} style={opts.color ? {color: opts.color} : undefined}>
-                <i className={`${opts.icon} text-[11px]`} />
-                {opts.label}
+            <span className={metaRowLabelClass}>
+                <i
+                    className={`${opts.icon} text-[11px]`}
+                    style={opts.color ? {color: opts.color} : undefined}
+                    aria-hidden="true"
+                />
+                <span>{opts.label}</span>
             </span>
         );
         return (
