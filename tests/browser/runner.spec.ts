@@ -1162,14 +1162,17 @@ test('selects response examples and the current inspect schema by default', asyn
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const responseCard = page.locator('#response-400');
     await responseCard.locator('> div').first().click();
-    const exampleTab = responseCard.getByRole('button', {name: /Generated Example/i});
-    const schemaTab = responseCard.getByRole('button', {name: /Unified Schema/i});
+    // Exact tab names avoid the format dropdown (aria-label "Generated example format").
+    const exampleTab = responseCard.getByRole('button', {name: 'Generated Example', exact: true});
+    const schemaTab = responseCard.getByRole('button', {name: 'Unified Schema', exact: true});
     await expect(exampleTab).toHaveAttribute('aria-pressed', 'true');
     await expect(schemaTab).toHaveAttribute('aria-pressed', 'false');
-    await expect(responseCard.getByRole('button', {name: /Problem/}).first()).toHaveAttribute('aria-pressed', 'true');
+    // SchemaViewer meta header shows the resolved component name (not a pressed chip).
+    await expect(responseCard.getByText('Problem', {exact: true}).first()).toBeVisible();
     const example = await responseCard.locator('pre code').last().textContent();
-    expect(example).toContain('\n    "error": "string"');
-    expect(example).toContain('\n        "field": "string"');
+    // Generated example from the Problem schema (placeholder values, not the fixture example object).
+    expect(example).toMatch(/"error"\s*:\s*"string"/);
+    expect(example).toMatch(/"field"\s*:\s*"string"/);
 });
 
 test('uses a scroll-aware desktop response navigator and behavior-aware tooltips', async ({page}) => {
@@ -1177,9 +1180,10 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
     await page.getByText('Send permissive validation request', {exact: true}).first().click();
     const navigator = page.getByRole('navigation', {name: 'Response code navigator'});
     await expect(navigator).toBeVisible();
-    await expect(navigator).toHaveClass(/w-16/);
+    // Sticky width lives on the host wrapper; the nav itself is w-full inside that rail.
     await expect(navigator.locator('..')).toHaveClass(/w-16/);
-    await expect(navigator.locator('../..')).toHaveClass(/\bpl-16\b/);
+    await expect(navigator.locator('../..')).toHaveClass(/w-16/);
+    await expect(navigator.locator('../../..')).toHaveClass(/\bpl-16\b/);
     await expect(navigator.getByRole('button')).toHaveCount(4);
     const collapsedIndicator = navigator.locator('[data-response-indicator="400"]');
     await expect(collapsedIndicator).toHaveAttribute('data-expanded', 'false');
@@ -1220,8 +1224,9 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
 
     const response400 = navigator.getByRole('button', {name: /Open response 400/});
     const response400Card = page.locator('#response-400');
+    // Card chrome: header is the first child; body content is nested under a min-w-0 wrapper.
     const response400Header = response400Card.locator('> div').first();
-    const response400Body = response400Card.locator('> div').nth(1);
+    const response400Body = response400Card.locator('> div').nth(1).locator('> div').first();
     await response400.click();
     await expect(response400).toHaveAttribute('aria-pressed', 'true');
     await expect(response400Header).toHaveClass(/\bpx-2\.5\b/);
@@ -1236,9 +1241,21 @@ test('uses a scroll-aware desktop response navigator and behavior-aware tooltips
             }),
         )
         .toBeLessThanOrEqual(8);
-    await page.locator('#response-200').evaluate(element => element.scrollIntoView({block: 'start'}));
+    const scrollResponseIntoDocsView = async (code: string) => {
+        await page.locator(`#response-${code}`).evaluate(element => {
+            const container = element.closest('[data-endpoint-docs-scroll]') as HTMLElement | null;
+            if (!container) {
+                element.scrollIntoView({block: 'start'});
+                return;
+            }
+            const top =
+                element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
+            container.scrollTo({top: Math.max(0, top)});
+        });
+    };
+    await scrollResponseIntoDocsView('200');
     await expect(navigator.getByRole('button', {name: /Open response 200/})).toHaveAttribute('aria-pressed', 'true');
-    await page.locator('#response-400').evaluate(element => element.scrollIntoView({block: 'start'}));
+    await scrollResponseIntoDocsView('400');
     await expect(response400).toHaveAttribute('aria-pressed', 'true');
 
     await response400Header.click();
