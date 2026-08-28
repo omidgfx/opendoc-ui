@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=10"/>
+<link rel="stylesheet" href="assets/css/site.css?v=11"/>
 <script>
 (function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -62,12 +62,12 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
         <tbody>
           <tr><td><span class="mono">openapi: 3.0.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">nullable semantics preserved; parameters, security, callbacks and links rendered</td></tr>
           <tr><td><span class="mono">openapi: 3.1.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">JSON Schema 2020-12 keywords — const, prefixItems, unevaluatedProperties, if/then/else, type unions</td></tr>
-          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, query methods and the newest meta-schema surface</td></tr>
+          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, first-class <b>QUERY</b> (RFC 10008) with bodies, newest meta-schema surface</td></tr>
           <tr><td><span class="mono">swagger: "2.0"</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-soft">Normalized to 3.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">definitions, formData and body parameters, file uploads, collection formats, securityDefinitions</td></tr>
         </tbody>
       </table>
     </div></div>
-    <p class="muted reveal" style="margin-top:16px;font-size:14px">Multi-file documents resolve in-memory: local reference graphs, same-origin external references and bundled documents are all handled, with clear diagnostics for anything unresolved.</p>
+    <p class="muted reveal" style="margin-top:16px;font-size:14px">Multi-file documents resolve in-memory: local reference graphs, same-origin external references and bundled documents are all handled, with clear diagnostics for anything unresolved. An <span class="pill-exp">Experimental</span> load-time YAML repair can recover flow-style combinators that omit sequence brackets — originals on disk are never rewritten.</p>
 
     <div style="height:70px"></div>
     <div class="section-head">
@@ -143,6 +143,6 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=9"></script>
+<script src="assets/js/site.js?v=10"></script>
 </body>
 </html>

@@ -4,11 +4,11 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Guide — OpenDoc UI</title>
-<meta name="description" content="The complete OpenDoc UI user guide: loading specifications, reading documentation, running requests, authentication, schemas, code generation, notes, hidden endpoints, deep links, caching, persistence, the AI assistant, themes and keyboard shortcuts."/>
+<meta name="description" content="The complete OpenDoc UI user guide: loading specifications, reading documentation, running requests, authentication, SchemaViewer, settings, code generation, notes, hidden endpoints, deep links, caching, persistence, the AI assistant, themes and keyboard shortcuts."/>
 <link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=10"/>
+<link rel="stylesheet" href="assets/css/site.css?v=11"/>
 <script>
 (function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -60,6 +60,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       <a href="#running">Running requests</a>
       <a href="#auth">Authentication</a>
       <a href="#schemas">Working with schemas</a>
+      <a href="#settings">Settings</a>
       <a href="#codegen">Generating code</a>
       <a href="#notes">Notes &amp; trash</a>
       <a href="#hidden">Hidden endpoints</a>
@@ -85,7 +86,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
         <h3>1 · Local files</h3>
         <p>With no configuration at all, OpenDoc UI runs in <b>local mode</b>: open files straight from your device and get a persistent history of everything you opened. When the browser supports file handles, the refresh button can even re-read the file from disk.</p>
         <h3>2 · Remote URLs</h3>
-        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional downloader proxies (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable.</p>
+        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional downloader proxies (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable. If a generator emits invalid flow-style <code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code> without sequence brackets, an <b>experimental</b> load-time YAML repair rewrites just enough text for the document to parse — originals on disk are never modified.</p>
         <h3>3 · Configured specifications</h3>
         <p>Deployments can ship a curated catalog through <code class="inline">public/config.json</code> or <code class="inline">window.INITIAL_CONFIG</code>. The hybrid option combines a configured catalog with local file opening — teams get the official specs <em>and</em> the freedom to inspect anything else.</p>
       </div>
@@ -98,8 +99,8 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="reading">
         <h2><i class="ph-fill ph-book-open-text"></i>Reading the documentation</h2>
-        <p>The sidebar groups endpoints by tag — with nested groups, counts, protection and deprecation indicators — and respects your sorting and route-display preferences. Each operation opens a documentation view that leaves nothing hidden: parameter tables with types, formats, patterns and examples; request-body context with encoding selection and explicit <code class="inline">oneOf</code>/<code class="inline">anyOf</code> branch chips; and a response matrix with per-status examples, schema tables and enum values.</p>
-        <p>Pattern constraints carry a built-in regex tester, so you can validate candidate values against the exact expression before ever sending a request. Recursive and mutually referencing schemas render cycle-safe, with recursive branches marked by a loop icon at their boundary.</p>
+        <p>The sidebar groups endpoints by tag — nested groups via <code class="inline">x-tagGroups</code>, counts, protection and deprecation indicators — and respects sorting, route-display and natural name order. Each operation opens a documentation view that leaves nothing hidden: parameter tables with types, formats, <code class="inline">style</code>/<code class="inline">explode</code> serialization, patterns and examples; request bodies and responses through the shared <b>SchemaViewer</b> (Format media type, generated examples, named OpenAPI examples, body-level combinator rails); and a response matrix with a scroll-aware code navigator and deep links like <code class="inline">#response-200</code>.</p>
+        <p>Pattern constraints carry a built-in regex tester and a serializer playground that can hand values to the Runner. Recursive and mutually referencing schemas render cycle-safe, with recursive branches marked by a loop icon at their boundary. On phones, a pinned response pill follows what you are reading and opens a sheet to jump between codes.</p>
       </div>
 
       <div class="doc-sec prose" id="workspace">
@@ -109,7 +110,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="running">
         <h2><i class="ph-fill ph-flask"></i>Running requests</h2>
-        <p>Switch any endpoint to the <b>API Runner</b> tab. Inputs are generated from the specification: path/query/header/cookie parameters, a recursive form editor for bodies (or raw JSON/YAML/XML with format-aware validation), and multipart file uploads. Press <span class="kbd">Ctrl/⌘ + Enter</span> to send; inspect status, headers, body and history below, cancel long requests, and keep per-endpoint inputs saved between sessions.</p>
+        <p>Switch any endpoint to the <b>API Runner</b> tab. Inputs are generated from the specification: path/query/header/cookie parameters (serialized with the declared <code class="inline">style</code>/<code class="inline">explode</code>), a live final URL, a recursive form editor for bodies (or raw JSON/YAML/XML with format-aware validation), and multipart file uploads. OAS 3.2 <b>QUERY</b> operations send a body where the browser allows it — GET and HEAD still warn if a body is present. Press <span class="kbd">Ctrl/⌘ + Enter</span> to send; inspect status, headers, body and history below, cancel long requests (including binary streams), and keep per-endpoint inputs saved between sessions.</p>
         <p>Requests use the browser's fetch API, so standard CORS rules apply. The <b>Runner Compatibility</b> report — one click from the overview — states per endpoint what the browser can and cannot do for the API, before you waste time guessing.</p>
       </div>
 
@@ -120,7 +121,12 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="schemas">
         <h2><i class="ph-fill ph-diamonds-four"></i>Working with schemas</h2>
-        <p>Open the Schema Explorer from the sidebar or click any schema reference in the docs. Composed (<code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code>) and recursive structures render cycle-safe; modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions — are handled explicitly. Multiple schemas can be open at once, and the set is encoded in the URL (<code class="inline">?schemas=Pet,Order</code>) so the exact view is shareable.</p>
+        <p>Open the Schema Explorer from the sidebar, open a schema modal from any reference, or stay inside an endpoint — request bodies, responses and the modal share one <b>SchemaViewer</b>. Composed structures use body-level rails and <b>field-level</b> menus for nested <code class="inline">oneOf</code> (exclusive), <code class="inline">anyOf</code> (multi-select merge with All), <code class="inline">allOf</code> (focus with dimming) and <code class="inline">not</code> (inspection only). Generated examples follow the active branch across formats; named OpenAPI <code class="inline">examples</code> live on their own tab. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, bare <code class="inline">$ref</code> combinators — are handled explicitly. Multiple schemas can be open at once, and the set is encoded in the URL (<code class="inline">?schemas=Pet,Order</code>) so the exact view is shareable.</p>
+      </div>
+
+      <div class="doc-sec prose" id="settings">
+        <h2><i class="ph-fill ph-gear-six"></i>Settings</h2>
+        <p>Open the <b>Settings</b> tab from the workspace (deep link <code class="inline">#/&lt;spec&gt;/settings#&lt;section&gt;</code>). Sections cover General, Appearance (theme gallery), Navigation, Code viewer and AI. Representation defaults choose whether documentation and schema modals remember example vs schema <b>per schema</b> or globally. Tables can become cards when a pane runs out of room; preferences prefer IndexedDB with a localStorage emergency fallback only.</p>
       </div>
 
       <div class="doc-sec prose" id="codegen">
@@ -155,6 +161,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
               <tr><td><span class="mono">#/parsable/&lt;key&gt;/api/&lt;endpointId&gt;</span></td><td class="wrap">A specific endpoint in a permanent tab</td></tr>
               <tr><td><span class="mono">#/…/schema-explorer?schemas=Pet</span></td><td class="wrap">Schema Explorer with schemas open</td></tr>
               <tr><td><span class="mono">#/…/notes</span> · <span class="mono">#/…/compatibility</span></td><td class="wrap">Local notes · Runner compatibility matrix</td></tr>
+              <tr><td><span class="mono">#/…/settings#appearance</span></td><td class="wrap">Settings page (section deep links)</td></tr>
               <tr><td><span class="mono">#/…/about</span> · <span class="mono">#/…/assistant</span></td><td class="wrap">About page · AI assistant</td></tr>
             </tbody>
           </table>
@@ -169,7 +176,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="themes">
         <h2><i class="ph-fill ph-palette"></i>Themes &amp; appearance</h2>
-        <p>Choose from 15+ hand-picked palettes in the theme menu; light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
+        <p>Choose from 15+ hand-picked palettes in the <b>Settings → Appearance</b> gallery (the old theme-only modal is gone); light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
       </div>
 
       <div class="doc-sec" id="shortcuts">
@@ -224,6 +231,6 @@ npm run dev        <span class="c"># development server on :3000</span></div>
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=9"></script>
+<script src="assets/js/site.js?v=10"></script>
 </body>
 </html>

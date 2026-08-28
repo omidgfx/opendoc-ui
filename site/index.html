@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>OpenDoc UI — Open a spec. See everything.</title>
-<meta name="description" content="OpenDoc UI turns any OpenAPI 3.x or Swagger 2.0 specification into a complete workspace: documentation browser, real API runner, schema explorer, code generation, local notes and an optional grounded AI assistant — 100% client-side."/>
+<meta name="description" content="OpenDoc UI turns any OpenAPI 3.x or Swagger 2.0 specification into a complete workspace: documentation browser, real API runner with OAS 3.2 QUERY, unified SchemaViewer with field combinators, code generation, local notes and an optional grounded AI assistant — 100% client-side."/>
 <meta property="og:title" content="OpenDoc UI — Open a spec. See everything."/>
 <meta property="og:description" content="The static-first OpenAPI workspace: read it, run it, question it. No backend, no account, no upload."/>
 <meta property="og:type" content="website"/>
@@ -12,7 +12,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=10"/>
+<link rel="stylesheet" href="assets/css/site.css?v=11"/>
 <script>
 (function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -57,8 +57,9 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
     <h1 class="reveal d1">Open a spec. <span class="h-em">See</span> everything.<br/><span class="h-accent">Run</span> anything.</h1>
     <p class="lead reveal d2">
       OpenDoc UI turns any OpenAPI 3.0 / 3.1 / 3.2 or Swagger 2.0 document into a living workspace —
-      navigable documentation, a genuine request runner, a deep schema explorer, instant code
-      generation, private notes and a grounded AI assistant. No backend. No account. No upload.
+      navigable documentation, a genuine request runner (including OAS 3.2 QUERY), a unified schema
+      viewer with field combinators, instant code generation, private notes and a grounded AI
+      assistant. No backend. No account. No upload.
     </p>
     <div class="hero-cta reveal d3">
       <a class="btn btn-brand btn-lg" href="https://omidgfx.github.io/opendoc-ui/demo/"><i class="ph-fill ph-play"></i> Try the live demo</a>
@@ -96,8 +97,8 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
 <!-- ═══════════════ marquee ═══════════════ -->
 <div class="marquee" aria-hidden="true">
   <div class="marquee-track">
-    <span>Documentation browser <i>✦</i> API runner <i>✦</i> Schema explorer <i>✦</i> Code generation <i>✦</i> Global search <i>✦</i> Local notes <i>✦</i> AI assistant <i>✦</i> Deep links <i>✦</i> 15+ themes <i>✦</i> Hidden endpoints <i>✦</i> Zero backend <i>✦</i></span>
-    <span>Documentation browser <i>✦</i> API runner <i>✦</i> Schema explorer <i>✦</i> Code generation <i>✦</i> Global search <i>✦</i> Local notes <i>✦</i> AI assistant <i>✦</i> Deep links <i>✦</i> 15+ themes <i>✦</i> Hidden endpoints <i>✦</i> Zero backend <i>✦</i></span>
+    <span>Documentation browser <i>✦</i> API runner <i>✦</i> Unified SchemaViewer <i>✦</i> Field combinators <i>✦</i> OAS 3.2 QUERY <i>✦</i> Code generation <i>✦</i> Global search <i>✦</i> Local notes <i>✦</i> Settings <i>✦</i> AI assistant <i>✦</i> Deep links <i>✦</i> 15+ themes <i>✦</i> Hidden endpoints <i>✦</i> Zero backend <i>✦</i></span>
+    <span>Documentation browser <i>✦</i> API runner <i>✦</i> Unified SchemaViewer <i>✦</i> Field combinators <i>✦</i> OAS 3.2 QUERY <i>✦</i> Code generation <i>✦</i> Global search <i>✦</i> Local notes <i>✦</i> Settings <i>✦</i> AI assistant <i>✦</i> Deep links <i>✦</i> 15+ themes <i>✦</i> Hidden endpoints <i>✦</i> Zero backend <i>✦</i></span>
   </div>
 </div>
 
@@ -127,13 +128,13 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       <article class="tile span-7 reveal">
         <div class="t-ic"><i class="ph ph-book-open-text"></i></div>
         <h3>Documentation browser</h3>
-        <p>Tag-grouped endpoint trees, parameter tables, request-body matrices and response explorers — with cycle-safe rendering for recursive and polymorphic schemas, plus a built-in regex pattern tester.</p>
+        <p>Tag-grouped endpoint trees, serialization-aware parameter tables, shared SchemaViewer on bodies and responses, and a scroll-aware response navigator — cycle-safe for recursive and polymorphic schemas.</p>
         <div class="ui ui-tree" aria-hidden="true">
           <div class="row"><i class="ph-fill ph-folder" style="color:#C9A03C"></i> Pets <span style="margin-left:auto;opacity:.55">4</span></div>
           <div class="row on"><span class="badge get">GET</span> /pets/{petId}</div>
           <div class="row ind"><span class="badge post">POST</span> /pets</div>
+          <div class="row ind"><span class="badge query">QUERY</span> /pets/search</div>
           <div class="row ind"><span class="badge del">DEL</span> /pets/{petId} <i class="ph ph-lock-simple" style="margin-left:auto"></i></div>
-          <div class="row"><i class="ph-fill ph-folder" style="color:#C9A03C"></i> Store <span style="margin-left:auto;opacity:.55">2</span></div>
         </div>
         <a class="link-arrow" href="features.html#docs">Explore the docs surface <i class="ph ph-arrow-right"></i></a>
       </article>
@@ -142,9 +143,9 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       <article class="tile span-5 dark-tile reveal d1">
         <div class="t-ic"><i class="ph ph-flask"></i></div>
         <h3>Built-in API Runner</h3>
-        <p>Real requests, straight from the browser — bearer, API-key, basic auth and cookies, recursive body forms, multipart uploads and bounded response inspection.</p>
+        <p>Real requests from the browser — including OAS 3.2 QUERY — with bearer, API-key, basic auth, OAuth PKCE and cookies, recursive body forms, live final URL and bounded response inspection.</p>
         <div class="ui ui-run" aria-hidden="true">
-          <div class="reqline"><span class="badge post">POST</span> /pet <span class="send">SEND ▸</span></div>
+          <div class="reqline"><span class="badge query">QUERY</span> /products <span class="send">SEND ▸</span></div>
           <div class="bar-wrap"><div class="bar-fill"></div></div>
           <div class="resp"><span class="code200">200 OK</span> · 142 ms · 1.2 KB · application/json</div>
         </div>
@@ -251,20 +252,64 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
         <div class="split" style="gap:40px;align-items:center">
           <div>
             <div class="t-ic"><i class="ph ph-diamonds-four"></i></div>
-            <h3 style="margin:12px 0 10px">Schema explorer for the hard cases</h3>
-            <p>Deeply nested objects, recursive trees, mutually referencing schemas, polymorphic discriminators — rendered cycle-safe, with recursive branches marked at their boundary instead of expanding forever. Modern 3.1/3.2 keywords like <code class="inline">const</code>, <code class="inline">prefixItems</code> and <code class="inline">if/then/else</code> are handled explicitly.</p>
-            <a class="link-arrow" href="features.html#schemas" style="margin-top:14px">Open the schema explorer <i class="ph ph-arrow-right"></i></a>
+            <h3 style="margin:12px 0 10px">Unified SchemaViewer for the hard cases</h3>
+            <p>One surface for request bodies, responses and the schema modal — always-open meta stats, multi-format generated examples, and field-level oneOf / anyOf / allOf / not menus that reach nested properties. Recursive trees stay cycle-safe; modern 3.1/3.2 keywords and bare <code class="inline">$ref</code> combinators are handled explicitly.</p>
+            <a class="link-arrow" href="features.html#schemas" style="margin-top:14px">Open the SchemaViewer story <i class="ph ph-arrow-right"></i></a>
           </div>
           <div class="ui ui-tree" style="margin:0" aria-hidden="true">
-            <div class="row"><i class="ph ph-brackets-curly" style="color:var(--brand-bright)"></i> Pet <span style="margin-left:auto;opacity:.5">object</span></div>
+            <div class="row"><i class="ph ph-brackets-curly" style="color:var(--brand-bright)"></i> Pet <span style="margin-left:auto;opacity:.5">object · meta</span></div>
             <div class="row ind">name <span style="margin-left:auto;opacity:.5">string · required</span></div>
-            <div class="row ind">category <span style="margin-left:auto;opacity:.5">Category ↗</span></div>
+            <div class="row ind">payment <span style="margin-left:auto;opacity:.5">oneOf ⌥ Card · Wire</span></div>
+            <div class="row ind">traits <span style="margin-left:auto;opacity:.5">anyOf ☑ All</span></div>
             <div class="row ind">friends[] <span style="margin-left:auto;color:var(--brand-bright)">↻ Pet (recursive)</span></div>
-            <div class="row ind">status <span style="margin-left:auto;opacity:.5">enum · oneOf ⌥</span></div>
           </div>
         </div>
       </article>
     </div>
+  </div>
+</section>
+
+<!-- ═══════════════ deeper capabilities ═══════════════ -->
+<section class="section tight" id="depth" style="padding-top:0">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow reveal">Under the hood of every endpoint</span>
+      <h2 class="reveal d1">Built for the hard parts of<br/><span class="h-accent">real OpenAPI</span></h2>
+      <p class="lead reveal d2">Branch-heavy schemas, modern methods, honest serialization and a settings surface that stays out of the way — the same workstation, pushed further.</p>
+    </div>
+    <div class="card-grid">
+      <div class="info-card reveal">
+        <h3><i class="ph ph-tree-structure"></i>Shared SchemaViewer</h3>
+        <p>Request bodies, responses and the schema modal share one generated-example surface, meta header and property table — with named OpenAPI examples on their own tab.</p>
+        <span class="mono-tag">request · response · modal</span>
+      </div>
+      <div class="info-card reveal d1">
+        <h3><i class="ph ph-git-branch"></i>Field combinators</h3>
+        <p>Nested oneOf, anyOf, allOf and not menus in code and tables — exclusive pick, multi-select merge, composition focus with dimming, inspection-only negation.</p>
+        <span class="mono-tag">oneOf · anyOf · allOf · not</span>
+      </div>
+      <div class="info-card reveal d2">
+        <h3><i class="ph ph-magnifying-glass-plus"></i>OAS 3.2 QUERY</h3>
+        <p>RFC 10008 QUERY is first-class: discovered, documented with bodies, and runnable in the Runner without relaxing GET/HEAD body warnings.</p>
+        <span class="mono-tag">RFC 10008</span>
+      </div>
+      <div class="info-card reveal">
+        <h3><i class="ph ph-gear-six"></i>Settings &amp; scopes</h3>
+        <p>A Settings tab with Appearance gallery, navigation and AI sections, plus per-schema or global example/schema representation defaults stored in IndexedDB.</p>
+        <span class="mono-tag">#/…/settings</span>
+      </div>
+      <div class="info-card reveal d1">
+        <h3><i class="ph ph-sliders-horizontal"></i>Serialization awareness</h3>
+        <p>style/explode descriptors, serializer playground → Runner, live final URL, location-split parameter matrices, and card layouts when panes run out of room.</p>
+        <span class="mono-tag">style · explode · final URL</span>
+      </div>
+      <div class="info-card reveal d2">
+        <h3><i class="ph ph-wrench"></i>YAML auto-repair <span class="pill-exp">Experimental</span></h3>
+        <p>Load-time rewrite for flow-style combinators missing sequence brackets — enough to open many generator mistakes without touching files on disk.</p>
+        <span class="mono-tag">load-time · non-destructive</span>
+      </div>
+    </div>
+    <p class="muted reveal" style="margin-top:22px;font-size:14px"><a class="link-arrow" href="features.html" style="font-size:14px">Full feature tour <i class="ph ph-arrow-right"></i></a> · <a class="link-arrow" href="https://github.com/omidgfx/opendoc-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer" style="font-size:14px;margin-left:18px">Changelog <i class="ph ph-arrow-up-right"></i></a></p>
   </div>
 </section>
 
@@ -323,8 +368,8 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       </div>
       <div class="step reveal d1">
         <h3>Explore &amp; interrogate</h3>
-        <p>Browse tag-grouped docs, search everything with <span class="kbd">⌘K</span>, inspect schemas to any depth, and ask the assistant questions with cited answers.</p>
-        <span class="mono-tag">docs · search · schemas · AI</span>
+        <p>Browse tag-grouped docs, search everything with <span class="kbd">⌘K</span>, pick field combinators in SchemaViewer, and ask the assistant questions with cited answers.</p>
+        <span class="mono-tag">docs · search · SchemaViewer · AI</span>
       </div>
       <div class="step reveal d2">
         <h3>Run &amp; ship</h3>
@@ -349,7 +394,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
         <tbody>
           <tr><td><span class="mono">openapi: 3.0.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Yes</span></td><td class="muted wrap" style="font-size:13.5px">nullable semantics, callbacks, links, security</td></tr>
           <tr><td><span class="mono">openapi: 3.1.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Yes</span></td><td class="muted wrap" style="font-size:13.5px">JSON Schema 2020-12 — const, prefixItems, if/then/else</td></tr>
-          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Yes</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, query methods</td></tr>
+          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Yes</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, first-class QUERY (RFC 10008)</td></tr>
           <tr><td><span class="mono">swagger: "2.0"</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-soft">Normalized to 3.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Yes</span></td><td class="muted wrap" style="font-size:13.5px">formData, file uploads, collectionFormat, securityDefinitions</td></tr>
         </tbody>
       </table>
@@ -477,6 +522,6 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=9"></script>
+<script src="assets/js/site.js?v=10"></script>
 </body>
 </html>

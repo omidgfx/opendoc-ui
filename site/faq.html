@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=10"/>
+<link rel="stylesheet" href="assets/css/site.css?v=11"/>
 <script>
 (function(){try{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -62,7 +62,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       </details>
       <details>
         <summary>Which OpenAPI versions are supported? <span class="plus"><i class="ph ph-plus"></i></span></summary>
-        <div class="a">OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, webhooks — are rendered and handled explicitly. Multi-file reference graphs resolve in memory.</div>
+        <div class="a">OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, webhooks — are rendered and handled explicitly. OAS 3.2 <b>QUERY</b> (RFC 10008) is first-class in documentation and the Runner. Multi-file reference graphs resolve in memory; experimental YAML auto-repair can open some generator mistakes that omit flow-sequence brackets.</div>
       </details>
       <details>
         <summary>Does the Runner send requests from my browser? <span class="plus"><i class="ph ph-plus"></i></span></summary>
@@ -79,6 +79,10 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
       <details>
         <summary>Where are my notes and history stored? <span class="plus"><i class="ph ph-plus"></i></span></summary>
         <div class="a">In your browser — IndexedDB first, with a localStorage fallback. Notes, response history, opened-file history, themes and workspace state never leave your machine. Notes export/import as JSON if you want to move or back them up.</div>
+      </details>
+      <details>
+        <summary>How do oneOf / anyOf / allOf work in the UI? <span class="plus"><i class="ph ph-plus"></i></span></summary>
+        <div class="a">Request bodies, responses and the schema modal share one SchemaViewer. Body-level rails pick root branches; field-level menus reach nested properties — exclusive oneOf, multi-select anyOf (empty All is none), allOf focus with dimming, and inspection-only not. Generated examples and the property table follow the active selection across formats.</div>
       </details>
       <details>
         <summary>Is it really free? <span class="plus"><i class="ph ph-plus"></i></span></summary>
@@ -125,6 +129,6 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=9"></script>
+<script src="assets/js/site.js?v=10"></script>
 </body>
 </html>

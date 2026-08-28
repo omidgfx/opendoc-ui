@@ -13,3 +13,4 @@ public/config.json
 obj/
 builder.config.json
 test-results/
+__pycache__/

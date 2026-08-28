@@ -22,7 +22,7 @@ def shell(fname, title, desc, body):
 <link rel="icon" type="image/svg+xml" href="assets/opendoc-logo.svg"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"/>
-<link rel="stylesheet" href="assets/css/site.css?v=10"/>
+<link rel="stylesheet" href="assets/css/site.css?v=11"/>
 <script>
 (function(){{try{{var t=localStorage.getItem('opendoc-site-theme')||'system';
 var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -85,7 +85,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}}catch(e){
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=9"></script>
+<script src="assets/js/site.js?v=10"></script>
 </body>
 </html>
 '''
@@ -105,7 +105,7 @@ PAGES = {}
 # ────────────────────────── FEATURES ──────────────────────────
 PAGES["features.html"] = (
     "Features — OpenDoc UI",
-    "Every capability of OpenDoc UI in depth: documentation browser, API runner, schema explorer, code generation, local notes, AI assistant, workspace and themes.",
+    "Every capability of OpenDoc UI in depth: documentation browser, API runner, unified SchemaViewer, field combinators, OAS 3.2 QUERY, code generation, local notes, AI assistant, settings, workspace and themes.",
     page_hero("Features",
         'Every capability,<br/><span class="h-accent">examined in detail</span>',
         "What it does, why it matters, and how it changes the way you work with APIs. Each surface below is live in the demo — nothing here is a mockup of a roadmap.")
@@ -117,11 +117,11 @@ PAGES["features.html"] = (
       <div>
         <span class="eyebrow reveal">01 · Read</span>
         <h2 class="reveal d1">Documentation browser</h2>
-        <p class="reveal d2">Any OpenAPI 3.0/3.1/3.2 or Swagger 2.0 document becomes a fully navigable reference. Endpoints group by tag into a sidebar tree that respects your sorting, route-display, protection and deprecation preferences — a large specification becomes an orderly index rather than an overwhelming list.</p>
+        <p class="reveal d2">Any OpenAPI 3.0/3.1/3.2 or Swagger 2.0 document becomes a fully navigable reference. Endpoints group by tag (and <code class="inline">x-tagGroups</code>) into a sidebar tree that respects sorting, route-display, protection and deprecation preferences — a large specification becomes an orderly index rather than an overwhelming list.</p>
         <ul class="checklist reveal d3">
-          <li><i class="ph-fill ph-check"></i><span>Parameter tables with types, formats, patterns and examples — plus a built-in <b>regex pattern tester</b>.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Request-body context with encoding-type selection and explicit <b>oneOf / anyOf branch chips</b>.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Response matrix with per-status examples and deep-linkable anchors like <code class="inline">#response-200</code>.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Parameter tables with types, formats, <b>style/explode</b> serialization, patterns and examples — plus a built-in <b>regex pattern tester</b> and serializer playground.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Request bodies and responses share one <b>SchemaViewer</b>: Format (media type), generated examples, named OpenAPI <code class="inline">examples</code>, and body-level combinator rails.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Response matrix with a scroll-aware navigator, per-status deep links like <code class="inline">#response-200</code>, and a mobile pill + sheet on small screens.</span></li>
           <li><i class="ph-fill ph-check"></i><span><b>Cycle-safe rendering</b> — recursive branches terminate at their boundary, marked with a loop icon.</span></li>
         </ul>
       </div>
@@ -132,12 +132,12 @@ PAGES["features.html"] = (
       <div>
         <span class="eyebrow reveal">02 · Run</span>
         <h2 class="reveal d1">Built-in API Runner</h2>
-        <p class="reveal d2">Documentation is passive; the Runner is active. Execute genuine requests from the browser against the servers declared in your specification — the gap between reading an endpoint and calling it disappears.</p>
+        <p class="reveal d2">Documentation is passive; the Runner is active. Execute genuine requests from the browser against the servers declared in your specification — the gap between reading an endpoint and calling it disappears. OAS 3.2 <b>QUERY</b> (RFC 10008) is first-class beside GET, POST and additional operations.</p>
         <ul class="checklist reveal d3">
-          <li><i class="ph-fill ph-check"></i><span>Path, query, header and cookie parameters rendered as inputs with documented examples and constraints.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Path, query, header and cookie parameters as inputs — with live final URL, serialization that matches <code class="inline">style</code>/<code class="inline">explode</code>, and documented examples.</span></li>
           <li><i class="ph-fill ph-check"></i><span>Recursive form editor or raw JSON/YAML/XML bodies with format-aware validation, multipart uploads included.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth and cookies.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation and bounded response details.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth (including native PKCE) and cookies.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation, binary stream safety, and bounded response details.</span></li>
         </ul>
       </div>
       <div class="fr-media reveal d2"><img src="assets/opendoc-runner.png" alt="The API Runner composing a POST /pet request with a form-based payload editor" loading="lazy"/></div>
@@ -146,15 +146,16 @@ PAGES["features.html"] = (
     <div class="feature-row" id="schemas">
       <div>
         <span class="eyebrow reveal">03 · Understand</span>
-        <h2 class="reveal d1">Schema explorer</h2>
-        <p class="reveal d2">Inspect every schema in the document to any depth. The hard cases — deeply nested objects, recursive trees, mutually referencing schemas, polymorphic discriminators — render safely, and modern 3.1/3.2 keywords are handled explicitly.</p>
+        <h2 class="reveal d1">Unified SchemaViewer</h2>
+        <p class="reveal d2">One schema surface for request bodies, responses, and the schema modal — generated examples, an always-open meta header, body-level rails, and the property table readers already know. Field-level combinators reach nested properties, not only the body root.</p>
         <ul class="checklist reveal d3">
-          <li><i class="ph-fill ph-check"></i><span><code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions and webhooks.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Enum values, defaults, constraints and examples surfaced inline.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Every schema modal is deep-linkable and shareable.</span></li>
+          <li><i class="ph-fill ph-check"></i><span><b>oneOf / anyOf / allOf / not</b> at field level: exclusive picks, multi-select merge with All, composition focus with dimming, and inspection-only negation — method-locked colours and controls.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Multi-format generated examples (JSON, YAML, XML, form-urlencoded, …) that follow the active branch; named OpenAPI <code class="inline">examples</code> on their own tab.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, bare <code class="inline">$ref</code> combinators, webhooks — plus cycle-safe recursion.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Every schema modal is deep-linkable and shareable; representation scope is per-schema or global from Settings.</span></li>
         </ul>
       </div>
-      <div class="fr-media reveal d2"><img src="assets/opendoc-schemas.png" alt="Schema explorer showing nested object structures" loading="lazy"/></div>
+      <div class="fr-media reveal d2"><img src="assets/opendoc-schemas.png" alt="SchemaViewer showing nested object structures and combinator rails" loading="lazy"/></div>
     </div>
 
     <div class="feature-row rev" id="notes">
@@ -190,30 +191,50 @@ PAGES["features.html"] = (
       </div>
       <div class="info-card reveal d2" id="workspace">
         <h3><i class="ph ph-squares-four"></i>Tabbed workspace</h3>
-        <p>Overview, search, schema explorer, about and assistant open as tabs beside endpoints — preview/pin, close, reorder, middle-click, context menu. Like an IDE, because it is one.</p>
+        <p>Overview, search, schema explorer, settings, about and assistant open as tabs beside endpoints — preview/pin, close, reorder, middle-click, context menu. Like an IDE, because it is one.</p>
         <span class="mono-tag">tabs · split view · deep links</span>
       </div>
-      <div class="info-card reveal">
+      <div class="info-card reveal" id="settings">
+        <h3><i class="ph ph-gear-six"></i>Settings page</h3>
+        <p>A full settings tab with deep links for General, Appearance, Navigation, Code viewer and AI — including an in-page theme gallery and schema/example representation scopes.</p>
+        <span class="mono-tag">#/…/settings</span>
+      </div>
+      <div class="info-card reveal d1" id="query">
+        <h3><i class="ph ph-magnifying-glass-plus"></i>OAS 3.2 QUERY</h3>
+        <p>First-class HTTP QUERY (RFC 10008): discovered like other methods, documented with request bodies, and runnable in the browser without weakening GET/HEAD body warnings.</p>
+        <span class="mono-tag">RFC 10008 · body + safe method</span>
+      </div>
+      <div class="info-card reveal d2" id="combinators">
+        <h3><i class="ph ph-git-branch"></i>Field combinators</h3>
+        <p>Nested oneOf, anyOf, allOf and not menus in the code viewer and schema table — exclusive pick, multi-select merge, composition focus with dimming, inspection-only negation.</p>
+        <span class="mono-tag">oneOf · anyOf · allOf · not</span>
+      </div>
+      <div class="info-card reveal" id="yaml-repair">
+        <h3><i class="ph ph-wrench"></i>YAML auto-repair <span class="pill-exp">Experimental</span></h3>
+        <p>When a generator emits flow-style oneOf/anyOf/allOf without sequence brackets, OpenDoc quietly rewrites the text on load so the document can still open.</p>
+        <span class="mono-tag">load-time · non-destructive</span>
+      </div>
+      <div class="info-card reveal d1">
         <h3><i class="ph ph-magnifying-glass"></i>Global search</h3>
-        <p><span class="kbd">Ctrl/⌘ + K</span> searches paths, summaries, tags and schema definitions, with method/tag/security filters synced with the sidebar.</p>
+        <p><span class="kbd">Ctrl/⌘ + K</span> searches paths, summaries, tags and schema definitions — path text is always indexed — with method/tag/security filters synced with the sidebar.</p>
       </div>
-      <div class="info-card reveal d1" id="themes">
+      <div class="info-card reveal d2" id="themes">
         <h3><i class="ph ph-palette"></i>Theme system</h3>
-        <p>15+ hand-picked palettes with per-spec memory and light / dark / system modes. Notes, badges and code views stay legible in every one.</p>
+        <p>15+ hand-picked palettes with per-spec memory and light / dark / system modes. Notes, badges and code views stay legible in every one — pick them from Settings.</p>
       </div>
-      <div class="info-card reveal d2">
+      <div class="info-card reveal">
         <h3><i class="ph ph-eye-slash"></i>Hidden endpoints</h3>
         <p>Move endpoints into a muted folder without touching the OpenAPI source — unhide individually or restore all from navigation settings.</p>
       </div>
-      <div class="info-card reveal">
+      <div class="info-card reveal d1">
         <h3><i class="ph ph-shield-check"></i>Runner Compatibility report</h3>
         <p>An honest, per-endpoint matrix of what the browser can and cannot do for a given API — CORS constraints, credentialed requests and cookie behavior, stated before you waste a minute.</p>
       </div>
-      <div class="info-card reveal d1">
+      <div class="info-card reveal d2">
         <h3><i class="ph ph-arrows-clockwise"></i>Spec caching &amp; refresh</h3>
         <p>Remote specs cache in IndexedDB and revalidate with <code class="inline">If-None-Match</code> / <code class="inline">If-Modified-Since</code>. One button drops the cache and re-fetches — or re-reads your local file from disk.</p>
       </div>
-      <div class="info-card reveal d2">
+      <div class="info-card reveal">
         <h3><i class="ph ph-clock-counter-clockwise"></i>Local history</h3>
         <p>Every file you open and every remote URL you load lands in a persistent, browser-local history — reopen yesterday's spec in one click, no re-upload.</p>
       </div>
@@ -228,7 +249,7 @@ PAGES["features.html"] = (
 # ────────────────────────── GUIDE ──────────────────────────
 PAGES["guide.html"] = (
     "Guide — OpenDoc UI",
-    "The complete OpenDoc UI user guide: loading specifications, reading documentation, running requests, authentication, schemas, code generation, notes, hidden endpoints, deep links, caching, persistence, the AI assistant, themes and keyboard shortcuts.",
+    "The complete OpenDoc UI user guide: loading specifications, reading documentation, running requests, authentication, SchemaViewer, settings, code generation, notes, hidden endpoints, deep links, caching, persistence, the AI assistant, themes and keyboard shortcuts.",
     page_hero("User guide",
         'From zero to <span class="h-accent">fluent</span>,<br/>one honest manual',
         "Everything you need to work with OpenDoc UI day to day — loading, reading, running, generating, remembering and sharing.")
@@ -244,6 +265,7 @@ PAGES["guide.html"] = (
       <a href="#running">Running requests</a>
       <a href="#auth">Authentication</a>
       <a href="#schemas">Working with schemas</a>
+      <a href="#settings">Settings</a>
       <a href="#codegen">Generating code</a>
       <a href="#notes">Notes &amp; trash</a>
       <a href="#hidden">Hidden endpoints</a>
@@ -269,7 +291,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
         <h3>1 · Local files</h3>
         <p>With no configuration at all, OpenDoc UI runs in <b>local mode</b>: open files straight from your device and get a persistent history of everything you opened. When the browser supports file handles, the refresh button can even re-read the file from disk.</p>
         <h3>2 · Remote URLs</h3>
-        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional downloader proxies (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable.</p>
+        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional downloader proxies (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable. If a generator emits invalid flow-style <code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code> without sequence brackets, an <b>experimental</b> load-time YAML repair rewrites just enough text for the document to parse — originals on disk are never modified.</p>
         <h3>3 · Configured specifications</h3>
         <p>Deployments can ship a curated catalog through <code class="inline">public/config.json</code> or <code class="inline">window.INITIAL_CONFIG</code>. The hybrid option combines a configured catalog with local file opening — teams get the official specs <em>and</em> the freedom to inspect anything else.</p>
       </div>
@@ -282,8 +304,8 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="reading">
         <h2><i class="ph-fill ph-book-open-text"></i>Reading the documentation</h2>
-        <p>The sidebar groups endpoints by tag — with nested groups, counts, protection and deprecation indicators — and respects your sorting and route-display preferences. Each operation opens a documentation view that leaves nothing hidden: parameter tables with types, formats, patterns and examples; request-body context with encoding selection and explicit <code class="inline">oneOf</code>/<code class="inline">anyOf</code> branch chips; and a response matrix with per-status examples, schema tables and enum values.</p>
-        <p>Pattern constraints carry a built-in regex tester, so you can validate candidate values against the exact expression before ever sending a request. Recursive and mutually referencing schemas render cycle-safe, with recursive branches marked by a loop icon at their boundary.</p>
+        <p>The sidebar groups endpoints by tag — nested groups via <code class="inline">x-tagGroups</code>, counts, protection and deprecation indicators — and respects sorting, route-display and natural name order. Each operation opens a documentation view that leaves nothing hidden: parameter tables with types, formats, <code class="inline">style</code>/<code class="inline">explode</code> serialization, patterns and examples; request bodies and responses through the shared <b>SchemaViewer</b> (Format media type, generated examples, named OpenAPI examples, body-level combinator rails); and a response matrix with a scroll-aware code navigator and deep links like <code class="inline">#response-200</code>.</p>
+        <p>Pattern constraints carry a built-in regex tester and a serializer playground that can hand values to the Runner. Recursive and mutually referencing schemas render cycle-safe, with recursive branches marked by a loop icon at their boundary. On phones, a pinned response pill follows what you are reading and opens a sheet to jump between codes.</p>
       </div>
 
       <div class="doc-sec prose" id="workspace">
@@ -293,7 +315,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="running">
         <h2><i class="ph-fill ph-flask"></i>Running requests</h2>
-        <p>Switch any endpoint to the <b>API Runner</b> tab. Inputs are generated from the specification: path/query/header/cookie parameters, a recursive form editor for bodies (or raw JSON/YAML/XML with format-aware validation), and multipart file uploads. Press <span class="kbd">Ctrl/⌘ + Enter</span> to send; inspect status, headers, body and history below, cancel long requests, and keep per-endpoint inputs saved between sessions.</p>
+        <p>Switch any endpoint to the <b>API Runner</b> tab. Inputs are generated from the specification: path/query/header/cookie parameters (serialized with the declared <code class="inline">style</code>/<code class="inline">explode</code>), a live final URL, a recursive form editor for bodies (or raw JSON/YAML/XML with format-aware validation), and multipart file uploads. OAS 3.2 <b>QUERY</b> operations send a body where the browser allows it — GET and HEAD still warn if a body is present. Press <span class="kbd">Ctrl/⌘ + Enter</span> to send; inspect status, headers, body and history below, cancel long requests (including binary streams), and keep per-endpoint inputs saved between sessions.</p>
         <p>Requests use the browser's fetch API, so standard CORS rules apply. The <b>Runner Compatibility</b> report — one click from the overview — states per endpoint what the browser can and cannot do for the API, before you waste time guessing.</p>
       </div>
 
@@ -304,7 +326,12 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="schemas">
         <h2><i class="ph-fill ph-diamonds-four"></i>Working with schemas</h2>
-        <p>Open the Schema Explorer from the sidebar or click any schema reference in the docs. Composed (<code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code>) and recursive structures render cycle-safe; modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions — are handled explicitly. Multiple schemas can be open at once, and the set is encoded in the URL (<code class="inline">?schemas=Pet,Order</code>) so the exact view is shareable.</p>
+        <p>Open the Schema Explorer from the sidebar, open a schema modal from any reference, or stay inside an endpoint — request bodies, responses and the modal share one <b>SchemaViewer</b>. Composed structures use body-level rails and <b>field-level</b> menus for nested <code class="inline">oneOf</code> (exclusive), <code class="inline">anyOf</code> (multi-select merge with All), <code class="inline">allOf</code> (focus with dimming) and <code class="inline">not</code> (inspection only). Generated examples follow the active branch across formats; named OpenAPI <code class="inline">examples</code> live on their own tab. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, bare <code class="inline">$ref</code> combinators — are handled explicitly. Multiple schemas can be open at once, and the set is encoded in the URL (<code class="inline">?schemas=Pet,Order</code>) so the exact view is shareable.</p>
+      </div>
+
+      <div class="doc-sec prose" id="settings">
+        <h2><i class="ph-fill ph-gear-six"></i>Settings</h2>
+        <p>Open the <b>Settings</b> tab from the workspace (deep link <code class="inline">#/&lt;spec&gt;/settings#&lt;section&gt;</code>). Sections cover General, Appearance (theme gallery), Navigation, Code viewer and AI. Representation defaults choose whether documentation and schema modals remember example vs schema <b>per schema</b> or globally. Tables can become cards when a pane runs out of room; preferences prefer IndexedDB with a localStorage emergency fallback only.</p>
       </div>
 
       <div class="doc-sec prose" id="codegen">
@@ -339,6 +366,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
               <tr><td><span class="mono">#/parsable/&lt;key&gt;/api/&lt;endpointId&gt;</span></td><td class="wrap">A specific endpoint in a permanent tab</td></tr>
               <tr><td><span class="mono">#/…/schema-explorer?schemas=Pet</span></td><td class="wrap">Schema Explorer with schemas open</td></tr>
               <tr><td><span class="mono">#/…/notes</span> · <span class="mono">#/…/compatibility</span></td><td class="wrap">Local notes · Runner compatibility matrix</td></tr>
+              <tr><td><span class="mono">#/…/settings#appearance</span></td><td class="wrap">Settings page (section deep links)</td></tr>
               <tr><td><span class="mono">#/…/about</span> · <span class="mono">#/…/assistant</span></td><td class="wrap">About page · AI assistant</td></tr>
             </tbody>
           </table>
@@ -353,7 +381,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 
       <div class="doc-sec prose" id="themes">
         <h2><i class="ph-fill ph-palette"></i>Themes &amp; appearance</h2>
-        <p>Choose from 15+ hand-picked palettes in the theme menu; light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
+        <p>Choose from 15+ hand-picked palettes in the <b>Settings → Appearance</b> gallery (the old theme-only modal is gone); light, dark and system modes apply on top. The choice is remembered per specification, so each API keeps its own look. Notes, method badges and code views stay legible in every combination.</p>
       </div>
 
       <div class="doc-sec" id="shortcuts">
@@ -395,12 +423,12 @@ PAGES["compatibility.html"] = (
         <tbody>
           <tr><td><span class="mono">openapi: 3.0.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">nullable semantics preserved; parameters, security, callbacks and links rendered</td></tr>
           <tr><td><span class="mono">openapi: 3.1.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">JSON Schema 2020-12 keywords — const, prefixItems, unevaluatedProperties, if/then/else, type unions</td></tr>
-          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, query methods and the newest meta-schema surface</td></tr>
+          <tr><td><span class="mono">openapi: 3.2.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">webhooks, additionalOperations, first-class <b>QUERY</b> (RFC 10008) with bodies, newest meta-schema surface</td></tr>
           <tr><td><span class="mono">swagger: "2.0"</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Complete</span></td><td><span class="pill-soft">Normalized to 3.x</span></td><td><span class="pill-ok"><i class="ph-fill ph-check-circle"></i> Supported</span></td><td class="muted wrap" style="font-size:13.5px">definitions, formData and body parameters, file uploads, collection formats, securityDefinitions</td></tr>
         </tbody>
       </table>
     </div></div>
-    <p class="muted reveal" style="margin-top:16px;font-size:14px">Multi-file documents resolve in-memory: local reference graphs, same-origin external references and bundled documents are all handled, with clear diagnostics for anything unresolved.</p>
+    <p class="muted reveal" style="margin-top:16px;font-size:14px">Multi-file documents resolve in-memory: local reference graphs, same-origin external references and bundled documents are all handled, with clear diagnostics for anything unresolved. An <span class="pill-exp">Experimental</span> load-time YAML repair can recover flow-style combinators that omit sequence brackets — originals on disk are never rewritten.</p>
 
     <div style="height:70px"></div>
     <div class="section-head">
@@ -599,7 +627,7 @@ PAGES["faq.html"] = (
 {qa("Are my specifications uploaded anywhere?",
     "Never. Local files are parsed in the browser and stored only in your browser's local history. Nothing is uploaded, and the original document is never modified. When you load a remote URL, the browser fetches it directly (or through a proxy you configured) — no third party is involved.")}
 {qa("Which OpenAPI versions are supported?",
-    'OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, webhooks — are rendered and handled explicitly. Multi-file reference graphs resolve in memory.')}
+    'OpenAPI 3.0, 3.1 and 3.2, plus Swagger 2.0, in YAML or JSON. Modern 3.1/3.2 keywords — <code class="inline">const</code>, <code class="inline">prefixItems</code>, <code class="inline">unevaluatedProperties</code>, <code class="inline">if/then/else</code>, type unions, webhooks — are rendered and handled explicitly. OAS 3.2 <b>QUERY</b> (RFC 10008) is first-class in documentation and the Runner. Multi-file reference graphs resolve in memory; experimental YAML auto-repair can open some generator mistakes that omit flow-sequence brackets.')}
 {qa("Does the Runner send requests from my browser?",
     "Yes — that is the point. Requests are composed from the specification and executed with the browser's fetch API against the server you select, so you can test real authentication, parameters and bodies without leaving the documentation. The same CORS rules that apply to any web application apply here, and the Runner Compatibility report states what the browser can and cannot do for a given API.")}
 {qa("How does the AI assistant work, and where do my keys go?",
@@ -608,6 +636,8 @@ PAGES["faq.html"] = (
     'Yes. The application is fully static — copy <code class="inline">dist/</code> to an internal nginx or Apache host, or use the Docker image, and it works offline. Configured specifications can be baked in through <code class="inline">config.json</code> or <code class="inline">window.INITIAL_CONFIG</code>, and local files always work. The only components that need the internet are the optional AI providers and remote URL loading.')}
 {qa("Where are my notes and history stored?",
     "In your browser — IndexedDB first, with a localStorage fallback. Notes, response history, opened-file history, themes and workspace state never leave your machine. Notes export/import as JSON if you want to move or back them up.")}
+{qa("How do oneOf / anyOf / allOf work in the UI?",
+    'Request bodies, responses and the schema modal share one SchemaViewer. Body-level rails pick root branches; field-level menus reach nested properties — exclusive oneOf, multi-select anyOf (empty All is none), allOf focus with dimming, and inspection-only not. Generated examples and the property table follow the active selection across formats.')}
 {qa("Is it really free?",
     'Yes — MIT licensed, no tiers, no telemetry, no account. <a href="https://github.com/omidgfx/opendoc-ui" target="_blank" rel="noreferrer">The source is on GitHub</a>; stars are the only currency accepted.')}
     </div>
