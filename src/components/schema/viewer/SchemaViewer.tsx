@@ -580,30 +580,44 @@ export default function SchemaViewer({
         }
 
         if (composition && allOfBranches.length > 0) {
+            const singleAllOfPart = allOfBranches.length === 1;
             return (
                 <ScrollableRow className="flex min-w-0 w-full items-center gap-1.5">
                     <div className="flex items-center gap-1.5">
-                        <button
-                            type="button"
-                            aria-pressed={allOfFocusIndex === null}
-                            onClick={() => onAllOfFocusIndexChange?.(null)}
-                            className={branchChipClass(allOfFocusIndex === null)}
-                            style={combinatorActiveSurfaceStyle('allOf', allOfFocusIndex === null)}
-                        >
-                            {selectionGlyph('allOf', allOfFocusIndex === null)}
-                            Combined
-                        </button>
+                        {singleAllOfPart ? (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--method-post)]/25 bg-[var(--method-post)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--method-post)]">
+                                <i className="ph ph-info text-[12px]" />
+                                Single schema
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                aria-pressed={allOfFocusIndex === null}
+                                onClick={() => onAllOfFocusIndexChange?.(null)}
+                                className={branchChipClass(allOfFocusIndex === null)}
+                                style={combinatorActiveSurfaceStyle('allOf', allOfFocusIndex === null)}
+                            >
+                                {selectionGlyph('allOf', allOfFocusIndex === null)}
+                                Combined
+                            </button>
+                        )}
 
                         {allOfBranches.map((branch: any, index: number) => {
-                            const active = allOfFocusIndex === index;
+                            const active = singleAllOfPart || allOfFocusIndex === index;
                             const label = branchLabelOf(branch, resolveReference, index);
                             return (
                                 <button
                                     type="button"
                                     key={`allOf-${index}`}
                                     aria-pressed={active}
-                                    onClick={() => onAllOfFocusIndexChange?.(active ? null : index)}
-                                    className={branchChipClass(active, allOfFocusIndex !== null && !active)}
+                                    onClick={() => {
+                                        if (singleAllOfPart) return;
+                                        onAllOfFocusIndexChange?.(active ? null : index);
+                                    }}
+                                    className={branchChipClass(
+                                        active,
+                                        !singleAllOfPart && allOfFocusIndex !== null && !active,
+                                    )}
                                     style={combinatorActiveSurfaceStyle('allOf', active)}
                                 >
                                     <span className="relative flex h-[12px] w-[12px] items-center justify-center">

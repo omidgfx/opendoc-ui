@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {Tip} from '../common/Tooltip';
+import Markdown from '../common/Markdown';
 import type {SchemaBranchChoice} from '../../utils/schema/branchChoices';
 import {
     readSchemaAllOfFocus,
@@ -145,6 +146,53 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                               : kind === 'not'
                                                 ? true
                                                 : (oneOfSelections[choice.path] ?? 0) === option.index;
+                                    if (option.notice) {
+                                        return (
+                                            <div
+                                                key={`${choice.path}:notice:${option.index}`}
+                                                className="flex w-full items-start gap-2 rounded-lg border border-[var(--border)]/70 bg-[var(--background)] px-2.5 py-2 text-left text-[var(--text-muted)]"
+                                            >
+                                                <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+                                                    <i className="ph ph-info text-[14px]" style={{color: meta.color}} />
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-[11px] font-semibold text-[var(--text-heading)]">
+                                                        {option.label}
+                                                    </span>
+                                                    {option.description ? (
+                                                        <span className="mt-0.5 block text-[9px] leading-snug">
+                                                            {option.description}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                    const labelRow = (
+                                        <span className="flex min-w-0 flex-1 items-center gap-1">
+                                            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">
+                                                {option.label}
+                                            </span>
+                                            {option.description ? (
+                                                <Tip
+                                                    content={
+                                                        <div className="markdown-body max-w-[280px] text-left text-[11px] leading-snug">
+                                                            <Markdown text={option.description} />
+                                                        </div>
+                                                    }
+                                                    placement="left"
+                                                >
+                                                    <span
+                                                        className="inline-flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                                                        onClick={event => event.stopPropagation()}
+                                                        onMouseDown={event => event.stopPropagation()}
+                                                    >
+                                                        <i className="ph ph-info text-[12px]" aria-hidden="true" />
+                                                    </span>
+                                                </Tip>
+                                            ) : null}
+                                        </span>
+                                    );
                                     return (
                                         <button
                                             key={`${choice.path}:${option.index}`}
@@ -152,6 +200,7 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                             role="menuitem"
                                             onClick={() => {
                                                 if (kind === 'allOf') {
+                                                    if (option.index < -1) return;
                                                     writeSchemaAllOfFocus(
                                                         selectionKey,
                                                         choice.path,
@@ -180,12 +229,12 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                 setRevision(current => current + 1);
                                             }}
                                             className={clsx(
-                                                'flex w-full cursor-pointer items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors',
+                                                'flex w-full cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors',
                                                 !active && 'text-[var(--text)] hover:bg-[var(--surface-hover)]',
                                             )}
                                             style={combinatorActiveSurfaceStyle(combinatorKind, active)}
                                         >
-                                            <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+                                            <span className="flex h-[14px] w-[14px] shrink-0 items-center justify-center">
                                                 <i
                                                     className={clsx(
                                                         kind === 'not'
@@ -196,14 +245,7 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                     style={active ? {color: meta.color} : undefined}
                                                 />
                                             </span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block text-[11px] font-semibold">{option.label}</span>
-                                                {option.description && (
-                                                    <span className="mt-0.5 block text-[9px] leading-snug text-[var(--text-muted)]">
-                                                        {option.description}
-                                                    </span>
-                                                )}
-                                            </span>
+                                            {labelRow}
                                         </button>
                                     );
                                 })}

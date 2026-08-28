@@ -458,11 +458,22 @@ export default function SchemaPropertiesTable({
                 style={active ? {color: meta.color} : undefined}
             />
         );
+        const singleAllOf = kind === 'allOf' && branches.length <= 1;
         return (
             <div className="flex flex-col gap-1.5">
                 {combinatorTitle(kind, branches.length)}
                 <div className="flex flex-col gap-1.5">
-                    {kind === 'allOf' && (
+                    {singleAllOf ? (
+                        <div className="flex items-start gap-2 rounded-md border border-[var(--method-post)]/20 bg-[var(--method-post)]/5 px-2 py-1.5 text-[10px] leading-snug text-[var(--text-muted)]">
+                            <i className="ph ph-info mt-[1px] text-[12px] text-[var(--method-post)]" />
+                            <span>
+                                This <span className="font-semibold text-[var(--text-heading)]">allOf</span> lists only
+                                one composed schema, so there is nothing to combine or focus. The part below is always
+                                applied.
+                            </span>
+                        </div>
+                    ) : null}
+                    {kind === 'allOf' && !singleAllOf && (
                         <button
                             type="button"
                             onClick={() => updateAllOfFocus(name, null)}
@@ -500,14 +511,14 @@ export default function SchemaPropertiesTable({
                             kind === 'oneOf'
                                 ? selectedOneOf === index
                                 : kind === 'allOf'
-                                  ? focusAllOf === index
+                                  ? singleAllOf || focusAllOf === index
                                   : kind === 'anyOf'
                                     ? anyAllActive || anySelectedIndices.includes(index)
                                     : kind === 'not'
                                       ? true
                                       : false;
                         const refName = sub?.$ref ? getRefName(sub.$ref) : '';
-                        const interactive = kind === 'oneOf' || kind === 'allOf' || kind === 'anyOf';
+                        const interactive = kind === 'oneOf' || (kind === 'allOf' && !singleAllOf) || kind === 'anyOf';
                         return (
                             <label
                                 key={`${name}:${kind}:${index}:${controlScope}`}
@@ -843,6 +854,50 @@ export default function SchemaPropertiesTable({
         return [...renderStatePills(facts), ...renderValidationPills(facts)];
     };
 
+    const fieldExamplePreview = (raw: any, resolved: any): React.ReactNode => {
+        const source = resolved && typeof resolved === 'object' ? resolved : raw;
+        let value: unknown = undefined;
+        let sourceLabel = '';
+        if (source && typeof source === 'object' && source.example !== undefined) {
+            value = source.example;
+            sourceLabel = 'Example';
+        } else if (source && typeof source === 'object' && source.const !== undefined) {
+            value = source.const;
+            sourceLabel = 'Const';
+        } else {
+            try {
+                const mock = getMockSnippetWithMarkers(raw ?? source, null);
+                const text = String(mock?.code ?? '').trim();
+                if (text && text !== '{}' && text !== 'null' && text !== '[]') {
+                    return (
+                        <div className="min-w-0">
+                            <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                Generated example
+                            </div>
+                            <pre className="max-h-28 overflow-auto rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 font-mono text-[10px] leading-snug text-[var(--text-heading)] scrollbar-thin">
+                                {text.length > 400 ? `${text.slice(0, 400)}…` : text}
+                            </pre>
+                        </div>
+                    );
+                }
+            } catch {
+                /* ignore mock failures */
+            }
+            return null;
+        }
+        const text = formatExampleText(value);
+        return (
+            <div className="min-w-0">
+                <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    {sourceLabel}
+                </div>
+                <code className="block max-h-28 overflow-auto rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 font-mono text-[10px] leading-snug text-[var(--text-heading)] select-all scrollbar-thin">
+                    {text}
+                </code>
+            </div>
+        );
+    };
+
     const propertyCells = (name: string, pVal: any) => {
         const facts = propertyFacts(name, pVal);
         const factPills = renderInlineFacts(name, pVal);
@@ -887,7 +942,7 @@ export default function SchemaPropertiesTable({
             ),
             consumer: combinedAction,
             description: (
-                <>
+                <div className="flex min-w-0 flex-col gap-0">
                     {facts.resolved?.description ? (
                         <div className="markdown-body">
                             <Markdown text={facts.resolved.description} />
@@ -895,7 +950,17 @@ export default function SchemaPropertiesTable({
                     ) : (
                         <span className="text-[var(--text-muted)] italic text-[11px]">No description</span>
                     )}
-                </>
+                    {(() => {
+                        const exampleNode = fieldExamplePreview(pVal, facts.resolved);
+                        if (!exampleNode) return null;
+                        return (
+                            <>
+                                <div className="my-2 border-t border-[var(--border)]" />
+                                {exampleNode}
+                            </>
+                        );
+                    })()}
+                </div>
             ),
         };
     };

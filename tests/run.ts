@@ -86,6 +86,7 @@ import {parseSpecDraft} from '@/src/utils/specification/appSpec';
 import {getRawSpecDocument} from '@/src/utils/specification/specSource';
 import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
+import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
 import {
     createEndpointNote,
     ENDPOINT_NOTE_COLORS,
@@ -2051,6 +2052,78 @@ test('flattenTags collapses slash nesting and x-tagGroups into a single folder l
     assert.equal(Object.keys(flat.children['01 Tour/Servers'].children).length, 0);
     assert.equal(Object.keys(flat.children['01 Tour/HTTP methods'].children).length, 0);
 });
+
+test('findFieldBySchemaPath distinguishes nested keys that share a leaf name', () => {
+    const code = `{
+  "venue": {
+    "cover_photo": "venue-cover",
+    "vendor": {
+      "cover_photo": "vendor-cover"
+    }
+  }
+}`;
+    const venueHit = findFieldBySchemaPath(code, 'venue.cover_photo', 'json');
+    const vendorHit = findFieldBySchemaPath(code, 'venue.vendor.cover_photo', 'json');
+    assert.ok(venueHit);
+    assert.ok(vendorHit);
+    assert.notEqual(venueHit!.line, vendorHit!.line);
+    assert.equal(code.split('\n')[venueHit!.line - 1].includes('venue-cover'), true);
+    assert.equal(code.split('\n')[vendorHit!.line - 1].includes('vendor-cover'), true);
+    assert.equal(fieldNameFromSchemaPath('venue.vendor.cover_photo'), 'cover_photo');
+});
+
+test('single-part field allOf drops Combined and exposes a notice option', () => {
+    const schema = {
+        type: 'object',
+        properties: {
+            previous: {
+                allOf: [{$ref: '#/components/schemas/URL'}],
+            },
+            next: {
+                allOf: [{$ref: '#/components/schemas/URL'}, {description: 'also'}],
+            },
+        },
+    };
+    const resolve = (item: any) => {
+        if (item?.$ref === '#/components/schemas/URL') return {type: 'string', format: 'uri', title: 'URL'};
+        return item;
+    };
+    const getRefName = (ref: string) => ref.split('/').pop() || ref;
+    const choices = collectSchemaBranchChoices(schema, resolve, getRefName);
+    const previous = choices.find(choice => choice.path === 'previous' && choice.kind === 'allOf');
+    const next = choices.find(choice => choice.path === 'next' && choice.kind === 'allOf');
+    assert.ok(previous);
+    assert.equal(
+        previous!.options.some(option => option.index === -1),
+        false,
+        'no Combined on single-part allOf',
+    );
+    assert.equal(
+        previous!.options.some(option => option.notice === true),
+        true,
+    );
+    assert.ok(next);
+    assert.equal(
+        next!.options.some(option => option.index === -1),
+        true,
+        'Combined remains for multi-part allOf',
+    );
+    assert.equal(
+        next!.options.some(option => option.notice === true),
+        false,
+    );
+
+    const sample = JSON.stringify({previous: 'https://example.com/p', next: 'https://example.com/n'}, null, 2);
+    const menus = inlineMenusForCode(sample, 'test-scope', choices, 'json').menus;
+    const prevMenu = menus.find(menu => menu.id.includes(':allOf:previous'));
+    assert.ok(prevMenu);
+    assert.equal(
+        prevMenu!.options.some(option => option.notice === true),
+        true,
+    );
+    assert.equal(prevMenu!.activeIndex, 0);
+});
+
 test('creates typed defaults for recursive object and array schemas', () => {
     const schema = {
         type: 'object',

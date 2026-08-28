@@ -7,6 +7,8 @@ export interface SchemaBranchChoiceOption {
     index: number;
     label: string;
     description?: string;
+    /** Non-interactive notice row (e.g. single-part allOf explanation). */
+    notice?: boolean;
 }
 
 export interface SchemaBranchChoice {
@@ -110,20 +112,47 @@ export const collectSchemaBranchChoices = (
         // field menus list every composed part, not a single opaque $ref.
         const allOfParts = expandAllOfBranches(schema, resolveReference);
         const parts = allOfParts.length > 0 ? allOfParts : schema.allOf;
-        choices.push({
-            path,
-            title: path,
-            kind: 'allOf',
-            // Leading "Combined" matches the body-level allOf rail (null focus).
-            options: [
-                {
-                    index: -1,
-                    label: 'Combined',
-                    description: 'Show every field from all composed parts',
-                },
-                ...parts.map((variant: any, index: number) => optionOf(variant, index, resolveReference, getRefName)),
-            ],
-        });
+        // Single-part allOf: no Combined control — composition has nothing to
+        // choose between. Surface a notice option so the menu still explains
+        // the shape (horizontal body rail does the same).
+        if (parts.length <= 1) {
+            const only = parts[0];
+            const onlyOption = only
+                ? optionOf(only, 0, resolveReference, getRefName)
+                : {index: 0, label: 'Schema', description: ''};
+            choices.push({
+                path,
+                title: path,
+                kind: 'allOf',
+                options: [
+                    {
+                        index: -2,
+                        label: 'Single schema',
+                        description:
+                            'This allOf lists only one composed schema, so there is nothing to combine or focus. The part below is always applied.',
+                        notice: true,
+                    },
+                    onlyOption,
+                ],
+            });
+        } else {
+            choices.push({
+                path,
+                title: path,
+                kind: 'allOf',
+                // Leading "Combined" matches the body-level allOf rail (null focus).
+                options: [
+                    {
+                        index: -1,
+                        label: 'Combined',
+                        description: 'Show every field from all composed parts',
+                    },
+                    ...parts.map((variant: any, index: number) =>
+                        optionOf(variant, index, resolveReference, getRefName),
+                    ),
+                ],
+            });
+        }
     }
     if (path && schema.not && typeof schema.not === 'object' && !Array.isArray(schema.not)) {
         // Single inspection option — `not` has no exclusive/multi pick.
