@@ -316,13 +316,13 @@ the path the app fetches on boot). The file describes every spec the deployment 
 
 Supported keys per entry:
 
-| Key        | Type    | Description                                                                                                                                         |
-| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS). |
-| `title`    | string  | Display name in the selector and navbar. Defaults to the object key.                                                                                |
+| Key        | Type    | Description                                                                                                                                                                     |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`      | string  | Where to fetch the spec from. Relative paths resolve against the site root; absolute URLs are fetched directly (the remote server must allow CORS).                             |
+| `title`    | string  | Display name in the selector and navbar. Defaults to the object key.                                                                                                            |
 | `theme`    | string  | Theme **tag** (slug) applied when this spec is opened, e.g. `dracula` or `persian-red`. Display names still resolve. Defaults to the file-level `theme` / first built-in theme. |
-| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                        |
-| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                  |
+| `isCustom` | boolean | Marks the entry as inline (implies `rawSpec` is the source).                                                                                                                    |
+| `rawSpec`  | string  | The full spec document as a string (JSON or YAML).                                                                                                                              |
 
 The **first entry** is selected on first visit; afterwards the app remembers the last selection,
 and an explicit clean route or legacy hash deep link is the source of truth.

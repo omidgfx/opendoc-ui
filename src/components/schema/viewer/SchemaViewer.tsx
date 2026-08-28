@@ -889,13 +889,11 @@ export default function SchemaViewer({
                                   <ScrollableRow className="flex min-w-0 w-full items-center gap-1.5">
                                       <div className="flex items-center gap-2">
                                           {requiredFieldNames.map(name => (
-                                              <span
-                                                  key={name}
-                                                  className="shrink-0 max-w-[180px] truncate font-mono text-[10px] font-bold text-[var(--method-delete)]"
-                                                  title={`${name} is required`}
-                                              >
-                                                  {name}
-                                              </span>
+                                              <Tip key={name} content={`${name} is required`}>
+                                                  <span className="shrink-0 max-w-[180px] truncate font-mono text-[10px] font-bold text-[var(--method-delete)]">
+                                                      {name}
+                                                  </span>
+                                              </Tip>
                                           ))}
                                       </div>
                                   </ScrollableRow>
