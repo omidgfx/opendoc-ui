@@ -253,7 +253,7 @@ export default function Tip({
                                       maxWidth: 'min(420px, calc(100vw - 16px))',
                                   }
                         }
-                        className={`fixed z-[10000] w-max whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl ${position ? 'tooltip-fade-in' : ''} ${effectiveInteractive ? 'pointer-events-auto max-h-[min(440px,calc(100vh-16px))] overflow-y-auto select-text' : 'pointer-events-none select-none'} ${tooltipThemeClass}`}
+                        className={`fixed z-[1000000] w-max whitespace-normal break-words rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-snug shadow-2xl ${position ? 'tooltip-fade-in' : ''} ${effectiveInteractive ? 'pointer-events-auto max-h-[min(440px,calc(100vh-16px))] overflow-y-auto select-text' : 'pointer-events-none select-none'} ${tooltipThemeClass}`}
                     >
                         {closable ? (
                             <div className="flex items-start gap-1.5">

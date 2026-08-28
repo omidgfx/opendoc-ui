@@ -454,6 +454,8 @@ export default function CodeViewer({
             const target = event.target as Node;
             // Portaled menu is outside the viewer; keep it open when pressing inside.
             if (menuRef.current?.contains(target)) return;
+            // Description tips portal above the menu — don't dismiss on tip interaction.
+            if (target instanceof Element && target.closest('[role="tooltip"]')) return;
             // Let the field handle's own onClick toggle — don't pre-dismiss here or the
             // subsequent click would reopen the menu and make it feel stuck.
             for (const handle of handleRefs.current.values()) {
@@ -538,16 +540,9 @@ export default function CodeViewer({
                                       {option.label}
                                   </span>
                                   {option.description ? (
-                                      <Tip
-                                          content={
-                                              <div className="markdown-body max-w-[280px] text-left text-[11px] leading-snug">
-                                                  <Markdown text={option.description} />
-                                              </div>
-                                          }
-                                          placement="left"
-                                      >
+                                      <Tip content={<Markdown text={option.description} />} placement="left">
                                           <span
-                                              className="inline-flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                                              className="inline-flex size-4 shrink-0 items-center justify-center"
                                               onClick={event => event.stopPropagation()}
                                               onMouseDown={event => event.stopPropagation()}
                                           >

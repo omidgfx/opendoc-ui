@@ -174,16 +174,9 @@ export default function SchemaOneOfMenuButton({selectionKey, choices, className}
                                                 {option.label}
                                             </span>
                                             {option.description ? (
-                                                <Tip
-                                                    content={
-                                                        <div className="markdown-body max-w-[280px] text-left text-[11px] leading-snug">
-                                                            <Markdown text={option.description} />
-                                                        </div>
-                                                    }
-                                                    placement="left"
-                                                >
+                                                <Tip content={<Markdown text={option.description} />} placement="left">
                                                     <span
-                                                        className="inline-flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                                                        className="inline-flex size-4 shrink-0 items-center justify-center"
                                                         onClick={event => event.stopPropagation()}
                                                         onMouseDown={event => event.stopPropagation()}
                                                     >
