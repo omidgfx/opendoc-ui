@@ -846,38 +846,52 @@ export default function SchemaViewer({
             </div>
 
             {(requiredFieldNames.length > 0 || branchRailNode || resolvedEffective?.description) && (
-                <div className="min-w-0">
-                    <div className="space-y-3 border-t border-[var(--border)] bg-[var(--surface)]/40 px-3 py-3">
-                        {requiredFieldNames.length > 0 ? (
-                            <div className="min-w-0">
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <span className="inline-flex shrink-0 items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider text-[var(--method-delete)]">
-                                        <i className="ph ph-asterisk text-[11px]" />
-                                        Required
-                                    </span>
-                                    <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
-                                        <div className="flex items-center gap-2">
-                                            {requiredFieldNames.map(name => (
-                                                <span
-                                                    key={name}
-                                                    className="shrink-0 max-w-[180px] truncate font-mono text-[10px] font-bold text-[var(--method-delete)]"
-                                                    title={`${name} is required`}
-                                                >
-                                                    {name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </ScrollableRow>
-                                </div>
+                <div className="min-w-0 border-t border-[var(--border)] bg-[var(--surface)]/40">
+                    {requiredFieldNames.length > 0 ? (
+                        <div className="min-w-0 px-3 py-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <span className="inline-flex shrink-0 items-center gap-1 font-sans text-[10px] font-bold uppercase tracking-wider text-[var(--method-delete)]">
+                                    <i className="ph ph-asterisk text-[11px]" />
+                                    Required
+                                </span>
+                                <ScrollableRow className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <div className="flex items-center gap-2">
+                                        {requiredFieldNames.map(name => (
+                                            <span
+                                                key={name}
+                                                className="shrink-0 max-w-[180px] truncate font-mono text-[10px] font-bold text-[var(--method-delete)]"
+                                                title={`${name} is required`}
+                                            >
+                                                {name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </ScrollableRow>
                             </div>
-                        ) : null}
-                        {branchRailNode ? <div className="min-w-0">{branchRailNode}</div> : null}
-                        {resolvedEffective?.description && (
-                            <div className="text-xs leading-relaxed text-[var(--text)]">
-                                <Markdown text={resolvedEffective.description} />
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : null}
+                    {branchRailNode ? (
+                        <div
+                            className={
+                                requiredFieldNames.length > 0
+                                    ? 'min-w-0 border-t border-[var(--border)] px-3 py-3'
+                                    : 'min-w-0 px-3 py-3'
+                            }
+                        >
+                            {branchRailNode}
+                        </div>
+                    ) : null}
+                    {resolvedEffective?.description && (
+                        <div
+                            className={
+                                requiredFieldNames.length > 0 || branchRailNode
+                                    ? 'border-t border-[var(--border)] px-3 py-3 text-xs leading-relaxed text-[var(--text)]'
+                                    : 'px-3 py-3 text-xs leading-relaxed text-[var(--text)]'
+                            }
+                        >
+                            <Markdown text={resolvedEffective.description} />
+                        </div>
+                    )}
                 </div>
             )}
         </div>
