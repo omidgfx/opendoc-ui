@@ -809,14 +809,15 @@ export default function Sidebar(props: SidebarProps) {
                             </Tip>
                         </div>
                     ) : (
-                        <div
-                            className="flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-muted)] opacity-70"
-                            title="This OpenAPI document does not declare any servers"
-                        >
-                            <i className="ph ph-hard-drives text-[12px] shrink-0" />
-                            <span className="font-semibold uppercase tracking-wider">No servers</span>
-                            <span className="font-normal normal-case tracking-normal truncate">· none declared</span>
-                        </div>
+                        <Tip content="This OpenAPI document does not declare any servers">
+                            <div className="flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-muted)] opacity-70">
+                                <i className="ph ph-hard-drives text-[12px] shrink-0" />
+                                <span className="font-semibold uppercase tracking-wider">No servers</span>
+                                <span className="font-normal normal-case tracking-normal truncate">
+                                    · none declared
+                                </span>
+                            </div>
+                        </Tip>
                     )}
                 </div>
             )}
