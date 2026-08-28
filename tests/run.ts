@@ -88,6 +88,7 @@ import {parseEmojis} from '@/src/features/emoji/index';
 import {buildTagTree, endpointMatchesSidebarFilter, normalizeSidebarConfig} from '@/src/utils/sidebar/tree';
 import {findFieldBySchemaPath, fieldNameFromSchemaPath} from '@/src/utils/schema/codeSyntax';
 import {buildCodeLinePaths, pathStylesForEncoding} from '@/src/utils/schema/codeLinePath';
+import {highlightPathAccessor} from '@/src/components/common/CodeViewer';
 import {
     createEndpointNote,
     ENDPOINT_NOTE_COLORS,
@@ -2106,6 +2107,21 @@ test('buildCodeLinePaths maps JSON lines to JSONPath and PHP accessors', () => {
 
     const phpObj = buildCodeLinePaths(phpSource, 'php-array', 'payload', 'php-object');
     assert.equal(phpObj.paths[2], '$payload->venue->cover_photo');
+});
+
+test('highlightPathAccessor paints path tokens with Prism token classes', () => {
+    const json = highlightPathAccessor('$.error.code', 'jsonpath');
+    assert.ok(json.includes('token keyword') || json.includes('token'), json);
+    assert.ok(json.includes('token property'), json);
+    assert.ok(json.includes('token punctuation'), json);
+
+    const optional = highlightPathAccessor("payload?.['error']?.['code']", 'js-optional-bracket');
+    assert.ok(optional.includes('token operator'), optional);
+    assert.ok(optional.includes('token string'), optional);
+
+    const php = highlightPathAccessor("$payload['error']['code']", 'php-array');
+    assert.ok(php.includes('token variable'), php);
+    assert.ok(php.includes('token string'), php);
 });
 
 test('pathStylesForEncoding offers multiple walkers per encoding', () => {

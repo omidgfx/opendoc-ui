@@ -98,36 +98,164 @@ interface CodeViewerProps {
     dimmedLines?: number[];
 }
 
-/** Prism language for a path-style accessor string. */
-const prismLanguageForPathStyle = (styleId: string | null | undefined): string => {
-    switch (styleId) {
-        case 'php-array':
-        case 'php-object':
-            return 'php';
-        case 'python-dict':
-        case 'python-get':
-            return 'python';
-        case 'go-map':
-            return 'go';
-        case 'csharp-index':
-            return 'csharp';
-        case 'java-map':
-        case 'java-path':
-            return 'clike';
-        case 'ruby-hash':
-        case 'ruby-dig':
-            return 'ruby';
-        case 'xpath':
-        case 'form-key':
-            return 'markup';
-        case 'jsonpath':
-        case 'js-dot':
-        case 'js-bracket':
-        case 'js-optional-dot':
-        case 'js-optional-bracket':
-        default:
-            return 'javascript';
+/**
+ * Highlight a copyable path accessor using the same Prism token classes as
+ * CodeViewer (property / string / number / punctuation / operator / variable /
+ * function / keyword). Path styles are short expressions, not full programs, so
+ * a dedicated lexer beats raw Prism grammars (JSONPath looked plain).
+ */
+const escapeHtml = (value: string): string => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const spanToken = (type: string, text: string): string => `<span class="token ${type}">${escapeHtml(text)}</span>`;
+
+export const highlightPathAccessor = (path: string, styleId?: string | null): string => {
+    const source = String(path ?? '');
+    if (!source) return '';
+
+    // Prefer a structured walk for common accessor shapes.
+    const out: string[] = [];
+    let i = 0;
+
+    const peek = (n = 0) => source[i + n] || '';
+    const startsWith = (s: string) => source.startsWith(s, i);
+
+    // Leading root: $, $name, name, /
+    if (source[0] === '$') {
+        // PHP $var or JSONPath $
+        let j = 1;
+        while (j < source.length && /[A-Za-z0-9_]/.test(source[j])) j += 1;
+        if (j > 1) {
+            out.push(spanToken('variable', source.slice(0, j)));
+            i = j;
+        } else {
+            out.push(spanToken('keyword', '$'));
+            i = 1;
+        }
     }
+
+    while (i < source.length) {
+        // Optional chain ?.
+        if (startsWith('?.')) {
+            out.push(spanToken('operator', '?.'));
+            i += 2;
+            continue;
+        }
+        // PHP object ->
+        if (startsWith('->')) {
+            out.push(spanToken('operator', '->'));
+            i += 2;
+            continue;
+        }
+        // Ruby dig / Java get / at calls: .dig( .get( .at(
+        if (source[i] === '.' && /[A-Za-z_]/.test(peek(1))) {
+            // Could be .property or .method(
+            let j = i + 1;
+            while (j < source.length && /[A-Za-z0-9_]/.test(source[j])) j += 1;
+            const name = source.slice(i + 1, j);
+            const isCall = source[j] === '(';
+            out.push(spanToken('punctuation', '.'));
+            out.push(spanToken(isCall ? 'function' : 'property', name));
+            i = j;
+            continue;
+        }
+        if (source[i] === '.') {
+            out.push(spanToken('punctuation', '.'));
+            i += 1;
+            continue;
+        }
+        // XPath /
+        if (source[i] === '/') {
+            out.push(spanToken('punctuation', '/'));
+            i += 1;
+            continue;
+        }
+        // Bracket [ ... ]
+        if (source[i] === '[') {
+            out.push(spanToken('punctuation', '['));
+            i += 1;
+            // Ruby symbol :name
+            if (source[i] === ':') {
+                let j = i + 1;
+                if (source[j] === "'" || source[j] === '"') {
+                    const q = source[j];
+                    j += 1;
+                    while (j < source.length && source[j] !== q) {
+                        if (source[j] === '\\') j += 2;
+                        else j += 1;
+                    }
+                    if (source[j] === q) j += 1;
+                    out.push(spanToken('symbol', source.slice(i, j)));
+                    i = j;
+                } else {
+                    while (j < source.length && /[A-Za-z0-9_]/.test(source[j])) j += 1;
+                    out.push(spanToken('symbol', source.slice(i, j)));
+                    i = j;
+                }
+                continue;
+            }
+            // String key
+            if (source[i] === "'" || source[i] === '"') {
+                const q = source[i];
+                let j = i + 1;
+                while (j < source.length && source[j] !== q) {
+                    if (source[j] === '\\') j += 2;
+                    else j += 1;
+                }
+                if (source[j] === q) j += 1;
+                out.push(spanToken('string', source.slice(i, j)));
+                i = j;
+                continue;
+            }
+            // Number index
+            if (/[0-9]/.test(source[i] || '')) {
+                let j = i;
+                while (j < source.length && /[0-9]/.test(source[j])) j += 1;
+                out.push(spanToken('number', source.slice(i, j)));
+                i = j;
+                continue;
+            }
+            continue;
+        }
+        if (source[i] === ']') {
+            out.push(spanToken('punctuation', ']'));
+            i += 1;
+            continue;
+        }
+        if (source[i] === '(' || source[i] === ')' || source[i] === ',') {
+            out.push(spanToken('punctuation', source[i]));
+            i += 1;
+            // After comma, allow space
+            while (source[i] === ' ') {
+                out.push(' ');
+                i += 1;
+            }
+            continue;
+        }
+        // Bare identifier (property after ?. or root name)
+        if (/[A-Za-z_]/.test(source[i])) {
+            let j = i;
+            while (j < source.length && /[A-Za-z0-9_]/.test(source[j])) j += 1;
+            const name = source.slice(i, j);
+            // form keys / bare roots
+            const isCall = source[j] === '(';
+            out.push(spanToken(isCall ? 'function' : 'property', name));
+            i = j;
+            continue;
+        }
+        // Ruby :symbol outside brackets
+        if (source[i] === ':' && /[A-Za-z_]/.test(peek(1))) {
+            let j = i + 1;
+            while (j < source.length && /[A-Za-z0-9_]/.test(source[j])) j += 1;
+            out.push(spanToken('symbol', source.slice(i, j)));
+            i = j;
+            continue;
+        }
+        // Fallback single char
+        out.push(escapeHtml(source[i]));
+        i += 1;
+    }
+
+    return out.join('');
 };
 
 export function highlightCodeString(code: string, language: string): string {
@@ -412,7 +540,7 @@ export default function CodeViewer({
     const selectedPath = linePaths && selectedLine ? pathForLine(linePaths, selectedLine) : '';
     const selectedPathHtml = useMemo(() => {
         if (!selectedPath) return '';
-        return highlightCodeString(selectedPath, prismLanguageForPathStyle(activePathStyleId));
+        return highlightPathAccessor(selectedPath, activePathStyleId);
     }, [selectedPath, activePathStyleId]);
 
     useEffect(() => {
@@ -741,7 +869,7 @@ export default function CodeViewer({
 
             {pathEncodingId ? (
                 <div
-                    className="group/path-nav flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5"
+                    className="group/path-nav flex h-10 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3"
                     onClick={event => event.stopPropagation()}
                     onMouseDown={event => event.stopPropagation()}
                 >
@@ -750,47 +878,50 @@ export default function CodeViewer({
                         onChange={value => setPathStyleId(value as CodePathStyleId)}
                         options={pathStyleOptions}
                         className="w-auto max-w-[9.5rem] shrink-0"
-                        triggerClassName="flex w-auto min-w-0 items-center justify-between gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans font-black uppercase tracking-wider cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none"
+                        triggerClassName="flex h-7 w-auto min-w-0 items-center justify-between gap-1 px-1.5 rounded-md text-[10px] font-sans font-black uppercase tracking-wider cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none"
                         ariaLabel="Path accessor style"
                     />
-                    <div className="flex min-w-0 flex-1 items-center gap-1">
-                        <div className="min-w-0 flex-1">
+                    <div className="flex h-7 min-w-0 flex-1 items-center gap-1">
+                        <div className="flex h-7 min-w-0 flex-1 items-center overflow-hidden">
                             {selectedPath ? (
-                                <ScrollableRow className="font-mono text-[11px] leading-normal">
+                                <ScrollableRow className="font-mono text-[11px] leading-[18px]">
                                     <code
                                         className="select-all whitespace-nowrap text-[var(--text-heading)]"
                                         dangerouslySetInnerHTML={{__html: selectedPathHtml}}
                                     />
                                 </ScrollableRow>
                             ) : (
-                                <span className="font-sans text-[10px] font-medium italic text-[var(--text-muted)]">
+                                <span className="font-sans text-[10px] font-medium italic leading-[18px] text-[var(--text-muted)]">
                                     Click a line to inspect its path
                                 </span>
                             )}
                         </div>
-                        {selectedPath ? (
-                            <Tip content={pathCopied ? 'Copied' : 'Copy path'}>
-                                <button
-                                    type="button"
-                                    aria-label="Copy path"
-                                    onClick={handleCopyPath}
-                                    className={clsx(
-                                        'flex size-7 shrink-0 items-center justify-center rounded text-xs transition-all cursor-pointer select-none',
-                                        'opacity-0 pointer-events-none group-hover/path-nav:opacity-100 group-hover/path-nav:pointer-events-auto',
-                                        'focus-visible:opacity-100 focus-visible:pointer-events-auto focus:outline-none',
-                                        pathCopied
-                                            ? 'text-[var(--method-get)]'
-                                            : 'text-[var(--text-muted)] hover:text-[var(--primary)]',
-                                    )}
-                                >
-                                    {pathCopied ? (
-                                        <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
-                                    ) : (
-                                        <i className="ph ph-copy text-[11px]" />
-                                    )}
-                                </button>
-                            </Tip>
-                        ) : null}
+                        {/* Always reserve the copy slot so selection does not resize the navbar. */}
+                        <div className="flex size-7 shrink-0 items-center justify-center">
+                            {selectedPath ? (
+                                <Tip content={pathCopied ? 'Copied' : 'Copy path'}>
+                                    <button
+                                        type="button"
+                                        aria-label="Copy path"
+                                        onClick={handleCopyPath}
+                                        className={clsx(
+                                            'flex size-7 items-center justify-center rounded text-xs transition-all cursor-pointer select-none',
+                                            'opacity-0 pointer-events-none group-hover/path-nav:opacity-100 group-hover/path-nav:pointer-events-auto',
+                                            'focus-visible:opacity-100 focus-visible:pointer-events-auto focus:outline-none',
+                                            pathCopied
+                                                ? 'text-[var(--method-get)]'
+                                                : 'text-[var(--text-muted)] hover:text-[var(--primary)]',
+                                        )}
+                                    >
+                                        {pathCopied ? (
+                                            <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
+                                        ) : (
+                                            <i className="ph ph-copy text-[11px]" />
+                                        )}
+                                    </button>
+                                </Tip>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             ) : null}
