@@ -30,7 +30,7 @@ export default function CardOrTable({preferCards, maxWidth, className, cards, ta
     const width = useElementWidth(ref);
     const narrow = width > 0 && width < maxWidth;
     return (
-        <div ref={ref} className={clsx('min-w-0', className)}>
+        <div ref={ref} className={clsx('flex min-h-0 min-w-0 flex-col', className)}>
             {preferCards && narrow ? cards() : table()}
         </div>
     );

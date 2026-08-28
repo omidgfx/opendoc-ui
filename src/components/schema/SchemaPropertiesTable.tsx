@@ -1320,7 +1320,7 @@ export default function SchemaPropertiesTable({
 
     return (
         <>
-            <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in max-h-[calc(100vh-12.5rem)] flex flex-col">
+            <div className="flex max-h-[calc(100vh-12.5rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] animate-in fade-in">
                 {showSchemaWide && schemaWideRows.length > 0 && (
                     <div className="border-b border-[var(--border)] bg-[var(--surface-hover)] px-3 py-2 shrink-0">
                         <div className="flex flex-wrap gap-1.5 items-center">
@@ -1369,13 +1369,13 @@ export default function SchemaPropertiesTable({
                         </div>
                     </div>
                 ) : null}
-                <div className="flex min-w-0 max-h-full min-h-0 flex-col bg-[var(--surface)] flex-1">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--surface)]">
                     <CardOrTable
                         preferCards={preferCards}
                         maxWidth={CARD_LAYOUT_WIDTH}
-                        className="h-full min-h-0"
+                        className="min-h-0 flex-1"
                         cards={() => (
-                            <div className="space-y-2 p-2">
+                            <div className="min-h-0 flex-1 space-y-2 overflow-auto p-2 scrollbar-thin">
                                 {propertyEntries.map(([name, pVal]) => {
                                     const cells = propertyCells(name, pVal);
                                     return (
@@ -1418,8 +1418,10 @@ export default function SchemaPropertiesTable({
                             </div>
                         )}
                         table={() => (
-                            <div className="max-h-[calc(100vh-14rem)] overflow-auto scrollbar-thin">
-                                <table className="w-full min-w-[980px] text-left border-collapse text-xs">
+                            // Scroll inside the flex remainder — nested viewport max-heights were
+                            // clipping rows when schema banners ate into the outer max-h box.
+                            <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
+                                <table className="w-full min-w-[980px] border-collapse text-left text-xs">
                                     <colgroup>
                                         <col style={{width: '220px'}} />
                                         <col style={{width: '360px'}} />
