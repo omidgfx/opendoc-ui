@@ -54,7 +54,7 @@ info:
     name: MIT
     identifier: MIT
   x-logo:
-    url: ../opendoc-logo.svg
+    url: ../assets/opendoc-logo.svg
     altText: OpenDoc UI
     backgroundColor: '#0B1020'
 
