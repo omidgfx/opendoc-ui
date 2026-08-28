@@ -32,6 +32,7 @@ import 'prismjs/components/prism-markup-templating';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-php';
 import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-ruby';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-csharp';
 
@@ -96,6 +97,38 @@ interface CodeViewerProps {
     /** 1-based line numbers rendered at reduced opacity (allOf focus dimming). */
     dimmedLines?: number[];
 }
+
+/** Prism language for a path-style accessor string. */
+const prismLanguageForPathStyle = (styleId: string | null | undefined): string => {
+    switch (styleId) {
+        case 'php-array':
+        case 'php-object':
+            return 'php';
+        case 'python-dict':
+        case 'python-get':
+            return 'python';
+        case 'go-map':
+            return 'go';
+        case 'csharp-index':
+            return 'csharp';
+        case 'java-map':
+        case 'java-path':
+            return 'clike';
+        case 'ruby-hash':
+        case 'ruby-dig':
+            return 'ruby';
+        case 'xpath':
+        case 'form-key':
+            return 'markup';
+        case 'jsonpath':
+        case 'js-dot':
+        case 'js-bracket':
+        case 'js-optional-dot':
+        case 'js-optional-bracket':
+        default:
+            return 'javascript';
+    }
+};
 
 export function highlightCodeString(code: string, language: string): string {
     if (!code) return '';
@@ -377,6 +410,10 @@ export default function CodeViewer({
         return buildCodeLinePaths(displayCode, pathEncodingId, pathRootName, activePathStyleId);
     }, [displayCode, pathEncodingId, pathRootName, activePathStyleId]);
     const selectedPath = linePaths && selectedLine ? pathForLine(linePaths, selectedLine) : '';
+    const selectedPathHtml = useMemo(() => {
+        if (!selectedPath) return '';
+        return highlightCodeString(selectedPath, prismLanguageForPathStyle(activePathStyleId));
+    }, [selectedPath, activePathStyleId]);
 
     useEffect(() => {
         // Reset selection when the example/format changes; keep path style if still valid.
@@ -704,7 +741,7 @@ export default function CodeViewer({
 
             {pathEncodingId ? (
                 <div
-                    className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5"
+                    className="group/path-nav flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5"
                     onClick={event => event.stopPropagation()}
                     onMouseDown={event => event.stopPropagation()}
                 >
@@ -716,34 +753,45 @@ export default function CodeViewer({
                         triggerClassName="flex w-auto min-w-0 items-center justify-between gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans font-black uppercase tracking-wider cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none"
                         ariaLabel="Path accessor style"
                     />
-                    <div className="min-w-0 flex-1">
-                        <ScrollableRow className="font-mono text-[11px] font-semibold text-[var(--text-heading)]">
-                            <span className="select-all">
-                                {selectedPath || (
-                                    <span className="font-sans text-[10px] font-medium italic text-[var(--text-muted)]">
-                                        Click a line to inspect its path
-                                    </span>
-                                )}
-                            </span>
-                        </ScrollableRow>
+                    <div className="flex min-w-0 flex-1 items-center gap-1">
+                        <div className="min-w-0 flex-1">
+                            {selectedPath ? (
+                                <ScrollableRow className="font-mono text-[11px] leading-normal">
+                                    <code
+                                        className="select-all whitespace-nowrap text-[var(--text-heading)]"
+                                        dangerouslySetInnerHTML={{__html: selectedPathHtml}}
+                                    />
+                                </ScrollableRow>
+                            ) : (
+                                <span className="font-sans text-[10px] font-medium italic text-[var(--text-muted)]">
+                                    Click a line to inspect its path
+                                </span>
+                            )}
+                        </div>
+                        {selectedPath ? (
+                            <Tip content={pathCopied ? 'Copied' : 'Copy path'}>
+                                <button
+                                    type="button"
+                                    aria-label="Copy path"
+                                    onClick={handleCopyPath}
+                                    className={clsx(
+                                        'flex size-7 shrink-0 items-center justify-center rounded text-xs transition-all cursor-pointer select-none',
+                                        'opacity-0 pointer-events-none group-hover/path-nav:opacity-100 group-hover/path-nav:pointer-events-auto',
+                                        'focus-visible:opacity-100 focus-visible:pointer-events-auto focus:outline-none',
+                                        pathCopied
+                                            ? 'text-[var(--method-get)]'
+                                            : 'text-[var(--text-muted)] hover:text-[var(--primary)]',
+                                    )}
+                                >
+                                    {pathCopied ? (
+                                        <i className="ph ph-check text-[var(--method-get)] text-[11px]" />
+                                    ) : (
+                                        <i className="ph ph-copy text-[11px]" />
+                                    )}
+                                </button>
+                            </Tip>
+                        ) : null}
                     </div>
-                    <button
-                        type="button"
-                        onClick={handleCopyPath}
-                        disabled={!selectedPath}
-                        className={clsx(
-                            'inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-colors',
-                            selectedPath
-                                ? pathCopied
-                                    ? 'border-[var(--method-get)]/30 bg-[var(--method-get)]/10 text-[var(--method-get)] cursor-pointer'
-                                    : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer'
-                                : 'border-[var(--border)] bg-[var(--background)] text-[var(--text-muted)] opacity-40 cursor-not-allowed',
-                        )}
-                        aria-label="Copy path"
-                    >
-                        <i className={`ph ${pathCopied ? 'ph-check' : 'ph-copy'} text-[12px]`} />
-                        {pathCopied ? 'Copied' : 'Copy'}
-                    </button>
                 </div>
             ) : null}
             <div className="min-w-0">
