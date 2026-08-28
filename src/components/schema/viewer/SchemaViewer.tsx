@@ -718,7 +718,9 @@ export default function SchemaViewer({
 
     const metaRowLabelClass =
         'inline-flex items-center gap-1 whitespace-nowrap font-sans text-[10px] font-bold uppercase tracking-wider';
-    const metaThClass = 'w-0 whitespace-nowrap bg-[var(--background)] px-3 py-2.5 text-left align-middle';
+    // w-px + nowrap: label column shrinks to the longest header; td takes the rest.
+    const metaThClass = 'w-px whitespace-nowrap bg-[var(--background)] px-3 py-2.5 text-left align-middle';
+    // max-w-0 keeps the value column inside the table so ScrollableRow can overflow-x.
     const metaTdClass = 'max-w-0 min-w-0 w-full overflow-hidden bg-[var(--surface)]/40 px-3 py-2.5 align-middle';
 
     const metaRow = (opts: {
@@ -862,11 +864,7 @@ export default function SchemaViewer({
 
     const metaHeader = (
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-sm">
-            <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                    <col className="w-0" />
-                    <col />
-                </colgroup>
+            <table className="w-full border-collapse">
                 <tbody>
                     {metaRow({
                         key: 'schema',
