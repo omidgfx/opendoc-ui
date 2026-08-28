@@ -158,9 +158,16 @@ export function buildTagTree(
         });
     });
     Object.entries(byTag).forEach(([tag, endpoints]) => {
-        const tagParts = config.flattenTags ? [tag] : tag.split('/').filter(Boolean);
-        const groupName = tagGroupByTag.get(tag);
-        const parts = [...(groupName ? [groupName] : []), ...(tagParts.length > 0 ? tagParts : ['General'])];
+        // Flatten collapses both slash-nested tags and x-tagGroups parents into one
+        // folder level — the full tag string is the folder name.
+        let parts: string[];
+        if (config.flattenTags) {
+            parts = [tag || 'General'];
+        } else {
+            const tagParts = tag.split('/').filter(Boolean);
+            const groupName = tagGroupByTag.get(tag);
+            parts = [...(groupName ? [groupName] : []), ...(tagParts.length > 0 ? tagParts : ['General'])];
+        }
         let node = root;
         for (const part of parts) {
             if (!node.children[part]) node.children[part] = {name: part, children: {}, endpoints: []};

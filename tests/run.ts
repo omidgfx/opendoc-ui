@@ -2018,6 +2018,39 @@ test('groups tags through x-tagGroups before normal tag folders', () => {
     assert.equal(tree.children.Commerce.children.Catalog.endpoints[0].path, '/products');
     assert.equal(tree.children.Platform.children.Admin.endpoints[0].path, '/health');
 });
+
+test('flattenTags collapses slash nesting and x-tagGroups into a single folder level', () => {
+    const spec: any = {
+        ...baseSpec,
+        'x-tagGroups': [{name: 'Tour', tags: ['01 Tour/Servers', '01 Tour/HTTP methods']}],
+        paths: {
+            '/servers': {
+                get: {tags: ['01 Tour/Servers'], summary: 'Servers', responses: {'200': {description: 'ok'}}},
+            },
+            '/methods': {
+                get: {tags: ['01 Tour/HTTP methods'], summary: 'Methods', responses: {'200': {description: 'ok'}}},
+            },
+            '/plain': {
+                get: {tags: ['Standalone'], summary: 'Plain', responses: {'200': {description: 'ok'}}},
+            },
+        },
+    };
+    const nested = buildTagTree(spec, normalizeSidebarConfig({flattenTags: false}), undefined, new Set());
+    assert.ok(nested.children.Tour, 'x-tagGroups parent when nested');
+    assert.ok(nested.children.Tour.children['01 Tour'], 'slash parent under group');
+    assert.ok(nested.children.Tour.children['01 Tour'].children.Servers);
+    assert.ok(nested.children.Tour.children['01 Tour'].children['HTTP methods']);
+    assert.equal(nested.children.Standalone.endpoints[0].path, '/plain');
+
+    const flat = buildTagTree(spec, normalizeSidebarConfig({flattenTags: true}), undefined, new Set());
+    assert.equal(flat.children.Tour, undefined, 'no x-tagGroups parent when flattened');
+    assert.equal(flat.children['01 Tour'], undefined, 'no slash parent when flattened');
+    assert.deepEqual(Object.keys(flat.children).sort(), ['01 Tour/HTTP methods', '01 Tour/Servers', 'Standalone']);
+    assert.equal(flat.children['01 Tour/Servers'].endpoints[0].path, '/servers');
+    assert.equal(flat.children['01 Tour/HTTP methods'].endpoints[0].path, '/methods');
+    assert.equal(Object.keys(flat.children['01 Tour/Servers'].children).length, 0);
+    assert.equal(Object.keys(flat.children['01 Tour/HTTP methods'].children).length, 0);
+});
 test('creates typed defaults for recursive object and array schemas', () => {
     const schema = {
         type: 'object',
