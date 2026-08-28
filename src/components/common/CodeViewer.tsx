@@ -427,7 +427,7 @@ export default function CodeViewer({
     pathEncodingId,
     pathRootName,
 }: CodeViewerProps) {
-    const {preferences} = usePreferences();
+    const {preferences, setPreference} = usePreferences();
     const showLineNumbers = showLineNumbersProp && preferences.codeGutterEnabled;
     const visibleMarkers = useMemo(() => {
         if (!lineMarkers?.length) return lineMarkers;
@@ -439,7 +439,10 @@ export default function CodeViewer({
     const [openInlineMenuId, setOpenInlineMenuId] = useState<string | null>(null);
     const [selectedLine, setSelectedLine] = useState<number | null>(null);
     const [pathCopied, setPathCopied] = useState(false);
-    const [pathStyleId, setPathStyleId] = useState<CodePathStyleId | null>(null);
+    const [pathStyleId, setPathStyleId] = useState<CodePathStyleId | null>(() => {
+        const saved = preferences.lastPathStyleId;
+        return saved ? (saved as CodePathStyleId) : null;
+    });
     const [menuPosition, setMenuPosition] = useState<{top: number; left: number; openAbove: boolean} | null>(null);
     const viewerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -554,11 +557,20 @@ export default function CodeViewer({
         setSelectedLine(null);
         setPathCopied(false);
         if (pathEncodingId) {
-            setPathStyleId(current => resolvePathStyleId(pathEncodingId, current));
+            setPathStyleId(current => resolvePathStyleId(pathEncodingId, current || preferences.lastPathStyleId));
         } else {
             setPathStyleId(null);
         }
-    }, [displayCode, pathEncodingId]);
+    }, [displayCode, pathEncodingId, preferences.lastPathStyleId]);
+
+    const handlePathStyleChange = useCallback(
+        (value: string) => {
+            const next = value as CodePathStyleId;
+            setPathStyleId(next);
+            setPreference('lastPathStyleId', next);
+        },
+        [setPreference],
+    );
 
     const handleSelectLine = useCallback(
         (event: React.MouseEvent) => {
@@ -881,7 +893,7 @@ export default function CodeViewer({
                 >
                     <CustomDropdown
                         value={activePathStyleId || defaultPathStyleId(pathEncodingId)}
-                        onChange={value => setPathStyleId(value as CodePathStyleId)}
+                        onChange={handlePathStyleChange}
                         options={pathStyleOptions}
                         className="w-auto max-w-[9.5rem] shrink-0"
                         triggerClassName="flex h-7 w-auto min-w-0 items-center justify-between gap-1 px-1.5 rounded-md text-[10px] font-sans font-black uppercase tracking-wider cursor-pointer border transition-all select-none hover:bg-[var(--background)] bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] focus:outline-none"

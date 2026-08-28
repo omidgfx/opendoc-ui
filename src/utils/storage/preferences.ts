@@ -60,6 +60,16 @@ export interface AppPreferences {
     indicatorIconsEnabled: boolean;
     /** Indicator families the user turned off individually. */
     disabledIndicatorIcons: IndicatorIconKind[];
+    /**
+     * Last generated-example encoding id (json, php-array, …).
+     * App-wide — not per-spec / per-endpoint.
+     */
+    lastExampleEncodingId: string;
+    /**
+     * Last path-navbar walker id (jsonpath, php-nullsafe, …).
+     * App-wide — not per-spec / per-endpoint.
+     */
+    lastPathStyleId: string;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -75,6 +85,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
     codeGutterEnabled: true,
     indicatorIconsEnabled: true,
     disabledIndicatorIcons: [],
+    lastExampleEncodingId: 'json',
+    lastPathStyleId: 'jsonpath',
 };
 
 const PREFERENCES_NAME = 'preferences';
@@ -138,6 +150,14 @@ export const normalizeAppPreferences = (value: any): AppPreferences => {
         disabledIndicatorIcons: Array.isArray(value.disabledIndicatorIcons)
             ? Array.from(new Set(value.disabledIndicatorIcons.filter(isIndicatorIconKind)))
             : [],
+        lastExampleEncodingId:
+            typeof value.lastExampleEncodingId === 'string' && value.lastExampleEncodingId.trim()
+                ? value.lastExampleEncodingId.trim()
+                : DEFAULT_APP_PREFERENCES.lastExampleEncodingId,
+        lastPathStyleId:
+            typeof value.lastPathStyleId === 'string' && value.lastPathStyleId.trim()
+                ? value.lastPathStyleId.trim()
+                : DEFAULT_APP_PREFERENCES.lastPathStyleId,
     };
 };
 

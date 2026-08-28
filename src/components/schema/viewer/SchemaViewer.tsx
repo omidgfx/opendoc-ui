@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
+import {usePreferences} from '../../../contexts/PreferencesContext';
 import CodeViewer from '../../common/CodeViewer';
 import CustomDropdown from '../../common/CustomDropdown';
 import ScrollableRow from '../../common/ScrollableRow';
@@ -194,14 +195,30 @@ export default function SchemaViewer({
     className,
 }: SchemaViewerProps) {
     const resolveReference = (item: any) => resolveOpenApiReference(item, spec);
-    const [exampleEncodingId, setExampleEncodingId] = useState(() => defaultExampleEncodingId(mediaType));
+    const {preferences, setPreference} = usePreferences();
+    const [exampleEncodingId, setExampleEncodingId] = useState(() => {
+        const saved = preferences.lastExampleEncodingId;
+        if (saved && EXAMPLE_ENCODINGS.some(item => item.id === saved)) return saved;
+        return defaultExampleEncodingId(mediaType);
+    });
     const [internalAnyOf, setInternalAnyOf] = useState<number[]>([]);
     const [internalAnyOfTouched, setInternalAnyOfTouched] = useState(false);
     const [branchRevision, setBranchRevision] = useState(0);
 
+    // App-wide last encoding (IndexedDB via preferences) — not media-type scoped.
     useEffect(() => {
-        setExampleEncodingId(defaultExampleEncodingId(mediaType));
-    }, [mediaType]);
+        const saved = preferences.lastExampleEncodingId;
+        if (saved && EXAMPLE_ENCODINGS.some(item => item.id === saved)) {
+            setExampleEncodingId(saved);
+        }
+    }, [preferences.lastExampleEncodingId]);
+
+    const handleExampleEncodingChange = (id: string) => {
+        setExampleEncodingId(id);
+        if (EXAMPLE_ENCODINGS.some(item => item.id === id)) {
+            setPreference('lastExampleEncodingId', id);
+        }
+    };
 
     useEffect(() => {
         const handler = (event: Event) => {
@@ -498,7 +515,7 @@ export default function SchemaViewer({
     const formatToolbar = (
         <CustomDropdown
             value={exampleEncodingId}
-            onChange={setExampleEncodingId}
+            onChange={handleExampleEncodingChange}
             options={encodingOptions}
             className="w-auto max-w-[11rem]"
             triggerClassName={CODE_TOOLBAR_TRIGGER_CLASS}
@@ -1125,6 +1142,7 @@ export default function SchemaViewer({
                                     <SchemaPropertiesTable
                                         properties={tableProperties}
                                         schema={matrixSchema ?? {type: 'null'}}
+                                        spec={spec}
                                         resolveReference={resolveReference}
                                         getRefName={getRefName}
                                         onPushSchema={name => onOpenSchema?.(name)}

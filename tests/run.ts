@@ -1254,9 +1254,19 @@ other: 1
 test('defaults documentation switches to per-schema and schema modal to per-schema', () => {
     assert.equal(DEFAULT_APP_PREFERENCES.endpointRepresentationScope, 'schema');
     assert.equal(DEFAULT_APP_PREFERENCES.modalRepresentationScope, 'schema');
+    assert.equal(DEFAULT_APP_PREFERENCES.lastExampleEncodingId, 'json');
+    assert.equal(DEFAULT_APP_PREFERENCES.lastPathStyleId, 'jsonpath');
     const normalized = normalizeAppPreferences({});
     assert.equal(normalized.endpointRepresentationScope, 'schema');
     assert.equal(normalized.modalRepresentationScope, 'schema');
+    assert.equal(normalized.lastExampleEncodingId, 'json');
+    assert.equal(normalized.lastPathStyleId, 'jsonpath');
+    const custom = normalizeAppPreferences({
+        lastExampleEncodingId: 'php-array',
+        lastPathStyleId: 'php-nullsafe',
+    });
+    assert.equal(custom.lastExampleEncodingId, 'php-array');
+    assert.equal(custom.lastPathStyleId, 'php-nullsafe');
 });
 
 test('body-level anyOf All off yields empty merge while All on merges every branch', () => {

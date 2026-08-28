@@ -139,6 +139,7 @@ export default function InteractiveSchemaView({
                         <SchemaPropertiesTable
                             properties={properties}
                             schema={resolvedS}
+                            spec={{} as any}
                             resolveReference={resolveReference}
                             getRefName={getRefName}
                             onPushSchema={onPushSchema}

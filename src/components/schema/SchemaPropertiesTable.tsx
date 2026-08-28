@@ -19,9 +19,11 @@ import {COMBINATOR_META, combinatorSelectionIconClass, expandAllOfBranches} from
 import ModalPortal from '../common/ModalPortal';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
-import CodeViewer from '../common/CodeViewer';
 import SerializerPlaygroundModal from '../modals/SerializerPlaygroundModal';
 import CustomDropdown from '../common/CustomDropdown';
+import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
+import SchemaViewer, {type SchemaViewerTab} from './viewer/SchemaViewer';
+import type {OpenApiSpec} from '../../types';
 import {
     applySchemaBranchSelections,
     readSchemaAllOfFocus,
@@ -33,19 +35,14 @@ import {
     readSchemaAnyOfSelections,
     toggleSchemaAnyOfSelection,
 } from '../../utils/schema/branchSelections';
-import {collectSchemaBranchChoices} from '../../utils/schema/branchChoices';
-import {getMockSnippetWithMarkers} from '../../utils/runner/mockGenerator';
-import {mockMarkersToLineMarkers} from '../../utils/lineMarkers';
-import {inlineMenusForCode} from './inlineMenus';
-import {dimmedLinesForObjectCode} from '../../utils/schema/exampleEncodings';
-import {propertyNamesOfSchema} from '../../utils/schema/branchSelections';
-import SchemaOneOfMenuButton from './SchemaOneOfMenuButton';
 
 interface SchemaPropertiesTableProps {
     properties: {
         [name: string]: any;
     };
     schema: any;
+    /** Full OpenAPI document — property details reuse the doc SchemaViewer. */
+    spec: OpenApiSpec;
     resolveReference: (item: any) => any;
     getRefName: (refStr: string) => string;
     onPushSchema: (schemaName: string) => void;
@@ -139,6 +136,7 @@ const STICKY_HEADER_CLASS =
 export default function SchemaPropertiesTable({
     properties,
     schema,
+    spec,
     resolveReference,
     getRefName,
     onPushSchema,
@@ -156,11 +154,11 @@ export default function SchemaPropertiesTable({
     const [serializerPropertyName, setSerializerPropertyName] = useState<string | null>(null);
     const [copiedPropertyName, setCopiedPropertyName] = useState(false);
     const [copiedPattern, setCopiedPattern] = useState(false);
-    const [modalExampleTab, setModalExampleTab] = useState<'generated' | 'spec'>('generated');
+    const [propertyViewerTab, setPropertyViewerTab] = useState<SchemaViewerTab>('example');
     const [modalSpecExampleKey, setModalSpecExampleKey] = useState('');
     const detailsTransition = useModalTransition(!!detailsModalName, () => {
         setDetailsModalName(null);
-        setModalExampleTab('generated');
+        setPropertyViewerTab('example');
         setModalSpecExampleKey('');
     });
     useModalShortcuts({isOpen: !!detailsModalName, onClose: detailsTransition.requestClose});
@@ -1272,21 +1270,6 @@ export default function SchemaPropertiesTable({
         detailsModalName && activeRawProperty ? buildFieldSpecificationsRows(detailsModalName, activeRawProperty) : [];
     const activeValidationRows =
         detailsModalName && activeRawProperty ? buildValidationRows(detailsModalName, activeRawProperty) : [];
-    const activeBranchChoices = useMemo(() => {
-        // Collect under the property's real path so selections share the same
-        // key space as the parent table / code viewer (`payment`, not ``).
-        if (!detailsModalName || !activeRawProperty) return [];
-        return collectSchemaBranchChoices(
-            {type: 'object', properties: {[detailsModalName]: activeRawProperty}},
-            resolveReference,
-            getRefName,
-        );
-    }, [detailsModalName, activeRawProperty, resolveReference, getRefName, selectionRevision]);
-    const activeMockExample = useMemo(() => {
-        if (!detailsModalName || !activeDetailsProperty) return null;
-        return getMockSnippetWithMarkers(activeDetailsProperty, null);
-    }, [detailsModalName, activeDetailsProperty, selectionRevision]);
-
     const propertySpecExamples = useMemo(() => {
         if (!activeRawProperty) return [];
         const resolved = resolveReference(activeRawProperty) || activeRawProperty;
@@ -1309,29 +1292,6 @@ export default function SchemaPropertiesTable({
         }
         return [];
     }, [activeRawProperty, resolveReference]);
-
-    const activePropertySpecExample =
-        propertySpecExamples.find(ex => ex.key === (modalSpecExampleKey || propertySpecExamples[0]?.key)) ||
-        propertySpecExamples[0];
-
-    const inlineMockMenus = useMemo(() => {
-        if (!activeMockExample) return {code: '', menus: []};
-        return inlineMenusForCode(activeMockExample.code, selectionKey, activeBranchChoices);
-    }, [activeMockExample, selectionKey, activeBranchChoices]);
-
-    const detailDimmedLines = useMemo(() => {
-        if (!detailsModalName || !activeRawProperty) return [] as number[];
-        const focus = allOfFocus[detailsModalName];
-        if (focus === null || focus === undefined) return [];
-        const resolved = resolveReference(activeRawProperty) || activeRawProperty;
-        if (!Array.isArray(resolved?.allOf)) return [];
-        const parts = expandAllOfBranches(resolved, resolveReference);
-        const list = parts.length > 0 ? parts : resolved.allOf;
-        if (!list[focus]) return [];
-        const active = propertyNamesOfSchema(list[focus], resolveReference);
-        if (!activeMockExample) return [];
-        return dimmedLinesForObjectCode(activeMockExample.code, active);
-    }, [detailsModalName, activeRawProperty, allOfFocus, activeMockExample, resolveReference]);
 
     return (
         <>
@@ -1538,96 +1498,46 @@ export default function SchemaPropertiesTable({
                                     </section>
                                 </div>
 
-                                <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-                                    <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between gap-2 flex-wrap">
-                                        <div className="flex p-0.5 rounded-lg border w-fit border-[var(--border)] bg-[var(--background)] items-center gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setModalExampleTab('generated')}
-                                                aria-pressed={modalExampleTab === 'generated'}
-                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                                                    modalExampleTab === 'generated'
-                                                        ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                                        : 'hover:opacity-80 text-[var(--text-muted)]'
-                                                }`}
-                                            >
-                                                Generated Example
-                                            </button>
-                                            {propertySpecExamples.length > 0 && (
-                                                <div
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => setModalExampleTab('spec')}
-                                                    onKeyDown={event => {
-                                                        if (event.key === 'Enter' || event.key === ' ') {
-                                                            event.preventDefault();
-                                                            setModalExampleTab('spec');
-                                                        }
-                                                    }}
-                                                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1 ${
-                                                        modalExampleTab === 'spec'
-                                                            ? 'bg-[var(--primary)] text-[var(--primary-contrast)] shadow-sm font-bold'
-                                                            : 'hover:opacity-80 text-[var(--text-muted)]'
-                                                    }`}
-                                                >
-                                                    <span>Example:</span>
-                                                    {propertySpecExamples.length > 1 && modalExampleTab === 'spec' ? (
-                                                        <span className="inline-flex min-w-0 items-center gap-1">
-                                                            <CustomDropdown
-                                                                value={
-                                                                    modalSpecExampleKey || propertySpecExamples[0].key
-                                                                }
-                                                                onChange={setModalSpecExampleKey}
-                                                                options={propertySpecExamples.map(example => ({
-                                                                    value: example.key,
-                                                                    label: example.label,
-                                                                }))}
-                                                                className="w-auto min-w-0 max-w-[180px]"
-                                                                ariaLabel="Property examples"
-                                                                plainTrigger
-                                                            />
-                                                        </span>
-                                                    ) : (
-                                                        <span>{activePropertySpecExample?.label || 'Example'}</span>
-                                                    )}
-                                                </div>
+                                <section className="rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden p-3">
+                                    {detailsModalName && activeRawProperty ? (
+                                        <SchemaViewer
+                                            spec={spec}
+                                            matrixSchema={applySchemaBranchSelections(
+                                                activeRawProperty,
+                                                selectionKey,
+                                                resolveReference,
                                             )}
-                                        </div>
-                                        {modalExampleTab === 'generated' && activeBranchChoices.length > 0 && (
-                                            <SchemaOneOfMenuButton
-                                                selectionKey={selectionKey}
-                                                choices={activeBranchChoices}
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="p-3">
-                                        {modalExampleTab === 'generated' && activeMockExample ? (
-                                            <CodeViewer
-                                                code={inlineMockMenus.code}
-                                                language="json"
-                                                maxHeight="340px"
-                                                dimmedLines={detailDimmedLines}
-                                                lineMarkers={mockMarkersToLineMarkers(activeMockExample.markers, {
-                                                    onOpenSchema: schemaName => {
-                                                        detailsTransition.requestClose();
-                                                        onPushSchema(schemaName);
-                                                    },
-                                                    onTestPattern,
-                                                })}
-                                                inlineMenus={inlineMockMenus.menus}
-                                            />
-                                        ) : (
-                                            <CodeViewer
-                                                code={
-                                                    typeof activePropertySpecExample?.value === 'object'
-                                                        ? JSON.stringify(activePropertySpecExample.value, null, 2)
-                                                        : String(activePropertySpecExample?.value ?? '')
-                                                }
-                                                language="json"
-                                                maxHeight="340px"
-                                            />
-                                        )}
-                                    </div>
+                                            effectiveSchema={applySchemaBranchSelections(
+                                                activeDetailsProperty || activeRawProperty,
+                                                selectionKey,
+                                                resolveReference,
+                                            )}
+                                            contentSchema={activeRawProperty}
+                                            mediaType="application/json"
+                                            selectionScopeKey={selectionKey}
+                                            activeTab={propertyViewerTab}
+                                            onTabChange={setPropertyViewerTab}
+                                            onPersistRepresentation={mode =>
+                                                setPropertyViewerTab(mode === 'schema' ? 'schema' : 'example')
+                                            }
+                                            specExamples={propertySpecExamples.map(example => ({
+                                                key: example.key,
+                                                label: example.label,
+                                                value: example.value,
+                                            }))}
+                                            activeSpecExampleKey={
+                                                modalSpecExampleKey || propertySpecExamples[0]?.key || ''
+                                            }
+                                            onSpecExampleKeyChange={setModalSpecExampleKey}
+                                            inspectName={detailsModalName}
+                                            onOpenSchema={name => {
+                                                detailsTransition.requestClose();
+                                                onPushSchema(name);
+                                            }}
+                                            onTestPattern={onTestPattern}
+                                            usage="generic"
+                                        />
+                                    ) : null}
                                 </section>
                             </div>
                             <footer className="px-4 sm:px-5 py-3 border-t border-[var(--border)] bg-[var(--background)] shrink-0 flex items-center justify-end gap-2">
