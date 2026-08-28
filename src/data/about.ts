@@ -18,6 +18,8 @@ export const FEATURES: Array<{
     icon: string;
     title: string;
     desc: string;
+    /** Soft badge — e.g. Experimental for auto-repair. */
+    badge?: string;
 }> = [
     {
         icon: 'ph-fill ph-book-open-text',
@@ -28,6 +30,27 @@ export const FEATURES: Array<{
         icon: 'ph-fill ph-flask',
         title: 'Built-in API Runner',
         desc: 'Execute requests directly from the browser with cookie, bearer, API-key and basic auth support.',
+    },
+    {
+        icon: 'ph-fill ph-tree-structure',
+        title: 'Unified Schema Viewer',
+        desc: 'One schema surface for request bodies, responses, and the schema modal — generated examples, field menus, and combinator rails that stay in sync.',
+    },
+    {
+        icon: 'ph-fill ph-git-branch',
+        title: 'Field combinators',
+        desc: 'oneOf, anyOf, allOf, and not at body and field level: exclusive picks, multi-select merge, composition focus with dimming, and inspection-only negation.',
+    },
+    {
+        icon: 'ph-fill ph-magnifying-glass-plus',
+        title: 'OAS 3.2 QUERY',
+        desc: 'First-class HTTP QUERY (RFC 10008) alongside GET/POST and additional operations, with request-body documentation and Runner support.',
+    },
+    {
+        icon: 'ph-fill ph-wrench',
+        title: 'YAML auto-repair',
+        desc: 'When a generator emits flow-style oneOf/anyOf/allOf without sequence brackets, OpenDoc quietly rewrites the text so the document can still load.',
+        badge: 'Experimental',
     },
     {
         icon: 'ph-fill ph-code',

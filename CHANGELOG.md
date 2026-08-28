@@ -3,6 +3,18 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.0] — 2026-08-28
+
+Shared schema viewer, field-level combinators, OAS 3.2 QUERY, and load-time YAML repair.
+
+- introduces a **shared SchemaViewer** for request bodies, responses, and the schema modal: generated examples with multi-format encodings, always-open meta stats, body-level oneOf/anyOf/allOf/not rails, and the same property table used in documentation;
+- adds **field-level combinator menus** in the code viewer and schema table — exclusive oneOf picks, multi-select anyOf merge (with a real All on/off), allOf composition focus with path-scoped line dimming, and inspection-only `not`;
+- locks combinator chrome to distinct method hues and controls (oneOf PUT/radio, anyOf GET/checkbox, allOf POST/radio, not DELETE);
+- ships first-class **OAS 3.2 QUERY** (RFC 10008) discovery, documentation, and Runner support alongside additional operations, without weakening GET/HEAD body warnings;
+- repairs invalid generator YAML where flow-style `oneOf`/`anyOf`/`allOf` omit sequence brackets (**experimental** auto-repair on load);
+- expands bare `$ref` bodies for oneOf/anyOf/allOf/not, empty-servers sidebar label, natural numeric endpoint name sort, menu item spacing, form-urlencoded nulls as empty values, IndexedDB-first preferences with localStorage fallback, per-schema documentation default, and path-always sidebar search;
+- bumps the package, lockfile, README, About features, and release metadata to `0.3.0`.
+
 ## [0.2.3] — 2026-08-21
 
 Generated examples, named spec examples, and final schema-viewer polish.

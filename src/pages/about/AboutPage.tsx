@@ -214,7 +214,7 @@ export default function AboutView() {
                                         transition={{duration: 0.2}}
                                         className="rounded-xl border p-3 sm:p-4 bg-[var(--surface)]/70 border-[var(--border)] hover:border-[var(--primary)]/30 transition-colors backdrop-blur-sm"
                                     >
-                                        <div className="flex items-center gap-3 mb-1.5">
+                                        <div className="mb-1.5 flex items-center gap-3">
                                             <motion.span
                                                 initial={{scale: 0.8}}
                                                 whileInView={{scale: 1}}
@@ -223,9 +223,16 @@ export default function AboutView() {
                                             >
                                                 <i className={`${f.icon} text-lg`}></i>
                                             </motion.span>
-                                            <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)] truncate">
-                                                {f.title}
-                                            </h3>
+                                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                <h3 className="min-w-0 truncate text-xs font-bold text-[var(--text-heading)] sm:text-sm">
+                                                    {f.title}
+                                                </h3>
+                                                {f.badge ? (
+                                                    <span className="shrink-0 rounded-full border border-[var(--method-put)]/35 bg-[var(--method-put)]/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-[var(--method-put)]">
+                                                        {f.badge}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                         <p className="text-[11px] sm:text-xs leading-relaxed text-[var(--text-muted)] pl-11">
                                             {f.desc}
