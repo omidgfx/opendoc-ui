@@ -201,11 +201,16 @@ export default function Topbar({
                 <button
                     type="button"
                     onClick={() => setShowSpecificationModal(true)}
-                    className="flex h-8 w-40 xl:w-48 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]"
+                    aria-label={hasSpec ? selectedSpecificationTitle : 'Open specification'}
+                    className={clsx(
+                        'flex items-center rounded-lg border border-[var(--border)] text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]',
+                        isTopbarCollapsed ? 'size-7 justify-center' : 'h-8 w-40 xl:w-48 gap-2 px-3',
+                    )}
                 >
                     <i
                         className={clsx(
-                            'ph-fill shrink-0 text-[14px] text-[var(--primary)]',
+                            'ph-fill shrink-0 text-[var(--primary)]',
+                            isTopbarCollapsed ? 'text-[13px]' : 'text-[14px]',
                             hasSpec
                                 ? selectedSpecificationIsRemote
                                     ? 'ph-globe-hemisphere-west'
@@ -215,10 +220,14 @@ export default function Topbar({
                                   : 'ph-globe-hemisphere-west',
                         )}
                     />
-                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-                        {hasSpec ? selectedSpecificationTitle : 'Open specification'}
-                    </span>
-                    <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
+                    {!isTopbarCollapsed && (
+                        <>
+                            <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                                {hasSpec ? selectedSpecificationTitle : 'Open specification'}
+                            </span>
+                            <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
+                        </>
+                    )}
                 </button>
             </Tip>
         )
@@ -227,11 +236,16 @@ export default function Topbar({
             <button
                 type="button"
                 onClick={() => setShowSpecificationModal(true)}
-                className="flex h-8 w-44 xl:w-56 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]"
+                aria-label={selectedSpecificationTitle}
+                className={clsx(
+                    'flex items-center rounded-lg border border-[var(--border)] text-left text-[var(--text-heading)] transition-all cursor-pointer hover:bg-[var(--surface-hover)]',
+                    isTopbarCollapsed ? 'size-7 justify-center' : 'h-8 w-44 xl:w-56 gap-2 px-3',
+                )}
             >
                 <i
                     className={clsx(
-                        'ph-fill shrink-0 text-[14px] text-[var(--primary)]',
+                        'ph-fill shrink-0 text-[var(--primary)]',
+                        isTopbarCollapsed ? 'text-[13px]' : 'text-[14px]',
                         selectedSpecificationIsRemote
                             ? 'ph-globe-hemisphere-west'
                             : selectedSpecificationIsLocal
@@ -239,24 +253,30 @@ export default function Topbar({
                               : 'ph-files',
                     )}
                 />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{selectedSpecificationTitle}</span>
-                {hasSpec && (
-                    <span
-                        role="button"
-                        tabIndex={-1}
-                        aria-label="Reload specification"
-                        onClick={e => {
-                            e.stopPropagation();
-                            onRefreshSpec();
-                        }}
-                        className="shrink-0 flex items-center justify-center size-5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
-                    >
-                        <i
-                            className={`ph ph-arrows-clockwise text-[11px] inline-block ${isRefreshingSpec ? 'animate-spin' : ''}`}
-                        ></i>
-                    </span>
+                {!isTopbarCollapsed && (
+                    <>
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                            {selectedSpecificationTitle}
+                        </span>
+                        {hasSpec && (
+                            <span
+                                role="button"
+                                tabIndex={-1}
+                                aria-label="Reload specification"
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onRefreshSpec();
+                                }}
+                                className="shrink-0 flex items-center justify-center size-5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                            >
+                                <i
+                                    className={`ph ph-arrows-clockwise text-[11px] inline-block ${isRefreshingSpec ? 'animate-spin' : ''}`}
+                                ></i>
+                            </span>
+                        )}
+                        <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
+                    </>
                 )}
-                <i className="ph ph-caret-down shrink-0 text-[10px] text-[var(--text-muted)]" />
             </button>
         </Tip>
     );
@@ -268,7 +288,7 @@ export default function Topbar({
                     isTopbarCollapsed ? 'is-collapsed h-9' : 'h-14 sm:h-16',
                 )}
             >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className={clsx('flex items-center min-w-0', isTopbarCollapsed ? 'gap-1' : 'gap-2 sm:gap-3')}>
                     {/* Without a specification there is no sidebar to collapse.
                         The narrow widths keep the button: it is the only way to
                         open the drawer, which carries the specification list. */}
@@ -282,10 +302,17 @@ export default function Topbar({
                                 aria-label={
                                     isMobile ? 'Open menu' : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
                                 }
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0"
+                                className={clsx(
+                                    'rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0',
+                                    isTopbarCollapsed ? 'size-7' : 'w-8 h-8',
+                                )}
                             >
                                 <i
-                                    className={`ph ${isMobile ? 'ph-list' : isCollapsed ? 'ph-list' : 'ph-sidebar-simple'} text-[18px]`}
+                                    className={clsx(
+                                        'ph',
+                                        isMobile || isCollapsed ? 'ph-list' : 'ph-sidebar-simple',
+                                        isTopbarCollapsed ? 'text-[15px]' : 'text-[18px]',
+                                    )}
                                 ></i>
                             </button>
                         </Tip>
@@ -300,10 +327,16 @@ export default function Topbar({
                                 onClick={onToggleTopbarCollapse}
                                 aria-label={isTopbarCollapsed ? 'Expand top bar' : 'Collapse top bar'}
                                 aria-pressed={isTopbarCollapsed}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0"
+                                className={clsx(
+                                    'rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0',
+                                    isTopbarCollapsed ? 'size-7' : 'w-8 h-8',
+                                )}
                             >
                                 <i
-                                    className={`ph ${isTopbarCollapsed ? 'ph-caret-down' : 'ph-caret-up'} text-[16px]`}
+                                    className={clsx(
+                                        'ph',
+                                        isTopbarCollapsed ? 'ph-caret-down text-[13px]' : 'ph-caret-up text-[16px]',
+                                    )}
                                 />
                             </button>
                         </Tip>
@@ -314,16 +347,16 @@ export default function Topbar({
                     <BrandLogo
                         type="logo"
                         logoFrame={false}
-                        logoClassName="size-8 sm:size-9 p-1"
+                        logoClassName={isTopbarCollapsed ? 'size-6 p-0.5' : 'size-8 sm:size-9 p-1'}
                         className="select-none shrink-0"
                         ariaLabel="Documentation"
                     />
 
-                    {!isTopbarCollapsed && !isMobile && (
+                    {!isMobile && (
                         <>
-                            <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>
+                            {!isTopbarCollapsed && <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>}
                             {selectorButton}
-                            {specFreshness?.freshness === 'stale' && (
+                            {!isTopbarCollapsed && specFreshness?.freshness === 'stale' && (
                                 <Tip
                                     content={`Using cached specification from ${new Date(specFreshness.fetchedAt).toLocaleString()}${specFreshness.refreshError ? ` · Refresh failed: ${specFreshness.refreshError}` : ''}`}
                                 >
@@ -332,6 +365,18 @@ export default function Topbar({
                                         className="inline-flex items-center gap-1 rounded-md border border-[var(--method-put)]/30 bg-[var(--method-put)]/10 px-2 py-1 text-[9px] font-bold text-[var(--method-put)]"
                                     >
                                         <i className="ph ph-warning-circle" /> Cached spec
+                                    </span>
+                                </Tip>
+                            )}
+                            {isTopbarCollapsed && specFreshness?.freshness === 'stale' && (
+                                <Tip
+                                    content={`Using cached specification from ${new Date(specFreshness.fetchedAt).toLocaleString()}${specFreshness.refreshError ? ` · Refresh failed: ${specFreshness.refreshError}` : ''}`}
+                                >
+                                    <span
+                                        role="status"
+                                        className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--method-put)]/30 bg-[var(--method-put)]/10 text-[var(--method-put)]"
+                                    >
+                                        <i className="ph ph-warning-circle text-[12px]" />
                                     </span>
                                 </Tip>
                             )}
@@ -409,27 +454,43 @@ export default function Topbar({
                     </div>
                 )}
 
-                <div className={clsx('flex items-center gap-1 shrink-0', isTopbarCollapsed && 'hidden')}>
+                <div className={clsx('flex items-center shrink-0', isTopbarCollapsed ? 'gap-0.5' : 'gap-1')}>
                     {hasSpec && (
                         <Tip content="Open AI Assistant" placement="bottom">
                             <button
                                 type="button"
                                 onClick={onOpenAssistant}
                                 aria-label="Open AI Assistant"
-                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
+                                className={clsx(
+                                    'rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]',
+                                    isTopbarCollapsed ? 'size-7' : 'size-8',
+                                )}
                             >
-                                <i className="ph-fill ph-sparkle text-[15px]" />
+                                <i
+                                    className={clsx(
+                                        'ph-fill ph-sparkle',
+                                        isTopbarCollapsed ? 'text-[13px]' : 'text-[15px]',
+                                    )}
+                                />
                             </button>
                         </Tip>
                     )}
-                    {hasSpec && !showSchemaExplorer && isMobile && !hideSearch && (
+                    {hasSpec && !showSchemaExplorer && !hideSearch && (isMobile || isTopbarCollapsed) && (
                         <Tip content="Search" placement="bottom">
                             <button
                                 onClick={() => setShowMobileSearch(v => !v)}
                                 aria-label="Search"
-                                className="size-8 rounded-lg flex items-center justify-center border cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                className={clsx(
+                                    'rounded-lg flex items-center justify-center border cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
+                                    isTopbarCollapsed ? 'size-7' : 'size-8',
+                                )}
                             >
-                                <i className="ph ph-magnifying-glass text-[16px]"></i>
+                                <i
+                                    className={clsx(
+                                        'ph ph-magnifying-glass',
+                                        isTopbarCollapsed ? 'text-[13px]' : 'text-[16px]',
+                                    )}
+                                ></i>
                             </button>
                         </Tip>
                     )}
@@ -443,19 +504,33 @@ export default function Topbar({
                             >
                                 <button
                                     onClick={onOpenAuthModal}
-                                    className="h-8 ps-2.5 pe-2 border cursor-pointer border-[var(--border)] text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all select-none hover:bg-[var(--surface-hover)]"
+                                    aria-label={
+                                        authConnected
+                                            ? `Authentication active (${activeAuth.activeScheme})`
+                                            : 'Configure authentication'
+                                    }
+                                    className={clsx(
+                                        'relative border cursor-pointer border-[var(--border)] font-semibold rounded-lg flex items-center transition-all select-none hover:bg-[var(--surface-hover)]',
+                                        isTopbarCollapsed ? 'size-7 justify-center' : 'h-8 ps-2.5 pe-2 gap-1.5 text-xs',
+                                    )}
                                 >
                                     <i
                                         className={clsx(
-                                            'ph-fill ph-lock-key text-[14px]',
+                                            'ph-fill ph-lock-key',
+                                            isTopbarCollapsed ? 'text-[13px]' : 'text-[14px]',
                                             authConnected ? 'text-[var(--method-get)]' : 'text-[var(--text-muted)]',
                                         )}
                                     ></i>
-                                    <span className="hidden lg:inline">
-                                        {authConnected ? `${activeAuth.activeScheme.toUpperCase()}` : 'Authorize'}
-                                    </span>
-                                    {authConnected && (
+                                    {!isTopbarCollapsed && (
+                                        <span className="hidden lg:inline">
+                                            {authConnected ? `${activeAuth.activeScheme.toUpperCase()}` : 'Authorize'}
+                                        </span>
+                                    )}
+                                    {authConnected && !isTopbarCollapsed && (
                                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--method-get)] animate-pulse"></span>
+                                    )}
+                                    {authConnected && isTopbarCollapsed && (
+                                        <span className="absolute translate-x-2 -translate-y-2 size-1.5 rounded-full bg-[var(--method-get)]" />
                                     )}
                                 </button>
                             </Tip>
@@ -464,9 +539,17 @@ export default function Topbar({
                                 <button
                                     onClick={onDownloadSpec}
                                     aria-label="Download raw specification"
-                                    className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                    className={clsx(
+                                        'rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
+                                        isTopbarCollapsed ? 'size-7' : 'size-8',
+                                    )}
                                 >
-                                    <i className="ph-fill ph-download-simple text-[14px] text-[var(--primary)]"></i>
+                                    <i
+                                        className={clsx(
+                                            'ph-fill ph-download-simple text-[var(--primary)]',
+                                            isTopbarCollapsed ? 'text-[12px]' : 'text-[14px]',
+                                        )}
+                                    ></i>
                                 </button>
                             </Tip>
                         </>
@@ -478,16 +561,24 @@ export default function Topbar({
                                 type="button"
                                 onClick={onOpenSettings}
                                 aria-label="Open settings"
-                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                className={clsx(
+                                    'rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
+                                    isTopbarCollapsed ? 'size-7' : 'size-8',
+                                )}
                             >
-                                <i className="ph-fill ph-gear-six text-[14px] text-[var(--primary)]"></i>
+                                <i
+                                    className={clsx(
+                                        'ph-fill ph-gear-six text-[var(--primary)]',
+                                        isTopbarCollapsed ? 'text-[12px]' : 'text-[14px]',
+                                    )}
+                                ></i>
                             </button>
                         </Tip>
                     )}
 
                     {/* One button cycles the three modes where the row has no
                         space for a group of them. */}
-                    {hasSpec && isMobile && (
+                    {hasSpec && (isMobile || isTopbarCollapsed) && (
                         <Tip
                             content={`${THEME_MODE_META[themeMode].label} · tap for ${THEME_MODE_META[nextThemeMode(themeMode)].label.toLowerCase()}`}
                         >
@@ -495,13 +586,21 @@ export default function Topbar({
                                 type="button"
                                 aria-label={`Color mode: ${THEME_MODE_META[themeMode].label}. Switch to ${THEME_MODE_META[nextThemeMode(themeMode)].label}`}
                                 onClick={() => onSetThemeMode(nextThemeMode(themeMode))}
-                                className="size-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]"
+                                className={clsx(
+                                    'rounded-lg border flex items-center justify-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)]',
+                                    isTopbarCollapsed ? 'size-7' : 'size-8',
+                                )}
                             >
-                                <i className={clsx(THEME_MODE_META[themeMode].icon, 'text-[14px]')} />
+                                <i
+                                    className={clsx(
+                                        THEME_MODE_META[themeMode].icon,
+                                        isTopbarCollapsed ? 'text-[12px]' : 'text-[14px]',
+                                    )}
+                                />
                             </button>
                         </Tip>
                     )}
-                    {hasSpec && !isMobile && (
+                    {hasSpec && !isMobile && !isTopbarCollapsed && (
                         <div
                             role="radiogroup"
                             aria-label="Color mode"
@@ -537,7 +636,7 @@ export default function Topbar({
                 </div>
             </div>
 
-            {!isTopbarCollapsed && showMobileSearch && !showSchemaExplorer && isMobile && (
+            {showMobileSearch && !showSchemaExplorer && (isMobile || isTopbarCollapsed) && (
                 <div className="border-b px-3 py-2 flex items-center gap-2 bg-[var(--navbar)] border-[var(--border)]">
                     <div className="relative flex-1 min-w-0">
                         <input

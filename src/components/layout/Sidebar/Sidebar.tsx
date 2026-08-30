@@ -986,45 +986,44 @@ export default function Sidebar(props: SidebarProps) {
                 />
             </div>
 
-            <div className="box-border px-2.5 py-1.5 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
-                <Tip content="About">
-                    <button
-                        type="button"
-                        onClick={navTo(onOpenAbout)}
-                        className="min-w-0 cursor-pointer rounded-md px-1 py-0.5 text-left transition-colors hover:bg-[var(--surface-hover)]"
-                        aria-label="About"
+            <div className="box-border px-2.5 py-1 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <Tip content="About">
+                        <button
+                            type="button"
+                            onClick={navTo(onOpenAbout)}
+                            className="inline-flex h-6 min-w-0 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--surface-hover)]"
+                            aria-label="About"
+                        >
+                            <BrandLogo
+                                type="wordmark"
+                                wordmarkClassName="brand-wordmark--footer text-[9px] leading-none text-[var(--text-heading)]"
+                                className="inline-flex select-none items-center"
+                                ariaLabel="About"
+                            />
+                        </button>
+                    </Tip>
+                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">·</span>
+                    <a
+                        href="https://github.com/omidgfx"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate text-[8px] leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
                     >
-                        <BrandLogo
-                            type="wordmark"
-                            wordmarkClassName="text-[9px] leading-none text-[var(--text-muted)]"
-                            className="select-none"
-                            ariaLabel="About"
-                        />
-                    </button>
-                </Tip>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <Tip content="By Pejman Chatrrouz">
-                        <a
-                            href="https://github.com/omidgfx"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[10px] font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
-                        >
-                            PC
-                        </a>
-                    </Tip>
-                    <Tip content="View source on GitHub">
-                        <a
-                            href="https://github.com/omidgfx/opendoc-ui"
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label="GitHub"
-                            className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
-                        >
-                            <i className="ph-fill ph-github-logo text-[14px]" />
-                        </a>
-                    </Tip>
+                        Pejman Chatrrouz
+                    </a>
                 </div>
+                <Tip content="View source on GitHub">
+                    <a
+                        href="https://github.com/omidgfx/opendoc-ui"
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="GitHub"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
+                    >
+                        <i className="ph-fill ph-github-logo text-[14px]" />
+                    </a>
+                </Tip>
             </div>
 
             {!isMobile && (

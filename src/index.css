@@ -660,12 +660,27 @@ body {
 }
 
 .brand-wordmark {
+    display: inline-flex;
     align-items: center;
-    line-height: 0.95;
+    line-height: 1;
     font-family: var(--font-sans);
     font-weight: 900;
     letter-spacing: -0.065em;
     white-space: nowrap;
+    color: var(--text-heading);
+}
+
+.brand-wordmark--footer {
+    font-size: 9px;
+    line-height: 1;
+}
+
+.brand-wordmark--footer .brand-wordmark-ui {
+    /* Keep the UI chip vertically centered with Open/Doc at tiny sizes. */
+    padding: 0.05em 0.22em 0.04em;
+    margin-inline-start: 0.14em;
+    border-width: 0.09em;
+    border-radius: 0.34em;
 }
 
 .brand-wordmark-doc {
