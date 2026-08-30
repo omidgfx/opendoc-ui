@@ -504,10 +504,14 @@ export default function Topbar({
                             >
                                 <button
                                     onClick={onOpenAuthModal}
+                                    // Icon-only (collapsed) needs an explicit name; expanded keeps the
+                                    // visible "Authorize" / scheme label as the accessible name.
                                     aria-label={
-                                        authConnected
-                                            ? `Authentication active (${activeAuth.activeScheme})`
-                                            : 'Configure authentication'
+                                        isTopbarCollapsed
+                                            ? authConnected
+                                                ? `Authentication active (${activeAuth.activeScheme})`
+                                                : 'Authorize'
+                                            : undefined
                                     }
                                     className={clsx(
                                         'relative border cursor-pointer border-[var(--border)] font-semibold rounded-lg flex items-center transition-all select-none hover:bg-[var(--surface-hover)]',
