@@ -3,6 +3,22 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.4] — 2026-08-31
+
+Consumer chrome density, quieter branding, and collapsed-rail navigation.
+
+- quiets product branding for host API docs: topbar mark without wordmark, About via footer wordmark,
+  icon-only GitHub, and less OpenDoc UI chrome in settings/assistant titles;
+- adds a **collapsible top bar** that keeps compact icon controls when collapsed, and tightens
+  endpoint docs/runner padding plus the Docs / Run / Split header for more reading space;
+- adds a **temporary overlay API nav** from the collapsed desktop rail (route icon after Overview) —
+  reuses the main sidebar over content with shadow only; active when a route is selected; dismisses
+  on navigate, click-away, or Escape;
+- keeps multi-line **mouse selection** intact in CodeViewer path mode (no last-line drop after drag);
+- removes per-theme-card config-tag copy buttons and developer-facing “paste into config.json” copy
+  from consumer settings surfaces;
+- restores expanded **Authorize** accessible name for browser AT/CI and Prettier-clean Sidebar.
+
 ## [0.3.3] — 2026-08-29
 
 Generated-example path navbar, multi-style accessors, and schema media fidelity.
