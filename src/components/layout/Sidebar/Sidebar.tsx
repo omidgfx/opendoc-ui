@@ -6,7 +6,7 @@ import {useSwipeEdgeOpen} from '../../../hooks/useSwipeOpen';
 import CustomDropdown from '../../common/CustomDropdown';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
-import {specStorage, uiStorage} from '../../../utils/storage/index';
+import {uiStorage} from '../../../utils/storage/index';
 import FolderTreeActionIcon from './FolderTreeActionIcon';
 import BrandLogo from '@/src/components/brand/BrandLogo';
 import CollapsedSidebarRail from './CollapsedSidebarRail';
@@ -412,8 +412,8 @@ export default function Sidebar(props: SidebarProps) {
         () =>
             endpointFilterQuery
                 ? filterTagTree(mainSearchTagTree, endpoint =>
-                      endpointMatchesSidebarFilter(endpoint, endpointFilterQuery, sidebarConfig.displayRoutes),
-                  )
+                    endpointMatchesSidebarFilter(endpoint, endpointFilterQuery, sidebarConfig.displayRoutes),
+                )
                 : mainSearchTagTree,
         [endpointFilterQuery, mainSearchTagTree, sidebarConfig.displayRoutes],
     );
@@ -436,14 +436,14 @@ export default function Sidebar(props: SidebarProps) {
         y: number;
         target:
             | {
-                  type: 'endpoint';
-                  path: string;
-                  method: string;
-              }
+            type: 'endpoint';
+            path: string;
+            method: string;
+        }
             | {
-                  type: 'view';
-                  view: ViewTabKind;
-              };
+            type: 'view';
+            view: ViewTabKind;
+        };
     } | null>(null);
     useEffect(() => {
         if (!contextMenu) return;
@@ -463,14 +463,14 @@ export default function Sidebar(props: SidebarProps) {
         e: React.MouseEvent,
         target:
             | {
-                  type: 'endpoint';
-                  path: string;
-                  method: string;
-              }
+            type: 'endpoint';
+            path: string;
+            method: string;
+        }
             | {
-                  type: 'view';
-                  view: ViewTabKind;
-              },
+            type: 'view';
+            view: ViewTabKind;
+        },
     ) => {
         e.preventDefault();
         e.stopPropagation();
@@ -674,7 +674,7 @@ export default function Sidebar(props: SidebarProps) {
                 onClick={() => setShowSpecModal(true)}
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer bg-[var(--primary)] text-[var(--primary-contrast)] hover:brightness-110"
             >
-                <i className="ph-fill ph-files text-[14px]" />
+                <i className="ph-fill ph-files text-[14px]"/>
                 Open specification
             </button>
         </div>
@@ -700,13 +700,14 @@ export default function Sidebar(props: SidebarProps) {
             style={!isMobile ? {width} : undefined}
         >
             {isMobile && (
-                <div className="shrink-0 border-b border-[var(--border)] bg-[var(--sidebar)] px-2 py-2 flex items-center gap-1.5">
+                <div
+                    className="shrink-0 border-b border-[var(--border)] bg-[var(--sidebar)] px-2 py-2 flex items-center gap-1.5">
                     <Tip content="Switch API specification">
                         <button
                             onClick={() => setShowSpecModal(true)}
                             className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
                         >
-                            <i className="ph-fill ph-files text-[15px]" />
+                            <i className="ph-fill ph-files text-[15px]"/>
                         </button>
                     </Tip>
                     {hasSpec && (
@@ -726,7 +727,7 @@ export default function Sidebar(props: SidebarProps) {
                                         : 'border-[var(--border)] text-[var(--text-muted)]',
                                 )}
                             >
-                                <i className={clsx('ph-fill ph-lock-key text-[15px]')} />
+                                <i className={clsx('ph-fill ph-lock-key text-[15px]')}/>
                             </button>
                         </Tip>
                     )}
@@ -749,7 +750,7 @@ export default function Sidebar(props: SidebarProps) {
                             onClick={navTo(onOpenAppearanceSettings)}
                             className="size-9 rounded-lg flex items-center justify-center transition-all cursor-pointer border border-[var(--border)] text-[var(--primary)] hover:bg-[var(--surface-hover)]"
                         >
-                            <i className="ph-fill ph-palette text-[15px]" />
+                            <i className="ph-fill ph-palette text-[15px]"/>
                         </button>
                     </Tip>
                     {hasSpec && (
@@ -789,7 +790,8 @@ export default function Sidebar(props: SidebarProps) {
                 <div className="px-3 py-1.5 border-b shrink-0 border-[var(--border)]">
                     {spec?.servers && spec.servers.length > 0 ? (
                         <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
+                            <label
+                                className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">
                                 Active Server
                             </label>
                             <div className="flex items-center gap-1">
@@ -818,7 +820,8 @@ export default function Sidebar(props: SidebarProps) {
                                     )}
                             </div>
                             <Tip content={resolvedServerUrl}>
-                                <div className="mt-1 text-[10px] leading-none truncate flex items-center gap-1 text-[var(--text-muted)]">
+                                <div
+                                    className="mt-1 text-[10px] leading-none truncate flex items-center gap-1 text-[var(--text-muted)]">
                                     <i className="ph ph-globe text-[12px]"></i>
                                     <span className="font-mono select-text truncate">{resolvedServerUrl}</span>
                                 </div>
@@ -826,8 +829,9 @@ export default function Sidebar(props: SidebarProps) {
                         </div>
                     ) : (
                         <Tip content="This OpenAPI document does not declare any servers">
-                            <div className="flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-muted)] opacity-70">
-                                <i className="ph ph-hard-drives text-[12px] shrink-0" />
+                            <div
+                                className="flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-muted)] opacity-70">
+                                <i className="ph ph-hard-drives text-[12px] shrink-0"/>
                                 <span className="font-semibold uppercase tracking-wider">No servers</span>
                                 <span className="font-normal normal-case tracking-normal truncate">
                                     · none declared
@@ -848,7 +852,7 @@ export default function Sidebar(props: SidebarProps) {
                 {sidebarFilterOpen ? (
                     <div className="flex w-full min-w-0 items-center gap-1">
                         <div className="relative min-w-0 flex-1">
-                            <i className="ph ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-muted)]" />
+                            <i className="ph ph-magnifying-glass pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-muted)]"/>
                             <input
                                 ref={sidebarFilterInputRef}
                                 autoFocus
@@ -869,7 +873,7 @@ export default function Sidebar(props: SidebarProps) {
                                     }}
                                     className="absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer"
                                 >
-                                    <i className="ph ph-x text-[10px]" />
+                                    <i className="ph ph-x text-[10px]"/>
                                 </button>
                             )}
                         </div>
@@ -880,13 +884,14 @@ export default function Sidebar(props: SidebarProps) {
                                 onClick={() => closeSidebarFilter()}
                                 className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] cursor-pointer"
                             >
-                                <i className="ph ph-x text-[13px]" />
+                                <i className="ph ph-x text-[13px]"/>
                             </button>
                         </Tip>
                     </div>
                 ) : (
                     <>
-                        <label className="block min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                        <label
+                            className="block min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                             API Navigation
                         </label>
                         <div className="flex items-center gap-0.5 shrink-0">
@@ -898,7 +903,7 @@ export default function Sidebar(props: SidebarProps) {
                                     onClick={openSidebarFilter}
                                     className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
                                 >
-                                    <i className="ph ph-magnifying-glass text-[12px]" />
+                                    <i className="ph ph-magnifying-glass text-[12px]"/>
                                 </button>
                             </Tip>
                             {sidebarConfig.folderBehavior === 'multiple' && (
@@ -911,7 +916,7 @@ export default function Sidebar(props: SidebarProps) {
                                             onClick={() => setAllFoldersCollapsed(true)}
                                             className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
                                         >
-                                            <FolderTreeActionIcon direction="collapse" />
+                                            <FolderTreeActionIcon direction="collapse"/>
                                         </button>
                                     </Tip>
                                     <Tip content="Expand all folders">
@@ -922,7 +927,7 @@ export default function Sidebar(props: SidebarProps) {
                                             onClick={() => setAllFoldersCollapsed(false)}
                                             className="w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)] disabled:opacity-35 disabled:cursor-not-allowed"
                                         >
-                                            <FolderTreeActionIcon direction="expand" />
+                                            <FolderTreeActionIcon direction="expand"/>
                                         </button>
                                     </Tip>
                                 </>
@@ -942,7 +947,7 @@ export default function Sidebar(props: SidebarProps) {
                                             : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]',
                                     )}
                                 >
-                                    <i className="ph ph-gear-six text-[13px]" />
+                                    <i className="ph ph-gear-six text-[13px]"/>
                                 </button>
                             </Tip>
                         </div>
@@ -1003,29 +1008,32 @@ export default function Sidebar(props: SidebarProps) {
                 />
             </div>
 
-            <div className="box-border px-2.5 py-1 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
+            <div
+                className="box-border px-2.5 py-1 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
                 <div className="flex min-w-0 items-center gap-1.5">
-                    <Tip content="About">
-                        <button
-                            type="button"
-                            onClick={navTo(onOpenAbout)}
-                            className="inline-flex h-6 min-w-0 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--surface-hover)]"
-                            aria-label="About"
-                        >
-                            <BrandLogo
-                                type="wordmark"
-                                wordmarkClassName="brand-wordmark--footer text-[9px] leading-none text-[var(--text-heading)]"
-                                className="inline-flex select-none items-center"
-                                ariaLabel="About"
-                            />
-                        </button>
-                    </Tip>
+
+                    <BrandLogo
+                        type="wordmark"
+                        wordmarkClassName="brand-wordmark--footer text-[9px] leading-none text-[var(--text-heading)]"
+                        className="inline-flex select-none items-center"
+                        ariaLabel="About"
+                    />
                     <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">·</span>
+                    <button
+                        type="button"
+                        onClick={navTo(onOpenAbout)}
+                        className="truncate text-[8px] font-bold cursor-pointer leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                        aria-label="About"
+                    >
+                        About
+                    </button>
+                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">·</span>
+                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">By:</span>
                     <a
                         href="https://github.com/omidgfx"
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate text-[8px] leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                        className="truncate text-[8px] font-bold leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
                     >
                         Pejman Chatrrouz
                     </a>
@@ -1038,7 +1046,7 @@ export default function Sidebar(props: SidebarProps) {
                         aria-label="GitHub"
                         className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
                     >
-                        <i className="ph-fill ph-github-logo text-[14px]" />
+                        <i className="ph-fill ph-github-logo text-[14px]"/>
                     </a>
                 </Tip>
             </div>
