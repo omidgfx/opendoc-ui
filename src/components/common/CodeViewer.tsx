@@ -576,11 +576,40 @@ export default function CodeViewer({
         [setPreference],
     );
 
+    // Track pointer down so a text-drag mouseup is not treated as a path-line click.
+    // setSelectedLine re-renders the code spans and would wipe the native selection.
+    const pathPointerRef = useRef<{x: number; y: number; dragged: boolean} | null>(null);
+
+    const handlePathPointerDown = useCallback(
+        (event: React.MouseEvent) => {
+            if (!pathEncodingId) return;
+            if (event.button !== 0) return;
+            pathPointerRef.current = {x: event.clientX, y: event.clientY, dragged: false};
+        },
+        [pathEncodingId],
+    );
+
     const handleSelectLine = useCallback(
         (event: React.MouseEvent) => {
             if (!pathEncodingId) return;
             // Ignore clicks that open combinator menus / path chrome.
             if ((event.target as HTMLElement | null)?.closest('button')) return;
+
+            const pointer = pathPointerRef.current;
+            pathPointerRef.current = null;
+            if (pointer) {
+                const dx = Math.abs(event.clientX - pointer.x);
+                const dy = Math.abs(event.clientY - pointer.y);
+                if (pointer.dragged || dx > 4 || dy > 4) return;
+            }
+
+            // A non-collapsed DOM selection means the user just finished selecting text —
+            // do not steal it for path chrome (and do not re-render away the last line).
+            const domSelection = window.getSelection();
+            if (domSelection && !domSelection.isCollapsed && (domSelection.toString() || '').length > 0) {
+                return;
+            }
+
             const scroller = scrollRef.current;
             if (!scroller) return;
             const rect = scroller.getBoundingClientRect();
@@ -649,6 +678,12 @@ export default function CodeViewer({
     /* Subtle full-row hover highlight, driven without re-renders. */
     const handleMouseMove = useCallback(
         (event: React.MouseEvent) => {
+            const pointer = pathPointerRef.current;
+            if (pointer && !pointer.dragged) {
+                if (Math.abs(event.clientX - pointer.x) > 4 || Math.abs(event.clientY - pointer.y) > 4) {
+                    pointer.dragged = true;
+                }
+            }
             const scroller = scrollRef.current;
             const codeBar = codeBarRef.current;
             const gutterBar = gutterBarRef.current;
@@ -952,6 +987,7 @@ export default function CodeViewer({
                     ref={scrollRef}
                     tabIndex={0}
                     onKeyDown={handleKeyDown}
+                    onMouseDown={handlePathPointerDown}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
                     onClick={handleSelectLine}
@@ -1207,14 +1243,13 @@ export default function CodeViewer({
                                 <code ref={codeRef} className="block">
                                     {pathEncodingId || dimmedLineSet.size > 0 ? (
                                         highlightedLines.map((lineHtml, index) => (
-                                            <span
-                                                key={index}
-                                                className={clsx('block', dimmedLineSet.has(index + 1) && 'opacity-35')}
-                                                dangerouslySetInnerHTML={{
-                                                    __html:
-                                                        lineHtml + (index < highlightedLines.length - 1 ? '\n' : ''),
-                                                }}
-                                            />
+                                            <span key={index}>
+                                                <span
+                                                    className={clsx(dimmedLineSet.has(index + 1) && 'opacity-35')}
+                                                    dangerouslySetInnerHTML={{__html: lineHtml}}
+                                                />
+                                                {index < highlightedLines.length - 1 ? '\n' : null}
+                                            </span>
                                         ))
                                     ) : (
                                         <span dangerouslySetInnerHTML={{__html: highlightedHtml}} />
