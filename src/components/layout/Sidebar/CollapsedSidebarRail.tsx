@@ -10,6 +10,8 @@ interface CollapsedSidebarRailProps {
     showAbout: boolean;
     /** True when an endpoint is the active workspace selection. */
     endpointSelected: boolean;
+    /** Active endpoint route for the flyout control tooltip (METHOD path). */
+    activeRouteLabel?: string | null;
     /** Temporary overlay navigation is open. */
     flyoutOpen: boolean;
     onOpenHome: () => void;
@@ -27,6 +29,7 @@ export default function CollapsedSidebarRail({
     showCompatibility,
     showAbout: _showAbout,
     endpointSelected,
+    activeRouteLabel = null,
     flyoutOpen,
     onOpenHome,
     onOpenSchemaExplorer,
@@ -36,29 +39,29 @@ export default function CollapsedSidebarRail({
     onToggleFlyout,
 }: CollapsedSidebarRailProps) {
     const {notes} = useEndpointNotes();
+    const routeButton = (
+        <button
+            type="button"
+            onClick={onToggleFlyout}
+            aria-label={endpointSelected && activeRouteLabel ? activeRouteLabel : 'Browse routes'}
+            aria-expanded={flyoutOpen}
+            aria-pressed={endpointSelected}
+            className={clsx(
+                'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                endpointSelected
+                    ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+            )}
+        >
+            <i className="ph ph-path text-[16px]" />
+        </button>
+    );
     return (
         <div
             className="h-full flex flex-col items-center border-r select-none shrink-0 bg-[var(--sidebar)] border-[var(--border)]"
             style={{width: 56}}
         >
             <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
-                <Tip content={flyoutOpen ? 'Close API navigation' : 'Browse API navigation'}>
-                    <button
-                        type="button"
-                        onClick={onToggleFlyout}
-                        aria-label={flyoutOpen ? 'Close API navigation' : 'Browse API navigation'}
-                        aria-expanded={flyoutOpen}
-                        aria-pressed={endpointSelected || flyoutOpen}
-                        className={clsx(
-                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                            flyoutOpen || endpointSelected
-                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
-                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                        )}
-                    >
-                        <i className={clsx('ph text-[16px]', flyoutOpen ? 'ph-sidebar-simple' : 'ph-list')} />
-                    </button>
-                </Tip>
                 <Tip content="Overview">
                     <button
                         onClick={onOpenHome}
@@ -73,6 +76,11 @@ export default function CollapsedSidebarRail({
                         <i className="ph-fill ph-house text-[16px]" />
                     </button>
                 </Tip>
+                {endpointSelected && activeRouteLabel ? (
+                    <Tip content={activeRouteLabel}>{routeButton}</Tip>
+                ) : (
+                    routeButton
+                )}
                 <Tip content="Schema Explorer">
                     <button
                         onClick={onOpenSchemaExplorer}

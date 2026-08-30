@@ -1179,6 +1179,17 @@ export default function Sidebar(props: SidebarProps) {
                                 !showCompatibility &&
                                 !showAssistant
                             }
+                            activeRouteLabel={
+                                selectedEndpoint &&
+                                !showHome &&
+                                !showAbout &&
+                                !showSchemaExplorer &&
+                                !showNotes &&
+                                !showCompatibility &&
+                                !showAssistant
+                                    ? `${selectedEndpoint.method.toUpperCase()} ${selectedEndpoint.path}`
+                                    : null
+                            }
                             flyoutOpen={flyoutOpen}
                             onOpenHome={onOpenHome}
                             onOpenSchemaExplorer={onOpenSchemaExplorer}
