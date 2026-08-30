@@ -56,8 +56,7 @@ export default function ThemeIdentityPanel({theme, mode}: {theme: AppTheme; mode
                         {theme.name}
                     </h3>
                     <p className="mt-1 text-[11px]" style={{color: palette.textMuted}}>
-                        Use the tag in <span className="font-mono">config.json</span> as{' '}
-                        <span className="font-mono">theme: &quot;{theme.id}&quot;</span>
+                        Current palette for this documentation.
                     </p>
                 </div>
                 <Tip content={copied ? 'Copied!' : 'Copy theme tag'} placement="top">

@@ -227,7 +227,7 @@ export default function EndpointTabs({
                                     onDragLeave={handleDragLeave}
                                     onDrop={e => handleDrop(e, index)}
                                     className={clsx(
-                                        'endpoint-tab group relative shrink-0 flex items-center gap-1.5 px-2 py-1.5 cursor-default transition-all border-r border-[var(--border)] min-w-0 max-w-[200px]',
+                                        'endpoint-tab group relative shrink-0 flex items-center gap-1 px-1.5 py-1 cursor-default transition-all border-r border-[var(--border)] min-w-0 max-w-[200px]',
                                         isActive
                                             ? 'bg-[var(--surface)] text-[var(--text-heading)]'
                                             : 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]',

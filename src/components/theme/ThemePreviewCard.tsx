@@ -1,9 +1,7 @@
-import {useEffect, useState, type MouseEvent, type KeyboardEvent} from 'react';
 import type {AppTheme} from '../../types';
 import MiniPagePreview from './MiniPagePreview';
 import MethodColorsPreview from './MethodColorsPreview';
 import {alpha} from '@/src/utils/theme/selector';
-import {Tip} from '@/src/components/common/Tooltip';
 
 export default function ThemePreviewCard({
     theme,
@@ -17,24 +15,6 @@ export default function ThemePreviewCard({
     onSelect: () => void;
 }) {
     const activePalette = theme[resolvedThemeMode];
-    const [copied, setCopied] = useState(false);
-
-    useEffect(() => {
-        if (!copied) return;
-        const timer = window.setTimeout(() => setCopied(false), 1600);
-        return () => window.clearTimeout(timer);
-    }, [copied]);
-
-    const copyTag = async (event: MouseEvent) => {
-        event.preventDefault();
-        event.stopPropagation();
-        try {
-            await navigator.clipboard.writeText(theme.id);
-            setCopied(true);
-        } catch {
-            // Clipboard can fail in locked-down embeds; still select the theme.
-        }
-    };
 
     return (
         <button
@@ -77,28 +57,7 @@ export default function ThemePreviewCard({
                     <span className="block truncate text-[12px] font-extrabold leading-tight text-[var(--text-heading)]">
                         {theme.name}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[9px] tracking-wide text-[var(--text-muted)]">
-                        {theme.id}
-                    </span>
                 </span>
-                <Tip content={copied ? 'Copied!' : 'Copy theme tag for config.json'} placement="top">
-                    <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={copyTag}
-                        onKeyDown={event => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                void copyTag(event as unknown as MouseEvent);
-                            }
-                        }}
-                        className="pointer-events-auto inline-flex h-7 shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-1.5 text-[10px] font-bold text-[var(--text-muted)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
-                        aria-label={`Copy theme tag ${theme.id}`}
-                    >
-                        <i className={`ph ${copied ? 'ph-check text-[var(--method-get)]' : 'ph-copy'} text-[12px]`} />
-                        <span className="hidden sm:inline">{copied ? 'Copied' : 'Tag'}</span>
-                    </span>
-                </Tip>
             </span>
         </button>
     );

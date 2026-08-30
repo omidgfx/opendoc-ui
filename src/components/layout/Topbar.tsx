@@ -32,6 +32,9 @@ interface TopbarProps {
     showHome: boolean;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
+    /** When true the top chrome is hidden; only the expand control remains. */
+    isTopbarCollapsed?: boolean;
+    onToggleTopbarCollapse?: () => void;
     onOpenMobileSidebar: () => void;
     onOpenAssistant: () => void;
     themeMode: ThemeMode;
@@ -80,6 +83,8 @@ export default function Topbar({
     specFreshness,
     isCollapsed,
     onToggleCollapse,
+    isTopbarCollapsed = false,
+    onToggleTopbarCollapse,
     onOpenMobileSidebar,
     onOpenAssistant,
     onOpenAuthModal,
@@ -257,7 +262,12 @@ export default function Topbar({
     );
     return (
         <>
-            <div className="app-topbar h-14 sm:h-16 border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2">
+            <div
+                className={clsx(
+                    'app-topbar border-b px-2 sm:px-3 flex items-center justify-between select-none shrink-0 font-sans z-30 bg-[var(--navbar)] border-[var(--border)] gap-2 transition-[height,padding] duration-200',
+                    isTopbarCollapsed ? 'is-collapsed h-9' : 'h-14 sm:h-16',
+                )}
+            >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     {/* Without a specification there is no sidebar to collapse.
                         The narrow widths keep the button: it is the only way to
@@ -281,19 +291,35 @@ export default function Topbar({
                         </Tip>
                     )}
 
-                    {/* The mark alone carries the brand where every pixel of
-                        the row is needed for the specification controls. */}
+                    {/* Topbar collapse sits between the sidebar toggle and the
+                        product mark so readers can reclaim vertical space. */}
+                    {onToggleTopbarCollapse && !isMobile && hasSpec && (
+                        <Tip content={isTopbarCollapsed ? 'Expand top bar' : 'Collapse top bar'} placement="bottom">
+                            <button
+                                type="button"
+                                onClick={onToggleTopbarCollapse}
+                                aria-label={isTopbarCollapsed ? 'Expand top bar' : 'Collapse top bar'}
+                                aria-pressed={isTopbarCollapsed}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--surface-hover)] transition-all cursor-pointer text-[var(--text-heading)] shrink-0"
+                            >
+                                <i
+                                    className={`ph ${isTopbarCollapsed ? 'ph-caret-down' : 'ph-caret-up'} text-[16px]`}
+                                />
+                            </button>
+                        </Tip>
+                    )}
+
+                    {/* Icon only — the wordmark lives in the sidebar footer so
+                        host API docs are not branded as OpenDoc in the header. */}
                     <BrandLogo
-                        type={null}
+                        type="logo"
                         logoFrame={false}
-                        hideWordmarkInMobile
-                        hideWordmarkInTablet
                         logoClassName="size-8 sm:size-9 p-1"
-                        wordmarkClassName="text-sm text-[var(--text-heading)]"
                         className="select-none shrink-0"
+                        ariaLabel="Documentation"
                     />
 
-                    {!isMobile && (
+                    {!isTopbarCollapsed && !isMobile && (
                         <>
                             <div className="h-6 w-[1px] bg-[var(--border)] shrink-0"></div>
                             {selectorButton}
@@ -313,7 +339,7 @@ export default function Topbar({
                     )}
                 </div>
 
-                {isMobile && isLocalMode && (canOpenLocal || remoteLoadingEnabled) && (
+                {!isTopbarCollapsed && isMobile && isLocalMode && (canOpenLocal || remoteLoadingEnabled) && (
                     <Tip content="Open a specification from your device" placement="bottom">
                         <button
                             type="button"
@@ -326,7 +352,7 @@ export default function Topbar({
                     </Tip>
                 )}
 
-                {hasSpec && !showSchemaExplorer && !isMobile && !hideSearch && (
+                {!isTopbarCollapsed && hasSpec && !showSchemaExplorer && !isMobile && !hideSearch && (
                     <div className="flex flex-1 items-center relative max-w-md min-w-0 select-none">
                         <input
                             ref={searchInputRef}
@@ -368,7 +394,7 @@ export default function Topbar({
                     </div>
                 )}
 
-                {isMobile && !showMobileSearch && (
+                {!isTopbarCollapsed && isMobile && !showMobileSearch && (
                     <div className="flex-1 min-w-0 px-2">
                         <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-medium truncate">
                             <span className="truncate">{title}</span>
@@ -383,7 +409,7 @@ export default function Topbar({
                     </div>
                 )}
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className={clsx('flex items-center gap-1 shrink-0', isTopbarCollapsed && 'hidden')}>
                     {hasSpec && (
                         <Tip content="Open AI Assistant" placement="bottom">
                             <button
@@ -511,7 +537,7 @@ export default function Topbar({
                 </div>
             </div>
 
-            {showMobileSearch && !showSchemaExplorer && isMobile && (
+            {!isTopbarCollapsed && showMobileSearch && !showSchemaExplorer && isMobile && (
                 <div className="border-b px-3 py-2 flex items-center gap-2 bg-[var(--navbar)] border-[var(--border)]">
                     <div className="relative flex-1 min-w-0">
                         <input

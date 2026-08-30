@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import {Tip} from '../../common/Tooltip';
-import pkg from '../../../../package.json';
 import {useEndpointNotes} from '@/src/contexts/EndpointNotesContext';
 
 interface CollapsedSidebarRailProps {
@@ -21,12 +20,12 @@ export default function CollapsedSidebarRail({
     showSchemaExplorer,
     showNotes,
     showCompatibility,
-    showAbout,
+    showAbout: _showAbout,
     onOpenHome,
     onOpenSchemaExplorer,
     onOpenNotes,
     onOpenCompatibility,
-    onOpenAbout,
+    onOpenAbout: _onOpenAbout,
 }: CollapsedSidebarRailProps) {
     const {notes} = useEndpointNotes();
     return (
@@ -103,43 +102,20 @@ export default function CollapsedSidebarRail({
                         <i className="ph-fill ph-shield-check text-[16px]" />
                     </button>
                 </Tip>
-                <Tip content="About">
-                    <button
-                        onClick={onOpenAbout}
-                        aria-current={showAbout ? 'page' : undefined}
-                        className={clsx(
-                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
-                            showAbout
-                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
-                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
-                        )}
+            </div>
+            <div className="mb-2 flex flex-col items-center gap-1.5">
+                <Tip content="GitHub">
+                    <a
+                        href="https://github.com/omidgfx/opendoc-ui"
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="GitHub"
+                        className="flex size-8 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
                     >
-                        <i className="ph-fill ph-info text-[18px]" />
-                    </button>
+                        <i className="ph-fill ph-github-logo text-[16px]" />
+                    </a>
                 </Tip>
             </div>
-            <a
-                href="https://github.com/omidgfx"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] text-[var(--text-muted)] flex flex-col items-center hover:text-[var(--primary)] transition-colors pointer-events-auto"
-                style={{textDecoration: 'none'}}
-            >
-                <div
-                    className="flex flex-col items-start gap-0.125 select-none pointer-events-none"
-                    style={{writingMode: 'vertical-rl', transform: 'rotate(180deg)'}}
-                >
-                    <div>Pejman Chatrrouz</div>
-                    <span className="text-[7px] text-[var(--text-muted)]/70 font-mono">{pkg.version}</span>
-                </div>
-                <div className="mb-2 mt-2 flex flex-col items-center gap-0.5">
-                    <Tip content="By Pejman Chatrrouz on GitHub">
-                        <span className="rounded-xl flex items-center justify-center transition-colors text-inherit">
-                            <i className="ph-fill ph-github-logo text-[32px]" />
-                        </span>
-                    </Tip>
-                </div>
-            </a>
         </div>
     );
 }

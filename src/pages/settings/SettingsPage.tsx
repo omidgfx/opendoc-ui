@@ -42,7 +42,7 @@ export default function SettingsPage({section, onSelectSection, appearance, navi
                             Settings
                         </h2>
                         <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">
-                            Every preference of OpenDoc UI, in one deep-linkable place
+                            Appearance, navigation, editor, and assistant preferences
                         </p>
                     </div>
                 </div>

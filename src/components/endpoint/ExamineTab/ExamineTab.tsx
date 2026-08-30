@@ -494,7 +494,7 @@ export default function ExamineTab({
         <form
             onSubmit={handleFormSubmit}
             noValidate
-            className="@container flex-1 w-full h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
+            className="@container flex-1 w-full h-full overflow-y-auto p-2.5 sm:p-4 md:p-5 space-y-4 sm:space-y-5 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
         >
             <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
 

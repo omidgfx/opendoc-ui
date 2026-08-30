@@ -581,7 +581,7 @@ export default function AIAssistantView({
                             <div className="flex items-center gap-2">
                                 <i className="ph-fill ph-sparkle text-[17px] text-[var(--primary)]" />
                                 <h1 className="truncate text-sm font-extrabold text-[var(--text-heading)]">
-                                    OpenDoc UI
+                                    Assistant
                                 </h1>
                             </div>
                             <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">

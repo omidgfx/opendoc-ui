@@ -111,6 +111,8 @@ export default function App() {
         setSidebarDisplayRoutes,
         desktopCollapsed,
         setDesktopCollapsed,
+        topbarCollapsed,
+        setTopbarCollapsed,
         mobileOpen,
         setMobileOpen,
     } = useSidebarController(selectedParsableKey, isMobile);
@@ -276,9 +278,9 @@ export default function App() {
     }, [selectedTab, selectedEndpoint]);
     const [isUpdatingHash, setIsUpdatingHash] = useState(false);
     useEffect(() => {
-        if (spec?.info?.title) document.title = `${spec.info.title} — OpenDoc UI`;
-        else if (selectedParsableKey) document.title = `${selectedParsableKey} — OpenDoc UI`;
-        else document.title = 'OpenDoc UI';
+        if (spec?.info?.title) document.title = spec.info.title;
+        else if (selectedParsableKey) document.title = selectedParsableKey;
+        else document.title = 'API Documentation';
     }, [spec, selectedParsableKey]);
     useEffect(() => {
         if (selectedParsableKey && parsables[selectedParsableKey]) {
@@ -1265,13 +1267,15 @@ export default function App() {
                             searchQuery={searchQuery}
                             onSearchChange={handleSearchChange}
                             onDownloadSpec={handleDownload}
-                            title={spec?.info?.title || 'OpenDoc UI'}
+                            title={spec?.info?.title || 'Documentation'}
                             showSchemaExplorer={showSchemaExplorer}
                             spec={spec}
                             specFreshness={specFetchInfo}
                             showHome={showHome}
                             isCollapsed={isSidebarCollapsed}
                             onToggleCollapse={onToggleCollapse}
+                            isTopbarCollapsed={!isMobile && topbarCollapsed}
+                            onToggleTopbarCollapse={() => setTopbarCollapsed(v => !v)}
                             onOpenMobileSidebar={() => setMobileOpen(true)}
                             onOpenAssistant={handleOpenAssistant}
                             themeMode={currentThemeMode}

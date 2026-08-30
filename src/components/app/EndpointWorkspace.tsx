@@ -162,7 +162,7 @@ export default function EndpointWorkspace({
     return (
         <div ref={workspaceRef} className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
             <div className="@container shrink-0 border-b bg-[var(--surface)] border-[var(--border)]">
-                <div className="h-auto min-h-[3.5rem] px-3 sm:px-6 py-2 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-2 select-none">
+                <div className="h-auto min-h-0 px-2.5 sm:px-4 py-1 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-1.5 select-none">
                     <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-[10.5px]">
                         <span className="uppercase opacity-40 font-black text-[9px] tracking-widest text-[var(--text-heading)] hidden @4xl:inline">
                             Endpoint:
@@ -177,13 +177,13 @@ export default function EndpointWorkspace({
                                     onClick={() => setSelectedTab('docs')}
                                     aria-pressed={selectedTab === 'docs'}
                                     className={clsx(
-                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                        'px-2 sm:px-2.5 py-1 gap-1 flex items-center rounded-md font-semibold transition-all cursor-pointer text-[11px]',
                                         selectedTab === 'docs'
                                             ? 'bg-[var(--method-get)] shadow-sm text-[var(--method-get-contrast)]'
                                             : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
                                     )}
                                 >
-                                    <i className="ph ph-book-open-text text-[16px]" />
+                                    <i className="ph ph-book-open-text text-[14px]" />
                                     <span className="hidden @4xl:inline">View Documentation</span>
                                     <span className="@4xl:hidden">Docs</span>
                                 </button>
@@ -193,13 +193,13 @@ export default function EndpointWorkspace({
                                     onClick={() => setSelectedTab('examine')}
                                     aria-pressed={selectedTab === 'examine'}
                                     className={clsx(
-                                        'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                        'px-2 sm:px-2.5 py-1 gap-1 flex items-center rounded-md font-semibold transition-all cursor-pointer text-[11px]',
                                         selectedTab === 'examine'
                                             ? 'bg-[var(--method-delete)] shadow-sm text-[var(--method-delete-contrast)]'
                                             : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
                                     )}
                                 >
-                                    <i className="ph ph-flask text-[16px]" />
+                                    <i className="ph ph-flask text-[14px]" />
                                     <span className="hidden @4xl:inline">API Runner</span>
                                     <span className="@4xl:hidden">Run</span>
                                 </button>
@@ -210,13 +210,13 @@ export default function EndpointWorkspace({
                                         onClick={() => setSelectedTab('both')}
                                         aria-pressed={selectedTab === 'both'}
                                         className={clsx(
-                                            'px-2.5 sm:px-3 py-1.5 gap-1.5 flex items-center rounded-md font-semibold transition-all cursor-pointer text-xs',
+                                            'px-2 sm:px-2.5 py-1 gap-1 flex items-center rounded-md font-semibold transition-all cursor-pointer text-[11px]',
                                             selectedTab === 'both'
                                                 ? 'bg-[var(--primary)] shadow-sm text-[var(--primary-contrast)]'
                                                 : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
                                         )}
                                     >
-                                        <i className="ph ph-split-horizontal text-[16px]" />
+                                        <i className="ph ph-split-horizontal text-[14px]" />
                                         <span className="hidden @4xl:inline">Split View</span>
                                         <span className="@4xl:hidden">Split</span>
                                     </button>
@@ -252,7 +252,7 @@ export default function EndpointWorkspace({
                                 aria-label="Generate request code"
                                 className="size-8.5 border hover:bg-[var(--surface-hover)] rounded-lg text-xs font-bold flex justify-center items-center transition-colors cursor-pointer border-[var(--border)] text-[var(--text-heading)] shrink-0"
                             >
-                                <i className="ph ph-code text-[16px]" />
+                                <i className="ph ph-code text-[14px]" />
                             </button>
                         </Tip>
                         <Tip content="Ask AI about this endpoint in a new conversation">

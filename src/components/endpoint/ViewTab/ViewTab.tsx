@@ -921,10 +921,10 @@ export default function ViewTab({
             <div
                 ref={scrollContainerRef}
                 data-endpoint-docs-scroll
-                className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-8 mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
+                className="w-full h-full overflow-y-auto p-2.5 sm:p-4 md:p-5 mx-auto space-y-4 sm:space-y-5 animate-in fade-in duration-200 select-text font-sans scrollbar-thin min-w-0"
                 style={{maxWidth: '100%'}}
             >
-                <div className="@container p-4 sm:p-6 rounded-2xl border flex flex-col gap-4 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
+                <div className="@container p-3 sm:p-4 rounded-xl border flex flex-col gap-3 shadow-sm bg-[var(--surface)] border-[var(--border)] min-w-0">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
@@ -1050,7 +1050,7 @@ export default function ViewTab({
                                 {operation.summary || 'Endpoint Documentation'}
                             </h1>
                             {operation.description && (
-                                <div className="mt-2 text-sm max-w-none text-inherit leading-relaxed animate-in fade-in text-[var(--text)]">
+                                <div className="mt-1.5 text-[12.5px] sm:text-[13px] max-w-none text-inherit leading-relaxed animate-in fade-in text-[var(--text)]">
                                     <Markdown text={operation.description} />
                                 </div>
                             )}
@@ -1108,7 +1108,7 @@ export default function ViewTab({
                                         </div>
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 animate-in fade-in min-w-0">
+                                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 animate-in fade-in min-w-0">
                                             {resolvedRequestBody.description && (
                                                 <p className="mb-4 text-xs font-semibold leading-relaxed text-[var(--text)]">
                                                     {resolvedRequestBody.description}

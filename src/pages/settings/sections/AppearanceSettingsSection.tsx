@@ -39,7 +39,7 @@ export default function AppearanceSettingsSection({
             >
                 <SettingRow
                     label="Color mode"
-                    description={`System currently resolves to ${resolvedThemeMode}. The same switch sits in the top navbar.`}
+                    description={`Follows your device when set to System (currently ${resolvedThemeMode}).`}
                     icon="ph ph-swatches"
                     control={
                         <SettingChoice
@@ -54,7 +54,7 @@ export default function AppearanceSettingsSection({
 
             <SettingsGroup
                 title="Theme"
-                description={`${THEME_LIST.length} palettes with stable tags you can paste into config.json. Applied instantly and remembered per specification.`}
+                description="Choose a palette for reading this documentation. Your choice is remembered on this device."
                 icon="ph-fill ph-palette"
             >
                 <div className="px-4 py-4 sm:px-5">

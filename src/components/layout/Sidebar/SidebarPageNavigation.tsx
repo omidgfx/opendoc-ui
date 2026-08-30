@@ -93,12 +93,12 @@ export default function SidebarPageNavigation({
     spec,
     hasSpec,
     overviewActive,
-    aboutActive,
+    aboutActive: _aboutActive,
     schemasActive,
     notesActive,
     compatibilityActive,
     onOpenHome,
-    onOpenAbout,
+    onOpenAbout: _onOpenAbout,
     onOpenSchemas,
     onOpenNotes,
     onOpenCompatibility,
@@ -106,19 +106,7 @@ export default function SidebarPageNavigation({
     onContextMenu,
 }: SidebarPageNavigationProps) {
     const {notes} = useEndpointNotes();
-    if (!hasSpec)
-        return (
-            <PageButton
-                id="view:about"
-                label="About OpenDoc UI"
-                tip="About OpenDoc UI"
-                icon="ph-fill ph-info"
-                active={aboutActive}
-                onOpen={onOpenAbout}
-                onPermanent={() => onOpenPermanent('about')}
-                onContextMenu={event => onContextMenu(event, 'about')}
-            />
-        );
+    if (!hasSpec) return null;
     return (
         <>
             <PageButton
@@ -130,16 +118,6 @@ export default function SidebarPageNavigation({
                 onOpen={onOpenHome}
                 onPermanent={() => onOpenPermanent('home')}
                 onContextMenu={event => onContextMenu(event, 'home')}
-            />
-            <PageButton
-                id="view:about"
-                label="About OpenDoc UI"
-                tip="About OpenDoc UI"
-                icon="ph-fill ph-info"
-                active={aboutActive}
-                onOpen={onOpenAbout}
-                onPermanent={() => onOpenPermanent('about')}
-                onContextMenu={event => onContextMenu(event, 'about')}
             />
             <PageButton
                 id="view:schemas"

@@ -9,6 +9,7 @@ export function useSidebarController(selectedSpecKey: string, isMobile: boolean)
     const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(
         () => uiStorage.get('sidebar_collapsed') === 'true',
     );
+    const [topbarCollapsed, setTopbarCollapsed] = useState<boolean>(() => uiStorage.get('topbar_collapsed') === 'true');
     const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => {
         setSidebarDisplayRoutes(readSidebarConfig(selectedSpecKey).displayRoutes);
@@ -16,11 +17,16 @@ export function useSidebarController(selectedSpecKey: string, isMobile: boolean)
     useEffect(() => {
         if (!isMobile) uiStorage.set('sidebar_collapsed', String(desktopCollapsed));
     }, [desktopCollapsed, isMobile]);
+    useEffect(() => {
+        if (!isMobile) uiStorage.set('topbar_collapsed', String(topbarCollapsed));
+    }, [topbarCollapsed, isMobile]);
     return {
         sidebarDisplayRoutes,
         setSidebarDisplayRoutes,
         desktopCollapsed,
         setDesktopCollapsed,
+        topbarCollapsed,
+        setTopbarCollapsed,
         mobileOpen,
         setMobileOpen,
     };

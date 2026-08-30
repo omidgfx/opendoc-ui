@@ -7,9 +7,8 @@ import CustomDropdown from '../../common/CustomDropdown';
 import {Tip} from '../../common/Tooltip';
 import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelectorModal';
 import {specStorage, uiStorage} from '../../../utils/storage/index';
-import {OPEN_DOC_WEBSITE_URL} from '@/src/data/about';
-import pkg from '../../../../package.json';
 import FolderTreeActionIcon from './FolderTreeActionIcon';
+import BrandLogo from '@/src/components/brand/BrandLogo';
 import CollapsedSidebarRail from './CollapsedSidebarRail';
 import SidebarPageNavigation from './SidebarPageNavigation';
 import SidebarContextMenu from './SidebarContextMenu';
@@ -987,43 +986,44 @@ export default function Sidebar(props: SidebarProps) {
                 />
             </div>
 
-            <div className="h-[76px] min-h-[76px] box-border p-3 border-t shrink-0 flex flex-col justify-center gap-2 border-[var(--border)] bg-[var(--background)]">
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-left text-[11px] leading-normal select-none text-[var(--text-muted)]">
-                        By{' '}
+            <div className="box-border px-2.5 py-1.5 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
+                <Tip content="About">
+                    <button
+                        type="button"
+                        onClick={navTo(onOpenAbout)}
+                        className="min-w-0 cursor-pointer rounded-md px-1 py-0.5 text-left transition-colors hover:bg-[var(--surface-hover)]"
+                        aria-label="About"
+                    >
+                        <BrandLogo
+                            type="wordmark"
+                            wordmarkClassName="text-[9px] leading-none text-[var(--text-muted)]"
+                            className="select-none"
+                            ariaLabel="About"
+                        />
+                    </button>
+                </Tip>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <Tip content="By Pejman Chatrrouz">
                         <a
                             href="https://github.com/omidgfx"
                             target="_blank"
                             rel="noreferrer"
-                            className="font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors"
+                            className="text-[10px] font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
                         >
-                            Pejman Chatrrouz
+                            PC
                         </a>
-                    </span>
+                    </Tip>
                     <Tip content="View source on GitHub">
                         <a
                             href="https://github.com/omidgfx/opendoc-ui"
                             target="_blank"
                             rel="noreferrer"
-                            className="px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all text-[var(--text-contrast)] shrink-0 select-none cursor-pointer bg-[var(--text)]"
+                            aria-label="GitHub"
+                            className="flex size-6 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-heading)]"
                         >
-                            <i className="ph-fill ph-github-logo text-[13px]"></i>
-                            <span>GitHub</span>
+                            <i className="ph-fill ph-github-logo text-[14px]" />
                         </a>
                     </Tip>
-                </div>
-                <div className="flex items-center justify-between text-[9px] select-none text-[var(--text-muted)]">
-                    <Tip content="Open the OpenDoc UI website">
-                        <a
-                            href={OPEN_DOC_WEBSITE_URL}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-semibold text-[var(--text-heading)] hover:text-[var(--primary)] transition-colors"
-                        >
-                            OpenDoc UI
-                        </a>
-                    </Tip>
-                    <span className="font-mono">{pkg.version}</span>
                 </div>
             </div>
 
