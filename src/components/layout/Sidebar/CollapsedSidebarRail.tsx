@@ -8,11 +8,16 @@ interface CollapsedSidebarRailProps {
     showNotes: boolean;
     showCompatibility: boolean;
     showAbout: boolean;
+    /** True when an endpoint is the active workspace selection. */
+    endpointSelected: boolean;
+    /** Temporary overlay navigation is open. */
+    flyoutOpen: boolean;
     onOpenHome: () => void;
     onOpenSchemaExplorer: () => void;
     onOpenNotes: () => void;
     onOpenCompatibility: () => void;
     onOpenAbout: () => void;
+    onToggleFlyout: () => void;
 }
 
 export default function CollapsedSidebarRail({
@@ -21,11 +26,14 @@ export default function CollapsedSidebarRail({
     showNotes,
     showCompatibility,
     showAbout: _showAbout,
+    endpointSelected,
+    flyoutOpen,
     onOpenHome,
     onOpenSchemaExplorer,
     onOpenNotes,
     onOpenCompatibility,
     onOpenAbout: _onOpenAbout,
+    onToggleFlyout,
 }: CollapsedSidebarRailProps) {
     const {notes} = useEndpointNotes();
     return (
@@ -34,6 +42,23 @@ export default function CollapsedSidebarRail({
             style={{width: 56}}
         >
             <div className="flex-1 flex flex-col gap-1.5 my-2 items-center">
+                <Tip content={flyoutOpen ? 'Close API navigation' : 'Browse API navigation'}>
+                    <button
+                        type="button"
+                        onClick={onToggleFlyout}
+                        aria-label={flyoutOpen ? 'Close API navigation' : 'Browse API navigation'}
+                        aria-expanded={flyoutOpen}
+                        aria-pressed={endpointSelected || flyoutOpen}
+                        className={clsx(
+                            'w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer',
+                            flyoutOpen || endpointSelected
+                                ? 'bg-[var(--primary)] text-[var(--primary-contrast)]'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]',
+                        )}
+                    >
+                        <i className={clsx('ph text-[16px]', flyoutOpen ? 'ph-sidebar-simple' : 'ph-list')} />
+                    </button>
+                </Tip>
                 <Tip content="Overview">
                     <button
                         onClick={onOpenHome}

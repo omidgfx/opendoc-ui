@@ -104,6 +104,8 @@ export default function Sidebar(props: SidebarProps) {
     const hasSpec = !!spec;
     const bp = useBreakpoint();
     const isMobile = bp === 'mobile' || bp === 'tablet';
+    /** Desktop-collapsed temporary navigation: same panel, overlays content (no dim). */
+    const [flyoutOpen, setFlyoutOpen] = useState(false);
     const selectedServerDefinition = useMemo(() => {
         const servers = spec?.servers || [];
         return servers.find(server => server.url === selectedServer) || servers[0] || null;
@@ -211,7 +213,36 @@ export default function Sidebar(props: SidebarProps) {
         setFolderBehaviorMenuOpen(false);
         setSidebarFilterOpen(false);
         setSidebarFilterQuery('');
+        setFlyoutOpen(false);
     }, [selectedParsableKey]);
+
+    // Selecting another endpoint or page dismisses the temporary overlay nav.
+    useEffect(() => {
+        setFlyoutOpen(false);
+    }, [
+        selectedEndpoint?.path,
+        selectedEndpoint?.method,
+        showHome,
+        showAbout,
+        showSchemaExplorer,
+        showNotes,
+        showCompatibility,
+        showAssistant,
+    ]);
+
+    // Leaving collapsed mode (or going mobile) drops the flyout.
+    useEffect(() => {
+        if (!isCollapsed || isMobile) setFlyoutOpen(false);
+    }, [isCollapsed, isMobile]);
+
+    useEffect(() => {
+        if (!flyoutOpen) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setFlyoutOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [flyoutOpen]);
     useEffect(() => {
         if (!sidebarFilterOpen) return;
         const closeOnEscape = (event: KeyboardEvent) => {
@@ -496,7 +527,8 @@ export default function Sidebar(props: SidebarProps) {
         closeFolderBehaviorMenu();
     };
     useEffect(() => {
-        if (!selectedEndpoint || isCollapsed || isMobile) return;
+        if (!selectedEndpoint || isMobile) return;
+        if (isCollapsed && !flyoutOpen) return;
         const toExpand = new Set<string>();
         const sm = selectedEndpoint.method.toLowerCase();
         const visit = (node: TreeNode, np: string): boolean => {
@@ -532,7 +564,7 @@ export default function Sidebar(props: SidebarProps) {
             80,
         );
         return () => clearTimeout(t);
-    }, [selectedEndpoint, tagTree, isCollapsed, isMobile]);
+    }, [selectedEndpoint, tagTree, isCollapsed, isMobile, flyoutOpen]);
     useEffect(() => {
         if (!scrollIntent) return;
         const {type, id} = scrollIntent;
@@ -581,6 +613,7 @@ export default function Sidebar(props: SidebarProps) {
     const navTo = (fn: () => void) => () => {
         fn();
         if (isMobile) onCloseMobile();
+        setFlyoutOpen(false);
     };
     const renderTree = (node: TreeNode, nodePath: string) => (
         <SidebarTree
@@ -608,22 +641,6 @@ export default function Sidebar(props: SidebarProps) {
             onContextMenu={openContextMenu}
         />
     );
-    if (!isMobile && isCollapsed) {
-        return (
-            <CollapsedSidebarRail
-                isOverview={isOverview}
-                showSchemaExplorer={showSchemaExplorer}
-                showNotes={showNotes}
-                showCompatibility={showCompatibility}
-                showAbout={showAbout}
-                onOpenHome={onOpenHome}
-                onOpenSchemaExplorer={onOpenSchemaExplorer}
-                onOpenNotes={onOpenNotes}
-                onOpenCompatibility={onOpenCompatibility}
-                onOpenAbout={onOpenAbout}
-            />
-        );
-    }
     const pageNavigation = (
         <SidebarPageNavigation
             spec={spec}
@@ -1119,19 +1136,74 @@ export default function Sidebar(props: SidebarProps) {
             </>
         );
     }
+    const contextMenuNode = contextMenu ? (
+        <SidebarContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            target={contextMenu.target}
+            hasAIProfile={hasAIProfile}
+            onAction={onContextAction}
+            onClose={() => setContextMenu(null)}
+        />
+    ) : null;
+
+    // Desktop collapsed: icon rail stays in flow; full panel may overlay content
+    // (shadow only, no dim) until the reader navigates away.
+    if (!isMobile && isCollapsed) {
+        return (
+            <>
+                {contextMenuNode}
+                <>
+                    {flyoutOpen && (
+                        // Invisible dismiss layer — no dim, just click-away under the rail+panel.
+                        <button
+                            type="button"
+                            aria-label="Dismiss API navigation"
+                            className="fixed inset-0 z-30 cursor-default bg-transparent"
+                            onClick={() => setFlyoutOpen(false)}
+                        />
+                    )}
+                    <div className="relative z-40 h-full shrink-0" style={{width: 56}}>
+                        <CollapsedSidebarRail
+                            isOverview={isOverview}
+                            showSchemaExplorer={showSchemaExplorer}
+                            showNotes={showNotes}
+                            showCompatibility={showCompatibility}
+                            showAbout={showAbout}
+                            endpointSelected={
+                                !!selectedEndpoint &&
+                                !showHome &&
+                                !showAbout &&
+                                !showSchemaExplorer &&
+                                !showNotes &&
+                                !showCompatibility &&
+                                !showAssistant
+                            }
+                            flyoutOpen={flyoutOpen}
+                            onOpenHome={onOpenHome}
+                            onOpenSchemaExplorer={onOpenSchemaExplorer}
+                            onOpenNotes={onOpenNotes}
+                            onOpenCompatibility={onOpenCompatibility}
+                            onOpenAbout={onOpenAbout}
+                            onToggleFlyout={() => setFlyoutOpen(open => !open)}
+                        />
+                        {flyoutOpen && (
+                            <div
+                                className="absolute top-0 left-full z-40 h-full"
+                                style={{boxShadow: '4px 0 24px rgba(0, 0, 0, 0.14)'}}
+                            >
+                                {sidebarContent}
+                            </div>
+                        )}
+                    </div>
+                </>
+            </>
+        );
+    }
+
     return (
         <>
-            {contextMenu && (
-                <SidebarContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    target={contextMenu.target}
-                    hasAIProfile={hasAIProfile}
-                    onAction={onContextAction}
-                    onClose={() => setContextMenu(null)}
-                />
-            )}
-
+            {contextMenuNode}
             {sidebarContent}
         </>
     );
