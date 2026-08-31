@@ -119,18 +119,8 @@ export default function WelcomeView({
                         )}
                     </div>
 
-                    <div className="mt-5 w-full max-w-lg border-t border-dashed border-[var(--border)] pt-3.5">
-                        <div className="flex items-start gap-1.5 text-[11px] text-[var(--text-muted)]">
-                            <i className="ph ph-lightbulb text-[13px] leading-4 text-[var(--method-put)]"></i>
-                            <p className="leading-relaxed">
-                                <span className="font-bold">Tip:</span>{' '}
-                                <span className="font-medium">
-                                    Each link below opens as a tab next to your endpoints, so you can explore without
-                                    losing your place.
-                                </span>
-                            </p>
-                        </div>
-                        <div className="mt-2 flex flex-col items-start gap-1.5">
+                    <div className="mt-3.5 w-full max-w-lg pt-1.5 px-2.5">
+                        <div className="mt-2 flex flex-col md:flex-row items-center justify-between gap-1.5">
                             <button
                                 type="button"
                                 onClick={onOpenHome}
