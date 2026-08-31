@@ -18,3 +18,36 @@ services:
         target: /usr/share/nginx/html/config.json
         read_only: true
     restart: '${OPENDOC_RESTART_POLICY:-unless-stopped}'
+
+  # Optional managed AI gateway. Start the whole stack with:
+  #   AI_PROVIDER=openrouter AI_MODEL=openai/gpt-oss-20b:free AI_API_KEY=... \
+  #   docker compose --profile managed-ai up -d --build
+  # The UI container proxies /api/ai/* to this service (docker/nginx.conf);
+  # users get a working assistant with zero client-side configuration.
+  opendoc-ai-gateway:
+    image: 'node:22-alpine'
+    container_name: 'opendoc-ai-gateway'
+    profiles: ['managed-ai']
+    working_dir: /app
+    command: ['sh', '-c', 'npm ci --no-audit --no-fund && npx tsx server/ai-gateway.ts']
+    environment:
+      NODE_ENV: 'production'
+      AI_GATEWAY_MANAGED: '${AI_GATEWAY_MANAGED:-true}'
+      AI_GATEWAY_AUTH_MODE: '${AI_GATEWAY_AUTH_MODE:-ambient}'
+      AI_GATEWAY_DISPLAY_NAME: '${AI_GATEWAY_DISPLAY_NAME:-Assistant}'
+      AI_GATEWAY_EXPOSE_MODEL: '${AI_GATEWAY_EXPOSE_MODEL:-false}'
+      AI_GATEWAY_LOCK_TEMPERATURE: '${AI_GATEWAY_LOCK_TEMPERATURE:-true}'
+      AI_GATEWAY_TEMPERATURE: '${AI_GATEWAY_TEMPERATURE:-0.2}'
+      AI_GATEWAY_SUBJECT_HEADER: '${AI_GATEWAY_SUBJECT_HEADER:-X-Forwarded-User}'
+      AI_GATEWAY_ALLOWED_SKILL_PACKS: '${AI_GATEWAY_ALLOWED_SKILL_PACKS:-openapi,rest-debugging,security,api-testing}'
+      AI_GATEWAY_ORIGIN: '${AI_GATEWAY_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}'
+      AI_GATEWAY_RATE_LIMIT: '${AI_GATEWAY_RATE_LIMIT:-30}'
+      AI_PROVIDER: '${AI_PROVIDER:-openrouter}'
+      AI_MODEL: '${AI_MODEL:-}'
+      AI_API_KEY: '${AI_API_KEY:-}'
+      AI_BASE_URL: '${AI_BASE_URL:-}'
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    restart: '${OPENDOC_RESTART_POLICY:-unless-stopped}'
