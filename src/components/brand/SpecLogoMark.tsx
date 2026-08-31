@@ -25,7 +25,6 @@ export default function SpecLogoMark({spec, className, alt}: SpecLogoMarkProps) 
                 alt={logo.altText || alt || `${spec?.info?.title || 'API'} logo`}
                 draggable={false}
                 className={clsx('shrink-0 select-none object-contain', className)}
-                style={logo.backgroundColor ? {backgroundColor: logo.backgroundColor} : undefined}
             />
         );
     return <OpenDocMark className={clsx('shrink-0', className)} />;

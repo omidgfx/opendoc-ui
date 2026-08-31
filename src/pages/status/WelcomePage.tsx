@@ -55,7 +55,6 @@ export default function WelcomeView({
                             alt={specLogo.altText || `${specTitle} logo`}
                             draggable={false}
                             className="mb-5 size-16 sm:size-20 shrink-0 object-contain"
-                            style={specLogo.backgroundColor ? {backgroundColor: specLogo.backgroundColor} : undefined}
                         />
                     ) : (
                         <BrandLogo

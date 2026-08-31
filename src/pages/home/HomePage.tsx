@@ -223,14 +223,7 @@ export default function HomeView({
                         <div className="flex min-w-0 flex-1 items-start gap-4">
                             {specLogo?.url && (
                                 <div className="flex shrink-0 flex-col items-center gap-1.5">
-                                    <div
-                                        className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] p-2 shadow-sm"
-                                        style={
-                                            specLogo.backgroundColor
-                                                ? {backgroundColor: specLogo.backgroundColor}
-                                                : undefined
-                                        }
-                                    >
+                                    <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] p-2 shadow-sm">
                                         {specLogo.href ? (
                                             <a
                                                 href={specLogo.href}
