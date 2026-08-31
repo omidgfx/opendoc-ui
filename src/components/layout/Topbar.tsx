@@ -346,11 +346,7 @@ export default function Topbar({
                         mark is only the fallback. The wordmark lives in the
                         sidebar footer so host API docs are not branded as
                         OpenDoc in the header. */}
-                    <SpecLogoMark
-                        spec={spec}
-                        alt="Documentation"
-                        className={isTopbarCollapsed ? 'size-6 p-0.5' : 'size-8 sm:size-9 p-1'}
-                    />
+                    <SpecLogoMark spec={spec} className={isTopbarCollapsed ? 'size-6 p-0.5' : 'size-8 sm:size-9 p-1'} />
 
                     {!isMobile && (
                         <>

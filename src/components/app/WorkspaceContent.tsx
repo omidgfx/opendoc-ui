@@ -77,6 +77,7 @@ interface WorkspaceContentProps {
     showHome: boolean;
     onOpenAbout: () => void;
     onOpenHome: () => void;
+    onOpenSchemaExplorer: () => void;
     onOpenCompatibility: () => void;
     onOpenSchema: (name: string) => void;
     onSearchChange: (query: string) => void;
@@ -142,6 +143,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         showHome,
         onOpenAbout,
         onOpenHome,
+        onOpenSchemaExplorer,
         onOpenCompatibility,
         onOpenSchema,
         onSearchChange,
@@ -178,6 +180,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                 specKey={specKey}
                 onSearchSubmit={onSearchChange}
                 onOpenHome={onOpenHome}
+                onOpenSchemaExplorer={onOpenSchemaExplorer}
+                onOpenCompatibility={onOpenCompatibility}
                 onOpenLocalFile={onOpenLocalFile}
                 canOpenLocal={canOpenLocal}
             />
@@ -344,6 +348,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
             specKey={specKey}
             onSearchSubmit={onSearchChange}
             onOpenHome={onOpenHome}
+            onOpenSchemaExplorer={onOpenSchemaExplorer}
+            onOpenCompatibility={onOpenCompatibility}
             onOpenLocalFile={onOpenLocalFile}
             canOpenLocal={canOpenLocal}
         />

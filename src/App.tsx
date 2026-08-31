@@ -1071,6 +1071,7 @@ export default function App() {
             spec={spec}
             specKey={selectedParsableKey}
             canOpenLocal={canOpenLocal}
+            onOpenSchemaExplorer={handleOpenSchemaExplorer}
             onOpenLocalFile={() => hiddenFileInputRef.current?.click()}
             onAddReferencedFiles={localSpec?.key === selectedParsableKey ? openReferencedFilePicker : undefined}
             showAbout={showAbout}

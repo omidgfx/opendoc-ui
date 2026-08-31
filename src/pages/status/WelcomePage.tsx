@@ -10,6 +10,8 @@ type WelcomeViewProps = {
     specKey: string;
     onSearchSubmit: (q: string) => void;
     onOpenHome: () => void;
+    onOpenSchemaExplorer: () => void;
+    onOpenCompatibility: () => void;
     onOpenLocalFile: () => void;
     canOpenLocal: boolean;
 };
@@ -19,6 +21,8 @@ export default function WelcomeView({
     specKey,
     onSearchSubmit,
     onOpenHome,
+    onOpenSchemaExplorer,
+    onOpenCompatibility,
     onOpenLocalFile,
     canOpenLocal,
 }: WelcomeViewProps) {
@@ -52,7 +56,7 @@ export default function WelcomeView({
                     {specLogo ? (
                         <img
                             src={specLogo.url}
-                            alt={specLogo.altText || `${specTitle} logo`}
+                            alt=""
                             draggable={false}
                             className="mb-5 size-16 sm:size-20 shrink-0 object-contain"
                         />
@@ -128,16 +132,38 @@ export default function WelcomeView({
                             <i className="ph-fill ph-house text-[14px] text-[var(--primary)]"></i>
                             Overview
                         </button>
-                        {canOpenLocal && (
+                    </div>
+
+                    <div className="mt-5 w-full max-w-lg border-t border-dashed border-[var(--border)] pt-3.5">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--text-muted)]">
+                            <i className="ph ph-lightbulb text-[13px] text-[var(--method-put)]"></i>
+                            <span>Tip:</span>
+                        </div>
+                        <div className="mt-2 flex flex-col items-start gap-1.5">
                             <button
                                 type="button"
-                                onClick={onOpenLocalFile}
-                                className="h-9 px-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-bold flex items-center gap-2 text-[var(--text-heading)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                                onClick={onOpenSchemaExplorer}
+                                className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                             >
-                                <i className="ph-fill ph-folder-open text-[14px] text-[var(--primary)]"></i>
-                                Open a specification
+                                Open the schema explorer
                             </button>
-                        )}
+                            <button
+                                type="button"
+                                onClick={onOpenCompatibility}
+                                className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                            >
+                                Check runner compatibility
+                            </button>
+                            {canOpenLocal && (
+                                <button
+                                    type="button"
+                                    onClick={onOpenLocalFile}
+                                    className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                                >
+                                    Open a specification from your device
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <p className="mt-8 text-[9.5px] font-mono text-[var(--text-muted)]/80">
