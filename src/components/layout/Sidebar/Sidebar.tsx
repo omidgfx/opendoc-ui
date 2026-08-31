@@ -1005,22 +1005,19 @@ export default function Sidebar(props: SidebarProps) {
             </div>
 
             <div className="box-border px-2.5 py-1 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    <OpenDocMark className="size-3.5 shrink-0" />
-                    <BrandLogo
-                        type="wordmark"
-                        wordmarkClassName="brand-wordmark--footer text-[9px] leading-none text-[var(--text-heading)]"
-                        className="inline-flex select-none items-center"
-                        ariaLabel="About"
-                    />
-                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">·</span>
+                <div className="flex h-3.5 min-w-0 items-center gap-1">
                     <button
                         type="button"
                         onClick={navTo(onOpenAbout)}
-                        className="truncate text-[8px] font-bold cursor-pointer leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                        className="flex min-w-0 select-none items-center gap-1 rounded-md transition-opacity hover:opacity-80 cursor-pointer"
                         aria-label="About"
                     >
-                        About
+                        <OpenDocMark className="size-4 shrink-0" />
+                        <BrandLogo
+                            type="wordmark"
+                            wordmarkClassName="brand-wordmark--footer leading-none text-[var(--text-heading)]"
+                            className="inline-flex select-none items-center"
+                        />
                     </button>
                 </div>
                 <Tip content="View source on GitHub">

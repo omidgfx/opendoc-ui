@@ -182,8 +182,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                 onOpenHome={onOpenHome}
                 onOpenSchemaExplorer={onOpenSchemaExplorer}
                 onOpenCompatibility={onOpenCompatibility}
-                onOpenLocalFile={onOpenLocalFile}
-                canOpenLocal={canOpenLocal}
             />
         );
     }
@@ -350,8 +348,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
             onOpenHome={onOpenHome}
             onOpenSchemaExplorer={onOpenSchemaExplorer}
             onOpenCompatibility={onOpenCompatibility}
-            onOpenLocalFile={onOpenLocalFile}
-            canOpenLocal={canOpenLocal}
         />
     );
 }
