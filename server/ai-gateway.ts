@@ -1,7 +1,14 @@
+import {createHash} from 'node:crypto';
 import express from 'express';
 import {AIStreamError, fetchProviderModels, streamAIResponse} from '../src/utils/ai/providers';
 import type {AIRequestMessage, AISettings} from '../src/types';
-import {allowedModelCatalog, createGatewayModelPolicy, resolveGatewaySelection} from './ai-gateway-policy';
+import {
+    allowedModelCatalog,
+    createGatewayModelPolicy,
+    createManagedGatewayOptions,
+    managedPolicyPayload,
+    resolveGatewaySelection,
+} from './ai-gateway-policy';
 const app = express();
 const port = Number(process.env.AI_GATEWAY_PORT || 8787);
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.AI_GATEWAY_DEV_MODE === 'true';
@@ -10,6 +17,16 @@ const allowedOrigins = (process.env.AI_GATEWAY_ORIGIN || 'http://localhost:3000,
     .split(',')
     .map(value => value.trim())
     .filter(Boolean);
+const managed = createManagedGatewayOptions({
+    managed: process.env.AI_GATEWAY_MANAGED,
+    authMode: process.env.AI_GATEWAY_AUTH_MODE,
+    displayName: process.env.AI_GATEWAY_DISPLAY_NAME,
+    exposeModel: process.env.AI_GATEWAY_EXPOSE_MODEL,
+    lockTemperature: process.env.AI_GATEWAY_LOCK_TEMPERATURE,
+    temperature: process.env.AI_GATEWAY_TEMPERATURE,
+    subjectHeader: process.env.AI_GATEWAY_SUBJECT_HEADER,
+    allowedSkillPacks: process.env.AI_GATEWAY_ALLOWED_SKILL_PACKS,
+});
 const modelPolicy = createGatewayModelPolicy({
     provider: process.env.AI_PROVIDER || 'openrouter',
     configuredModel: process.env.AI_MODEL || '',
@@ -28,9 +45,14 @@ const rateWindowMs = 60000;
 const maxRequestsPerWindow = Math.max(1, Number(process.env.AI_GATEWAY_RATE_LIMIT || 30));
 const requestBuckets = new Map<string, number[]>();
 let activeRequests = 0;
-if (!gatewayToken && !isDevelopment) {
+if (!gatewayToken && !isDevelopment && !(managed.enabled && managed.authMode === 'ambient')) {
     throw new Error(
-        'AI_GATEWAY_TOKEN is required outside development. Set AI_GATEWAY_DEV_MODE=true only for a trusted local gateway.',
+        'AI_GATEWAY_TOKEN is required outside development. Set AI_GATEWAY_DEV_MODE=true only for a trusted local gateway, or run managed ambient mode behind an authenticating reverse proxy.',
+    );
+}
+if (managed.enabled && managed.authMode === 'ambient' && !isDevelopment) {
+    console.warn(
+        'Managed ambient auth mode: requests are trusted from the perimeter in front of this gateway. Do not expose it directly to the internet.',
     );
 }
 const originAllowed = (origin: string | undefined): boolean =>
@@ -51,7 +73,17 @@ app.use((req, res, next) => {
 });
 app.use(express.json({limit: `${Math.max(128, Number(process.env.AI_GATEWAY_MAX_BODY_MB || 1))}mb`, strict: true}));
 const clientAddress = (req: express.Request) => req.socket.remoteAddress || 'unknown';
+const rateLimitKey = (req: express.Request): string => {
+    if (managed.enabled && managed.subjectHeader) {
+        const subject = req.header(managed.subjectHeader);
+        if (subject) return `${managed.subjectHeader}:${subject}`;
+    }
+    return clientAddress(req);
+};
 const authorize = (req: express.Request, res: express.Response): boolean => {
+    // Managed ambient mode delegates authentication to the perimeter in
+    // front of the gateway (SSO session / reverse proxy identity).
+    if (managed.enabled && managed.authMode === 'ambient') return true;
     if (!gatewayToken) return isDevelopment;
     if (req.header('authorization') !== `Bearer ${gatewayToken}`) {
         res.status(401).json({error: {message: 'Invalid AI gateway token.'}});
@@ -61,7 +93,7 @@ const authorize = (req: express.Request, res: express.Response): boolean => {
 };
 const takeRateLimitSlot = (req: express.Request, res: express.Response): boolean => {
     const now = Date.now();
-    const key = clientAddress(req);
+    const key = rateLimitKey(req);
     if (requestBuckets.size > 10000) {
         for (const [bucketKey, timestamps] of requestBuckets) {
             if (!timestamps.some(timestamp => now - timestamp < rateWindowMs)) requestBuckets.delete(bucketKey);
@@ -135,8 +167,24 @@ app.get('/health', (_req, res) =>
         provider: modelPolicy.provider,
         model: modelPolicy.configuredModel,
         clientModelSelection: modelPolicy.clientModelSelection,
+        managed: managed.enabled,
+        ...(managed.enabled ? {managedAuthMode: managed.authMode} : {}),
     }),
 );
+const policyPayload = managed.enabled ? managedPolicyPayload(managed, modelPolicy, maxRequestsPerWindow) : null;
+const policyTag = policyPayload
+    ? `"${createHash('sha256').update(JSON.stringify(policyPayload)).digest('hex').slice(0, 32)}"`
+    : '';
+// Secret-free capability descriptor for OpenDoc UI's managed AI mode. It is
+// intentionally unauthenticated (it carries no credentials) and only needs
+// the gateway's origin allowlist.
+app.get('/api/ai/policy', (req, res) => {
+    if (!policyPayload) return res.status(404).json({error: {message: 'Not found.'}});
+    if (req.header('if-none-match') === policyTag) return res.sendStatus(304);
+    res.setHeader('ETag', policyTag);
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.json(policyPayload);
+});
 app.post('/api/ai/models', async (req, res) => {
     if (!withRequestGuard(req, res)) return;
     try {
@@ -216,7 +264,9 @@ app.post('/api/ai/chat', async (req, res) => {
         if (!res.writableEnded) abortController.abort();
     });
     try {
-        await streamAIResponse(baseSettings(selection.model, req.body?.temperature), messages, {
+        const requestedTemperature =
+            managed.enabled && managed.lockTemperature ? managed.temperature : req.body?.temperature;
+        await streamAIResponse(baseSettings(selection.model, requestedTemperature), messages, {
             signal: abortController.signal,
             onToken: token => {
                 if (!res.writableEnded)
@@ -256,9 +306,13 @@ app.listen(port, '0.0.0.0', () => {
     console.log(
         `Provider: ${modelPolicy.provider} · Model: ${modelPolicy.clientModelSelection ? `${modelPolicy.allowedModels.size} allowlisted` : modelPolicy.configuredModel}`,
     );
+    if (managed.enabled)
+        console.log(
+            `Managed AI mode: policy at /api/ai/policy · auth: ${managed.authMode} · display name: ${managed.displayName}${managed.exposeModel ? ' · model exposed' : ''}`,
+        );
     console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
     console.log(
-        `Limits: ${maxRequestsPerWindow} req/min/IP · ${maxConcurrent} concurrent · ${upstreamTimeoutMs} ms upstream timeout`,
+        `Limits: ${maxRequestsPerWindow} req/min/${managed.enabled && managed.subjectHeader ? 'subject' : 'IP'} · ${maxConcurrent} concurrent · ${upstreamTimeoutMs} ms upstream timeout`,
     );
 });
 export default app;

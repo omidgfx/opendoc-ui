@@ -12,6 +12,7 @@ import {
     readRuntimeManagedConfig,
     resolveManagedActivation,
 } from '../src/utils/ai/managed';
+import {createGatewayModelPolicy, createManagedGatewayOptions, managedPolicyPayload} from '../server/ai-gateway-policy';
 
 test('managed policy: accepts a valid descriptor and applies defaults', () => {
     const policy = normalizeManagedPolicy({mode: 'managed'});
@@ -225,6 +226,67 @@ test('managed policy fetch: 404 turns managed mode off; valid payload normalizes
     } finally {
         globalThis.fetch = originalFetch;
     }
+});
+
+test('gateway managed options: defaults are disabled, ambient and locked', () => {
+    const off = createManagedGatewayOptions({});
+    assert.equal(off.enabled, false);
+    const managed = createManagedGatewayOptions({managed: 'true'});
+    assert.equal(managed.enabled, true);
+    assert.equal(managed.authMode, 'ambient');
+    assert.equal(managed.displayName, 'Assistant');
+    assert.equal(managed.exposeModel, false);
+    assert.equal(managed.lockTemperature, true);
+    assert.equal(managed.temperature, 0.2);
+    assert.equal(managed.subjectHeader, '');
+    assert.deepEqual(managed.allowedSkillPacks, ['openapi', 'rest-debugging', 'security', 'api-testing']);
+});
+
+test('gateway managed options: parses env block and rejects bad subject headers', () => {
+    const managed = createManagedGatewayOptions({
+        managed: 'TRUE',
+        authMode: 'token',
+        displayName: '  Acme Copilot  ',
+        exposeModel: 'true',
+        lockTemperature: 'false',
+        temperature: '1.5',
+        subjectHeader: 'X-Forwarded-User',
+        allowedSkillPacks: 'openapi, bogus, sdk-generation',
+    });
+    assert.equal(managed.enabled, true);
+    assert.equal(managed.authMode, 'token');
+    assert.equal(managed.displayName, 'Acme Copilot');
+    assert.equal(managed.exposeModel, true);
+    assert.equal(managed.lockTemperature, false);
+    assert.equal(managed.temperature, 1.5);
+    assert.equal(managed.subjectHeader, 'X-Forwarded-User');
+    assert.deepEqual(managed.allowedSkillPacks, ['openapi', 'sdk-generation']);
+    assert.throws(() => createManagedGatewayOptions({managed: 'true', subjectHeader: 'Bad Header!'}), /header name/);
+});
+
+test('gateway managed policy payload is secret-free and masks identity by default', () => {
+    const modelPolicy = createGatewayModelPolicy({
+        provider: 'openai',
+        configuredModel: 'gpt-fake',
+        allowClientModel: false,
+        allowedModels: '',
+    });
+    const managed = createManagedGatewayOptions({managed: 'true', displayName: 'Acme Copilot'});
+    const payload = managedPolicyPayload(managed, modelPolicy, 30) as Record<string, unknown>;
+    const serialized = JSON.stringify(payload);
+    assert.equal(payload.mode, 'managed');
+    assert.equal(payload.displayName, 'Acme Copilot');
+    assert.equal(payload.provider, null);
+    assert.equal(payload.model, null);
+    assert.equal(payload.clientModelSelection, false);
+    assert.ok((payload.limits as Record<string, unknown>).requestsPerMinute === 30);
+    assert.ok(!serialized.includes('sk-'));
+    assert.ok(!serialized.includes('https://'));
+    const exposed = createManagedGatewayOptions({managed: 'true', exposeModel: 'true'});
+    const exposedPayload = managedPolicyPayload(exposed, modelPolicy, null) as Record<string, unknown>;
+    assert.equal(exposedPayload.provider, 'openai');
+    assert.equal(exposedPayload.model, 'gpt-fake');
+    assert.deepEqual(exposedPayload.limits, {});
 });
 
 console.log('Managed AI mode contract tests passed.');
