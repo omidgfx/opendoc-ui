@@ -30,12 +30,18 @@ Backend-owned **Managed AI mode**: zero-config for users, zero secrets in the br
 - gateway transport may omit the client model so gateway-owned models resolve server-side;
 - deployment: nginx same-origin `/api/ai` proxy with lazy upstream resolution, a `managed-ai`
   compose profile for a one-command reference stack, and the shared policy contract documented for
-  the framework gateway examples.
+  the framework gateway examples;
 - adds **specification-first branding**: when the document declares `info.x-logo`, its icon is the
   principal mark in the top bar and on the home search page; the OpenDoc mark remains the fallback
-  when the specification has no logo;
-- moves the OpenDoc mark into the sidebar footer lockup sized to the wordmark, removes the footer
-  author credit, and drops the About OpenDoc UI button from the home search page.
+  when the specification has no logo; spec-declared logo backgrounds are ignored everywhere the
+  logo renders (top bar, home search, overview hero) so the active theme owns its surfaces, and
+  spec logos are decorative (`alt=""`) for assistive technology;
+- replaces the home search page button row with a **quick links row** — Overview, Schema explorer,
+  and Runner compatibility, each opening as a view tab beside the endpoint tabs — removes the
+  open-local-file shortcut from that page, and retires the Enter-to-search keyboard hint;
+- folds the sidebar footer lockup (OpenDoc mark + wordmark) into a single About button with a
+  tightened icon-to-wordmark gap and slightly larger mark and wordmark within the unchanged footer
+  height, and removes the footer author credit.
 
 ## [0.3.4] — 2026-08-31
 

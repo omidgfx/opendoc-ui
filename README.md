@@ -109,8 +109,13 @@ Backend-owned **Managed AI mode** on top of 0.3.4:
 --profile managed-ai` ships a one-command reference deployment;
 - **specification-first branding**: when the document declares `info.x-logo`, its icon is the
   principal mark in the top bar and on the home search page, with the OpenDoc mark as the fallback;
-- the sidebar footer lockup gains the OpenDoc mark sized to the wordmark, the footer author credit
-  is removed, and the home search page no longer shows an About OpenDoc UI button.
+  spec-declared logo backgrounds are ignored so OpenDoc themes stay in control, and the logos are
+  decorative (`alt=""`) for assistive technology;
+- the home search page replaces its button row with a **quick links row** — Overview, Schema
+  explorer, and Runner compatibility, each opening as a view tab beside the endpoint tabs — and the
+  keyboard hint is retired;
+- the sidebar footer lockup (mark + wordmark) is now a single About button, sized up slightly
+  within the same footer height, and the footer author credit is removed.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
