@@ -41,6 +41,22 @@ export interface AIProfile {
     updatedAt: number;
 }
 
+export type AIManagedAuthMode = 'ambient' | 'token';
+
+/** Server-published, secret-free capability descriptor for managed AI mode. */
+export interface AIManagedPolicy {
+    mode: 'managed';
+    ready: boolean;
+    displayName: string;
+    exposeModel: boolean;
+    provider: AIProviderId | null;
+    model: string | null;
+    allowedSkillPacks: AISkillPack[];
+    allowCustomInstructions: boolean;
+    requestsPerMinute: number | null;
+    auth: AIManagedAuthMode;
+}
+
 export type AIMessageRole = 'system' | 'user' | 'assistant';
 
 export interface AIChatMessage {
