@@ -3,6 +3,35 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.5] — 2026-08-31
+
+Backend-owned **Managed AI mode**: zero-config for users, zero secrets in the browser.
+
+- adds **managed AI mode** as a third way beside local profiles and gateway profiles: the
+  organization configures AI on its backend, OpenDoc UI discovers the secret-free capability
+  descriptor at `GET /api/ai/policy`, and the assistant works with no user profiles, no visible AI
+  settings, and no authorization data in the browser;
+- client discovers the policy automatically at boot (silent same-origin probe), with explicit
+  activation via the runtime `ai.managed` config block or `VITE_AI_MANAGED` /
+  `VITE_AI_MANAGED_POLICY_URL`, and re-checks on focus after a TTL;
+- the policy normalizer reads allowlisted keys only — credential-shaped fields can never enter
+  client state — and masks provider/model identity unless the server opts into exposure;
+- assistant, settings, and sidebar lock to the managed identity: the create-profile screen becomes
+  a managed "starting up" state, settings gear and profile editor are hidden, the AI settings page
+  renders a read-only "managed by your organization" panel behind a component-level guard, and
+  error messages are sanitized to managed-safe copy;
+- `hasAIProfile` is satisfied implicitly in managed mode so existing Ask AI flows work unchanged;
+  existing local profiles stay dormant (never deleted) and return if managed mode is removed;
+- gateway: `AI_GATEWAY_MANAGED`, `AI_GATEWAY_AUTH_MODE=ambient|token` (ambient delegates user
+  authentication to the perimeter in front of the gateway), `AI_GATEWAY_SUBJECT_HEADER` for
+  per-user rate limiting, `AI_GATEWAY_DISPLAY_NAME`, `AI_GATEWAY_EXPOSE_MODEL`,
+  `AI_GATEWAY_LOCK_TEMPERATURE` + `AI_GATEWAY_TEMPERATURE` for server-side generation locks, and
+  `AI_GATEWAY_ALLOWED_SKILL_PACKS` for curated skills; policy endpoint supports ETag/304;
+- gateway transport may omit the client model so gateway-owned models resolve server-side;
+- deployment: nginx same-origin `/api/ai` proxy with lazy upstream resolution, a `managed-ai`
+  compose profile for a one-command reference stack, and the shared policy contract documented for
+  the framework gateway examples.
+
 ## [0.3.4] — 2026-08-31
 
 Consumer chrome density, quieter branding, and collapsed-rail navigation.

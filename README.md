@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.3.4-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.3.5-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -21,6 +21,7 @@ CORS-enabled providers directly or an optional gateway.
 ## Table of contents
 
 - [Features](#features)
+- [Version 0.3.5](#version-035)
 - [Version 0.3.4](#version-034)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
@@ -38,6 +39,7 @@ CORS-enabled providers directly or an optional gateway.
 - [Local endpoint notes and hidden endpoints](#local-endpoint-notes-and-hidden-endpoints)
 - [OpenDoc UI assistant](#opendoc-ui-assistant)
 - [Optional AI gateway](#optional-ai-gateway)
+  - [Managed AI mode (zero-config for users)](#managed-ai-mode-zero-config-for-users)
   - [Framework AI gateway examples](#framework-ai-gateway-examples)
 - [Local history](#local-history)
 - [Theme system](#theme-system)
@@ -92,6 +94,22 @@ CORS-enabled providers directly or an optional gateway.
 - **Crash recovery** — view-level boundaries isolate malformed endpoint/schema content, while the global recovery screen remains the final fallback.
 
 ---
+
+## Version 0.3.5
+
+Backend-owned **Managed AI mode** on top of 0.3.4:
+
+- organizations configure the assistant once on their backend; OpenDoc UI discovers it at
+  `GET /api/ai/policy` and self-configures — **no user profiles, no AI settings UI, and no
+  authorization data in the browser**;
+- ambient authentication delegates user identity to the existing perimeter (SSO session / reverse
+  proxy), with optional per-user rate limiting from an edge identity header;
+- the assistant, settings, and sidebar lock to the managed identity ("provided by your
+  organization"); model identity is masked by default and error copy is sanitized;
+- runtime `ai.managed` config block or `VITE_AI_MANAGED*` env activates it; `docker compose
+--profile managed-ai` ships a one-command reference deployment.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
 ## Version 0.3.4
 
@@ -643,6 +661,7 @@ specific endpoint(s) or the entire API. It supports:
 - OpenRouter, Ollama, OpenAI, Anthropic, Gemini, and custom OpenAI-compatible endpoints,
 - direct browser calls for CORS-enabled providers,
 - optional same-origin or external gateway transport,
+- **managed AI mode** where the organization's backend owns the configuration — the assistant just works, with no profiles, no settings UI, and no secrets in the browser,
 - retrieved endpoint/schema context (rather than an unconditional full-spec prompt) with source-ID citations,
 - operational Swagger/OpenAPI, REST debugging, security, SDK generation, and API testing skill packs,
 - a validated OpenDoc UI action bridge for opening endpoints/schemas, searching, filling Runner fields, and proposing explicit API runs,
@@ -775,6 +794,62 @@ maximum output tokens, and an upstream timeout. Tune them with `AI_GATEWAY_RATE_
 `AI_GATEWAY_MAX_CONCURRENT`, `AI_GATEWAY_MAX_MESSAGES`, `AI_GATEWAY_MAX_CONTEXT_CHARS`,
 `AI_GATEWAY_MAX_OUTPUT_TOKENS`, and `AI_GATEWAY_UPSTREAM_TIMEOUT_MS`. `/health` is intentionally
 minimal; chat and model discovery require `Authorization: Bearer <AI_GATEWAY_TOKEN>`.
+
+### Managed AI mode (zero-config for users)
+
+Managed mode is the enterprise alternative to user profiles: the organization configures the
+assistant once on its backend, and every user's OpenDoc UI discovers and locks to it — no provider
+profiles, no AI settings UI, and no authorization data in the browser, ever.
+
+Enable it on the reference gateway:
+
+```bash
+NODE_ENV=production \
+AI_GATEWAY_MANAGED=true \
+AI_GATEWAY_AUTH_MODE=ambient \
+AI_GATEWAY_SUBJECT_HEADER=X-Forwarded-User \
+AI_GATEWAY_DISPLAY_NAME=Acme Assistant \
+AI_PROVIDER=openrouter AI_MODEL=your-model-id AI_API_KEY=your-provider-key \
+npm run ai-gateway
+```
+
+The UI probes `GET /api/ai/policy` on its own origin at startup. When a managed descriptor answers:
+
+- the assistant works immediately — no profile creation, no token, no settings;
+- provider, model, and authorization stay server-side; the policy payload is secret-free and the
+  client normalizer drops unknown and credential-shaped fields;
+- `AI_GATEWAY_AUTH_MODE=ambient` (default) delegates user authentication to the perimeter in front
+  of the gateway (SSO session / reverse proxy); never expose such a gateway directly to the
+  internet. `AI_GATEWAY_SUBJECT_HEADER` optionally keys per-user rate limits from an edge identity
+  header (the edge must overwrite it for untrusted requests);
+- model identity is masked by default (`AI_GATEWAY_EXPOSE_MODEL=true` publishes it);
+- generation behavior is server-locked: `AI_GATEWAY_LOCK_TEMPERATURE=true` (default) ignores the
+  client temperature in favor of `AI_GATEWAY_TEMPERATURE`;
+- skill packs are server-curated via `AI_GATEWAY_ALLOWED_SKILL_PACKS`;
+- existing local profiles are never touched — they simply stay dormant while managed mode is
+  active and return if managed mode is removed;
+- with no managed backend answering (404 / 502 / offline), the app behaves exactly like the
+  classic profile flow.
+
+`AI_GATEWAY_AUTH_MODE=token` keeps the classic bearer-token check and is meant for split
+deployments where the UI and the gateway live on different origins.
+
+Activation precedence: the runtime `ai.managed` config block wins, then build-time env, then the
+silent same-origin default probe:
+
+```json
+{
+  "ai": {
+    "managed": {"enabled": true, "policyUrl": "/api/ai/policy"}
+  }
+}
+```
+
+Build-time env: `VITE_AI_MANAGED` and `VITE_AI_MANAGED_POLICY_URL` (default `/api/ai/policy`); set
+`VITE_AI_MANAGED=false` to hard-disable probing. For the fastest path, `docker compose --profile
+managed-ai up -d --build` starts the UI plus the reference gateway with nginx already proxying
+`/api/ai`. The framework examples in `ai-gateways/` share the same policy contract, documented in
+`ai-gateways/config.env.example`.
 
 ### Framework AI gateway examples
 
