@@ -1,24 +1,41 @@
-import {useCallback, useEffect, useState} from 'react';
-import type {AISettings} from '../types';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import type {AIManagedPolicy, AISettings} from '../types';
+import {managedSettingsFromPolicy} from '../utils/ai/managed';
 import {readAIProfiles, readAISettings, writeAISettings} from '../utils/ai/storage';
 
-export function useAISettingsController() {
+/**
+ * Classic mode: user-owned profiles and settings persisted locally.
+ * Managed mode: settings are synthesized from the server-published policy,
+ * never persisted, and every write path is an inert no-op — the user can
+ * neither see nor change AI authorization or provider configuration.
+ */
+export function useAISettingsController(managed: AIManagedPolicy | null = null, policyUrl = '') {
+    const managedActive = !!managed && managed.ready;
     const [aiSettings, setAISettings] = useState<AISettings>(() => readAISettings());
-    const [hasAIProfile, setHasAIProfile] = useState(() => readAIProfiles().length > 0);
+    const [userProfileCount, setUserProfileCount] = useState(() => readAIProfiles().length);
     const [aiSettingsReady, setAISettingsReady] = useState(false);
     useEffect(() => {
-        if (aiSettingsReady) writeAISettings(aiSettings);
-    }, [aiSettings, aiSettingsReady]);
-    const handleAISettingsSave = useCallback((settings: AISettings) => {
-        setAISettings(settings);
-        setHasAIProfile(readAIProfiles().length > 0);
-    }, []);
+        if (managedActive || !aiSettingsReady) return;
+        writeAISettings(aiSettings);
+    }, [aiSettings, aiSettingsReady, managedActive]);
+    const handleAISettingsSave = useCallback(
+        (settings: AISettings) => {
+            if (managedActive) return;
+            setAISettings(settings);
+            setUserProfileCount(readAIProfiles().length);
+        },
+        [managedActive],
+    );
+    const effectiveSettings = useMemo(
+        () => (managedActive && managed ? managedSettingsFromPolicy(managed, policyUrl) : aiSettings),
+        [managedActive, managed, policyUrl, aiSettings],
+    );
     return {
-        aiSettings,
+        aiSettings: effectiveSettings,
         setAISettings,
         aiSettingsReady,
         setAISettingsReady,
-        hasAIProfile,
+        hasAIProfile: managedActive || (!managed && userProfileCount > 0),
         handleAISettingsSave,
     };
 }

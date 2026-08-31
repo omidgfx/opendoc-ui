@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type {AIConversation, AISettings} from '@/src/types';
+import type {AIConversation, AIManagedPolicy, AISettings} from '@/src/types';
 import {Tip} from '@/src/components/common/Tooltip';
 
 interface ConversationSidebarProps {
@@ -7,6 +7,8 @@ interface ConversationSidebarProps {
     conversations: AIConversation[];
     activeId?: string;
     settings: AISettings;
+    /** Managed mode: profile footer is replaced by the org-provided identity. */
+    managed?: AIManagedPolicy | null;
     onCreate: () => void;
     onSelect: (id: string) => void;
     onDelete: (conversation: AIConversation) => void;
@@ -18,6 +20,7 @@ export default function ConversationSidebar({
     conversations,
     activeId,
     settings,
+    managed = null,
     onCreate,
     onSelect,
     onDelete,
@@ -90,26 +93,42 @@ export default function ConversationSidebar({
             <div className="h-[76px] min-h-[76px] box-border flex flex-col justify-center gap-1 border-t border-[var(--border)] bg-[var(--background)] px-3">
                 <div className="flex h-6 min-h-6 items-center justify-between gap-2 leading-[12px]">
                     <span className="truncate text-[9px] font-black uppercase leading-[12px] tracking-wider text-[var(--text-muted)]">
-                        Assistant profile
+                        {managed ? 'Assistant' : 'Assistant profile'}
                     </span>
-                    <Tip content="AI settings">
-                        <button
-                            type="button"
-                            onClick={onOpenSettings}
-                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
-                        >
-                            <i className="ph ph-gear-six text-[12px]" />
-                        </button>
-                    </Tip>
+                    {!managed && (
+                        <Tip content="AI settings">
+                            <button
+                                type="button"
+                                onClick={onOpenSettings}
+                                className="flex size-6 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer"
+                            >
+                                <i className="ph ph-gear-six text-[12px]" />
+                            </button>
+                        </Tip>
+                    )}
                 </div>
-                <div className="h-[14px] min-h-[14px] truncate text-[10px] font-bold leading-[14px] text-[var(--text-heading)]">
-                    {settings.provider}
-                </div>
-                <Tip content={settings.model || 'No model selected'} fullWidth>
-                    <div className="h-[13px] min-h-[13px] truncate font-mono text-[9px] leading-[13px] text-[var(--text-muted)]">
-                        {settings.model || 'No model selected'}
-                    </div>
-                </Tip>
+                {managed ? (
+                    <>
+                        <div className="h-[14px] min-h-[14px] truncate text-[10px] font-bold leading-[14px] text-[var(--text-heading)]">
+                            {managed.displayName}
+                        </div>
+                        <div className="flex h-[13px] min-h-[13px] items-center gap-1 truncate text-[9px] leading-[13px] text-[var(--text-muted)]">
+                            <i className="ph-fill ph-shield-check text-[10px] text-[var(--primary)]" />
+                            Provided by your organization
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="h-[14px] min-h-[14px] truncate text-[10px] font-bold leading-[14px] text-[var(--text-heading)]">
+                            {settings.provider}
+                        </div>
+                        <Tip content={settings.model || 'No model selected'} fullWidth>
+                            <div className="h-[13px] min-h-[13px] truncate font-mono text-[9px] leading-[13px] text-[var(--text-muted)]">
+                                {settings.model || 'No model selected'}
+                            </div>
+                        </Tip>
+                    </>
+                )}
             </div>
         </aside>
     );

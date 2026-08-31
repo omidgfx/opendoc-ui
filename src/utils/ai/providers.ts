@@ -482,7 +482,7 @@ const requestGateway = async (
             ...(settings.gatewayToken ? {Authorization: `Bearer ${settings.gatewayToken}`} : {}),
         },
         body: JSON.stringify({
-            model: settings.model,
+            ...(settings.model.trim() ? {model: settings.model} : {}),
             messages,
             temperature: settings.temperature,
             stream: true,
@@ -506,7 +506,10 @@ export const streamAIResponse = async (
         onToken?: (token: string) => void;
     } = {},
 ): Promise<string> => {
-    if (!settings.model.trim()) throw new Error('Choose or enter a model before asking the assistant.');
+    // Gateway transport may omit the model: gateway-owned deployments resolve
+    // it server-side (managed mode sends no client model on purpose).
+    if (settings.transport !== 'gateway' && !settings.model.trim())
+        throw new Error('Choose or enter a model before asking the assistant.');
     const onToken = options.onToken || (() => undefined);
     if (settings.transport === 'gateway') return requestGateway(settings, messages, options.signal, onToken);
     if (settings.provider === 'anthropic') return requestAnthropic(settings, messages, options.signal, onToken);

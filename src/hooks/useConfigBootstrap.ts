@@ -5,6 +5,7 @@ import {readRemoteHistory} from '../utils/storage/remoteHistory';
 import {getCurrentSmartRoute, parseSmartRoute} from '../utils/routing';
 import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage/index';
 import type {ConfigSource} from '../utils/specification/appSpec';
+import {recordRuntimeManagedConfig} from '../utils/ai/managed';
 
 interface UseConfigBootstrapOptions {
     setConfigSource: Dispatch<SetStateAction<ConfigSource>>;
@@ -59,11 +60,16 @@ export function useConfigBootstrap({
             if (source !== 'none' && data?.allowLocalSpecifications === true) source = 'hybrid';
             const canOpenLocal = source === 'none' || source === 'hybrid';
             setConfigSource(source);
+            // Managed AI mode activation is a runtime deployment choice; it is
+            // recorded before any AI settings seeding so the mode resolver can
+            // act on it as soon as the bootstrap completes.
+            recordRuntimeManagedConfig(data?.ai?.managed);
             if (data?.ai && typeof data.ai === 'object' && storage.get(uiStorage.key('ai_settings')) === '') {
+                const {managed: _managedBlock, ...aiSeed} = data.ai;
                 setAISettings(current => ({
                     ...current,
-                    ...data.ai,
-                    ...(Array.isArray(data.ai.skillPacks) ? {skillPacks: data.ai.skillPacks} : {}),
+                    ...aiSeed,
+                    ...(Array.isArray(aiSeed.skillPacks) ? {skillPacks: aiSeed.skillPacks} : {}),
                 }));
             }
             setAISettingsReady(true);

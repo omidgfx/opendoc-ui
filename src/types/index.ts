@@ -41,6 +41,8 @@ export type {
     AIProviderPreset,
     AIModelOption,
     AIProfile,
+    AIManagedPolicy,
+    AIManagedAuthMode,
     AIMessageRole,
     AIChatMessage,
     AIConversation,

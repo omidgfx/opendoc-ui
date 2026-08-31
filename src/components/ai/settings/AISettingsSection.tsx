@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type {AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../../types';
+import type {AIManagedPolicy, AIModelOption, AIProfile, AIProviderId, AISettings, AISkillPack} from '../../../types';
 import type {GatewayModelPolicyInfo} from '../../../utils/ai/providers';
 import {AI_PROVIDER_PRESETS, fetchProviderModelCatalog, getProviderPreset} from '../../../utils/ai/providers';
 import {
@@ -19,6 +19,7 @@ import {Tip} from '../../common/Tooltip';
 import {useModalShortcuts} from '../../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../../hooks/useModalTransition';
 import TemperatureSlider from './TemperatureSlider';
+import ManagedAISection from './ManagedAISection';
 import ProfileNameModal from './ProfileNameModal';
 import SettingsConfirmModal from './SettingsConfirmModal';
 import ModelPickerModal from './ModelPickerModal';
@@ -27,6 +28,8 @@ import CustomDropdown from '../../common/CustomDropdown';
 export interface AISettingsSectionProps {
     settings: AISettings;
     onSave: (settings: AISettings) => void;
+    /** Managed mode policy; replaces the editor with a read-only notice. */
+    managed?: AIManagedPolicy | null;
 }
 
 type ConfirmAction =
@@ -65,7 +68,7 @@ const cachedModelsForSettings = (settings: AISettings): AIModelOption[] =>
     settings.transport === 'gateway'
         ? readAIGatewayModelCatalog(settings.gatewayUrl, settings.provider)
         : readAIModelCatalogs()[settings.provider] || getProviderPreset(settings.provider).models;
-export default function AISettingsSection({settings, onSave}: AISettingsSectionProps) {
+function AIProfilesEditor({settings, onSave}: Pick<AISettingsSectionProps, 'settings' | 'onSave'>) {
     const [profiles, setProfiles] = useState<AIProfile[]>([]);
     const [activeProfileId, setActiveProfileId] = useState('');
     const [draft, setDraft] = useState(settings);
@@ -799,4 +802,13 @@ export default function AISettingsSection({settings, onSave}: AISettingsSectionP
             />
         </div>
     );
+}
+
+/**
+ * Managed mode replaces the entire editor with a read-only notice via a
+ * component-level guard, so no call site can resurface provider settings.
+ */
+export default function AISettingsSection({settings, onSave, managed}: AISettingsSectionProps) {
+    if (managed) return <ManagedAISection policy={managed} />;
+    return <AIProfilesEditor settings={settings} onSave={onSave} />;
 }

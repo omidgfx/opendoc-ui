@@ -25,7 +25,13 @@ interface SettingsPageProps {
 export default function SettingsPage({section, onSelectSection, appearance, navigation, ai}: SettingsPageProps) {
     const activeSection = resolveSettingsSection(section);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const sections = useMemo<SettingsSectionMeta[]>(() => SETTINGS_SECTIONS, []);
+    const sections = useMemo<SettingsSectionMeta[]>(
+        () =>
+            SETTINGS_SECTIONS.map(item =>
+                item.id === 'ai' && ai.managed ? {...item, description: 'Managed by your organization'} : item,
+            ),
+        [ai.managed],
+    );
     useEffect(() => {
         scrollRef.current?.scrollTo({top: 0});
     }, [activeSection]);

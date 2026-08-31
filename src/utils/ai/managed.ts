@@ -48,7 +48,7 @@ export const readRuntimeManagedConfig = (): ManagedModeSource | null | undefined
 
 export interface ManagedActivationInput {
     /** `ai.managed` from config.json / window.INITIAL_CONFIG, if any. */
-    runtimeConfig: ManagedModeSource | null | undefined;
+    runtimeConfig: unknown;
     envManaged?: string;
     envPolicyUrl?: string;
     /** True once the config bootstrap finished reading the runtime config. */

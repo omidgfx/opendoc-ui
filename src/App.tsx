@@ -30,6 +30,7 @@ import AppModalLayer from './components/app/AppModalLayer';
 import WorkspaceContent from './components/app/WorkspaceContent';
 import {useThemeController} from './hooks/useThemeController';
 import {useAISettingsController} from './hooks/useAISettingsController';
+import {useAIManagedMode} from './hooks/useAIManagedMode';
 import {useSidebarController} from './hooks/useSidebarController';
 import {useSpecLoader} from './hooks/useSpecLoader';
 import {useLocalSpecifications} from './hooks/useLocalSpecifications';
@@ -60,6 +61,7 @@ export default function App() {
     const [configSource, setConfigSource] = useState<ConfigSource>('none');
     const [selectedParsableKey, setSelectedParsableKey] = useState<string>('');
     const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+    const managedAI = useAIManagedMode(isInitialLoadComplete);
     const {
         spec,
         setSpec,
@@ -100,8 +102,10 @@ export default function App() {
     } | null>(null);
     const showAssistantRef = useRef(showAssistant);
     showAssistantRef.current = showAssistant;
-    const {aiSettings, setAISettings, setAISettingsReady, hasAIProfile, handleAISettingsSave} =
-        useAISettingsController();
+    const {aiSettings, setAISettings, setAISettingsReady, hasAIProfile, handleAISettingsSave} = useAISettingsController(
+        managedAI.policy,
+        managedAI.policyUrl,
+    );
     const assistantRunnerAbortRef = useRef<AbortController | null>(null);
     const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -1117,7 +1121,7 @@ export default function App() {
                 onSelectTheme: setSelectedThemeName,
                 onSetThemeMode: setCurrentThemeMode,
             }}
-            aiSettingsSection={{settings: aiSettings, onSave: handleAISettingsSave}}
+            aiSettingsSection={{settings: aiSettings, onSave: handleAISettingsSave, managed: managedAI.policy}}
             showHome={showHome}
             onOpenAbout={handleOpenAbout}
             onOpenHome={handleOpenHome}
@@ -1365,6 +1369,7 @@ export default function App() {
                                                     searchQuery={searchQuery}
                                                     settings={aiSettings}
                                                     hasAIProfile={hasAIProfile}
+                                                    managed={managedAI.policy}
                                                     isVisible={assistantTabActive}
                                                     newConversationRequest={assistantNewConversationRequest}
                                                     onNewConversationRequestHandled={id =>

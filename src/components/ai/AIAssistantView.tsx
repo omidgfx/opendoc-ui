@@ -1,6 +1,6 @@
 import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
-import type {ActiveAuth, AIConversation, AISettings, AISourceRef, OpenApiSpec} from '../../types';
+import type {ActiveAuth, AIConversation, AIManagedPolicy, AISettings, AISourceRef, OpenApiSpec} from '../../types';
 import Markdown from '../common/Markdown';
 import MethodBadge from '../common/MethodBadge';
 import {Tip} from '../common/Tooltip';
@@ -14,6 +14,7 @@ import ConversationSidebar from './assistant/ConversationSidebar';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {useBreakpoint} from '../../hooks/useBreakpoint';
 import {buildAIContext, buildAISystemPrompt, citationsFromText, stripCitationTokens} from '../../utils/ai/context';
+import {managedErrorMessage} from '../../utils/ai/managed';
 import {getOperation} from '../../utils/openapi';
 import {streamAIResponse} from '../../utils/ai/providers';
 import {
@@ -45,6 +46,8 @@ interface AIAssistantViewProps {
     searchQuery: string;
     settings: AISettings;
     hasAIProfile: boolean;
+    /** Managed mode policy; null means classic profile mode. */
+    managed: AIManagedPolicy | null;
     isVisible: boolean;
     newConversationRequest?: {
         id: string;
@@ -91,6 +94,7 @@ export default function AIAssistantView({
     searchQuery,
     settings,
     hasAIProfile,
+    managed,
     isVisible,
     newConversationRequest,
     onNewConversationRequestHandled,
@@ -473,7 +477,11 @@ export default function AIAssistantView({
                         message.id === assistantMessage.id
                             ? {
                                   ...message,
-                                  content: error instanceof Error ? error.message : 'The AI request failed.',
+                                  content: managed
+                                      ? managedErrorMessage(error)
+                                      : error instanceof Error
+                                        ? error.message
+                                        : 'The AI request failed.',
                                   isError: true,
                               }
                             : message,
@@ -492,14 +500,16 @@ export default function AIAssistantView({
         abortRef.current = null;
         setIsSending(false);
     };
+    if (managed && !managed.ready) return <AIProfileRequiredState managedStartup onOpenSettings={onOpenSettings} />;
     if (!hasAIProfile) return <AIProfileRequiredState onOpenSettings={onOpenSettings} />;
-    const configured =
-        settings.transport === 'gateway'
-            ? Boolean(settings.gatewayUrl.trim() && settings.model.trim())
-            : Boolean(
-                  settings.model.trim() &&
-                  (settings.provider === 'ollama' || settings.provider === 'custom' || settings.apiKey.trim()),
-              );
+    const configured = managed
+        ? true
+        : settings.transport === 'gateway'
+          ? Boolean(settings.gatewayUrl.trim() && settings.model.trim())
+          : Boolean(
+                settings.model.trim() &&
+                (settings.provider === 'ollama' || settings.provider === 'custom' || settings.apiKey.trim()),
+            );
     const primaryEndpoint = selectedEndpoints[0] || null;
     const currentOperation = primaryEndpoint ? getOperation(spec, primaryEndpoint.path, primaryEndpoint.method) : null;
     const suggestions = primaryEndpoint
@@ -544,6 +554,7 @@ export default function AIAssistantView({
                 conversations={conversations}
                 activeId={activeConversation?.id}
                 settings={settings}
+                managed={managed}
                 onCreate={createConversation}
                 onSelect={setActiveConversationId}
                 onDelete={setDeleteConfirmation}
@@ -581,8 +592,14 @@ export default function AIAssistantView({
                             <div className="flex items-center gap-2">
                                 <i className="ph-fill ph-sparkle text-[17px] text-[var(--primary)]" />
                                 <h1 className="truncate text-sm font-extrabold text-[var(--text-heading)]">
-                                    Assistant
+                                    {managed ? managed.displayName : 'Assistant'}
                                 </h1>
+                                {managed && (
+                                    <span className="hidden shrink-0 items-center gap-1 rounded-full border border-[var(--primary)]/25 bg-[var(--primary)]/8 px-2 py-0.5 text-[9px] font-bold text-[var(--primary)] sm:inline-flex">
+                                        <i className="ph-fill ph-shield-check text-[10px]" />
+                                        Provided by your organization
+                                    </span>
+                                )}
                             </div>
                             <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
                                 {activeConversation?.title || 'Ask about this API'}
@@ -601,18 +618,20 @@ export default function AIAssistantView({
                                 </button>
                             </Tip>
                         )}
-                        <Tip content="AI settings">
-                            <button
-                                type="button"
-                                onClick={onOpenSettings}
-                                className={clsx(
-                                    'flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer',
-                                    conversationsOpen ? 'md:hidden' : 'md:flex',
-                                )}
-                            >
-                                <i className="ph ph-gear-six text-[14px]" />
-                            </button>
-                        </Tip>
+                        {!managed && (
+                            <Tip content="AI settings">
+                                <button
+                                    type="button"
+                                    onClick={onOpenSettings}
+                                    className={clsx(
+                                        'flex size-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--primary)] cursor-pointer',
+                                        conversationsOpen ? 'md:hidden' : 'md:flex',
+                                    )}
+                                >
+                                    <i className="ph ph-gear-six text-[14px]" />
+                                </button>
+                            </Tip>
+                        )}
                         <Tip content="New conversation">
                             <button
                                 type="button"
