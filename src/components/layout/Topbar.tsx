@@ -9,7 +9,7 @@ import type {LocalHistoryEntry} from '../../utils/storage/localHistory';
 import type {RemoteHistoryEntry} from '../../utils/storage/remoteHistory';
 import SearchHistoryDropdown from '../common/SearchHistoryDropdown';
 import {specStorage} from '../../utils/storage/index';
-import BrandLogo from '@/src/components/brand/BrandLogo';
+import SpecLogoMark from '@/src/components/brand/SpecLogoMark';
 
 interface TopbarProps {
     parsables: ParsableConfig;
@@ -342,14 +342,14 @@ export default function Topbar({
                         </Tip>
                     )}
 
-                    {/* Icon only — the wordmark lives in the sidebar footer so
-                        host API docs are not branded as OpenDoc in the header. */}
-                    <BrandLogo
-                        type="logo"
-                        logoFrame={false}
-                        logoClassName={isTopbarCollapsed ? 'size-6 p-0.5' : 'size-8 sm:size-9 p-1'}
-                        className="select-none shrink-0"
-                        ariaLabel="Documentation"
+                    {/* Specification logo first (info.x-logo); the OpenDoc
+                        mark is only the fallback. The wordmark lives in the
+                        sidebar footer so host API docs are not branded as
+                        OpenDoc in the header. */}
+                    <SpecLogoMark
+                        spec={spec}
+                        alt="Documentation"
+                        className={isTopbarCollapsed ? 'size-6 p-0.5' : 'size-8 sm:size-9 p-1'}
                     />
 
                     {!isMobile && (

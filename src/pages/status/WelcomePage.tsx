@@ -1,21 +1,23 @@
 import React, {useRef, useState} from 'react';
 import SearchHistoryDropdown from '@/src/components/common/SearchHistoryDropdown';
 import BrandLogo from '@/src/components/brand/BrandLogo';
+import type {OpenApiSpec} from '@/src/types';
+import {getSpecLogo} from '@/src/utils/specification/specLogo';
 
 type WelcomeViewProps = {
+    spec: OpenApiSpec | null;
     specTitle: string;
     specKey: string;
     onSearchSubmit: (q: string) => void;
-    onOpenAbout: () => void;
     onOpenHome: () => void;
     onOpenLocalFile: () => void;
     canOpenLocal: boolean;
 };
 export default function WelcomeView({
+    spec,
     specTitle,
     specKey,
     onSearchSubmit,
-    onOpenAbout,
     onOpenHome,
     onOpenLocalFile,
     canOpenLocal,
@@ -41,18 +43,30 @@ export default function WelcomeView({
     const handleBlur = () => {
         blurTimer.current = setTimeout(() => setFocused(false), 150);
     };
+    // Specification logo first; the OpenDoc brand lockup is the fallback.
+    const specLogo = getSpecLogo(spec);
     return (
         <div className="flex-1 h-full overflow-y-auto scrollbar-thin relative">
             <div className="min-h-full flex flex-col items-center justify-center px-6 py-12 select-none">
                 <div className="flex flex-col items-center w-full max-w-xl text-center">
-                    <BrandLogo
-                        type={null}
-                        layout="stack"
-                        logoFrame={false}
-                        logoClassName="size-16 sm:size-20"
-                        wordmarkClassName="text-2xl sm:text-3xl text-[var(--text-heading)]"
-                        className="mb-5"
-                    />
+                    {specLogo ? (
+                        <img
+                            src={specLogo.url}
+                            alt={specLogo.altText || `${specTitle} logo`}
+                            draggable={false}
+                            className="mb-5 size-16 sm:size-20 shrink-0 object-contain"
+                            style={specLogo.backgroundColor ? {backgroundColor: specLogo.backgroundColor} : undefined}
+                        />
+                    ) : (
+                        <BrandLogo
+                            type={null}
+                            layout="stack"
+                            logoFrame={false}
+                            logoClassName="size-16 sm:size-20"
+                            wordmarkClassName="text-2xl sm:text-3xl text-[var(--text-heading)]"
+                            className="mb-5"
+                        />
+                    )}
                     <p className="max-w-lg break-words text-sm font-bold text-[var(--text-muted)] sm:text-base">
                         {specTitle}
                     </p>
@@ -114,14 +128,6 @@ export default function WelcomeView({
                         >
                             <i className="ph-fill ph-house text-[14px] text-[var(--primary)]"></i>
                             Overview
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onOpenAbout}
-                            className="h-9 px-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-bold flex items-center gap-2 text-[var(--text-heading)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
-                        >
-                            <i className="ph-fill ph-info text-[14px] text-[var(--primary)]"></i>
-                            About OpenDoc UI
                         </button>
                         {canOpenLocal && (
                             <button

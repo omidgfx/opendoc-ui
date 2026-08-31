@@ -9,6 +9,7 @@ import ApiSpecificationSelectorModal from '../../modals/ApiSpecificationSelector
 import {uiStorage} from '../../../utils/storage/index';
 import FolderTreeActionIcon from './FolderTreeActionIcon';
 import BrandLogo from '@/src/components/brand/BrandLogo';
+import OpenDocMark from '@/src/components/brand/OpenDocMark';
 import CollapsedSidebarRail from './CollapsedSidebarRail';
 import SidebarPageNavigation from './SidebarPageNavigation';
 import SidebarContextMenu from './SidebarContextMenu';
@@ -1005,6 +1006,7 @@ export default function Sidebar(props: SidebarProps) {
 
             <div className="box-border px-2.5 py-1 border-t shrink-0 flex items-center justify-between gap-2 border-[var(--border)] bg-[var(--background)]">
                 <div className="flex min-w-0 items-center gap-1.5">
+                    <OpenDocMark className="size-3.5 shrink-0" />
                     <BrandLogo
                         type="wordmark"
                         wordmarkClassName="brand-wordmark--footer text-[9px] leading-none text-[var(--text-heading)]"
@@ -1020,16 +1022,6 @@ export default function Sidebar(props: SidebarProps) {
                     >
                         About
                     </button>
-                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">·</span>
-                    <span className="text-[8px] leading-none text-[var(--text-muted)] select-none">By:</span>
-                    <a
-                        href="https://github.com/omidgfx"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="truncate text-[8px] font-bold leading-none text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
-                    >
-                        Pejman Chatrrouz
-                    </a>
                 </div>
                 <Tip content="View source on GitHub">
                     <a

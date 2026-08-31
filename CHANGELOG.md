@@ -31,6 +31,11 @@ Backend-owned **Managed AI mode**: zero-config for users, zero secrets in the br
 - deployment: nginx same-origin `/api/ai` proxy with lazy upstream resolution, a `managed-ai`
   compose profile for a one-command reference stack, and the shared policy contract documented for
   the framework gateway examples.
+- adds **specification-first branding**: when the document declares `info.x-logo`, its icon is the
+  principal mark in the top bar and on the home search page; the OpenDoc mark remains the fallback
+  when the specification has no logo;
+- moves the OpenDoc mark into the sidebar footer lockup sized to the wordmark, removes the footer
+  author credit, and drops the About OpenDoc UI button from the home search page.
 
 ## [0.3.4] — 2026-08-31
 

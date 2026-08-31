@@ -22,7 +22,6 @@ CORS-enabled providers directly or an optional gateway.
 
 - [Features](#features)
 - [Version 0.3.5](#version-035)
-- [Version 0.3.4](#version-034)
 - [Changelog](CHANGELOG.md)
 - [Quick start](#quick-start)
 - [Docker](#docker)
@@ -107,72 +106,13 @@ Backend-owned **Managed AI mode** on top of 0.3.4:
 - the assistant, settings, and sidebar lock to the managed identity ("provided by your
   organization"); model identity is masked by default and error copy is sanitized;
 - runtime `ai.managed` config block or `VITE_AI_MANAGED*` env activates it; `docker compose
---profile managed-ai` ships a one-command reference deployment.
+--profile managed-ai` ships a one-command reference deployment;
+- **specification-first branding**: when the document declares `info.x-logo`, its icon is the
+  principal mark in the top bar and on the home search page, with the OpenDoc mark as the fallback;
+- the sidebar footer lockup gains the OpenDoc mark sized to the wordmark, the footer author credit
+  is removed, and the home search page no longer shows an About OpenDoc UI button.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
-
-## Version 0.3.4
-
-Consumer chrome density, quieter branding, and collapsed-rail navigation on top of 0.3.3:
-
-- **quieter product branding** for embedded docs — topbar icon-only mark, About via a tiny sidebar
-  footer wordmark (no About nav item), GitHub as an icon, and less “OpenDoc UI” chrome in consumer UI;
-- **collapsible top bar** with compact icon controls when collapsed; denser endpoint docs/runner
-  padding and a shorter Docs / Run / Split header so more room goes to reading;
-- **temporary overlay API navigation** from the collapsed desktop rail (route icon after Overview) —
-  same sidebar panel over content with shadow only, dismisses on navigate / click-away / Escape;
-- CodeViewer keeps multi-line mouse text selection intact; CI Authorize accessible name + Prettier.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
-
-## Quick start
-
-Try it immediately in the **[live GitHub Pages demo](https://omidgfx.github.io/opendoc-ui/demo/)**, or run it locally:
-
-```bash
-npm ci
-npm run dev        # http://localhost:3000
-```
-
-Production build and preview:
-
-```bash
-npm run build      # outputs one JavaScript bundle: dist/index.js
-npm run preview    # serves dist/ locally
-```
-
-Build and clean scripts are shell-independent and run on Windows, macOS, and Linux. Production
-source maps are always disabled and verification fails if a `.map` file or `sourceMappingURL` is
-emitted. The build also fails if more than one `.js` bundle appears.
-
-Apple emoji assets are disabled by default to keep the drop-in script and stylesheet lighter:
-
-```env
-VITE_DISABLE_APPLE_EMOJIS=true
-```
-
-Set the value to `false` before building when consistent Apple Emoji 16 rendering is required. In
-that mode the complete metadata and sprite are embedded in the final `index.js`/`index.css`; no
-runtime emoji file or CDN is required.
-
-Formatting, type checks, and tests:
-
-```bash
-npm run format:check
-npm run lint
-npm test
-npm run test:browser   # Playwright request/history/accessibility flows
-npm run test:all       # lint + contract + browser + production build
-```
-
-The documentation build has **no server-side requirement** — `dist/` is plain static files and can
-be dropped on any static host (nginx, GitHub Pages, S3, `python -m http.server`, …). The optional
-AI gateway is only needed for providers that do not support browser CORS or when you want keys to
-remain server-side.
-
-> Regular non-Docker builds intentionally ship **without** `public/config.json` or sample spec files,
-> so each deployment keeps its own. Until you add one, the app runs in
-> [local mode](#mode-3--no-configuration-local-mode). The Docker image uses `docker/config.json`.
 
 ---
 

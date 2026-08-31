@@ -173,10 +173,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     if (showWelcome && !assistantActive) {
         return (
             <WelcomeView
+                spec={spec}
                 specTitle={spec.info?.title || specKey}
                 specKey={specKey}
                 onSearchSubmit={onSearchChange}
-                onOpenAbout={onOpenAbout}
                 onOpenHome={onOpenHome}
                 onOpenLocalFile={onOpenLocalFile}
                 canOpenLocal={canOpenLocal}
@@ -339,10 +339,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     }
     return (
         <WelcomeView
+            spec={spec}
             specTitle={spec.info?.title || specKey}
             specKey={specKey}
             onSearchSubmit={onSearchChange}
-            onOpenAbout={onOpenAbout}
             onOpenHome={onOpenHome}
             onOpenLocalFile={onOpenLocalFile}
             canOpenLocal={canOpenLocal}
