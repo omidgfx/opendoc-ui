@@ -699,7 +699,6 @@ export default function CodeViewer({
             const top = `${PAD_TOP_PX + line * LINE_HEIGHT_PX}px`;
             codeBar.style.opacity = '1';
             codeBar.style.top = top;
-            codeBar.style.width = `${scroller.scrollWidth}px`;
             if (gutterBar) {
                 gutterBar.style.opacity = '1';
                 gutterBar.style.top = top;
@@ -1000,11 +999,11 @@ export default function CodeViewer({
                         ...stripeBackground('color-mix(in srgb, var(--text) 3%, transparent)'),
                     }}
                 >
-                    <div className="flex min-h-full min-w-full w-max items-stretch">
+                    <div className="relative flex min-h-full min-w-full w-max items-stretch">
                         <div
                             ref={codeBarRef}
                             aria-hidden="true"
-                            className="pointer-events-none absolute left-0 z-0 opacity-0 transition-opacity duration-75"
+                            className="pointer-events-none absolute inset-x-0 z-0 opacity-0 transition-opacity duration-75"
                             style={{
                                 height: `${LINE_HEIGHT_PX}px`,
                                 top: `${PAD_TOP_PX}px`,
