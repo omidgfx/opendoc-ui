@@ -565,6 +565,15 @@ const bracketPairs = (name: string, value: unknown): SerializedPair[] => {
     return pairs;
 };
 
+const cookieTargetMaterializable = (url: string): boolean => {
+    if (typeof window === 'undefined') return false;
+    try {
+        return new URL(url, window.location.href).hostname === window.location.hostname;
+    } catch {
+        return false;
+    }
+};
+
 const FORBIDDEN_BROWSER_HEADERS = new Set([
     'accept-charset',
     'accept-encoding',
@@ -648,12 +657,35 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
     }
 
     const baseUrl = joinServerAndPath(intent.server.url, intent.path);
+    const url = appendQuery(baseUrl, intent.query);
+    let fetchCredentials = intent.fetchCredentials;
+    if (intent.cookies.length > 0) {
+        fetchCredentials = 'include';
+        const cookieNames = [...new Set(intent.cookies.map(cookie => cookie.name))].join(', ');
+        if (cookieTargetMaterializable(url)) {
+            diagnostics.push(
+                diagnostic(
+                    'RUN_COOKIE_PARAM_BROWSER_MANAGED',
+                    `Cookie parameters (${cookieNames}) are browser-managed: the Runner writes them into the browser cookie jar for this host when the request runs, because scripts cannot set the Cookie header directly.`,
+                    {transport: 'browser', severity: 'info'},
+                ),
+            );
+        } else {
+            diagnostics.push(
+                diagnostic(
+                    'RUN_COOKIE_PARAM_CROSS_ORIGIN',
+                    `Cookie parameters (${cookieNames}) cannot be materialized for another host: the browser forbids setting the Cookie header, so only cookies already stored for the target host will be sent.`,
+                    {transport: 'browser'},
+                ),
+            );
+        }
+    }
     return {
         method: intent.method,
-        url: appendQuery(baseUrl, intent.query),
+        url,
         headers,
         body,
-        fetchCredentials: intent.fetchCredentials,
+        fetchCredentials,
         diagnostics,
         intent,
     };

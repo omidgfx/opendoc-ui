@@ -7,6 +7,28 @@ import {declaredContentIsBinary, declaredContentLength, responseHeadersIndicateB
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
+const runnerManagedCookies = new Map<string, Set<string>>();
+
+const syncBrowserCookies = (url: string, cookies: Array<{name: string; value: string}>) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    let target: URL;
+    try {
+        target = new URL(url, window.location.href);
+    } catch {
+        return;
+    }
+    if (target.hostname !== window.location.hostname) return;
+    const current = new Set<string>();
+    cookies.forEach(cookie => {
+        current.add(cookie.name);
+        document.cookie = `${encodeURIComponent(cookie.name)}=${encodeURIComponent(cookie.value)}; path=/; SameSite=Lax`;
+    });
+    runnerManagedCookies.get(target.hostname)?.forEach(name => {
+        if (!current.has(name)) document.cookie = `${encodeURIComponent(name)}=; path=/; Max-Age=0`;
+    });
+    runnerManagedCookies.set(target.hostname, current);
+};
+
 export interface RunnerExecutionInput {
     spec: OpenApiSpec;
     path: string;
@@ -110,6 +132,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();
     input.signal?.addEventListener('abort', forwardAbort, {once: true});
+    syncBrowserCookies(plan.url, plan.intent.cookies);
     let timedOut = false;
     const timeout = globalThis.setTimeout(() => {
         timedOut = true;
