@@ -27,6 +27,7 @@ export interface RequestBodyIntent {
     files?: Record<string, File | Blob | null>;
     encoding?: Record<string, any>;
     binaryFields?: string[];
+    binaryPaths?: string[];
 }
 
 export interface RequestIntent {
@@ -240,11 +241,31 @@ const createBodyIntent = (input: CompileRequestInput, diagnostics: Diagnostic[])
         const binaryFields = Object.keys(schemaProperties).filter(name =>
             schemaDeclaresBinary(resolveReference(schemaProperties[name], input.spec) || schemaProperties[name]),
         );
+        const binaryPaths: string[] = [];
+        const seenSchemas = new Set<object>();
+        const collectBinaryPaths = (schema: any, prefix: string, depth: number) => {
+            if (!schema || typeof schema !== 'object' || depth > 16 || seenSchemas.has(schema)) return;
+            if (schemaDeclaresBinary(schema)) {
+                if (prefix) binaryPaths.push(prefix);
+                return;
+            }
+            seenSchemas.add(schema);
+            if (schema.properties && typeof schema.properties === 'object') {
+                Object.entries(schema.properties).forEach(([key, child]: [string, any]) => {
+                    collectBinaryPaths(
+                        resolveReference(child, input.spec) || child,
+                        prefix ? `${prefix}.${key}` : key,
+                        depth + 1,
+                    );
+                });
+            }
+        };
+        collectBinaryPaths(resolvedMediaSchema, '', 0);
         if (input.selectedFile) {
             const targetKey = binaryFields.find(name => !files[name]) || (files.file ? undefined : 'file');
             if (targetKey) files[targetKey] = input.selectedFile;
         }
-        return {kind: 'multipart', mediaType, value, files, encoding: media.encoding || {}, binaryFields};
+        return {kind: 'multipart', mediaType, value, files, encoding: media.encoding || {}, binaryFields, binaryPaths};
     }
     if (normalized === 'application/x-www-form-urlencoded') {
         let value: unknown = text;
@@ -494,6 +515,52 @@ const multipartFileName = (file: File | Blob, fallback: string): string =>
         ? (file as File).name
         : fallback;
 
+const multipartFieldName = (stateKey: string): string => {
+    const segments = stateKey.split('.');
+    if (segments.length < 2) return stateKey;
+    return `${segments[0]}${segments
+        .slice(1)
+        .map(segment => `[${segment}]`)
+        .join('')}`;
+};
+
+const stripBinaryPlaceholders = (
+    value: Record<string, unknown>,
+    binaryPaths: string[],
+    files: Record<string, File | Blob | null>,
+    diagnostics: Diagnostic[],
+): void => {
+    binaryPaths.forEach(dotPath => {
+        const segments = dotPath.split('.');
+        const chain: {parent: Record<string, unknown>; key: string}[] = [];
+        let target: Record<string, unknown> = value;
+        for (let index = 0; index < segments.length - 1; index += 1) {
+            const next = target[segments[index]];
+            if (!next || typeof next !== 'object' || Array.isArray(next)) return;
+            chain.push({parent: target, key: segments[index]});
+            target = next as Record<string, unknown>;
+        }
+        const leafKey = segments[segments.length - 1];
+        if (!Object.prototype.hasOwnProperty.call(target, leafKey)) return;
+        delete target[leafKey];
+        if (!files[dotPath]) {
+            diagnostics.push(
+                diagnostic(
+                    'RUN_MULTIPART_BINARY_FIELD_EMPTY',
+                    `Multipart field '${dotPath}' is binary but has no selected file; it was omitted from the request.`,
+                    {severity: 'info', transport: 'browser'},
+                ),
+            );
+        }
+        for (let index = chain.length - 1; index >= 0; index -= 1) {
+            const {parent, key} = chain[index];
+            const child = parent[key];
+            if (child && typeof child === 'object' && !Array.isArray(child) && Object.keys(child).length === 0)
+                delete parent[key];
+        }
+    });
+};
+
 const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]): FormData => {
     const form = new FormData();
     const value =
@@ -501,6 +568,8 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
             ? (body.value as Record<string, unknown>)
             : {};
     const files = body.files || {};
+    if (body.binaryPaths && body.binaryPaths.length > 0)
+        stripBinaryPlaceholders(value, body.binaryPaths, files, diagnostics);
     const consumed = new Set<string>();
     Object.entries(value).forEach(([name, item]) => {
         const file = files[name];
@@ -508,22 +577,13 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
         if (file) {
             form.append(name, file, multipartFileName(file, name));
             consumed.add(name);
-        } else if (body.binaryFields?.includes(name)) {
-            diagnostics.push(
-                diagnostic(
-                    'RUN_MULTIPART_BINARY_FIELD_EMPTY',
-                    `Multipart field '${name}' is binary but has no selected file; it was omitted from the request.`,
-                    {severity: 'info', transport: 'browser'},
-                ),
-            );
         } else {
             appendMultipartValue(form, name, item, encoding);
         }
     });
     Object.entries(files).forEach(([stateKey, file]) => {
         if (!file || consumed.has(stateKey)) return;
-        const fieldName = stateKey.split('.').pop() || stateKey;
-        form.append(fieldName, file, multipartFileName(file, stateKey));
+        form.append(multipartFieldName(stateKey), file, multipartFileName(file, stateKey));
     });
     return form;
 };
