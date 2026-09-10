@@ -604,10 +604,13 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
         const lower = name.toLowerCase();
         if (FORBIDDEN_BROWSER_HEADERS.has(lower) || lower.startsWith('proxy-') || lower.startsWith('sec-')) {
             diagnostics.push(
-                diagnostic('RUN_BROWSER_FORBIDDEN_HEADER', `Browser fetch may remove or reject header '${name}'.`, {
-                    transport: 'browser',
-                }),
+                diagnostic(
+                    'RUN_BROWSER_FORBIDDEN_HEADER',
+                    `Header '${name}' cannot be sent by browser fetch (forbidden header name) and was removed from the request.`,
+                    {transport: 'browser'},
+                ),
             );
+            delete headers[name];
         }
     });
     let body: BodyInit | null = null;

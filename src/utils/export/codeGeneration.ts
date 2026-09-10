@@ -149,10 +149,15 @@ export const buildCodegenRequest = (input: {
         body: preview.body,
         bodyType: preview.bodyType,
     });
+    const exportHeaders = {...plan.headers};
+    Object.entries(plan.intent.headers).forEach(([name, value]) => {
+        const lower = name.toLowerCase();
+        if (!Object.keys(exportHeaders).some(key => key.toLowerCase() === lower)) exportHeaders[name] = value;
+    });
     return {
         method: plan.method,
         url: plan.url,
-        headers: plan.headers,
+        headers: exportHeaders,
         cookies: plan.intent.cookies.map(cookie => ({name: cookie.name, value: cookie.value})),
         body: plan.body === null ? undefined : typeof plan.body === 'string' ? plan.body : preview.body,
         bodyType: preview.bodyType,
