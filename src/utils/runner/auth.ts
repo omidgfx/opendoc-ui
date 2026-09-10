@@ -284,7 +284,11 @@ const setAuthHeader = (
 ) => {
     const existingName = findHeaderName(headers, name);
     const ownerKey = name.toLowerCase();
-    if (existingName && headers[existingName] !== value) {
+    if (existingName) {
+        if (headers[existingName] === value) {
+            owners[ownerKey] = schemeId;
+            return;
+        }
         if (owners[ownerKey])
             warnings.push(
                 `Security schemes '${owners[ownerKey]}' and '${schemeId}' both target '${existingName}'. Browser HTTP can carry only one value here; '${schemeId}' is used.`,

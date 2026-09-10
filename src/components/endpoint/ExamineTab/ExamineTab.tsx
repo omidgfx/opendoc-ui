@@ -119,6 +119,14 @@ export default function ExamineTab({
                 if (Object.prototype.hasOwnProperty.call(incomingParams, key)) values[key] = incomingParams[key];
                 else if (Object.prototype.hasOwnProperty.call(incomingParams, parameter.name))
                     values[key] = incomingParams[parameter.name];
+                else if (parameter.in === 'header') {
+                    const lowerKey = key.toLowerCase();
+                    const lowerName = String(parameter.name).toLowerCase();
+                    const found = Object.keys(incomingParams).find(
+                        k => k.toLowerCase() === lowerKey || k.toLowerCase() === lowerName,
+                    );
+                    if (found) values[key] = incomingParams[found];
+                }
                 if (parameter.in === 'header') {
                     const headerName = Object.keys(customHeaders).find(
                         name => name.toLowerCase() === String(parameter.name).toLowerCase(),

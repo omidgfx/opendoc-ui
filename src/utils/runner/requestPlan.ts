@@ -84,7 +84,8 @@ const setHeader = (
     source: string,
 ) => {
     const existing = findHeaderName(headers, name);
-    if (existing && headers[existing] !== value) {
+    if (existing) {
+        if (headers[existing] === value) return;
         diagnostics.push(
             diagnostic('RUN_HEADER_VALUE_REPLACED', `${source} replaced the existing '${existing}' header value.`, {
                 severity: 'info',
@@ -104,6 +105,22 @@ const valueForParameter = (input: CompileRequestInput, parameter: any): unknown 
     if (input.params && Object.prototype.hasOwnProperty.call(input.params, parameter.name))
         return input.params[parameter.name];
     if (parameter.in === 'header') {
+        const lowerCanonical = canonicalKey.toLowerCase();
+        const lowerName = String(parameter.name).toLowerCase();
+        if (input.parameterValues) {
+            for (const k of Object.keys(input.parameterValues)) {
+                if (k.toLowerCase() === lowerCanonical || k.toLowerCase() === lowerName) {
+                    return input.parameterValues[k];
+                }
+            }
+        }
+        if (input.params) {
+            for (const k of Object.keys(input.params)) {
+                if (k.toLowerCase() === lowerCanonical || k.toLowerCase() === lowerName) {
+                    return input.params[k];
+                }
+            }
+        }
         const headerName = findHeaderName(input.headers || {}, parameter.name);
         if (headerName) return input.headers?.[headerName];
     }
