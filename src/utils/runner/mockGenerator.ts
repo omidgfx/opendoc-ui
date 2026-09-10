@@ -376,6 +376,7 @@ const constrainedNumber = (schema: any): number => {
 
 const constrainedString = (schema: any): string => {
     let value: string;
+    if (schema.format === 'binary' || schema.contentEncoding === 'binary') return '';
     if (schema.format === 'date-time') value = '2026-08-09T12:00:00.000Z';
     else if (schema.format === 'date') value = '2026-08-09';
     else if (schema.format === 'uuid') value = '123e4567-e89b-12d3-a456-426614174000';

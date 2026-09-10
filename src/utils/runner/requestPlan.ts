@@ -26,6 +26,7 @@ export interface RequestBodyIntent {
     file?: File | Blob | null;
     files?: Record<string, File | Blob | null>;
     encoding?: Record<string, any>;
+    binaryFields?: string[];
 }
 
 export interface RequestIntent {
@@ -232,8 +233,18 @@ const createBodyIntent = (input: CompileRequestInput, diagnostics: Diagnostic[])
             }
         });
         const files = {...(input.selectedFiles || {})};
-        if (input.selectedFile && !files.file) files.file = input.selectedFile;
-        return {kind: 'multipart', mediaType, value, files, encoding: media.encoding || {}};
+        const schemaProperties =
+            resolvedMediaSchema && typeof resolvedMediaSchema === 'object' && resolvedMediaSchema.properties
+                ? (resolvedMediaSchema.properties as Record<string, any>)
+                : {};
+        const binaryFields = Object.keys(schemaProperties).filter(name =>
+            schemaDeclaresBinary(resolveReference(schemaProperties[name], input.spec) || schemaProperties[name]),
+        );
+        if (input.selectedFile) {
+            const targetKey = binaryFields.find(name => !files[name]) || (files.file ? undefined : 'file');
+            if (targetKey) files[targetKey] = input.selectedFile;
+        }
+        return {kind: 'multipart', mediaType, value, files, encoding: media.encoding || {}, binaryFields};
     }
     if (normalized === 'application/x-www-form-urlencoded') {
         let value: unknown = text;
@@ -478,7 +489,7 @@ const appendMultipartValue = (form: FormData, name: string, value: unknown, enco
     });
 };
 
-const materializeMultipart = (body: RequestBodyIntent): FormData => {
+const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]): FormData => {
     const form = new FormData();
     const value =
         body.value && typeof body.value === 'object' && !Array.isArray(body.value)
@@ -499,6 +510,14 @@ const materializeMultipart = (body: RequestBodyIntent): FormData => {
                 form.append(name, file);
             }
             consumed.add(name);
+        } else if (body.binaryFields?.includes(name)) {
+            diagnostics.push(
+                diagnostic(
+                    'RUN_MULTIPART_BINARY_FIELD_EMPTY',
+                    `Multipart field '${name}' is binary but has no selected file; it was omitted from the request.`,
+                    {severity: 'info', transport: 'browser'},
+                ),
+            );
         } else {
             appendMultipartValue(form, name, item, encoding);
         }
@@ -628,7 +647,7 @@ export const materializeBrowserRequest = (intent: RequestIntent): RequestPlan =>
         if (bodyIntent.mediaType)
             setHeader(headers, 'Content-Type', bodyIntent.mediaType, diagnostics, 'Selected request body');
     } else if (bodyIntent.kind === 'multipart') {
-        body = materializeMultipart(bodyIntent);
+        body = materializeMultipart(bodyIntent, diagnostics);
         const contentTypeName = findHeaderName(headers, 'Content-Type');
         if (contentTypeName) {
             delete headers[contentTypeName];
