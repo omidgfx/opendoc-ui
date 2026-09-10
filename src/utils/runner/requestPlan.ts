@@ -489,6 +489,11 @@ const appendMultipartValue = (form: FormData, name: string, value: unknown, enco
     });
 };
 
+const multipartFileName = (file: File | Blob, fallback: string): string =>
+    'name' in file && typeof (file as File).name === 'string' && (file as File).name !== ''
+        ? (file as File).name
+        : fallback;
+
 const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]): FormData => {
     const form = new FormData();
     const value =
@@ -501,14 +506,7 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
         const file = files[name];
         const encoding = body.encoding?.[name];
         if (file) {
-            const contentType = firstContentType(encoding);
-            if (contentType && typeof Blob !== 'undefined') {
-                const wrapped = new Blob([file], {type: contentType});
-                const filename = 'name' in file && typeof (file as File).name === 'string' ? (file as File).name : name;
-                form.append(name, wrapped, filename);
-            } else {
-                form.append(name, file);
-            }
+            form.append(name, file, multipartFileName(file, name));
             consumed.add(name);
         } else if (body.binaryFields?.includes(name)) {
             diagnostics.push(
@@ -525,15 +523,7 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
     Object.entries(files).forEach(([stateKey, file]) => {
         if (!file || consumed.has(stateKey)) return;
         const fieldName = stateKey.split('.').pop() || stateKey;
-        const contentType = firstContentType(body.encoding?.[fieldName]);
-        if (contentType && typeof Blob !== 'undefined') {
-            const wrapped = new Blob([file], {type: contentType});
-            const filename =
-                'name' in file && typeof (file as File).name === 'string' ? (file as File).name : fieldName;
-            form.append(fieldName, wrapped, filename);
-        } else {
-            form.append(fieldName, file);
-        }
+        form.append(fieldName, file, multipartFileName(file, stateKey));
     });
     return form;
 };
