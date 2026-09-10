@@ -254,7 +254,7 @@ const createBodyIntent = (input: CompileRequestInput, diagnostics: Diagnostic[])
                 Object.entries(schema.properties).forEach(([key, child]: [string, any]) => {
                     collectBinaryPaths(
                         resolveReference(child, input.spec) || child,
-                        prefix ? `${prefix}.${key}` : key,
+                        prefix ? `${prefix}\u0000${key}` : key,
                         depth + 1,
                     );
                 });
@@ -515,9 +515,8 @@ const multipartFileName = (file: File | Blob, fallback: string): string =>
         ? (file as File).name
         : fallback;
 
-const multipartFieldName = (stateKey: string): string => {
-    const segments = stateKey.split('.');
-    if (segments.length < 2) return stateKey;
+const multipartFieldName = (segments: string[]): string => {
+    if (segments.length < 2) return segments[0] ?? '';
     return `${segments[0]}${segments
         .slice(1)
         .map(segment => `[${segment}]`)
@@ -530,8 +529,9 @@ const stripBinaryPlaceholders = (
     files: Record<string, File | Blob | null>,
     diagnostics: Diagnostic[],
 ): void => {
-    binaryPaths.forEach(dotPath => {
-        const segments = dotPath.split('.');
+    binaryPaths.forEach(pathKey => {
+        const segments = pathKey.split('\u0000');
+        const displayPath = segments.join('.');
         const chain: {parent: Record<string, unknown>; key: string}[] = [];
         let target: Record<string, unknown> = value;
         for (let index = 0; index < segments.length - 1; index += 1) {
@@ -543,11 +543,11 @@ const stripBinaryPlaceholders = (
         const leafKey = segments[segments.length - 1];
         if (!Object.prototype.hasOwnProperty.call(target, leafKey)) return;
         delete target[leafKey];
-        if (!files[dotPath]) {
+        if (!files[pathKey]) {
             diagnostics.push(
                 diagnostic(
                     'RUN_MULTIPART_BINARY_FIELD_EMPTY',
-                    `Multipart field '${dotPath}' is binary but has no selected file; it was omitted from the request.`,
+                    `Multipart field '${displayPath}' is binary but has no selected file; it was omitted from the request.`,
                     {severity: 'info', transport: 'browser'},
                 ),
             );
@@ -583,7 +583,8 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
     });
     Object.entries(files).forEach(([stateKey, file]) => {
         if (!file || consumed.has(stateKey)) return;
-        form.append(multipartFieldName(stateKey), file, multipartFileName(file, stateKey));
+        const segments = stateKey.split('\u0000');
+        form.append(multipartFieldName(segments), file, multipartFileName(file, segments.join('.')));
     });
     return form;
 };

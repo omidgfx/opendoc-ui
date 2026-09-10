@@ -51,7 +51,7 @@ export default function Field({
     const type = Array.isArray(current.type) ? current.type.find((item: string) => item !== 'null') : current.type;
     const nullable = current.nullable === true || (Array.isArray(current.type) && current.type.includes('null'));
     const enumValues = Array.isArray(current.enum) ? current.enum : null;
-    const fileKey = path.map(part => String(part)).join('.');
+    const fileKey = path.map(part => String(part)).join('\u0000');
     const fieldFocused =
         !!focusedPath && focusedPath.length === path.length && focusedPath.every((part, index) => part === path[index]);
     if (circularReference) {
