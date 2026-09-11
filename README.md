@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.3.5-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.3.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -58,28 +58,30 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.3.5
+## Version 0.3.6
 
-Backend-owned **Managed AI mode** on top of 0.3.4:
+**Runner serialization reliability** on top of 0.3.5:
 
-- organizations configure the assistant once on their backend; OpenDoc UI discovers it at
-  `GET /api/ai/policy` and self-configures — **no user profiles, no AI settings UI, and no
-  authorization data in the browser**;
-- ambient authentication delegates user identity to the existing perimeter (SSO session / reverse
-  proxy), with optional per-user rate limiting from an edge identity header;
-- the assistant, settings, and sidebar lock to the managed identity ("provided by your
-  organization"); model identity is masked by default and error copy is sanitized;
-- runtime `ai.managed` config block or `VITE_AI_MANAGED*` env activates it; `docker compose
---profile managed-ai` ships a one-command reference deployment;
-- **specification-first branding**: when the document declares `info.x-logo`, its icon is the
-  principal mark in the top bar and on the home search page, with the OpenDoc mark as the fallback;
-  spec-declared logo backgrounds are ignored so OpenDoc themes stay in control, and the logos are
-  decorative (`alt=""`) for assistive technology;
-- the home search page replaces its button row with a **quick links row** — Overview, Schema
-  explorer, and Runner compatibility, each opening as a view tab beside the endpoint tabs — and the
-  keyboard hint is retired;
-- the sidebar footer lockup (mark + wordmark) is now a single About button, sized up slightly
-  within the same footer height, and the footer author credit is removed.
+- one wire contract: a dependency-free vendored query-string core builds every query string
+  (bracket arrays, deep nesting, mixed arrays) and the urlencoded bodies; empty arrays travel
+  as `name[]=` markers, and object query parameters deep-bracket with the parameter name as
+  prefix (`filter[status]=active&filter[range][min]=1`) instead of flattening;
+- **type-aware Serializer playground**: array parameters edit with the Runner-form array
+  editor, object parameters get the JSON editor, scalars keep the text input — touched values
+  serialize identically to untouched defaults, and Use hands the value back unchanged;
+- multipart fidelity: no phantom binary parts without a file, file parts keep the file's own
+  Content-Type, Clear button, nested binary field names and non-Latin filenames without
+  collisions;
+- XML round trip: `xmlns` on the root only; schema-less object values render as JSON text in
+  forms;
+- headers and redirects: case-insensitive matching, forbidden headers stripped, cookie
+  parameters on the `Cookie` header, final URL after redirects shown;
+- forms and editor: `anyOf [null, object]` and `additionalProperties` variants fixed, tuple
+  arrays fill sparse slots and guard removals, the JSON/YAML editor keeps invalid drafts as-is
+  on language switch;
+- endpoint view console is clean (missing React keys fixed);
+- the managed AI policy probe stays by design — zero-config discovery for 0.3.5's Managed AI
+  mode.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 

@@ -3,6 +3,45 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.3.6] — 2026-09-11
+
+**Runner serialization reliability**: the runner-bug manifest closed on top of 0.3.5 — 25 fixes
+across wire format, body encoding, headers, forms, and endpoint-view polish.
+
+- a dependency-free vendored query-string core builds every query string: bracket arrays,
+  deep nesting at any level, mixed arrays (`filter[0][field]=status&filter[]=abcd`); empty
+  arrays travel as `name[]=` markers instead of disappearing;
+- object query parameters deep-bracket with the parameter name as prefix
+  (`filter[status]=active&filter[range][min]=1&filter[range][max]=10`) instead of flattening
+  to bare keys — for `deepObject` and `form`/`cookie` explode styles; compact styles keep
+  their delimiter forms;
+- urlencoded bodies share the core: percent-encoded keys, `null` values as empty pairs, raw
+  plain-string bodies; `queryStringToJson` deep-merges so everything round-trips and the code
+  generators inherit the contract;
+- type-aware Serializer playground: array parameters edit with the Runner-form array editor,
+  object parameters get the JSON editor, scalars keep the text input; touched and default
+  values serialize identically, and Use hands the structured value back unchanged (no more
+  escaped JSON-text artifacts after touching a field);
+- multipart: no phantom binary parts without a selected file, file parts keep the file's own
+  Content-Type, file chooser Clear button, comma-separated Content-Type tolerated, nested
+  binary field names without collisions, non-Latin filenames survive;
+- XML: `xmlns` on the root element only; `@xmlns` dropped on parse; schema-less object values
+  render as JSON text in forms;
+- headers and redirects: case-insensitive header matching, browser-forbidden headers stripped
+  instead of warned, cookie parameters materialized onto the `Cookie` header, final URL after
+  redirects shown;
+- forms: `anyOf [null, object]` no longer defaults to the null branch, `additionalProperties`
+  variants match, tuple arrays fill sparse slots with defaults and guard removals with honest
+  ghost slots;
+- the structured JSON/YAML editor keeps an invalid draft as-is on a language switch instead of
+  flipping the label;
+- endpoint-view console is clean: missing React keys fixed in the parameter tables, response
+  cards, and response code navigator;
+- triaged and unchanged: GET-with-body drop, missing-required-body not blocking, numeric `""`
+  defaults — the server stays the source of truth and the Runner never blocks requests;
+- kept by design: the managed AI policy probe (`GET /api/ai/policy`), the zero-config
+  discovery path of 0.3.5's Managed AI mode.
+
 ## [0.3.5] — 2026-08-31
 
 Backend-owned **Managed AI mode**: zero-config for users, zero secrets in the browser.
