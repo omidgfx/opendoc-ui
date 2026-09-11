@@ -223,9 +223,24 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     }),
                 );
             } else if (explode && (style === 'form' || style === 'cookie')) {
-                values.forEach(item =>
-                    result.query.push({name: `${name}[]`, value: item, allowReserved: allowReservedForLocation}),
-                );
+                const rawItems = Array.isArray(value) ? value : values;
+                rawItems.forEach((item, index) => {
+                    if (item && typeof item === 'object' && !Array.isArray(item)) {
+                        Object.entries(item).forEach(([key, child]) =>
+                            result.query.push({
+                                name: `${name}[${index}][${key}]`,
+                                value: scalar(child),
+                                allowReserved: allowReservedForLocation,
+                            }),
+                        );
+                        return;
+                    }
+                    result.query.push({
+                        name: `${name}[]`,
+                        value: scalar(item),
+                        allowReserved: allowReservedForLocation,
+                    });
+                });
             } else {
                 result.query.push({name, value: delimited(values, delimiter), allowReserved: allowReservedForLocation});
             }

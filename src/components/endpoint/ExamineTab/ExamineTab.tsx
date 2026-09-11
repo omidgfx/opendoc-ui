@@ -62,7 +62,7 @@ export default function ExamineTab({
     isActive = true,
 }: ExamineTabProps) {
     const storageKey = specStorage.key(parsableKey || 'default', `inputs:${method.toLowerCase()}:${path}`);
-    const [params, setParams] = useState<Record<string, string | string[]>>({});
+    const [params, setParams] = useState<Record<string, string | unknown[]>>({});
     const [headers, setHeaders] = useState<Record<string, string>>({});
     const [requestBodyText, setRequestBodyText] = useState('');
     const [requestBodyType, setRequestBodyType] = useState('');
@@ -109,7 +109,7 @@ export default function ExamineTab({
         (incomingParams: Record<string, string | string[]> = {}, incomingHeaders: Record<string, string> = {}) => {
             const pathItem = (spec.paths as any)[path] || {};
             const parameters = getMergedParameters(pathItem, operation, spec);
-            const values: Record<string, string | string[]> = {};
+            const values: Record<string, string | unknown[]> = {};
             const customHeaders = {...incomingHeaders};
             Object.entries(incomingParams).forEach(([key, value]) => {
                 if (key.includes(':')) values[key] = value;
@@ -214,7 +214,7 @@ export default function ExamineTab({
     const resetToDefaults = () => {
         const pathItemObj = (spec.paths as any)[path] || {};
         const merged = getMergedParameters(pathItemObj, operation, spec);
-        const defaultParams: Record<string, string | string[]> = {};
+        const defaultParams: Record<string, string | unknown[]> = {};
         merged.forEach((param: any) => {
             const schema = param.schema ?? param;
             const isArray = schema?.type === 'array' || param.type === 'array';
@@ -238,7 +238,7 @@ export default function ExamineTab({
                           ? example
                           : [example];
                 defaultParams[key] = seed.map((item: unknown) =>
-                    item !== null && typeof item === 'object' ? JSON.stringify(item) : String(item ?? ''),
+                    item !== null && typeof item === 'object' ? item : String(item ?? ''),
                 );
                 return;
             }
