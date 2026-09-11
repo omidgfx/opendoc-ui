@@ -224,7 +224,18 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     }),
                 );
             } else if (explode && (style === 'form' || style === 'cookie')) {
-                const rawItems = Array.isArray(value) ? value : values;
+                const rawItems = (Array.isArray(value) ? value : values).map(item => {
+                    if (typeof item === 'string') {
+                        const trimmed = item.trim();
+                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                            try {
+                                const parsed = JSON.parse(trimmed);
+                                if (parsed && typeof parsed === 'object') return parsed;
+                            } catch {}
+                        }
+                    }
+                    return item;
+                });
                 rawItems.forEach((item, index) => {
                     if (item !== null && typeof item === 'object') {
                         queryPairsFromJson({[`${name}[${index}]`]: item}).forEach(pair =>

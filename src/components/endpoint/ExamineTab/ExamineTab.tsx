@@ -712,9 +712,13 @@ export default function ExamineTab({
             {serializerParameter && (
                 <SerializerPlaygroundModal
                     parameter={serializerParameter}
-                    initialValue={String(
-                        params[parameterStateKey(serializerParameter.in, serializerParameter.name)] ?? '',
-                    )}
+                    spec={spec}
+                    initialValue={(() => {
+                        const raw = params[parameterStateKey(serializerParameter.in, serializerParameter.name)];
+                        return raw !== undefined && raw !== null && typeof raw === 'object'
+                            ? JSON.stringify(raw)
+                            : String(raw ?? '');
+                    })()}
                     onUseValue={value =>
                         setParams(previous => ({
                             ...previous,

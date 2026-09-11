@@ -89,14 +89,26 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
         );
     const documentedIndex = enumValues?.findIndex((item: any) => enumValueText(item) === stringValue) ?? -1;
     const customValueActive = manualMode || (stringValue !== '' && documentedIndex < 0 && !!enumValues);
+    const structuredItems = (items: string[]): unknown[] =>
+        items.map(item => {
+            const trimmed = String(item).trim();
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (parsed && typeof parsed === 'object') return parsed;
+                } catch {}
+            }
+            return item;
+        });
     const listFromText = (text: string): string[] => {
         const trimmed = text.trim();
         // A saved array may arrive as JSON text; splitting that on commas would
         // tear the document apart, so parse it first.
-        if (trimmed.startsWith('[')) {
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
             try {
                 const parsed = JSON.parse(trimmed);
                 if (Array.isArray(parsed)) return parsed.map(enumValueText);
+                if (trimmed.startsWith('{')) return [enumValueText(parsed)];
             } catch {}
         }
         return trimmed
@@ -226,7 +238,7 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
         const addItem = () => {
             const next = pendingItem.trim();
             if (!next) return;
-            onChange([...selectedValues, next]);
+            onChange(structuredItems([...selectedValues, next]));
             setPendingItem('');
         };
         return (
@@ -240,7 +252,11 @@ export default function ParameterInput({param, value, onChange, spec}: Parameter
                             <span className="max-w-[220px] truncate">{item}</span>
                             <button
                                 type="button"
-                                onClick={() => onChange(selectedValues.filter((_, itemIndex) => itemIndex !== index))}
+                                onClick={() =>
+                                    onChange(
+                                        structuredItems(selectedValues.filter((_, itemIndex) => itemIndex !== index)),
+                                    )
+                                }
                                 className="flex size-4 shrink-0 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--method-delete)]/10 hover:text-[var(--method-delete)] cursor-pointer"
                                 aria-label={`Remove item ${index + 1}`}
                             >

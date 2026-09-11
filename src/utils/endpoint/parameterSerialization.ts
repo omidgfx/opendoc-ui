@@ -33,7 +33,7 @@ const STYLE_HINTS: Record<string, string> = {
     deepObject: 'Object properties become name[property]=value pairs.',
 };
 
-const parameterType = (parameter: any): string => {
+export const parameterType = (parameter: any): string => {
     const schema = parameter?.schema ?? parameter?.content?.[Object.keys(parameter?.content || {})[0]]?.schema;
     const type = Array.isArray(schema?.type) ? schema.type.find((item: string) => item !== 'null') : schema?.type;
     return String(type || 'string');
@@ -98,18 +98,16 @@ const parseCandidate = (raw: string): any => {
 /** Runs the real serializer over a sample value, for the playground. */
 export const parsePlaygroundSample = (parameter: any, rawValue: string): unknown => {
     const sample = parseCandidate(rawValue);
-    if (parameterType(parameter) === 'array' && typeof sample === 'string' && sample !== '') return sample.split(',');
+    if (parameterType(parameter) === 'array') {
+        if (typeof sample === 'string' && sample !== '') return sample.split(',');
+        if (sample !== null && typeof sample === 'object' && !Array.isArray(sample)) return [sample];
+    }
     return sample;
 };
 
-export const previewParameterSerialization = (
-    parameter: any,
-    rawValue: string,
-    _spec?: OpenApiSpec | null,
-): SerializationPreview => {
+export const previewSerializedValue = (parameter: any, sample: unknown): SerializationPreview => {
     const location = String(parameter?.in || 'query').toLowerCase();
     try {
-        const sample = parsePlaygroundSample(parameter, rawValue);
         const serialized = serializeOpenApiParameter(parameter, sample);
         if (location === 'path') {
             return {output: serialized.pathValue ?? '', target: 'Path segment', error: null};
@@ -143,3 +141,9 @@ export const previewParameterSerialization = (
         };
     }
 };
+
+export const previewParameterSerialization = (
+    parameter: any,
+    rawValue: string,
+    _spec?: OpenApiSpec | null,
+): SerializationPreview => previewSerializedValue(parameter, parsePlaygroundSample(parameter, rawValue));

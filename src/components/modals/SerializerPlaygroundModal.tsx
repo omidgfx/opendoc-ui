@@ -2,53 +2,87 @@ import {useMemo, useState} from 'react';
 import ModalPortal from '../common/ModalPortal';
 import {Tip} from '../common/Tooltip';
 import CodeViewer from '../common/CodeViewer';
+import ParameterInput from '../endpoint/ExamineTab/ParameterInput';
 import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
+import type {OpenApiSpec} from '../../types';
 import {
     describeParameterSerialization,
-    parsePlaygroundSample,
+    parameterType,
     previewParameterSerialization,
+    previewSerializedValue,
 } from '../../utils/endpoint/parameterSerialization';
 
 interface SerializerPlaygroundModalProps {
     parameter: any;
+    spec?: OpenApiSpec | null;
     /** Seed value, so the playground opens on what the field already holds. */
     initialValue?: string;
     /**
      * Sends the tested value back to the field it came from. Only the Runner
      * passes this, and only a value the serializer accepted can be used.
      */
-    onUseValue?: (value: string | string[]) => void;
+    onUseValue?: (value: string | unknown[]) => void;
     onClose: () => void;
 }
 
 /**
- * A playground for parameter serialization, in the shape of the pattern
- * tester: type a value, watch the fragments that will actually be sent, and
- * push the value back into the Runner field when it holds up.
+ * A type-aware playground for parameter serialization: array parameters are
+ * edited with the same array editor as the Runner form (the type cannot be
+ * changed into something else), object parameters get a JSON editor, and
+ * everything else keeps the plain text input.
  */
 export default function SerializerPlaygroundModal({
     parameter,
+    spec,
     initialValue = '',
     onUseValue,
     onClose,
 }: SerializerPlaygroundModalProps) {
+    const paramType = parameterType(parameter);
+    const isArrayParam = paramType === 'array';
+    const isObjectParam = paramType === 'object';
     const [testValue, setTestValue] = useState(initialValue);
+    const [arrayValue, setArrayValue] = useState<unknown[]>(() => {
+        const trimmed = initialValue.trim();
+        if (trimmed) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed;
+            } catch {}
+        }
+        return trimmed ? [trimmed] : [];
+    });
     const {requestClose, backdropClassName} = useModalTransition(true, onClose);
     const descriptor = useMemo(() => describeParameterSerialization(parameter), [parameter]);
-    const preview = useMemo(() => previewParameterSerialization(parameter, testValue), [parameter, testValue]);
-    const canUseValue = !!onUseValue && !preview.error && testValue.trim().length > 0;
+    const preview = useMemo(
+        () =>
+            isArrayParam
+                ? previewSerializedValue(parameter, arrayValue)
+                : previewParameterSerialization(parameter, testValue),
+        [parameter, testValue, arrayValue, isArrayParam],
+    );
+    const canUseValue = isArrayParam
+        ? !!onUseValue && !preview.error
+        : !!onUseValue && !preview.error && testValue.trim().length > 0;
+    const submitValue = (): string | unknown[] => (isArrayParam ? arrayValue : testValue);
     useModalShortcuts({
         isOpen: true,
         onClose: requestClose,
         onSubmit: () => {
             if (!onUseValue) return;
-            onUseValue(testValue);
+            onUseValue(submitValue());
             requestClose();
         },
         canSubmit: canUseValue,
     });
+    const handleArrayChange = (value: unknown) => {
+        if (Array.isArray(value)) setArrayValue(value);
+        else if (value === undefined || value === null || value === '') setArrayValue([]);
+        else setArrayValue([value]);
+    };
     const name = String(parameter?.name || 'parameter');
+    const hasPreviewContent = isArrayParam ? arrayValue.length > 0 : testValue.trim().length > 0;
     return (
         <ModalPortal>
             <div
@@ -98,15 +132,26 @@ export default function SerializerPlaygroundModal({
                             >
                                 Test value
                             </label>
-                            <input
-                                id="serializer-test-input"
-                                type="text"
-                                autoFocus
-                                placeholder='Plain text, or JSON such as ["eu","us"] or {"plan":"pro"}'
-                                value={testValue}
-                                onChange={event => setTestValue(event.target.value)}
-                                className="w-full rounded-xl border px-3 py-2 font-mono text-xs outline-none transition-colors border-[var(--border)] bg-[var(--background)] text-[var(--text)] focus:border-[var(--primary)]"
-                            />
+                            {isArrayParam || isObjectParam ? (
+                                <div id="serializer-test-input">
+                                    <ParameterInput
+                                        param={parameter}
+                                        spec={(spec ?? {}) as OpenApiSpec}
+                                        value={isArrayParam ? arrayValue : testValue}
+                                        onChange={isArrayParam ? handleArrayChange : setTestValue}
+                                    />
+                                </div>
+                            ) : (
+                                <input
+                                    id="serializer-test-input"
+                                    type="text"
+                                    autoFocus
+                                    placeholder='Plain text, or JSON such as ["eu","us"] or {"plan":"pro"}'
+                                    value={testValue}
+                                    onChange={event => setTestValue(event.target.value)}
+                                    className="w-full rounded-xl border px-3 py-2 font-mono text-xs outline-none transition-colors border-[var(--border)] bg-[var(--background)] text-[var(--text)] focus:border-[var(--primary)]"
+                                />
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
@@ -118,7 +163,7 @@ export default function SerializerPlaygroundModal({
                                     <i className="ph ph-warning text-sm" />
                                     <span className="text-xs font-semibold">{preview.error}</span>
                                 </div>
-                            ) : testValue.trim() ? (
+                            ) : hasPreviewContent ? (
                                 <CodeViewer code={preview.output || '(empty)'} language="http" maxHeight="180px" />
                             ) : (
                                 <div className="select-none rounded-xl border p-3 text-center border-[var(--text-muted)]/20 bg-[var(--text-muted)]/10 text-[var(--text-muted)]">
@@ -141,8 +186,7 @@ export default function SerializerPlaygroundModal({
                                     type="button"
                                     disabled={!canUseValue}
                                     onClick={() => {
-                                        const sample = parsePlaygroundSample(parameter, testValue);
-                                        onUseValue(Array.isArray(sample) ? sample.map(String) : testValue);
+                                        onUseValue(submitValue());
                                         requestClose();
                                     }}
                                     className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-1.5 text-xs font-semibold transition-all border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
