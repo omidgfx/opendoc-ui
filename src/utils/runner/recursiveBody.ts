@@ -87,10 +87,18 @@ export const defaultBodyValue = (
     if (current.example !== undefined) return current.example;
     if (current.default !== undefined) return current.default;
     if (Array.isArray(current.enum) && current.enum.length > 0) return current.enum[0];
+    const pickCombinatorBranch = (branches: any[]): any => {
+        const preferred = branches.find(branch => {
+            const target = resolved(branch, spec);
+            const types = Array.isArray(target?.type) ? target.type : target?.type ? [target.type] : [];
+            return !(types.length > 0 && types.every((item: string) => item === 'null'));
+        });
+        return preferred ?? branches[0];
+    };
     if (current.oneOf?.length)
-        return defaultBodyValue(current.oneOf[0], spec, depth + 1, new Set(refs), new Set(objects));
+        return defaultBodyValue(pickCombinatorBranch(current.oneOf), spec, depth + 1, new Set(refs), new Set(objects));
     if (current.anyOf?.length)
-        return defaultBodyValue(current.anyOf[0], spec, depth + 1, new Set(refs), new Set(objects));
+        return defaultBodyValue(pickCombinatorBranch(current.anyOf), spec, depth + 1, new Set(refs), new Set(objects));
     if (current.type === 'null' || (Array.isArray(current.type) && current.type.every(item => item === 'null')))
         return null;
     if (current.type === 'object' || current.properties) {
@@ -135,7 +143,10 @@ const variantSchemaMatchesValue = (variant: any, value: unknown, spec: OpenApiSp
             if (required.length > 0) return required.every(key => Object.prototype.hasOwnProperty.call(value, key));
             const propertyKeys = Object.keys(schema.properties || {});
             const valueKeys = Object.keys(value);
-            return valueKeys.length > 0 && valueKeys.every(key => propertyKeys.includes(key));
+            const allowExtraKeys =
+                schema.additionalProperties === true ||
+                (!!schema.additionalProperties && typeof schema.additionalProperties === 'object');
+            return valueKeys.length > 0 && valueKeys.every(key => propertyKeys.includes(key) || allowExtraKeys);
         }
         return false;
     }
