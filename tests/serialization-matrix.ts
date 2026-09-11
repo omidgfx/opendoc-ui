@@ -7,7 +7,7 @@ const queryCases: Array<{name: string; parameter: any; value: any; expected: str
         name: 'query form array explode',
         parameter: {name: 'id', in: 'query', style: 'form', explode: true, schema: {type: 'array'}},
         value: ['a', 'b'],
-        expected: '?id=a&id=b',
+        expected: '?id%5B%5D=a&id%5B%5D=b',
     },
     {
         name: 'query form array compact',
@@ -160,8 +160,8 @@ const multi = serializeOpenApiParameter(
     ['a', 'b'],
 );
 assert.deepEqual(multi.query, [
-    {name: 'id', value: 'a', allowReserved: false},
-    {name: 'id', value: 'b', allowReserved: false},
+    {name: 'id[]', value: 'a', allowReserved: false},
+    {name: 'id[]', value: 'b', allowReserved: false},
 ]);
 
 console.log(`✓ parameter serialization conformance matrix (${queryCases.length + pathCases.length + 8} cases)`);

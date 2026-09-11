@@ -317,7 +317,7 @@ test('serializes OpenAPI query arrays and objects', () => {
         },
         ['a', 'b'],
     );
-    assert.equal(queryStringFromPairs(repeated.query), '?id=a&id=b');
+    assert.equal(queryStringFromPairs(repeated.query), '?id%5B%5D=a&id%5B%5D=b');
     const comma = serializeOpenApiParameter(
         {
             name: 'id',

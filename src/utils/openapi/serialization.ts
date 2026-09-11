@@ -223,7 +223,9 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                     }),
                 );
             } else if (explode && (style === 'form' || style === 'cookie')) {
-                values.forEach(item => result.query.push({name, value: item, allowReserved: allowReservedForLocation}));
+                values.forEach(item =>
+                    result.query.push({name: `${name}[]`, value: item, allowReserved: allowReservedForLocation}),
+                );
             } else {
                 result.query.push({name, value: delimited(values, delimiter), allowReserved: allowReservedForLocation});
             }

@@ -45,7 +45,7 @@ const plan = compileBrowserRequest({
     body: JSON.stringify({tags: ['red', 'blue']}),
     bodyType: 'application/x-www-form-urlencoded',
 });
-assert.equal(plan.url, 'http://api.example.test/v2/items/42?queryIds=a&queryIds=b');
+assert.equal(plan.url, 'http://api.example.test/v2/items/42?queryIds%5B%5D=a&queryIds%5B%5D=b');
 assert.equal(plan.headers['X-API-Key'], 'secret');
 assert.equal(plan.body, 'tags=red%7Cblue');
 

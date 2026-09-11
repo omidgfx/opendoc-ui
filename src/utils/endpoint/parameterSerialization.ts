@@ -103,7 +103,10 @@ export const previewParameterSerialization = (
 ): SerializationPreview => {
     const location = String(parameter?.in || 'query').toLowerCase();
     try {
-        const serialized = serializeOpenApiParameter(parameter, parseCandidate(rawValue));
+        let sample = parseCandidate(rawValue);
+        if (parameterType(parameter) === 'array' && typeof sample === 'string' && sample !== '')
+            sample = sample.split(',');
+        const serialized = serializeOpenApiParameter(parameter, sample);
         if (location === 'path') {
             return {output: serialized.pathValue ?? '', target: 'Path segment', error: null};
         }

@@ -606,6 +606,11 @@ const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
             pairs.push({name, value: JSON.stringify(value)});
             return;
         }
+        if (Array.isArray(value)) {
+            if (value.length === 0) pairs.push({name: `${name}[]`, value: ''});
+            else value.forEach(part => pairs.push({name: `${name}[]`, value: multipartScalar(part)}));
+            return;
+        }
         if (value && typeof value === 'object') {
             pairs.push(...bracketPairs(name, value));
             return;
@@ -622,6 +627,10 @@ const bracketPairs = (name: string, value: unknown): SerializedPair[] => {
     const walk = (item: unknown, prefix: string) => {
         if (item === null || item === undefined) return;
         if (Array.isArray(item)) {
+            if (item.length === 0) {
+                pairs.push({name: `${prefix}[]`, value: ''});
+                return;
+            }
             item.forEach(part => walk(part, `${prefix}[]`));
             return;
         }
