@@ -138,7 +138,7 @@ PAGES["features.html"] = (
           <li><i class="ph-fill ph-check"></i><span>Recursive form editor or raw JSON/YAML/XML bodies with format-aware validation, multipart uploads included.</span></li>
           <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth (including native PKCE) and cookies.</span></li>
           <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation, binary stream safety, and bounded response details.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Request proxy: the downloader service executes the call server-side for APIs without CORS headers — a deployment or the user can switch back to direct browser calls any time.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Request proxy: the proxy agent executes the call server-side for APIs without CORS headers — a deployment or the user can switch back to direct browser calls any time.</span></li>
         </ul>
       </div>
       <div class="fr-media reveal d2"><img src="assets/opendoc-runner.png" alt="The API Runner composing a POST /pet request with a form-based payload editor" loading="lazy"/></div>
@@ -182,7 +182,7 @@ PAGES["features.html"] = (
     <div class="card-grid">
       <div class="info-card reveal" id="proxy">
         <h3><i class="ph ph-arrows-left-right"></i>Request proxy</h3>
-        <p>The specification downloader doubles as a proxy: enable <code class="inline">VITE_REQUEST_PROXY</code> in a build and the Runner hands every request to it — executed server-side, answered through a JSON envelope, no CORS limits. <code class="inline">config.json</code> or the Settings switch disables it on the front-end while the backend keeps running.</p>
+        <p>The OpenDoc UI proxy agent doubles as a request proxy: enable <code class="inline">VITE_REQUEST_PROXY</code> in a build and the Runner hands every request to it — executed server-side, answered through a JSON envelope, no CORS limits. <code class="inline">config.json</code> or the Settings switch disables it on the front-end while the backend keeps running.</p>
         <span class="mono-tag">POST /proxy · same service as /download</span>
       </div>
       <div class="info-card reveal" id="codegen">
@@ -297,7 +297,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
         <h3>1 · Local files</h3>
         <p>With no configuration at all, OpenDoc UI runs in <b>local mode</b>: open files straight from your device and get a persistent history of everything you opened. When the browser supports file handles, the refresh button can even re-read the file from disk.</p>
         <h3>2 · Remote URLs</h3>
-        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional downloader proxies (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable. If a generator emits invalid flow-style <code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code> without sequence brackets, an <b>experimental</b> load-time YAML repair rewrites just enough text for the document to parse — originals on disk are never modified.</p>
+        <p>When the build enables URL loading, paste any reachable specification URL. The browser fetches it directly; for restrictive networks, optional proxy agents (reference implementations in six frameworks) fetch on your behalf, with direct-fetch fallbacks and clear CORS guidance when something is unreachable. If a generator emits invalid flow-style <code class="inline">oneOf</code>/<code class="inline">anyOf</code>/<code class="inline">allOf</code> without sequence brackets, an <b>experimental</b> load-time YAML repair rewrites just enough text for the document to parse — originals on disk are never modified.</p>
         <h3>3 · Configured specifications</h3>
         <p>Deployments can ship a curated catalog through <code class="inline">public/config.json</code> or <code class="inline">window.INITIAL_CONFIG</code>. The hybrid option combines a configured catalog with local file opening — teams get the official specs <em>and</em> the freedom to inspect anything else.</p>
       </div>
@@ -411,7 +411,7 @@ npm run dev        <span class="c"># development server on :3000</span></div>
 # ────────────────────────── COMPATIBILITY ──────────────────────────
 PAGES["compatibility.html"] = (
     "Compatibility — OpenDoc UI",
-    "What OpenDoc UI understands, where it runs, and which ecosystems it speaks — specification dialects, deployment targets, browsers, AI providers and downloader proxies.",
+    "What OpenDoc UI understands, where it runs, and which ecosystems it speaks — specification dialects, deployment targets, browsers, AI providers and proxy agents.",
     page_hero("Compatibility",
         'Measured <span class="h-accent">precisely</span>,<br/>not approximated',
         "What OpenDoc UI understands, where it runs, and which ecosystems it speaks.")
@@ -460,9 +460,9 @@ PAGES["compatibility.html"] = (
 
     <div style="height:70px"></div>
     <div class="section-head">
-      <span class="eyebrow reveal">Downloader proxies</span>
+      <span class="eyebrow reveal">Proxy agents</span>
       <h2 class="reveal d1">Remote specs behind restrictive networks</h2>
-      <p class="lead reveal d2">When a specification URL can't be fetched directly from the browser, a tiny downloader service fetches it for you. Reference implementations ship in six frameworks:</p>
+      <p class="lead reveal d2">When a specification URL can't be fetched directly from the browser, a tiny proxy agent fetches it for you. Reference implementations ship in six frameworks:</p>
     </div>
     <div class="cloud reveal" style="justify-content:flex-start">
       <span>Node · Express</span><span>Python · FastAPI</span><span>Python · Django</span><span>PHP · Laravel</span><span>Java · Spring Boot</span><span>Go · Gin</span>
@@ -479,7 +479,7 @@ PAGES["compatibility.html"] = (
 # ────────────────────────── DEPLOY ──────────────────────────
 PAGES["deploy.html"] = (
     "Deploy — OpenDoc UI",
-    "Every deployment path for OpenDoc UI: static hosting, GitHub Pages, Docker, the builder CLI, configuration modes, the AI gateway and downloader proxies.",
+    "Every deployment path for OpenDoc UI: static hosting, GitHub Pages, Docker, the builder CLI, configuration modes, the AI gateway and proxy agents.",
     page_hero("Deployment",
         'A folder is the<br/><span class="h-accent">whole deployment</span>',
         "From a single static directory to a hardened Docker stack with an AI gateway — every path, documented end to end.")
@@ -584,7 +584,7 @@ PAGES["developers.html"] = (
           <tr><td><span class="mono">src/utils/openapi/</span></td><td class="wrap">The OpenAPI engine: parsing, normalization, validation, references, serialization and capabilities</td></tr>
           <tr><td><span class="mono">src/utils/runner/</span></td><td class="wrap">Request planning, execution, response handling and the recursive body-form logic</td></tr>
           <tr><td><span class="mono">server/</span></td><td class="wrap">The hardened AI gateway (<span class="mono">ai-gateway.ts</span>) and its policy module</td></tr>
-          <tr><td><span class="mono">proxy-servers/ · ai-gateways/</span></td><td class="wrap">Proxy server (spec downloader + request proxy) and AI gateway reference implementations in six and nine frameworks</td></tr>
+          <tr><td><span class="mono">proxy-agent/ · ai-gateways/</span></td><td class="wrap">Proxy agent (spec download + request proxy) and AI gateway reference implementations in six and nine frameworks</td></tr>
           <tr><td><span class="mono">scripts/</span></td><td class="wrap">Build support: SPA fallback, single-bundle verification, UI contracts, the builder CLI</td></tr>
           <tr><td><span class="mono">tests/</span></td><td class="wrap">Unit suites plus the Playwright browser suite</td></tr>
           <tr><td><span class="mono">docker/ · site/</span></td><td class="wrap">Docker packaging and this website</td></tr>
@@ -629,7 +629,7 @@ PAGES["faq.html"] = (
   <div class="container">
     <div class="faq reveal">
 {qa("Does OpenDoc UI require a backend server?",
-    "No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks, and for executing Runner requests server-side when APIs send no CORS headers) — both are opt-in.", True)}
+    "No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the proxy agent (for fetching remote specifications across restrictive networks, and for executing Runner requests server-side when APIs send no CORS headers) — both are opt-in.", True)}
 {qa("Are my specifications uploaded anywhere?",
     "Never. Local files are parsed in the browser and stored only in your browser's local history. Nothing is uploaded, and the original document is never modified. When you load a remote URL, the browser fetches it directly (or through a proxy you configured) — no third party is involved.")}
 {qa("Which OpenAPI versions are supported?",

@@ -48,12 +48,13 @@ CORS-enabled providers directly or an optional gateway.
   export/import every note as JSON with orphaned-note detection.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
-- **Request proxy** — the downloader service doubles as a proxy: the Runner hands it the compiled
+- **Request proxy** — the proxy agent doubles as a request proxy: the Runner hands it the compiled
   request, it executes the real API call server-side (no CORS limits), and answers through a JSON
   envelope; `VITE_REQUEST_PROXY` ships it in a build, `config.json {"proxy": {"enabled": false}}` or the
   Settings switch turns it off on the front-end while the backend keeps running;
-- **Remote URL loading** — optional build-time capability with CORS guidance, downloaders/direct fallbacks,
-  persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
+- **Remote URL loading** — optional build-time capability with CORS guidance, proxy agent/direct
+  fallbacks, persistent URL history, cache revalidation, and hardened proxy agent examples in six
+  backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
   revalidation; persistent state and raw documents use IndexedDB instead of consuming the localStorage quota.
 - **Reference-safe rendering** — unresolved, circular, and multi-file `$ref` graphs are diagnosed without taking down unrelated views; recursive property matrices and Runner forms stop at cycle boundaries, and missing local files can be added after the root is opened.
@@ -64,25 +65,28 @@ CORS-enabled providers directly or an optional gateway.
 
 ## Version 0.4.0
 
-**Request proxy** — the downloader service now executes Runner requests:
+**Request proxy** — the **OpenDoc UI proxy agent** executes Runner requests:
 
 - with `VITE_REQUEST_PROXY` set at build time, the Runner hands every compiled request to the
-  downloader service's `POST /proxy`; the service executes the real API call server-side and
-  answers through a JSON envelope, so APIs without CORS headers (or on blocked schemes and
-  ports) are fully testable from the Runner — multipart and binary bodies included;
-- the same service still downloads specifications; `GET /download` is unchanged;
+  proxy agent's `POST /proxy`; the agent executes the real API call server-side and answers
+  through a JSON envelope, so APIs without CORS headers (or on blocked schemes and ports) are
+  fully testable from the Runner — multipart and binary bodies included;
+- the same agent still downloads specifications; `GET /download` is unchanged;
 - front-end-only switches, backend untouched: a runtime `config.json` `proxy` block
   (`{"proxy": {"enabled": false}}` or `{"proxy": {"url": "..."}}`) wins for the deployment, and
   proxy builds show a Settings → General toggle for the user preference; precedence is build
   flag → runtime disable → user preference, with no silent fallback to direct;
-- the proxy reuses the downloader's safety model: origin allowlist, rate limiting, size cap,
+- the proxy reuses the agent's safety model: origin allowlist, rate limiting, size cap,
   timeout, redirect cap with `finalUrl` reporting, SSRF policy, hop-by-hop header stripping,
   and `OPENDOC_PROXY_ENABLED=false` to serve downloads only;
 - code generators and OAuth flows keep describing direct calls — the proxy is a Runner
   transport;
-- `POST /proxy` is implemented by all six reference services (Node, Python, PHP, Go, Java,
-  .NET); the reference directory is renamed `downloaders/` → `proxy-servers/`;
-- docs (`docs/request-proxy.md`, `docs/proxy-servers.md` plus cross-links), the About page,
+- `POST /proxy` is implemented by all six reference agents (Node, Python, PHP, Go, Java,
+  .NET); the reference directory is `proxy-agent/`, and the services are renamed from
+  "specification downloader" to **OpenDoc UI proxy agent** everywhere — including the build
+  flag (`VITE_SPEC_DOWNLOADER` → `VITE_PROXY_AGENT`) and the `DOWNLOADER_ERROR` code
+  (`PROXY_AGENT_ERROR`);
+- docs (`docs/request-proxy.md`, `docs/proxy-agent.md` plus cross-links), the About page,
   and the marketing site introduce the capability.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
@@ -120,25 +124,25 @@ theming, routing, deployment, and the FAQ — lives in the [documentation](#docu
 
 ## Documentation
 
-| Page                                                          | Covers                                                                  |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [Quick start](docs/quick-start.md)                            | Requirements, install, dev/build scripts, first run                     |
-| [Docker](docs/docker.md)                                      | Docker Compose, image, config mount, helper scripts                     |
-| [Builder CLI](docs/builder-cli.md)                            | The guided `npm run make` deployment CLI                                |
-| [Configuration](docs/configuration.md)                        | Modes 1–3, hybrid mode, `config.json` & `window.INITIAL_CONFIG`         |
-| [Remote URL loading](docs/remote-loading.md)                  | Load-from-URL, build-time settings, downloader-first behavior           |
-| [Request proxy](docs/request-proxy.md)                        | Runner requests executed server-side by the downloader service          |
-| [Proxy server services](docs/proxy-servers.md)                | Six reference implementations serving `GET /download` and `POST /proxy` |
-| [Endpoint notes & hidden endpoints](docs/endpoint-notes.md)   | Local notes, todos, trash, orphaned notes, hidden endpoints             |
-| [API runner](docs/api-runner.md)                              | Runner safety, OpenAPI behavior, authentication, compatibility          |
-| [AI assistant](docs/ai-assistant.md)                          | Assistant page, profiles, providers, skills, export                     |
-| [AI gateway](docs/ai-gateway.md)                              | Optional gateway, managed AI mode, framework examples                   |
-| [Spec loading, history & persistence](docs/data-and-state.md) | Caching & revalidation, refresh button, storage keys                    |
-| [Theme system](docs/themes.md)                                | Palettes, tags, light/dark/system modes                                 |
-| [Routing & deep links](docs/routing.md)                       | Hash routes, keyboard shortcuts, the no-spec state                      |
-| [Architecture](docs/architecture.md)                          | Project structure, dependency direction, OpenAPI vs OpenDoc worlds      |
-| [Deployment](docs/deployment.md)                              | Static hosting notes, GitHub Pages demo                                 |
-| [FAQ](docs/faq.md)                                            | Common questions                                                        |
+| Page                                                          | Covers                                                             |
+| ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [Quick start](docs/quick-start.md)                            | Requirements, install, dev/build scripts, first run                |
+| [Docker](docs/docker.md)                                      | Docker Compose, image, config mount, helper scripts                |
+| [Builder CLI](docs/builder-cli.md)                            | The guided `npm run make` deployment CLI                           |
+| [Configuration](docs/configuration.md)                        | Modes 1–3, hybrid mode, `config.json` & `window.INITIAL_CONFIG`    |
+| [Remote URL loading](docs/remote-loading.md)                  | Load-from-URL, build-time settings, proxy agent-first behavior     |
+| [Request proxy](docs/request-proxy.md)                        | Runner requests executed server-side by the proxy agent            |
+| [Proxy agent services](docs/proxy-agent.md)                   | Six reference agents serving `GET /download` and `POST /proxy`     |
+| [Endpoint notes & hidden endpoints](docs/endpoint-notes.md)   | Local notes, todos, trash, orphaned notes, hidden endpoints        |
+| [API runner](docs/api-runner.md)                              | Runner safety, OpenAPI behavior, authentication, compatibility     |
+| [AI assistant](docs/ai-assistant.md)                          | Assistant page, profiles, providers, skills, export                |
+| [AI gateway](docs/ai-gateway.md)                              | Optional gateway, managed AI mode, framework examples              |
+| [Spec loading, history & persistence](docs/data-and-state.md) | Caching & revalidation, refresh button, storage keys               |
+| [Theme system](docs/themes.md)                                | Palettes, tags, light/dark/system modes                            |
+| [Routing & deep links](docs/routing.md)                       | Hash routes, keyboard shortcuts, the no-spec state                 |
+| [Architecture](docs/architecture.md)                          | Project structure, dependency direction, OpenAPI vs OpenDoc worlds |
+| [Deployment](docs/deployment.md)                              | Static hosting notes, GitHub Pages demo                            |
+| [FAQ](docs/faq.md)                                            | Common questions                                                   |
 
 Also see the [CHANGELOG](CHANGELOG.md) for the complete release history.
 

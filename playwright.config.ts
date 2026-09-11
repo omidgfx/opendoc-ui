@@ -20,7 +20,7 @@ export default defineConfig({
         env: {
             ...process.env,
             VITE_LOAD_FROM_URL: 'true',
-            VITE_SPEC_DOWNLOADER: '',
+            VITE_PROXY_AGENT: '',
             VITE_DISABLE_APPLE_EMOJIS: 'false',
         },
     },

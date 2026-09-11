@@ -45,7 +45,7 @@ interface AppliedRemoteSpec {
 
 interface UseRemoteSpecificationsOptions {
     enabled: boolean;
-    downloaderTemplate?: string;
+    proxyAgentTemplate?: string;
     selectedSpecKey: string;
     onApply: (value: AppliedRemoteSpec) => void;
 }
@@ -55,11 +55,11 @@ export interface RemoteLoadResult {
     fetchInfo: FetchSpecResult<OpenApiSpec>;
 }
 
-const remoteErrorMessage = (error: unknown, hasDownloader: boolean): string => {
+const remoteErrorMessage = (error: unknown, hasProxyAgent: boolean): string => {
     if (error instanceof SpecFetchError) return `${error.code}: ${error.message}`;
     if (error instanceof RemoteSpecRequestError) {
-        return hasDownloader
-            ? 'The downloader and both direct browser attempts failed. Check the downloader, CORS policy, DNS, and URL scheme.'
+        return hasProxyAgent
+            ? 'The proxy agent and both direct browser attempts failed. Check the proxy agent, CORS policy, DNS, and URL scheme.'
             : 'Both direct browser attempts failed. The server may be unreachable or may not allow browser CORS requests.';
     }
     if (error instanceof DOMException && error.name === 'AbortError')
@@ -71,7 +71,7 @@ const remoteErrorMessage = (error: unknown, hasDownloader: boolean): string => {
 
 export function useRemoteSpecifications({
     enabled,
-    downloaderTemplate,
+    proxyAgentTemplate,
     selectedSpecKey,
     onApply,
 }: UseRemoteSpecificationsOptions) {
@@ -93,7 +93,7 @@ export function useRemoteSpecifications({
             setIsLoadingRemoteSpec(true);
             let latestResponseMode: RemoteRequestMode | undefined;
             const requester = createRemoteSpecRequester({
-                downloaderTemplate,
+                proxyAgentTemplate,
                 pageProtocol: typeof window !== 'undefined' ? window.location.protocol : 'https:',
                 onAttempt: attempt => {
                     setRemoteLoadAttempt(attempt);
@@ -134,14 +134,14 @@ export function useRemoteSpecifications({
                 onApply({key, document, switchingSpec: key !== selectedSpecKey, fetchInfo});
                 return {entry, fetchInfo};
             } catch (error) {
-                const message = remoteErrorMessage(error, !!downloaderTemplate?.trim());
+                const message = remoteErrorMessage(error, !!proxyAgentTemplate?.trim());
                 setRemoteOpenError(message);
                 throw new Error(message, {cause: error});
             } finally {
                 setIsLoadingRemoteSpec(false);
             }
         },
-        [enabled, downloaderTemplate, onApply, selectedSpecKey],
+        [enabled, proxyAgentTemplate, onApply, selectedSpecKey],
     );
 
     const restoreRemoteSpec = useCallback(

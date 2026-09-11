@@ -67,7 +67,7 @@ export function showDeploymentNotes(config, dockerInfo) {
     );
     console.log(`   config           Mode 1 public/config.json · Mode 2 window.INITIAL_CONFIG · Mode 3 local-only.`);
     console.log(
-        `   load-from-url    ${config.loadFromUrl ? 'enabled' : 'disabled'}${config.downloaderTemplate ? ` via ${config.downloaderTemplate}` : ''}`,
+        `   load-from-url    ${config.loadFromUrl ? 'enabled' : 'disabled'}${config.proxyAgentTemplate ? ` via ${config.proxyAgentTemplate}` : ''}`,
     );
     console.log(
         `   ai gateway       ${config.aiGateway.enabled ? `http://localhost:${config.aiGateway.port} (npm run ai-gateway)` : 'not configured (browser-direct provider mode)'}`,

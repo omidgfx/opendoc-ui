@@ -30,7 +30,7 @@ type ApiSpecificationSelectorModalProps = {
     localOpenError: string | null;
     onDismissLocalError: () => void;
     remoteLoadingEnabled: boolean;
-    downloaderConfigured: boolean;
+    proxyAgentConfigured: boolean;
     remoteHistory: RemoteHistoryEntry[];
     remoteOpenError: string | null;
     isLoadingRemoteSpec: boolean;
@@ -60,7 +60,7 @@ export default function ApiSpecificationSelectorModal({
     localOpenError,
     onDismissLocalError,
     remoteLoadingEnabled,
-    downloaderConfigured,
+    proxyAgentConfigured,
     remoteHistory,
     remoteOpenError,
     isLoadingRemoteSpec,
@@ -299,7 +299,7 @@ export default function ApiSpecificationSelectorModal({
                             <div className="mb-4">
                                 <RemoteSpecificationControls
                                     selectedKey={selectedKey}
-                                    downloaderConfigured={downloaderConfigured}
+                                    proxyAgentConfigured={proxyAgentConfigured}
                                     error={remoteOpenError}
                                     history={remoteHistory}
                                     onOpenLoader={() => setShowRemoteLoader(true)}
@@ -417,7 +417,7 @@ export default function ApiSpecificationSelectorModal({
                                 <div className="mb-5">
                                     <RemoteSpecificationControls
                                         selectedKey={selectedKey}
-                                        downloaderConfigured={downloaderConfigured}
+                                        proxyAgentConfigured={proxyAgentConfigured}
                                         error={remoteOpenError}
                                         history={remoteHistory}
                                         onOpenLoader={() => setShowRemoteLoader(true)}
@@ -724,7 +724,7 @@ export default function ApiSpecificationSelectorModal({
 
             <RemoteSpecificationModal
                 isOpen={showRemoteLoader}
-                downloaderConfigured={downloaderConfigured}
+                proxyAgentConfigured={proxyAgentConfigured}
                 isLoading={isLoadingRemoteSpec}
                 loadStatus={remoteLoadStatus}
                 onLoad={onLoadRemoteUrl}

@@ -56,7 +56,7 @@ interface TopbarProps {
     localOpenError: string | null;
     onDismissLocalError: () => void;
     remoteLoadingEnabled: boolean;
-    downloaderConfigured: boolean;
+    proxyAgentConfigured: boolean;
     remoteHistory: RemoteHistoryEntry[];
     remoteOpenError: string | null;
     isLoadingRemoteSpec: boolean;
@@ -107,7 +107,7 @@ export default function Topbar({
     localOpenError,
     onDismissLocalError,
     remoteLoadingEnabled,
-    downloaderConfigured,
+    proxyAgentConfigured,
     remoteHistory,
     remoteOpenError,
     isLoadingRemoteSpec,
@@ -702,7 +702,7 @@ export default function Topbar({
                 localOpenError={localOpenError}
                 onDismissLocalError={onDismissLocalError}
                 remoteLoadingEnabled={remoteLoadingEnabled}
-                downloaderConfigured={downloaderConfigured}
+                proxyAgentConfigured={proxyAgentConfigured}
                 remoteHistory={remoteHistory}
                 remoteOpenError={remoteOpenError}
                 isLoadingRemoteSpec={isLoadingRemoteSpec}

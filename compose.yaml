@@ -7,7 +7,7 @@ services:
       args:
         VITE_DISABLE_APPLE_EMOJIS: '${VITE_DISABLE_APPLE_EMOJIS:-true}'
         VITE_LOAD_FROM_URL: '${VITE_LOAD_FROM_URL:-false}'
-        VITE_SPEC_DOWNLOADER: '${VITE_SPEC_DOWNLOADER:-}'
+        VITE_PROXY_AGENT: '${VITE_PROXY_AGENT:-}'
         VITE_BASE_PATH: '${VITE_BASE_PATH:-/}'
     container_name: '${OPENDOC_CONTAINER_NAME:-opendoc-ui}'
     ports:

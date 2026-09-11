@@ -77,7 +77,7 @@ export async function runBuild(config) {
         VITE_LOAD_FROM_URL: config.loadFromUrl ? 'true' : 'false',
         VITE_BASE_PATH: config.basePath,
     };
-    if (config.downloaderTemplate) buildEnv.VITE_SPEC_DOWNLOADER = config.downloaderTemplate;
+    if (config.proxyAgentTemplate) buildEnv.VITE_PROXY_AGENT = config.proxyAgentTemplate;
     console.log(ui.dim('   Build-time options (child process only — npm run build stays untouched):'));
     Object.entries(buildEnv).forEach(([key, value]) => console.log(ui.dim(`     ${key}=${value}`)));
     console.log('');

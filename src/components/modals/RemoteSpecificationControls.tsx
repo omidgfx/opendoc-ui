@@ -8,7 +8,7 @@ import {Tip} from '../common/Tooltip';
 
 interface RemoteSpecificationControlsProps {
     selectedKey: string;
-    downloaderConfigured: boolean;
+    proxyAgentConfigured: boolean;
     error: string | null;
     history: RemoteHistoryEntry[];
     onOpenLoader: () => void;
@@ -29,7 +29,7 @@ const displayUrl = (value: string): string => {
 
 export default function RemoteSpecificationControls({
     selectedKey,
-    downloaderConfigured,
+    proxyAgentConfigured,
     error,
     history,
     onOpenLoader,
@@ -65,8 +65,8 @@ export default function RemoteSpecificationControls({
                 <span className="min-w-0 flex-1">
                     <span className="block text-xs font-extrabold text-[var(--text-heading)]">Load from URL</span>
                     <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">
-                        {downloaderConfigured
-                            ? 'Use the configured downloader with automatic browser fallbacks'
+                        {proxyAgentConfigured
+                            ? 'Use the configured proxy agent with automatic browser fallbacks'
                             : 'Download directly in this browser; the remote host must permit CORS'}
                     </span>
                 </span>

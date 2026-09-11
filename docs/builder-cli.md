@@ -24,7 +24,7 @@ child build process, and runtime settings land in `.env`.
 | Preflight          | Reuse of a previous configuration (with a summary and Use / Edit / Start fresh choices), Node version check, Docker engine + compose detection |
 | Deployment profile | Static files only, Docker image, or both; clean the previous output first if desired                                                           |
 | Frontend options   | Apple Emoji sprite (exclude for a leaner bundle, include for consistent Apple rendering), base path, and whether to enable Load-from-URL       |
-| Downloader proxy   | A `{URL}` template validated with the same rules as `vite.config.ts`, plus optional framework example env files                                |
+| Proxy agent        | A `{URL}` template validated with the same rules as `vite.config.ts`, plus optional framework example env files                                |
 | AI gateway         | Provider, model, base URL, hidden API key, auto-generated gateway token, allowed origins, port, and limits — with optional framework examples  |
 | Docker options     | Image name, container name, host port (with in-use detection), restart policy                                                                  |
 | Review             | A full summary of every choice — origins, proxy examples, Docker status, secret status — before anything is built                              |
@@ -40,7 +40,7 @@ child build process, and runtime settings land in `.env`.
   permissions are tightened to `0600` on Unix.
 - **`builder.config.json`** (gitignored) — the full answer set for reproducible re-runs. Secrets are
   **never** stored here; tokens and API keys stay in `.env` and are loaded back from there on reuse.
-- **`proxy-servers/<framework>/.env`** and **`ai-gateways/<framework>/.env`** — only when you ask for a
+- **`proxy-agent/<framework>/.env`** and **`ai-gateways/<framework>/.env`** — only when you ask for a
   framework example, pre-filled with your origins, token, provider and model.
 
 ## Guarantees
@@ -52,7 +52,7 @@ child build process, and runtime settings land in `.env`.
   the project half-modified.
 - Loaded configurations are schema-validated with a version/migration hook; an invalid stored config
   falls back to a fresh start with a clear warning.
-- Origins must be strict `scheme://host`, base paths are normalized, downloader templates must
+- Origins must be strict `scheme://host`, base paths are normalized, proxy agent templates must
   contain exactly one `{URL}`, and gateway tokens enforce a safe character set.
 - Child processes run from the project root; Ctrl+C tracks lifecycle state and terminates them.
   On Windows, child launches use a shell-backed helper required by Node's CVE-2024-27980 fix.

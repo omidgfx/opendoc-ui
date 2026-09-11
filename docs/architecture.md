@@ -10,7 +10,7 @@
 compose.yaml             # cross-platform OpenDoc UI container deployment
 docker/                  # production image, nginx, config, and helper scripts
 public/                  # static assets; demo specifications live under public/demo/
-proxy-servers/           # hardened Node/Python/PHP/Go/Java/.NET spec downloaders and request proxies
+proxy-agent/             # hardened Node/Python/PHP/Go/Java/.NET proxy agents (spec download + request proxy)
 ai-gateways/             # Express/FastAPI/Django/Laravel/Gin/Spring/.NET/Rails/Axum AI gateways
 server/                  # the canonical Node AI gateway (ai-gateway.ts) and its policy module
 site/                    # the product website deployed at the GitHub Pages root

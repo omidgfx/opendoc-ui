@@ -77,7 +77,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
           <li><i class="ph-fill ph-check"></i><span>Recursive form editor or raw JSON/YAML/XML bodies with format-aware validation, multipart uploads included.</span></li>
           <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth (including native PKCE) and cookies.</span></li>
           <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation, binary stream safety, and bounded response details.</span></li>
-          <li><i class="ph-fill ph-check"></i><span>Request proxy: the downloader service executes the call server-side for APIs without CORS headers — a deployment or the user can switch back to direct browser calls any time.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Request proxy: the proxy agent executes the call server-side for APIs without CORS headers — a deployment or the user can switch back to direct browser calls any time.</span></li>
         </ul>
       </div>
       <div class="fr-media reveal d2"><img src="assets/opendoc-runner.png" alt="The API Runner composing a POST /pet request with a form-based payload editor" loading="lazy"/></div>
@@ -121,7 +121,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
     <div class="card-grid">
       <div class="info-card reveal" id="proxy">
         <h3><i class="ph ph-arrows-left-right"></i>Request proxy</h3>
-        <p>The specification downloader doubles as a proxy: enable <code class="inline">VITE_REQUEST_PROXY</code> in a build and the Runner hands every request to it — executed server-side, answered through a JSON envelope, no CORS limits. <code class="inline">config.json</code> or the Settings switch disables it on the front-end while the backend keeps running.</p>
+        <p>The OpenDoc UI proxy agent doubles as a request proxy: enable <code class="inline">VITE_REQUEST_PROXY</code> in a build and the Runner hands every request to it — executed server-side, answered through a JSON envelope, no CORS limits. <code class="inline">config.json</code> or the Settings switch disables it on the front-end while the backend keeps running.</p>
         <span class="mono-tag">POST /proxy · same service as /download</span>
       </div>
       <div class="info-card reveal" id="codegen">

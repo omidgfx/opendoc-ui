@@ -5,7 +5,7 @@ import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 
 interface RemoteSpecificationModalProps {
     isOpen: boolean;
-    downloaderConfigured: boolean;
+    proxyAgentConfigured: boolean;
     isLoading: boolean;
     loadStatus: string | null;
     onLoad: (url: string) => Promise<unknown>;
@@ -15,7 +15,7 @@ interface RemoteSpecificationModalProps {
 
 export default function RemoteSpecificationModal({
     isOpen,
-    downloaderConfigured,
+    proxyAgentConfigured,
     isLoading,
     loadStatus,
     onLoad,
@@ -26,13 +26,13 @@ export default function RemoteSpecificationModal({
     const [url, setUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
-    const [showCorsHelp, setShowCorsHelp] = useState(!downloaderConfigured);
+    const [showCorsHelp, setShowCorsHelp] = useState(!proxyAgentConfigured);
     useEffect(() => {
         if (!isOpen) return;
         setError(null);
         setSubmitted(false);
-        setShowCorsHelp(!downloaderConfigured);
-    }, [isOpen, downloaderConfigured]);
+        setShowCorsHelp(!proxyAgentConfigured);
+    }, [isOpen, proxyAgentConfigured]);
     useModalShortcuts({
         isOpen,
         onClose: transition.requestClose,
@@ -86,8 +86,8 @@ export default function RemoteSpecificationModal({
                                 Load specification from URL
                             </h2>
                             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-                                {downloaderConfigured
-                                    ? 'The configured downloader is tried first, with direct browser fallbacks.'
+                                {proxyAgentConfigured
+                                    ? 'The configured proxy agent is tried first, with direct browser fallbacks.'
                                     : 'The browser downloads the document directly from its remote server.'}
                             </p>
                         </div>
@@ -182,8 +182,8 @@ Access-Control-Allow-Methods: GET, HEAD, OPTIONS
 Access-Control-Allow-Headers: Content-Type, If-None-Match, If-Modified-Since
 Access-Control-Expose-Headers: ETag, Last-Modified, Content-Length, Content-Type, X-OpenDoc-Final-URL`}</pre>
                                 <p className="text-[var(--text-muted)]">
-                                    If you cannot change that server, configure an OpenDoc specification downloader
-                                    during the build.
+                                    If you cannot change that server, configure an OpenDoc UI proxy agent during the
+                                    build.
                                 </p>
                             </div>
                         )}

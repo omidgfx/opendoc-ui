@@ -28,12 +28,12 @@ PowerShell:
 
 ```powershell
 $env:VITE_LOAD_FROM_URL = 'true'
-$env:VITE_SPEC_DOWNLOADER = 'https://proxy.example.com/download?spec_url={URL}'
+$env:VITE_PROXY_AGENT = 'https://proxy.example.com/download?spec_url={URL}'
 docker compose up --build --detach
 ```
 
 The supported build variables are `VITE_DISABLE_APPLE_EMOJIS`, `VITE_LOAD_FROM_URL`,
-`VITE_SPEC_DOWNLOADER`, and `VITE_BASE_PATH`. Set `OPENDOC_PORT` to change the host port.
+`VITE_PROXY_AGENT`, and `VITE_BASE_PATH`. Set `OPENDOC_PORT` to change the host port.
 
 Equivalent helper scripts are included for direct `docker build` / `docker run` workflows:
 

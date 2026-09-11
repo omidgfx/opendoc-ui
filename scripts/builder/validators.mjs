@@ -65,8 +65,8 @@ export const validateToken = value => {
     return true;
 };
 
-/** Mirrors the validation vite.config.ts applies to VITE_SPEC_DOWNLOADER. */
-export const validateDownloaderTemplate = value => {
+/** Mirrors the validation vite.config.ts applies to VITE_PROXY_AGENT. */
+export const validateProxyAgentTemplate = value => {
     const template = String(value).trim();
     const matches = template.match(/\{URL\}/g) ?? [];
     if (matches.length !== 1) return 'The template must contain exactly one {URL} placeholder.';
@@ -77,7 +77,7 @@ export const validateDownloaderTemplate = value => {
         );
         if (parsed.username || parsed.password) return 'The template cannot contain embedded credentials.';
     } catch {
-        return 'The template does not produce a valid downloader URL.';
+        return 'The template does not produce a valid proxy agent URL.';
     }
     return true;
 };

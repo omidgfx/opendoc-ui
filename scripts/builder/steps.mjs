@@ -9,7 +9,7 @@ import {
     isOrigin,
     isPort,
     validateBasePath,
-    validateDownloaderTemplate,
+    validateProxyAgentTemplate,
     validateModel,
     validateOrigins,
     validateToken,
@@ -59,21 +59,21 @@ export async function stepFrontend(prompter, existing) {
 export async function stepDownloadProxy(prompter, existing) {
     const {ask, confirm, select} = prompter;
     const result = {
-        downloaderTemplate: existing?.downloaderTemplate ?? null,
+        proxyAgentTemplate: existing?.proxyAgentTemplate ?? null,
         proxyExample: existing?.proxyExample ?? 'none',
     };
-    const wantsTemplate = result.downloaderTemplate
-        ? await confirm(`Keep the downloader proxy template "${result.downloaderTemplate}"?`, true)
-        : await confirm('Configure a downloader proxy template?', false);
-    if (wantsTemplate && !result.downloaderTemplate) {
-        result.downloaderTemplate = await ask(
+    const wantsTemplate = result.proxyAgentTemplate
+        ? await confirm(`Keep the proxy agent template "${result.proxyAgentTemplate}"?`, true)
+        : await confirm('Configure a proxy agent template?', false);
+    if (wantsTemplate && !result.proxyAgentTemplate) {
+        result.proxyAgentTemplate = await ask(
             'Proxy URL template (exactly one {URL}, e.g. https://proxy.example.com/download?spec_url={URL})',
-            {validate: validateDownloaderTemplate},
+            {validate: validateProxyAgentTemplate},
         );
     } else if (!wantsTemplate) {
-        result.downloaderTemplate = null;
+        result.proxyAgentTemplate = null;
     }
-    if (result.downloaderTemplate) {
+    if (result.proxyAgentTemplate) {
         result.proxyExample = await select(
             'Copy an example proxy service configuration?',
             [
@@ -294,7 +294,7 @@ export const getReviewRows = (config, dockerInfo) => {
         ['Apple Emoji sprite', config.disableAppleEmojis ? 'excluded' : 'included'],
         ['Base path', config.basePath],
         ['Load from URL', config.loadFromUrl ? 'yes' : 'no'],
-        ['Downloader proxy', config.downloaderTemplate || '—'],
+        ['Proxy agent template', config.proxyAgentTemplate || '—'],
         ['Proxy example', config.proxyExample !== 'none' ? config.proxyExample : '—'],
         ['Public origin', config.deploymentOrigin || '—'],
         [

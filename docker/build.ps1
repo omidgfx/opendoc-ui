@@ -39,7 +39,7 @@ if ([string]::IsNullOrWhiteSpace($ImageName)) {
 
 $disableAppleEmojis = Get-EnvironmentValue -Name 'VITE_DISABLE_APPLE_EMOJIS' -DefaultValue 'true'
 $loadFromUrl = Get-EnvironmentValue -Name 'VITE_LOAD_FROM_URL' -DefaultValue 'false'
-$specDownloader = Get-EnvironmentValue -Name 'VITE_SPEC_DOWNLOADER' -DefaultValue ''
+$proxyAgent = Get-EnvironmentValue -Name 'VITE_PROXY_AGENT' -DefaultValue ''
 $basePath = Get-EnvironmentValue -Name 'VITE_BASE_PATH' -DefaultValue '/'
 $dockerfile = Join-Path $projectRoot 'docker/Dockerfile'
 $versionedImage = "${ImageName}:$Version"
@@ -53,7 +53,7 @@ $dockerArguments = @(
     '--tag', $latestImage,
     '--build-arg', "VITE_DISABLE_APPLE_EMOJIS=$disableAppleEmojis",
     '--build-arg', "VITE_LOAD_FROM_URL=$loadFromUrl",
-    '--build-arg', "VITE_SPEC_DOWNLOADER=$specDownloader",
+    '--build-arg', "VITE_PROXY_AGENT=$proxyAgent",
     '--build-arg', "VITE_BASE_PATH=$basePath",
     $projectRoot
 )

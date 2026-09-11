@@ -7,25 +7,25 @@ import svgr from 'vite-plugin-svgr';
 export default defineConfig(({mode}) => {
     const env = {...loadEnv(mode, process.cwd(), ''), ...process.env};
     const remoteLoadingEnabled = String(env.VITE_LOAD_FROM_URL || '').toLowerCase() === 'true';
-    const downloaderTemplate = String(env.VITE_SPEC_DOWNLOADER || '').trim();
+    const proxyAgentTemplate = String(env.VITE_PROXY_AGENT || '').trim();
     // Keep the default drop-in bundle lean; explicitly set this to false to
     // include the Apple Emoji 16 metadata and embedded sprite.
     const appleEmojisDisabled = String(env.VITE_DISABLE_APPLE_EMOJIS || 'true').toLowerCase() !== 'false';
-    if (remoteLoadingEnabled && downloaderTemplate) {
-        const normalized = downloaderTemplate.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
+    if (remoteLoadingEnabled && proxyAgentTemplate) {
+        const normalized = proxyAgentTemplate.replace(/^https?:\/\//i, '').replace(/^\/+/, '');
         if (!normalized.includes('{URL}'))
-            throw new Error('VITE_SPEC_DOWNLOADER must contain the exact {URL} placeholder.');
+            throw new Error('VITE_PROXY_AGENT must contain the exact {URL} placeholder.');
         try {
             const parsed = new URL(
                 `https://${normalized.split('{URL}').join(encodeURIComponent('https://example.com/openapi.yaml'))}`,
             );
             if (parsed.username || parsed.password)
-                throw new Error('VITE_SPEC_DOWNLOADER cannot contain embedded credentials.');
+                throw new Error('VITE_PROXY_AGENT cannot contain embedded credentials.');
         } catch (error) {
             throw new Error(
                 error instanceof Error && error.message.includes('credentials')
                     ? error.message
-                    : 'VITE_SPEC_DOWNLOADER does not produce a valid downloader URL.',
+                    : 'VITE_PROXY_AGENT does not produce a valid proxy agent URL.',
             );
         }
     }

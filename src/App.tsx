@@ -383,7 +383,7 @@ export default function App() {
         handleClearRemoteHistory,
     } = useRemoteSpecifications({
         enabled: REMOTE_SPEC_BUILD_CONFIG.enabled,
-        downloaderTemplate: REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate,
+        proxyAgentTemplate: REMOTE_SPEC_BUILD_CONFIG.proxyAgentTemplate,
         selectedSpecKey: selectedParsableKey,
         onApply: handleApplyLocalSpec,
     });
@@ -1231,7 +1231,7 @@ export default function App() {
             localOpenError={localOpenError}
             onDismissLocalError={() => setLocalOpenError(null)}
             remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
-            downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+            proxyAgentConfigured={!!REMOTE_SPEC_BUILD_CONFIG.proxyAgentTemplate}
             remoteHistory={remoteHistory}
             remoteOpenError={remoteOpenError}
             isLoadingRemoteSpec={isLoadingRemoteSpec}
@@ -1302,7 +1302,7 @@ export default function App() {
                             localOpenError={localOpenError}
                             onDismissLocalError={() => setLocalOpenError(null)}
                             remoteLoadingEnabled={REMOTE_SPEC_BUILD_CONFIG.enabled}
-                            downloaderConfigured={!!REMOTE_SPEC_BUILD_CONFIG.downloaderTemplate}
+                            proxyAgentConfigured={!!REMOTE_SPEC_BUILD_CONFIG.proxyAgentTemplate}
                             remoteHistory={remoteHistory}
                             remoteOpenError={remoteOpenError}
                             isLoadingRemoteSpec={isLoadingRemoteSpec}

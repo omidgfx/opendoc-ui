@@ -3,7 +3,7 @@ import {readAppPreferences} from '../storage/preferences';
 
 /**
  * Request proxy mode: the Runner hands the compiled request to the
- * downloader service's proxy endpoint, which executes the real API call
+ * proxy agent's /proxy endpoint, which executes the real API call
  * server-side and returns the response envelope. Builds without
  * `VITE_REQUEST_PROXY` never activate it; a runtime `proxy` config block or
  * the user preference can switch it off without touching the backend.

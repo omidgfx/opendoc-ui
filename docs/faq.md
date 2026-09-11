@@ -21,9 +21,9 @@ remote URLs must be CORS-enabled. The selector shows per-entry error messages.
 It is a build-time capability. Set `VITE_LOAD_FROM_URL=true` before running `npm run dev` or
 `npm run build`; changing the value after deployment cannot modify an existing static bundle.
 
-**Why did the direct URL request fail while the downloader works?**
-Browsers enforce CORS and mixed-content rules; backend downloaders are not subject to browser CORS
-when contacting the target. The downloader itself must still allow the exact OpenDoc UI origin via
+**Why did the direct URL request fail while the proxy agent works?**
+Browsers enforce CORS and mixed-content rules; backend proxy agents are not subject to browser CORS
+when contacting the target. The proxy agent itself must still allow the exact OpenDoc UI origin via
 `OPENDOC_ALLOWED_ORIGINS`.
 
 **Does the refresh button clear my history?**
@@ -38,7 +38,7 @@ Yes. Files are normalized to OpenAPI 3 internally; both `swagger: "2.0"` and
 
 **Is anything sent to a server?**
 Local files never leave the device. Configured/URL specifications are requested from their source
-or configured downloader, and optional AI requests go only to the selected provider/gateway. There
+or configured proxy agent, and optional AI requests go only to the selected provider/gateway. There
 is no analytics or telemetry code in the app.
 ---
 

@@ -92,7 +92,7 @@ export interface SidebarProps {
     localOpenError: string | null;
     onDismissLocalError: () => void;
     remoteLoadingEnabled: boolean;
-    downloaderConfigured: boolean;
+    proxyAgentConfigured: boolean;
     remoteHistory: RemoteHistoryEntry[];
     remoteOpenError: string | null;
     isLoadingRemoteSpec: boolean;

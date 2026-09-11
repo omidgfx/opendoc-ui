@@ -86,7 +86,7 @@ export default function Sidebar(props: SidebarProps) {
         localOpenError,
         onDismissLocalError,
         remoteLoadingEnabled,
-        downloaderConfigured,
+        proxyAgentConfigured,
         remoteHistory,
         remoteOpenError,
         isLoadingRemoteSpec,
@@ -1074,7 +1074,7 @@ export default function Sidebar(props: SidebarProps) {
             localOpenError={localOpenError}
             onDismissLocalError={onDismissLocalError}
             remoteLoadingEnabled={remoteLoadingEnabled}
-            downloaderConfigured={downloaderConfigured}
+            proxyAgentConfigured={proxyAgentConfigured}
             remoteHistory={remoteHistory}
             remoteOpenError={remoteOpenError}
             isLoadingRemoteSpec={isLoadingRemoteSpec}

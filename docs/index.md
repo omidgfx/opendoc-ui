@@ -15,8 +15,8 @@ Start with [Quick start](quick-start.md).
 
 - [Configuration](configuration.md) — the three deployment modes and hybrid mode
 - [Remote URL loading](remote-loading.md) — load specs from URLs at build time
-- [Request proxy](request-proxy.md) — runner requests executed server-side by the downloader service
-- [Proxy server services](proxy-servers.md) — six reference implementations serving `GET /download` and `POST /proxy` (Node, Python, PHP, Go, Java, .NET)
+- [Request proxy](request-proxy.md) — runner requests executed server-side by the proxy agent
+- [Proxy agent services](proxy-agent.md) — six reference implementations serving `GET /download` and `POST /proxy` (Node, Python, PHP, Go, Java, .NET)
 
 ## Features
 

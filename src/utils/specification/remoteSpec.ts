@@ -1,4 +1,4 @@
-export type RemoteRequestMode = 'downloader' | 'direct' | 'direct-scheme-retry';
+export type RemoteRequestMode = 'proxy-agent' | 'direct' | 'direct-scheme-retry';
 export type RemoteAttemptState = 'requesting' | 'response' | 'failed';
 
 export interface RemoteRequestAttempt {
@@ -10,7 +10,7 @@ export interface RemoteRequestAttempt {
 }
 
 export interface RemoteRequesterOptions {
-    downloaderTemplate?: string;
+    proxyAgentTemplate?: string;
     pageProtocol?: string;
     fetchImpl?: typeof fetch;
     timeoutMs?: number;
@@ -48,32 +48,30 @@ export const normalizeRemoteSpecUrl = (input: string): string => {
     return parsed.href;
 };
 
-export const normalizeDownloaderTemplate = (template: string): string => {
+export const normalizeProxyAgentTemplate = (template: string): string => {
     const normalized = template
         .trim()
         .replace(/^https?:\/\//i, '')
         .replace(/^\/+/, '');
-    if (!normalized) throw new Error('The specification downloader URL is empty.');
-    if (!normalized.includes('{URL}'))
-        throw new Error('The specification downloader URL must contain the exact {URL} placeholder.');
+    if (!normalized) throw new Error('The proxy agent URL is empty.');
+    if (!normalized.includes('{URL}')) throw new Error('The proxy agent URL must contain the exact {URL} placeholder.');
     return normalized;
 };
 
-export const buildDownloaderUrl = (template: string, targetUrl: string, pageProtocol?: string): string => {
+export const buildProxyAgentUrl = (template: string, targetUrl: string, pageProtocol?: string): string => {
     const normalizedTarget = normalizeRemoteSpecUrl(targetUrl);
-    const normalizedTemplate = normalizeDownloaderTemplate(template);
+    const normalizedTemplate = normalizeProxyAgentTemplate(template);
     const protocol = normalizeHttpProtocol(pageProtocol);
     const replaced = normalizedTemplate.split('{URL}').join(encodeURIComponent(normalizedTarget));
     let parsed: URL;
     try {
         parsed = new URL(`${protocol}//${replaced}`);
     } catch {
-        throw new Error('The specification downloader template does not produce a valid URL.');
+        throw new Error('The proxy agent template does not produce a valid URL.');
     }
     if (!['http:', 'https:'].includes(parsed.protocol))
-        throw new Error('The specification downloader must resolve to an HTTP or HTTPS URL.');
-    if (parsed.username || parsed.password)
-        throw new Error('The specification downloader URL cannot contain embedded credentials.');
+        throw new Error('The proxy agent must resolve to an HTTP or HTTPS URL.');
+    if (parsed.username || parsed.password) throw new Error('The proxy agent URL cannot contain embedded credentials.');
     return parsed.href;
 };
 
@@ -91,8 +89,8 @@ const errorText = (error: unknown): string =>
           : String(error || 'Network request failed.');
 
 /**
- * Create a browser requester with the configured downloader/direct fallback chain.
- * Downloader 4xx responses are deliberate policy failures and are never bypassed.
+ * Create a browser requester with the configured proxy agent/direct fallback chain.
+ * Proxy agent 4xx responses are deliberate policy failures and are never bypassed.
  */
 export const createRemoteSpecRequester = (options: RemoteRequesterOptions = {}) => {
     const fetchImpl = options.fetchImpl || fetch;
@@ -145,10 +143,10 @@ export const createRemoteSpecRequester = (options: RemoteRequesterOptions = {}) 
             }
         };
 
-        if (options.downloaderTemplate?.trim()) {
-            const downloaderUrl = buildDownloaderUrl(options.downloaderTemplate, targetUrl, pageProtocol);
+        if (options.proxyAgentTemplate?.trim()) {
+            const proxyAgentUrl = buildProxyAgentUrl(options.proxyAgentTemplate, targetUrl, pageProtocol);
             try {
-                const response = await attempt('downloader', downloaderUrl);
+                const response = await attempt('proxy-agent', proxyAgentUrl);
                 if (response.status < 500) return response;
                 await response.body?.cancel();
             } catch {
@@ -181,7 +179,7 @@ export const createRemoteSpecRequester = (options: RemoteRequesterOptions = {}) 
 };
 
 export const remoteRequestModeLabel = (mode: RemoteRequestMode): string => {
-    if (mode === 'downloader') return 'downloader proxy';
+    if (mode === 'proxy-agent') return 'proxy agent';
     if (mode === 'direct-scheme-retry') return 'scheme-adjusted direct request';
     return 'direct browser request';
 };

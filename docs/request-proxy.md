@@ -4,7 +4,7 @@
 
 # Request proxy
 
-The specification downloader service doubles as a **request proxy**: the Runner can hand every
+The OpenDoc UI proxy agent doubles as a **request proxy**: the Runner can hand every
 compiled request to it, the service executes the real API call server-side, and the response
 travels back through an envelope — so APIs that send no CORS headers (or live on schemes and
 ports the browser would block) are fully testable. The same service still downloads
@@ -16,7 +16,7 @@ specifications; nothing about `GET /download` changes.
 VITE_REQUEST_PROXY=proxy.example.com/proxy
 ```
 
-The endpoint accepts either a full URL or a scheme-less host+path; like the downloader
+The endpoint accepts either a full URL or a scheme-less host+path; like the proxy agent
 template, its scheme is replaced with the scheme currently serving OpenDoc UI, so an HTTPS
 deployment never calls an HTTP proxy. An empty or missing `VITE_REQUEST_PROXY` builds the app
 without proxy support and the Runner behaves exactly as before (direct browser requests).
@@ -69,17 +69,17 @@ direct is a setting, not a guess.
 
 ## Safety
 
-The proxy reuses the downloader's guards: browser origin allowlist (`OPENDOC_ALLOWED_ORIGINS`),
+The proxy reuses the proxy agent's guards: browser origin allowlist (`OPENDOC_ALLOWED_ORIGINS`),
 per-client rate limiting, response size cap (`OPENDOC_MAX_BYTES`), timeout
 (`OPENDOC_TIMEOUT_SECONDS`), and the SSRF policy — private, reserved, and local destinations
 are blocked unless explicitly allowlisted with `OPENDOC_ALLOWED_REMOTE_HOSTS` /
 `OPENDOC_ALLOWED_PORTS`. Hop-by-hop headers (`Host`, `Connection`, `Transfer-Encoding`, …) are
 stripped before forwarding. `OPENDOC_PROXY_ENABLED=false` serves downloads only.
 
-The reference implementation is `proxy-servers/node/server.mjs` (`POST /proxy` next to
-`GET /download`); the shared environment contract lives in `proxy-servers/config.env.example`.
+The reference implementation is `proxy-agent/node/server.mjs` (`POST /proxy` next to
+`GET /download`); the shared environment contract lives in `proxy-agent/config.env.example`.
 Code generators and OAuth flows keep describing direct calls — the proxy is a transport for the
 Runner only.
 
-See also: [Proxy server services](proxy-servers.md) · [Remote URL loading](remote-loading.md) ·
+See also: [Proxy agent services](proxy-agent.md) · [Remote URL loading](remote-loading.md) ·
 [API Runner](api-runner.md)

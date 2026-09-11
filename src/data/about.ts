@@ -34,7 +34,7 @@ export const FEATURES: Array<{
     {
         icon: 'ph-fill ph-arrows-left-right',
         title: 'Request proxy',
-        desc: 'The downloader service doubles as a request proxy: the Runner hands it the compiled request, it executes the real API call server-side — no CORS limits — and a deployment or the user can switch the front-end back to direct calls without touching the backend.',
+        desc: 'The proxy agent doubles as a request proxy: the Runner hands it the compiled request, it executes the real API call server-side — no CORS limits — and a deployment or the user can switch the front-end back to direct calls without touching the backend.',
     },
     {
         icon: 'ph-fill ph-tree-structure',

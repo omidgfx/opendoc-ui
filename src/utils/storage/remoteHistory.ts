@@ -24,10 +24,7 @@ const isRemoteHistory = (value: unknown): value is RemoteHistoryEntry[] =>
             typeof entry.url === 'string' &&
             Number.isFinite(entry.openedAt) &&
             (entry.requestMode === undefined ||
-                entry.requestMode === 'downloader' ||
-                entry.requestMode === 'direct' ||
-                entry.requestMode === 'direct-scheme-retry' ||
-                entry.requestMode === 'cache'),
+                ['proxy-agent', 'downloader', 'direct', 'direct-scheme-retry', 'cache'].includes(entry.requestMode)),
     );
 
 const writeRemoteHistory = (entries: RemoteHistoryEntry[]): boolean => storage.setJSON(STORAGE_KEY, entries);
@@ -38,7 +35,8 @@ export const readRemoteHistory = (): RemoteHistoryEntry[] => {
     for (const entry of entries) {
         try {
             const url = normalizeRemoteSpecUrl(entry.url);
-            valid.push({...entry, key: remoteSpecKey(url), url});
+            const requestMode = (entry.requestMode as string) === 'downloader' ? 'proxy-agent' : entry.requestMode;
+            valid.push({...entry, requestMode, key: remoteSpecKey(url), url});
         } catch {
             // Ignore legacy or malformed URLs rather than retaining unusable history.
         }

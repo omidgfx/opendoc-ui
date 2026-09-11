@@ -10,7 +10,7 @@ import {
     normalizeBasePath,
     toOrigin,
     validateBasePath,
-    validateDownloaderTemplate,
+    validateProxyAgentTemplate,
     validateOrigins,
 } from './validators.mjs';
 
@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG = () => ({
     disableAppleEmojis: true,
     basePath: '/',
     loadFromUrl: false,
-    downloaderTemplate: null,
+    proxyAgentTemplate: null,
     proxyExample: 'none',
     deploymentOrigin: null,
     aiGateway: {
@@ -59,8 +59,8 @@ export const validateConfig = config => {
     if (typeof config.basePath !== 'string' || validateBasePath(config.basePath) !== true)
         return `Invalid base path "${config.basePath}".`;
     if (typeof config.loadFromUrl !== 'boolean') return 'loadFromUrl must be a boolean.';
-    if (config.downloaderTemplate !== null && validateDownloaderTemplate(config.downloaderTemplate) !== true)
-        return 'Invalid downloader template.';
+    if (config.proxyAgentTemplate !== null && validateProxyAgentTemplate(config.proxyAgentTemplate) !== true)
+        return 'Invalid proxy agent template.';
     if (config.deploymentOrigin !== null && !isOrigin(config.deploymentOrigin))
         return `Invalid deployment origin "${config.deploymentOrigin}".`;
     const gateway = config.aiGateway;
@@ -105,7 +105,7 @@ export const normalizeLoadedConfig = last => {
         else if (typeof last.appleEmojis === 'boolean') config.disableAppleEmojis = !last.appleEmojis; // v0 migration
         if (last.basePath) config.basePath = last.basePath;
         if (typeof last.loadFromUrl === 'boolean') config.loadFromUrl = last.loadFromUrl;
-        if (last.downloaderTemplate) config.downloaderTemplate = last.downloaderTemplate;
+        if (last.proxyAgentTemplate) config.proxyAgentTemplate = last.proxyAgentTemplate;
         if (last.proxyExample) config.proxyExample = last.proxyExample;
         if (last.deploymentOrigin) config.deploymentOrigin = last.deploymentOrigin;
         else if (last.deploymentUrl) config.deploymentOrigin = toOrigin(last.deploymentUrl);

@@ -25,7 +25,7 @@ const settings: AISettings = {
 try {
     const attemptedRemoteUrls: string[] = [];
     const requester = createRemoteSpecRequester({
-        downloaderTemplate: 'http://proxy.example.test/download?spec_url={URL}',
+        proxyAgentTemplate: 'http://proxy.example.test/download?spec_url={URL}',
         pageProtocol: 'https:',
         fetchImpl: (async input => {
             const url = String(input);
@@ -44,7 +44,7 @@ try {
     ]);
     let bypassedPolicy = false;
     const policyRequester = createRemoteSpecRequester({
-        downloaderTemplate: 'proxy.example.test/download?spec_url={URL}',
+        proxyAgentTemplate: 'proxy.example.test/download?spec_url={URL}',
         pageProtocol: 'https:',
         fetchImpl: (async input => {
             if (!String(input).startsWith('https://proxy.example.test/')) bypassedPolicy = true;
@@ -70,7 +70,7 @@ try {
         }),
         error => error instanceof Error && /exceeds/.test(error.message),
     );
-    console.log('✓ applies downloader/direct/scheme fallback policy and remote size limits');
+    console.log('✓ applies proxy agent/direct/scheme fallback policy and remote size limits');
 
     const preOAuthWindow = (globalThis as any).window;
     const preOAuthStorage = (globalThis as any).sessionStorage;

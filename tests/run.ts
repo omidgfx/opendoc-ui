@@ -107,8 +107,8 @@ import {
     reassignEndpointNote,
 } from '@/src/utils/notes/index';
 import {
-    buildDownloaderUrl,
-    normalizeDownloaderTemplate,
+    buildProxyAgentUrl,
+    normalizeProxyAgentTemplate,
     normalizeRemoteSpecUrl,
     remoteSpecKey,
     replaceUrlProtocol,
@@ -1732,19 +1732,19 @@ test('materializes top-level binary uploads for their declared media type', () =
     assert.equal(plan.headers['Content-Type'], 'image/png');
     assert.equal(plan.headers.Accept, '*/*');
 });
-test('normalizes remote specification and downloader URLs without mixed-content proxy calls', () => {
+test('normalizes remote specification and proxy agent URLs without mixed-content proxy calls', () => {
     const target = normalizeRemoteSpecUrl(' https://api.example.test/openapi.yaml#section ');
     assert.equal(target, 'https://api.example.test/openapi.yaml');
     assert.equal(
-        normalizeDownloaderTemplate('http://proxy.example.test/load?url={URL}'),
+        normalizeProxyAgentTemplate('http://proxy.example.test/load?url={URL}'),
         'proxy.example.test/load?url={URL}',
     );
     assert.equal(
-        buildDownloaderUrl('http://proxy.example.test/load?url={URL}', target, 'https:'),
+        buildProxyAgentUrl('http://proxy.example.test/load?url={URL}', target, 'https:'),
         `https://proxy.example.test/load?url=${encodeURIComponent(target)}`,
     );
     assert.equal(
-        buildDownloaderUrl('proxy.example.test/{URL}/dl', 'http://api.example.test/openapi.json', 'http:'),
+        buildProxyAgentUrl('proxy.example.test/{URL}/dl', 'http://api.example.test/openapi.json', 'http:'),
         `http://proxy.example.test/${encodeURIComponent('http://api.example.test/openapi.json')}/dl`,
     );
     assert.equal(
@@ -1757,7 +1757,7 @@ test('normalizes remote specification and downloader URLs without mixed-content 
         () => normalizeRemoteSpecUrl('https://user:secret@example.test/openapi.yaml'),
         /usernames or passwords/,
     );
-    assert.throws(() => normalizeDownloaderTemplate('proxy.example.test/load'), /\{URL\}/);
+    assert.throws(() => normalizeProxyAgentTemplate('proxy.example.test/load'), /\{URL\}/);
 });
 test('places tooltips using their measured size and safe fallback direction', () => {
     const nearTop = {

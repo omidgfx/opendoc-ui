@@ -5,15 +5,17 @@ this file preserves the complete history.
 
 ## [0.4.0] — 2026-09-11
 
-**Request proxy**: the specification downloader becomes a proxy server for the Runner.
+**Request proxy**: the specification downloader becomes the **OpenDoc UI proxy agent** — a
+bounded server-side agent for the Runner whose jobs include downloading specifications and
+executing proxied requests.
 
 - `VITE_REQUEST_PROXY` in a build routes every compiled Runner request through
-  `POST /proxy` on the downloader service: target URL, method and headers travel as
+  `POST /proxy` on the proxy agent: target URL, method and headers travel as
   descriptor headers, the body (multipart and binary included) is forwarded as built, and the
-  service executes the real API call server-side, answering with a JSON envelope
+  agent executes the real API call server-side, answering with a JSON envelope
   (`status`, `headers`, `finalUrl`, base64 `body`) — APIs without CORS headers become fully
   testable, with no silent fallback to direct;
-- the same service keeps serving `GET /download` unchanged; `OPENDOC_PROXY_ENABLED=false`
+- the same agent keeps serving `GET /download` unchanged; `OPENDOC_PROXY_ENABLED=false`
   serves downloads only;
 - front-end-only disabling while the backend keeps running: runtime `config.json`
   `{"proxy": {"enabled": false}}` (or `{"proxy": {"url": ...}}`) wins for the deployment, and
@@ -26,9 +28,16 @@ this file preserves the complete history.
 - binary response handling, diagnostics, and history keep their existing behavior; the
   envelope simply feeds them, and a `transport: proxy` diagnostic marks proxied calls;
 - code generators and OAuth flows remain direct by design;
-- `POST /proxy` is implemented by all six reference services (Node, Python, PHP, Go, Java,
-  .NET), and the reference directory is renamed `downloaders/` → `proxy-servers/`;
-- documented in `docs/request-proxy.md` and `docs/proxy-servers.md` (with remote-loading
+- `POST /proxy` is implemented by all six reference agents (Node, Python, PHP, Go, Java,
+  .NET), and the Node reference is tightened: one shared request sender, one capped body
+  reader, and split route handlers;
+- **rename (breaking for build scripts):** the reference directory is `proxy-agent/`
+  (was `downloaders/` → `proxy-servers/`), the services are the OpenDoc UI proxy agent
+  everywhere, the remote-loading build flag is `VITE_PROXY_AGENT` (was
+  `VITE_SPEC_DOWNLOADER`), and the generic error code is `PROXY_AGENT_ERROR` (was
+  `DOWNLOADER_ERROR`); routes (`GET /download`, `POST /proxy`), the JSON envelope, and the
+  `OPENDOC_*` environment settings are unchanged;
+- documented in `docs/request-proxy.md` and `docs/proxy-agent.md` (with remote-loading
   cross-links), introduced on the About page and the marketing site.
 
 ## [0.3.6] — 2026-09-11
