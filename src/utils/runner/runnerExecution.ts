@@ -148,6 +148,7 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             credentials: plan.fetchCredentials,
             signal: controller.signal,
         });
+        if (response.url) requestUrl = response.url;
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((value, key) => {
             responseHeaders[key] = value;
