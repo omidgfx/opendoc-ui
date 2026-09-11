@@ -291,7 +291,9 @@ export const jsonToQueryString = (value: unknown): string => {
                 pairs.push(`${prefix}=`);
                 return;
             }
-            entries.forEach(([key, part]) => walk(part, prefix ? `${prefix}[${key}]` : key));
+            entries.forEach(([key, part]) =>
+                walk(part, prefix ? `${prefix}[${encodeURIComponent(key)}]` : encodeURIComponent(key)),
+            );
             return;
         }
         pairs.push(`${prefix || 'value'}=${encodeURIComponent(String(item))}`);

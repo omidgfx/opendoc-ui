@@ -270,7 +270,12 @@ const createBodyIntent = (input: CompileRequestInput, diagnostics: Diagnostic[])
     if (normalized === 'application/x-www-form-urlencoded') {
         let value: unknown = text;
         try {
-            value = text ? parseStructuredBody(text, mediaType) : {};
+            const trimmed = text.trim();
+            value = trimmed
+                ? trimmed.includes('=') || /^[\s]*[\[{]/.test(trimmed)
+                    ? parseStructuredBody(text, mediaType)
+                    : trimmed
+                : {};
         } catch (error) {
             diagnostics.push(
                 diagnostic(

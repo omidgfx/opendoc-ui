@@ -108,6 +108,7 @@ export const formatBodyText = (
         if (format.isQuery || isFormLikeMediaType(mediaType)) {
             const trimmed = text.trim();
             if (looksLikeJsonBody(trimmed)) return {text: jsonToQueryString(JSON.parse(trimmed))};
+            if (!trimmed.includes('=')) return {text};
             return {text: jsonToQueryString(queryStringToJson(text))};
         }
         return {text};
