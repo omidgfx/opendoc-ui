@@ -472,8 +472,14 @@ const multipartScalar = (value: unknown): string => {
     return String(value);
 };
 
-const firstContentType = (encoding: any): string | undefined =>
-    typeof encoding?.contentType === 'string' ? encoding.contentType.split(',')[0].trim() || undefined : undefined;
+const firstContentType = (encoding: any): string | undefined => {
+    if (typeof encoding?.contentType !== 'string') return undefined;
+    const candidate = encoding.contentType
+        .split(',')
+        .map((part: string) => part.trim())
+        .find((part: string) => part.length > 0 && part.includes('/'));
+    return candidate || undefined;
+};
 
 const encodingPairs = (name: string, value: unknown, encoding: any): SerializedPair[] => {
     const swaggerFormat = encoding?.['x-opendoc-collection-format'];
