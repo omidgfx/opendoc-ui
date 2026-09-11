@@ -271,21 +271,9 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
     }
     const entries = valueEntries(objectValue(value));
     if (location === 'query') {
-        if (style === 'deepObject') {
-            entries.forEach(([key, item]) =>
-                result.query.push({
-                    name: `${name}[${key}]`,
-                    value: item,
-                    allowReserved: allowReservedForLocation,
-                }),
-            );
-        } else if (explode && (style === 'form' || style === 'cookie')) {
-            entries.forEach(([key, item]) =>
-                result.query.push({
-                    name: key,
-                    value: item,
-                    allowReserved: allowReservedForLocation,
-                }),
+        if (style === 'deepObject' || (explode && (style === 'form' || style === 'cookie'))) {
+            queryPairsFromJson({[name]: objectValue(value)}).forEach(pair =>
+                result.query.push({...pair, allowReserved: allowReservedForLocation}),
             );
         } else if (style === 'spaceDelimited' || style === 'pipeDelimited') {
             const delimiter = style === 'spaceDelimited' ? ' ' : '|';

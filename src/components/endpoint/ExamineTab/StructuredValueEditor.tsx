@@ -69,9 +69,11 @@ export default function StructuredValueEditor({value, onChange, ariaLabel, place
         onChange(json);
     };
     const switchLanguage = (next: EditorLanguage) => {
+        if (next === language) return;
         const {json, error: parseError} = toJsonText(draft, language);
+        if (parseError) return;
         setLanguage(next);
-        if (!parseError) setDraft(fromJsonText(json, next));
+        setDraft(fromJsonText(json, next));
     };
     const format = () => {
         const {json, error: parseError} = toJsonText(draft, language);

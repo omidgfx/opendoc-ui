@@ -19,7 +19,13 @@ const queryCases: Array<{name: string; parameter: any; value: any; expected: str
         name: 'query form object explode',
         parameter: {name: 'filter', in: 'query', style: 'form', explode: true, schema: {type: 'object'}},
         value: {role: 'admin', first: 'Alex'},
-        expected: '?role=admin&first=Alex',
+        expected: '?filter%5Brole%5D=admin&filter%5Bfirst%5D=Alex',
+    },
+    {
+        name: 'query form object explode nested',
+        parameter: {name: 'filter', in: 'query', style: 'form', explode: true, schema: {type: 'object'}},
+        value: {status: 'active', range: {min: 1, max: 10}},
+        expected: '?filter%5Bstatus%5D=active&filter%5Brange%5D%5Bmin%5D=1&filter%5Brange%5D%5Bmax%5D=10',
     },
     {
         name: 'query form object compact',
