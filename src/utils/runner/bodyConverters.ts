@@ -371,6 +371,22 @@ const mergeParsed = (target: Record<string, unknown>, key: string, parsed: unkno
     target[key] = [existing, parsed];
 };
 
+const collapseEmptyArrays = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+        const items = value.map(collapseEmptyArrays);
+        if (items.length === 1 && items[0] === '') return [];
+        return items;
+    }
+    if (value && typeof value === 'object') {
+        const output: Record<string, unknown> = {};
+        Object.entries(value).forEach(([key, item]) => {
+            output[key] = collapseEmptyArrays(item);
+        });
+        return output;
+    }
+    return value;
+};
+
 /** Parse a query string with bracket notation back into a JSON value:
  *  `a=1&b=4&j[]=1&a[]=5&k[key]=foo` becomes nested arrays and objects. */
 export const queryStringToJson = (text: string): Record<string, unknown> => {
@@ -404,7 +420,7 @@ export const queryStringToJson = (text: string): Record<string, unknown> => {
             }
             mergeParsed(result, base, parseSegments(segments, value));
         });
-    return result;
+    return collapseEmptyArrays(result) as Record<string, unknown>;
 };
 
 const formatKey = (mediaType: string): string => {

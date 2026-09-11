@@ -212,7 +212,9 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
                         ? '|'
                         : ',';
         if (location === 'query') {
-            if (style === 'deepObject') {
+            if (values.length === 0) {
+                result.query.push({name: `${name}[]`, value: '', allowReserved: allowReservedForLocation});
+            } else if (style === 'deepObject') {
                 values.forEach((item, index) =>
                     result.query.push({
                         name: `${name}[${index}]`,
