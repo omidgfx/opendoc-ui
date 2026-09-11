@@ -69,6 +69,7 @@ export const jsonToXml = (value: unknown, schema?: any): string => {
 
     const renderObject = (record: Record<string, unknown>, objectSchema: any, name: string, depth: number): void => {
         const indent = '  '.repeat(depth);
+        const effectiveNamespaceAttr = depth === 0 ? namespaceAttr : '';
         const attributes: [string, unknown][] = [];
         const children: [string, unknown, any][] = [];
         Object.entries(record).forEach(([key, item]) => {
@@ -86,10 +87,10 @@ export const jsonToXml = (value: unknown, schema?: any): string => {
             children.push([key, item, propertySchema]);
         });
         if (children.length === 0) {
-            lines.push(`${indent}<${name}${namespaceAttr}${attrString(attributes)} />`);
+            lines.push(`${indent}<${name}${effectiveNamespaceAttr}${attrString(attributes)} />`);
             return;
         }
-        lines.push(`${indent}<${name}${namespaceAttr}${attrString(attributes)}>`);
+        lines.push(`${indent}<${name}${effectiveNamespaceAttr}${attrString(attributes)}>`);
         children.forEach(([key, item, propertySchema]) => {
             const hints = hintsOf(propertySchema);
             const elementName = prefixed(hints.name || key, prefix);
