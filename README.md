@@ -12,7 +12,7 @@ full theming, and grounded AI answers. The documentation UI never requires a bac
 CORS-enabled providers directly or an optional gateway.
 
 [![Website](https://img.shields.io/badge/website-omidgfx.github.io%2Fopendoc--ui-4f46e5)](https://omidgfx.github.io/opendoc-ui/)
-![Version](https://img.shields.io/badge/version-0.3.6-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
+![Version](https://img.shields.io/badge/version-0.4.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![Live Demo](https://img.shields.io/badge/live-demo-7c3aed)](https://omidgfx.github.io/opendoc-ui/demo/)
 
 **[Open the live demo →](https://omidgfx.github.io/opendoc-ui/demo/)** Browse the bundled Complete Capability Showcase specification or open your own JSON/YAML files directly in the hybrid demo.
 
@@ -62,30 +62,28 @@ CORS-enabled providers directly or an optional gateway.
 
 ---
 
-## Version 0.3.6
+## Version 0.4.0
 
-**Runner serialization reliability** on top of 0.3.5:
+**Request proxy** — the downloader service now executes Runner requests:
 
-- one wire contract: a dependency-free vendored query-string core builds every query string
-  (bracket arrays, deep nesting, mixed arrays) and the urlencoded bodies; empty arrays travel
-  as `name[]=` markers, and object query parameters deep-bracket with the parameter name as
-  prefix (`filter[status]=active&filter[range][min]=1`) instead of flattening;
-- **type-aware Serializer playground**: array parameters edit with the Runner-form array
-  editor, object parameters get the JSON editor, scalars keep the text input — touched values
-  serialize identically to untouched defaults, and Use hands the value back unchanged;
-- multipart fidelity: no phantom binary parts without a file, file parts keep the file's own
-  Content-Type, Clear button, nested binary field names and non-Latin filenames without
-  collisions;
-- XML round trip: `xmlns` on the root only; schema-less object values render as JSON text in
-  forms;
-- headers and redirects: case-insensitive matching, forbidden headers stripped, cookie
-  parameters on the `Cookie` header, final URL after redirects shown;
-- forms and editor: `anyOf [null, object]` and `additionalProperties` variants fixed, tuple
-  arrays fill sparse slots and guard removals, the JSON/YAML editor keeps invalid drafts as-is
-  on language switch;
-- endpoint view console is clean (missing React keys fixed);
-- the managed AI policy probe stays by design — zero-config discovery for 0.3.5's Managed AI
-  mode.
+- with `VITE_REQUEST_PROXY` set at build time, the Runner hands every compiled request to the
+  downloader service's `POST /proxy`; the service executes the real API call server-side and
+  answers through a JSON envelope, so APIs without CORS headers (or on blocked schemes and
+  ports) are fully testable from the Runner — multipart and binary bodies included;
+- the same service still downloads specifications; `GET /download` is unchanged;
+- front-end-only switches, backend untouched: a runtime `config.json` `proxy` block
+  (`{"proxy": {"enabled": false}}` or `{"proxy": {"url": "..."}}`) wins for the deployment, and
+  proxy builds show a Settings → General toggle for the user preference; precedence is build
+  flag → runtime disable → user preference, with no silent fallback to direct;
+- the proxy reuses the downloader's safety model: origin allowlist, rate limiting, size cap,
+  timeout, redirect cap with `finalUrl` reporting, SSRF policy, hop-by-hop header stripping,
+  and `OPENDOC_PROXY_ENABLED=false` to serve downloads only;
+- code generators and OAuth flows keep describing direct calls — the proxy is a Runner
+  transport;
+- `POST /proxy` is implemented by all six reference services (Node, Python, PHP, Go, Java,
+  .NET); the reference directory is renamed `downloaders/` → `proxy-servers/`;
+- docs (`docs/request-proxy.md`, `docs/proxy-servers.md` plus cross-links), the About page,
+  and the marketing site introduce the capability.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 

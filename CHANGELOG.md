@@ -3,6 +3,34 @@
 All notable changes to OpenDoc UI, newest first. The README keeps only the latest release summary;
 this file preserves the complete history.
 
+## [0.4.0] — 2026-09-11
+
+**Request proxy**: the specification downloader becomes a proxy server for the Runner.
+
+- `VITE_REQUEST_PROXY` in a build routes every compiled Runner request through
+  `POST /proxy` on the downloader service: target URL, method and headers travel as
+  descriptor headers, the body (multipart and binary included) is forwarded as built, and the
+  service executes the real API call server-side, answering with a JSON envelope
+  (`status`, `headers`, `finalUrl`, base64 `body`) — APIs without CORS headers become fully
+  testable, with no silent fallback to direct;
+- the same service keeps serving `GET /download` unchanged; `OPENDOC_PROXY_ENABLED=false`
+  serves downloads only;
+- front-end-only disabling while the backend keeps running: runtime `config.json`
+  `{"proxy": {"enabled": false}}` (or `{"proxy": {"url": ...}}`) wins for the deployment, and
+  proxy builds expose a Settings → General "Route runner requests through the proxy" toggle
+  stored as a user preference (precedence: build flag → runtime disable → preference);
+- safety inherited from the downloader: origin allowlist, per-client rate limit, response size
+  cap, timeout, redirect cap with `finalUrl` reporting, SSRF/public-address policy, and
+  hop-by-hop header stripping; cookies travel as a target `Cookie` header so session flows
+  work through the proxy;
+- binary response handling, diagnostics, and history keep their existing behavior; the
+  envelope simply feeds them, and a `transport: proxy` diagnostic marks proxied calls;
+- code generators and OAuth flows remain direct by design;
+- `POST /proxy` is implemented by all six reference services (Node, Python, PHP, Go, Java,
+  .NET), and the reference directory is renamed `downloaders/` → `proxy-servers/`;
+- documented in `docs/request-proxy.md` and `docs/proxy-servers.md` (with remote-loading
+  cross-links), introduced on the About page and the marketing site.
+
 ## [0.3.6] — 2026-09-11
 
 **Runner serialization reliability**: the runner-bug manifest closed on top of 0.3.5 — 25 fixes
