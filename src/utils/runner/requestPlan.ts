@@ -630,7 +630,11 @@ const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
 const bracketPairs = (name: string, value: unknown): SerializedPair[] => {
     const pairs: SerializedPair[] = [];
     const walk = (item: unknown, prefix: string) => {
-        if (item === null || item === undefined) return;
+        if (item === undefined) return;
+        if (item === null) {
+            pairs.push({name: prefix, value: ''});
+            return;
+        }
         if (Array.isArray(item)) {
             if (item.length === 0) {
                 pairs.push({name: `${prefix}[]`, value: ''});

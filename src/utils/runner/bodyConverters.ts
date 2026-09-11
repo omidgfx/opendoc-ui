@@ -276,7 +276,11 @@ export const xmlToJson = (text: string): unknown => {
 export const jsonToQueryString = (value: unknown): string => {
     const pairs: string[] = [];
     const walk = (item: unknown, prefix: string): void => {
-        if (item === null || item === undefined) return;
+        if (item === undefined) return;
+        if (item === null) {
+            pairs.push(`${prefix}=`);
+            return;
+        }
         if (Array.isArray(item)) {
             if (item.length === 0) {
                 pairs.push(`${prefix}[]=`);
