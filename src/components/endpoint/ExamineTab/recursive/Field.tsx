@@ -429,6 +429,8 @@ export default function Field({
         const typeLabel = hasTuple
             ? `tuple<${tupleSchemas.length}${additionalItemSchema ? '+' : ''}>`
             : `array${additionalItemSchema?.type ? `<${additionalItemSchema.type}>` : ''}`;
+        const removableHere = (index: number) =>
+            !hasTuple || index >= tupleSchemas.length || index === items.length - 1;
         const itemActions = (index: number) => (
             <>
                 <Tip content="Move item up">
@@ -461,16 +463,24 @@ export default function Field({
                         <i className="ph ph-arrow-down text-[12px]" />
                     </button>
                 </Tip>
-                <Tip content="Remove item">
-                    <button
-                        type="button"
-                        onClick={() => onChange(path, removeAtPath(items, index))}
-                        className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
-                        aria-label="Remove item"
+                {removableHere(index) && (
+                    <Tip
+                        content={
+                            hasTuple && index < tupleSchemas.length
+                                ? 'Remove the last item (shrinks the tuple)'
+                                : 'Remove item'
+                        }
                     >
-                        <i className="ph ph-trash text-[12px]" />
-                    </button>
-                </Tip>
+                        <button
+                            type="button"
+                            onClick={() => onChange(path, removeAtPath(items, index))}
+                            className="flex size-6 items-center justify-center rounded-md text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                            aria-label="Remove item"
+                        >
+                            <i className="ph ph-trash text-[12px]" />
+                        </button>
+                    </Tip>
+                )}
             </>
         );
         return (
@@ -512,7 +522,11 @@ export default function Field({
                                 ? items[index]
                                 : defaultBodyValue(schemaForIndex, spec, depth + 1, new Set(nextAncestorRefs));
                         const tupleLabel =
-                            index < tupleSchemas.length ? `Item ${index + 1} · fixed slot` : `Item ${index + 1}`;
+                            index < tupleSchemas.length
+                                ? index < items.length
+                                    ? `Item ${index + 1} · fixed slot`
+                                    : `Item ${index + 1} · fixed slot · empty, not sent`
+                                : `Item ${index + 1}`;
                         return (
                             <Field
                                 key={index}
