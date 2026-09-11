@@ -56,7 +56,7 @@ export default function ResponseCodeNavigator({
                     const expanded = expandedCodes.has(code);
                     const tone = responseTone(code);
                     return (
-                        <div className="w-full">
+                        <div key={code} className="w-full">
                             <Tip
                                 content={
                                     <span className="flex flex-col gap-0.5">

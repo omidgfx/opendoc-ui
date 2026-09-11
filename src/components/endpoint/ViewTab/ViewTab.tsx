@@ -797,9 +797,9 @@ export default function ViewTab({
         params: any[],
         showLocation: boolean,
         group?: ReturnType<typeof parameterGroupMetaOf>,
+        groupKey?: number,
     ) => (
-        // Key must sit on the outermost node when tables are mapped (separated layout).
-        <div className="min-w-0">
+        <div key={groupKey} className="min-w-0">
             <div className="@container space-y-3 min-w-0">
                 <h2 className="flex items-center text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     {group ? <ParameterLocationTag group={group} variant="heading" /> : title}
@@ -907,7 +907,9 @@ export default function ViewTab({
         </div>
     );
     const parameterTables = separatedParameterTables
-        ? parameterGroups.map(group => renderParameterTable(group.title, group.parameters, false, group))
+        ? parameterGroups.map((group, index) =>
+              renderParameterTable(group.title, group.parameters, false, group, index),
+          )
         : mergedParameters.length > 0
           ? renderParameterTable('Request Parameters', mergedParameters, true)
           : null;
@@ -1371,7 +1373,7 @@ export default function ViewTab({
                                             setEndpointRepresentation(representationKey, tab, responseSchemaName);
                                         };
                                         return (
-                                            <div className="min-w-0">
+                                            <div key={code} className="min-w-0">
                                                 <div
                                                     id={`response-${code}`}
                                                     className="rounded-xl border overflow-hidden transition-all duration-150 animate-in fade-in bg-[var(--surface)] border-[var(--border)] group/resp"
