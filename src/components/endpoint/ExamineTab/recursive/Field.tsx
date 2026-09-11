@@ -18,6 +18,7 @@ import {
     runnerVariantMatchesValue,
     RUNNER_ALLOF_CONFLICTS,
     RUNNER_BOOLEAN_SCHEMA,
+    setAtPath,
 } from '@/src/utils/runner/recursiveBody';
 
 const fieldClass =
@@ -411,6 +412,20 @@ export default function Field({
         const additionalItemSchema = current.items === false ? null : current.items || {};
         const maxItems = typeof current.maxItems === 'number' ? current.maxItems : Infinity;
         const visibleCount = hasTuple ? Math.max(items.length, tupleSchemas.length) : items.length;
+        const tupleItemChange = (index: number) => (childPath: (string | number)[], nextValue: unknown) => {
+            if (!hasTuple || index < items.length) {
+                onChange(childPath, nextValue);
+                return;
+            }
+            const filled = [...items];
+            while (filled.length < index) {
+                const fillIndex = filled.length;
+                const fillSchema =
+                    fillIndex < tupleSchemas.length ? tupleSchemas[fillIndex] : additionalItemSchema || {};
+                filled.push(defaultBodyValue(fillSchema, spec, depth + 1, new Set(nextAncestorRefs)));
+            }
+            onChange(path, setAtPath(filled, childPath.slice(path.length), nextValue));
+        };
         const typeLabel = hasTuple
             ? `tuple<${tupleSchemas.length}${additionalItemSchema ? '+' : ''}>`
             : `array${additionalItemSchema?.type ? `<${additionalItemSchema.type}>` : ''}`;
@@ -508,7 +523,7 @@ export default function Field({
                                 path={[...path, index]}
                                 depth={depth + 1}
                                 ancestorRefs={nextAncestorRefs}
-                                onChange={onChange}
+                                onChange={tupleItemChange(index)}
                                 setPatternToTest={setPatternToTest}
                                 selectedFiles={selectedFiles}
                                 setSelectedFiles={setSelectedFiles}
