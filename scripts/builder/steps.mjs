@@ -92,8 +92,8 @@ export async function stepDownloadProxy(prompter, existing) {
                 ),
             },
         );
-        if (result.proxyExample !== 'none' && !existsSync(join(ROOT, 'downloaders', 'config.env.example'))) {
-            warning('No downloaders/config.env.example found; skipping the example copy.');
+        if (result.proxyExample !== 'none' && !existsSync(join(ROOT, 'proxy-servers', 'config.env.example'))) {
+            warning('No proxy-servers/config.env.example found; skipping the example copy.');
             result.proxyExample = 'none';
         }
     } else {

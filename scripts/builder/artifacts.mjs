@@ -87,7 +87,7 @@ export function writeArtifacts(config) {
     note('wrote ./builder.config.json');
     if (config.proxyExample !== 'none' && config.downloaderTemplate) {
         const origin = [config.deploymentOrigin, 'http://localhost:3000'].filter(Boolean).join(',');
-        writeExampleEnv(join(ROOT, 'downloaders', config.proxyExample), 'downloaders/config.env.example', {
+        writeExampleEnv(join(ROOT, 'proxy-servers', config.proxyExample), 'proxy-servers/config.env.example', {
             OPENDOC_ALLOWED_ORIGINS: origin,
         });
     }

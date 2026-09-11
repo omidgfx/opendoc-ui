@@ -2,6 +2,7 @@ import {diagnostic, type ActiveAuth, type ExamineResponse, type OpenApiSpec, typ
 import {resolveReference} from '../openapi';
 import {isJsonMediaType} from '../openapi/serialization';
 import {compileBrowserRequest, type ParameterValueState, type RunnerInputValue} from './requestPlan';
+import {executeViaProxy, resolveProxyActivation} from './proxyTransport';
 import {declaredContentIsBinary, declaredContentLength, responseHeadersIndicateBinary} from './runnerResponse';
 
 const REQUEST_TIMEOUT_MS = 30000;
@@ -128,6 +129,88 @@ export const executeRunnerRequest = async (input: RunnerExecutionInput): Promise
             errorMessage,
             diagnostics: plan.diagnostics,
         };
+    }
+    const proxyActivation = resolveProxyActivation();
+    if (proxyActivation.active) {
+        try {
+            const envelope = await executeViaProxy({
+                endpoint: proxyActivation.endpoint,
+                url: plan.url,
+                method: plan.method,
+                headers: plan.headers,
+                body: plan.body,
+                cookies: plan.intent.cookies,
+                signal: input.signal,
+            });
+            const responseHeaders = envelope.headers;
+            const contentType = String(responseHeaders['content-type'] || responseHeaders['Content-Type'] || '');
+            const contentDisposition = String(
+                responseHeaders['content-disposition'] || responseHeaders['Content-Disposition'] || '',
+            );
+            const proxyDiagnostics = [
+                ...plan.diagnostics,
+                diagnostic(
+                    'RUN_PROXY_TRANSPORT',
+                    `The request was executed by the OpenDoc request proxy at ${proxyActivation.endpoint}.`,
+                    {severity: 'info', transport: 'proxy'},
+                ),
+            ];
+            if (
+                responseHeadersIndicateBinary(contentType, contentDisposition) ||
+                operationDeclaresBinaryResponse(input.operation, input.spec, envelope.status)
+            ) {
+                const metadata = [
+                    '[Binary response omitted from preview]',
+                    `Content-Type: ${contentType || 'unknown'}`,
+                    ...(contentDisposition ? [`Content-Disposition: ${contentDisposition}`] : []),
+                    `Received size: ${envelope.bodyBytes.toLocaleString()} bytes`,
+                    'The response travelled through the request proxy; no file was saved.',
+                ];
+                return {
+                    status: envelope.status,
+                    headers: responseHeaders,
+                    body: metadata.join('\n'),
+                    isJson: false,
+                    timestamp: Date.now(),
+                    requestUrl: envelope.finalUrl,
+                    durationMs: Date.now() - startedAt,
+                    bodyBytes: envelope.bodyBytes,
+                    truncated: false,
+                    isBinary: true,
+                    diagnostics: proxyDiagnostics,
+                };
+            }
+            return {
+                status: envelope.status,
+                headers: responseHeaders,
+                body: envelope.bodyText,
+                isJson: isJsonMediaType(contentType),
+                timestamp: Date.now(),
+                requestUrl: envelope.finalUrl,
+                durationMs: Date.now() - startedAt,
+                bodyBytes: envelope.bodyBytes,
+                truncated: false,
+                isBinary: false,
+                diagnostics: proxyDiagnostics,
+            };
+        } catch (error: any) {
+            const cancelled = Boolean(input.signal?.aborted);
+            const errorMessage = cancelled
+                ? 'Request cancelled by the user.'
+                : `Request proxy failure: ${error?.message || 'the proxy could not be reached.'}`;
+            return {
+                status: 0,
+                headers: {},
+                body: errorMessage,
+                isJson: false,
+                timestamp: Date.now(),
+                requestUrl: plan.url,
+                durationMs: Date.now() - startedAt,
+                errorKind: cancelled ? 'cancelled' : 'network',
+                errorMessage,
+                diagnostics: plan.diagnostics,
+            };
+        }
     }
     const controller = new AbortController();
     const forwardAbort = () => controller.abort();

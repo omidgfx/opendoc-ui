@@ -20,6 +20,6 @@ npm-debug.log*
 *.md
 
 ai-gateways
-downloaders
+proxy-servers
 tests
 playwright.config.ts

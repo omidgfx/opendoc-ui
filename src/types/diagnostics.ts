@@ -14,7 +14,7 @@ export interface Diagnostic {
     message: string;
     blocking?: boolean;
     operationId?: string;
-    transport?: 'browser' | 'agent';
+    transport?: 'browser' | 'agent' | 'proxy';
     source?: {
         uri?: string;
         pointer?: string;

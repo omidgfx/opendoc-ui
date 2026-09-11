@@ -32,6 +32,11 @@ export const FEATURES: Array<{
         desc: 'Execute requests directly from the browser with cookie, bearer, API-key and basic auth support.',
     },
     {
+        icon: 'ph-fill ph-arrows-left-right',
+        title: 'Request proxy',
+        desc: 'The downloader service doubles as a request proxy: the Runner hands it the compiled request, it executes the real API call server-side — no CORS limits — and a deployment or the user can switch the front-end back to direct calls without touching the backend.',
+    },
+    {
         icon: 'ph-fill ph-tree-structure',
         title: 'Unified Schema Viewer',
         desc: 'One schema surface for request bodies, responses, and the schema modal — generated examples, field menus, and combinator rails that stay in sync.',

@@ -48,6 +48,10 @@ CORS-enabled providers directly or an optional gateway.
   export/import every note as JSON with orphaned-note detection.
 - **Hidden endpoints** — move endpoints into a muted folder without changing the OpenAPI source,
   then unhide them individually or restore every hidden endpoint from navigation settings.
+- **Request proxy** — the downloader service doubles as a proxy: the Runner hands it the compiled
+  request, it executes the real API call server-side (no CORS limits), and answers through a JSON
+  envelope; `VITE_REQUEST_PROXY` ships it in a build, `config.json {"proxy": {"enabled": false}}` or the
+  Settings switch turns it off on the front-end while the backend keeps running;
 - **Remote URL loading** — optional build-time capability with CORS guidance, downloaders/direct fallbacks,
   persistent URL history, cache revalidation, and hardened downloader examples in six backend languages.
 - **Spec caching** — remote specs use a bounded-TTL cache with ETag / Last-Modified
@@ -125,7 +129,8 @@ theming, routing, deployment, and the FAQ — lives in the [documentation](#docu
 | [Builder CLI](docs/builder-cli.md)                            | The guided `npm run make` deployment CLI                                |
 | [Configuration](docs/configuration.md)                        | Modes 1–3, hybrid mode, `config.json` & `window.INITIAL_CONFIG`         |
 | [Remote URL loading](docs/remote-loading.md)                  | Load-from-URL, build-time settings, downloader-first behavior           |
-| [Downloader services](docs/downloaders.md)                    | Six reference downloader implementations (Node/Python/PHP/Go/Java/.NET) |
+| [Request proxy](docs/request-proxy.md)                        | Runner requests executed server-side by the downloader service          |
+| [Proxy server services](docs/proxy-servers.md)                | Six reference implementations serving `GET /download` and `POST /proxy` |
 | [Endpoint notes & hidden endpoints](docs/endpoint-notes.md)   | Local notes, todos, trash, orphaned notes, hidden endpoints             |
 | [API runner](docs/api-runner.md)                              | Runner safety, OpenAPI behavior, authentication, compatibility          |
 | [AI assistant](docs/ai-assistant.md)                          | Assistant page, profiles, providers, skills, export                     |

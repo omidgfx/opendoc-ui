@@ -54,6 +54,7 @@ export interface AppPreferences {
     narrowTableLayout: NarrowTableLayout;
     /** Single-click tabs open in preview (italic) mode when enabled. */
     previewTabsEnabled: boolean;
+    runnerProxyEnabled: boolean;
     /** Line numbers column of the code viewer. */
     codeGutterEnabled: boolean;
     /** Annotation icons inside the gutter, nested under the gutter itself. */
@@ -82,6 +83,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
     parameterTableLayout: 'separated',
     narrowTableLayout: 'cards',
     previewTabsEnabled: true,
+    runnerProxyEnabled: true,
     codeGutterEnabled: true,
     indicatorIconsEnabled: true,
     disabledIndicatorIcons: [],
@@ -139,6 +141,10 @@ export const normalizeAppPreferences = (value: any): AppPreferences => {
             typeof value.previewTabsEnabled === 'boolean'
                 ? value.previewTabsEnabled
                 : DEFAULT_APP_PREFERENCES.previewTabsEnabled,
+        runnerProxyEnabled:
+            typeof value.runnerProxyEnabled === 'boolean'
+                ? value.runnerProxyEnabled
+                : DEFAULT_APP_PREFERENCES.runnerProxyEnabled,
         codeGutterEnabled:
             typeof value.codeGutterEnabled === 'boolean'
                 ? value.codeGutterEnabled

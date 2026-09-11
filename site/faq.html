@@ -54,7 +54,7 @@ document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}
     <div class="faq reveal">
       <details open>
         <summary>Does OpenDoc UI require a backend server? <span class="plus"><i class="ph ph-plus"></i></span></summary>
-        <div class="a">No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks) — both are opt-in.</div>
+        <div class="a">No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks, and for executing Runner requests server-side when APIs send no CORS headers) — both are opt-in.</div>
       </details>
       <details>
         <summary>Are my specifications uploaded anywhere? <span class="plus"><i class="ph ph-plus"></i></span></summary>

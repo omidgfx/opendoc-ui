@@ -69,8 +69,10 @@ not place a secret token in `VITE_SPEC_DOWNLOADER`; browser-visible build variab
 
 ---
 
-Next: [Downloader services](downloaders.md) — the six reference implementations, or [Back to README](../README.md).
+Next: [Proxy server services](proxy-servers.md) — the six reference implementations, or [Back to README](../README.md).
 
 ---
 
 ← [Back to README](../README.md)
+
+The same downloader service can also execute Runner requests server-side — see [Request proxy](request-proxy.md).

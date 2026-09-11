@@ -138,6 +138,7 @@ PAGES["features.html"] = (
           <li><i class="ph-fill ph-check"></i><span>Recursive form editor or raw JSON/YAML/XML bodies with format-aware validation, multipart uploads included.</span></li>
           <li><i class="ph-fill ph-check"></i><span>First-class auth: bearer tokens, API keys, basic auth, OAuth (including native PKCE) and cookies.</span></li>
           <li><i class="ph-fill ph-check"></i><span>Status, headers, body and history inspection with request cancellation, binary stream safety, and bounded response details.</span></li>
+          <li><i class="ph-fill ph-check"></i><span>Request proxy: the downloader service executes the call server-side for APIs without CORS headers — a deployment or the user can switch back to direct browser calls any time.</span></li>
         </ul>
       </div>
       <div class="fr-media reveal d2"><img src="assets/opendoc-runner.png" alt="The API Runner composing a POST /pet request with a form-based payload editor" loading="lazy"/></div>
@@ -179,6 +180,11 @@ PAGES["features.html"] = (
       <h2 class="reveal d1">Small features, <span class="h-accent">obsessively</span> finished</h2>
     </div>
     <div class="card-grid">
+      <div class="info-card reveal" id="proxy">
+        <h3><i class="ph ph-arrows-left-right"></i>Request proxy</h3>
+        <p>The specification downloader doubles as a proxy: enable <code class="inline">VITE_REQUEST_PROXY</code> in a build and the Runner hands every request to it — executed server-side, answered through a JSON envelope, no CORS limits. <code class="inline">config.json</code> or the Settings switch disables it on the front-end while the backend keeps running.</p>
+        <span class="mono-tag">POST /proxy · same service as /download</span>
+      </div>
       <div class="info-card reveal" id="codegen">
         <h3><i class="ph ph-code"></i>Code &amp; type generation</h3>
         <p>fetch / axios / Angular snippets plus TypeScript models generated from your schemas — secret-redacted and downloadable as a zip.</p>
@@ -578,7 +584,7 @@ PAGES["developers.html"] = (
           <tr><td><span class="mono">src/utils/openapi/</span></td><td class="wrap">The OpenAPI engine: parsing, normalization, validation, references, serialization and capabilities</td></tr>
           <tr><td><span class="mono">src/utils/runner/</span></td><td class="wrap">Request planning, execution, response handling and the recursive body-form logic</td></tr>
           <tr><td><span class="mono">server/</span></td><td class="wrap">The hardened AI gateway (<span class="mono">ai-gateway.ts</span>) and its policy module</td></tr>
-          <tr><td><span class="mono">downloaders/ · ai-gateways/</span></td><td class="wrap">Spec downloader and AI gateway reference implementations in six and nine frameworks</td></tr>
+          <tr><td><span class="mono">proxy-servers/ · ai-gateways/</span></td><td class="wrap">Proxy server (spec downloader + request proxy) and AI gateway reference implementations in six and nine frameworks</td></tr>
           <tr><td><span class="mono">scripts/</span></td><td class="wrap">Build support: SPA fallback, single-bundle verification, UI contracts, the builder CLI</td></tr>
           <tr><td><span class="mono">tests/</span></td><td class="wrap">Unit suites plus the Playwright browser suite</td></tr>
           <tr><td><span class="mono">docker/ · site/</span></td><td class="wrap">Docker packaging and this website</td></tr>
@@ -623,7 +629,7 @@ PAGES["faq.html"] = (
   <div class="container">
     <div class="faq reveal">
 {qa("Does OpenDoc UI require a backend server?",
-    "No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks) — both are opt-in.", True)}
+    "No. The documentation browser, the Runner, the schema explorer, notes, theming and code generation all run entirely in the browser. The only optional server components are the AI gateway (for teams that want provider keys server-side) and the downloader proxy (for fetching remote specifications across restrictive networks, and for executing Runner requests server-side when APIs send no CORS headers) — both are opt-in.", True)}
 {qa("Are my specifications uploaded anywhere?",
     "Never. Local files are parsed in the browser and stored only in your browser's local history. Nothing is uploaded, and the original document is never modified. When you load a remote URL, the browser fetches it directly (or through a proxy you configured) — no third party is involved.")}
 {qa("Which OpenAPI versions are supported?",

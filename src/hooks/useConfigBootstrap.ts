@@ -6,6 +6,7 @@ import {getCurrentSmartRoute, parseSmartRoute} from '../utils/routing';
 import {migrateLegacyStorage, specStorage, storage, uiStorage} from '../utils/storage/index';
 import type {ConfigSource} from '../utils/specification/appSpec';
 import {recordRuntimeManagedConfig} from '../utils/ai/managed';
+import {recordRuntimeProxyConfig} from '../utils/runner/proxyTransport';
 
 interface UseConfigBootstrapOptions {
     setConfigSource: Dispatch<SetStateAction<ConfigSource>>;
@@ -64,6 +65,7 @@ export function useConfigBootstrap({
             // recorded before any AI settings seeding so the mode resolver can
             // act on it as soon as the bootstrap completes.
             recordRuntimeManagedConfig(data?.ai?.managed);
+            recordRuntimeProxyConfig(data?.proxy);
             if (data?.ai && typeof data.ai === 'object' && storage.get(uiStorage.key('ai_settings')) === '') {
                 const {managed: _managedBlock, ...aiSeed} = data.ai;
                 setAISettings(current => ({

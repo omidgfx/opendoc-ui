@@ -5,6 +5,7 @@ interface ImportMetaEnv {
     readonly VITE_DISABLE_APPLE_EMOJIS?: string;
     readonly VITE_LOAD_FROM_URL?: string;
     readonly VITE_SPEC_DOWNLOADER?: string;
+    readonly VITE_REQUEST_PROXY?: string;
 }
 
 interface ImportMeta {

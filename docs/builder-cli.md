@@ -40,7 +40,7 @@ child build process, and runtime settings land in `.env`.
   permissions are tightened to `0600` on Unix.
 - **`builder.config.json`** (gitignored) — the full answer set for reproducible re-runs. Secrets are
   **never** stored here; tokens and API keys stay in `.env` and are loaded back from there on reuse.
-- **`downloaders/<framework>/.env`** and **`ai-gateways/<framework>/.env`** — only when you ask for a
+- **`proxy-servers/<framework>/.env`** and **`ai-gateways/<framework>/.env`** — only when you ask for a
   framework example, pre-filled with your origins, token, provider and model.
 
 ## Guarantees

@@ -6,6 +6,8 @@ import type {
     ParameterTableLayout,
 } from '@/src/utils/storage/preferences';
 import SettingsGroup from '../controls/SettingsGroup';
+import SettingToggle from '../controls/SettingToggle';
+import {REQUEST_PROXY_BUILD_CONFIG} from '@/src/utils/runner/proxyTransport';
 import SettingRow from '../controls/SettingRow';
 import SettingChoice from '../controls/SettingChoice';
 
@@ -33,6 +35,26 @@ export default function GeneralSettingsSection() {
     const {preferences, setPreference} = usePreferences();
     return (
         <div className="space-y-4">
+            {REQUEST_PROXY_BUILD_CONFIG.enabled && (
+                <SettingsGroup
+                    title="Request proxy"
+                    description="This build ships with the OpenDoc request proxy: the Runner hands requests to the proxy service, which executes the real API call server-side and returns the response, so cross-origin APIs work without CORS headers. The backend keeps running either way; this only decides whether the front-end uses it."
+                    icon="ph-fill ph-arrows-left-right"
+                >
+                    <SettingRow
+                        label="Route runner requests through the proxy"
+                        description="Turn off to send requests straight to the API server from the browser instead of the OpenDoc proxy."
+                        icon="ph ph-shield-checkered"
+                        control={
+                            <SettingToggle
+                                checked={preferences.runnerProxyEnabled}
+                                onChange={value => setPreference('runnerProxyEnabled', value)}
+                                ariaLabel="Route runner requests through the request proxy"
+                            />
+                        }
+                    />
+                </SettingsGroup>
+            )}
             <SettingsGroup
                 title="Schema and example switches"
                 description="Switching between schema and example is a reading habit, not endpoint state. Choose how far that choice travels."
