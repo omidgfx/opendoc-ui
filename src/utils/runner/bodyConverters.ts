@@ -7,6 +7,7 @@
  * without losing structure.
  */
 import * as jsYaml from 'js-yaml';
+import {stringifyJsonToQueryString} from './queryStringCore';
 
 const xmlEscape = (value: unknown): string =>
     String(value ?? '')
@@ -273,38 +274,7 @@ export const xmlToJson = (text: string): unknown => {
 
 /** Serialize a JSON value as a query string using bracket notation:
  *  arrays become `j[]=v`, nested objects `k[key]=v`, nesting composes. */
-export const jsonToQueryString = (value: unknown): string => {
-    const pairs: string[] = [];
-    const walk = (item: unknown, prefix: string): void => {
-        if (item === undefined) return;
-        if (item === null) {
-            pairs.push(`${prefix}=`);
-            return;
-        }
-        if (Array.isArray(item)) {
-            if (item.length === 0) {
-                pairs.push(`${prefix}[]=`);
-                return;
-            }
-            item.forEach(part => walk(part, `${prefix}[]`));
-            return;
-        }
-        if (typeof item === 'object') {
-            const entries = Object.entries(item as Record<string, unknown>);
-            if (entries.length === 0) {
-                pairs.push(`${prefix}=`);
-                return;
-            }
-            entries.forEach(([key, part]) =>
-                walk(part, prefix ? `${prefix}[${encodeURIComponent(key)}]` : encodeURIComponent(key)),
-            );
-            return;
-        }
-        pairs.push(`${prefix || 'value'}=${encodeURIComponent(String(item))}`);
-    };
-    walk(value, '');
-    return pairs.join('&');
-};
+export const jsonToQueryString = (value: unknown): string => stringifyJsonToQueryString(value);
 
 const PUSH_MARKER = '__opendocPush';
 
@@ -358,7 +328,24 @@ const mergeParsed = (target: Record<string, unknown>, key: string, parsed: unkno
     }
     if (Array.isArray(existing) && Array.isArray(parsed)) {
         (parsed as unknown[]).forEach((item, index) => {
-            if (item !== undefined) (existing as unknown[])[index] = item;
+            if (item === undefined) return;
+            const current = (existing as unknown[])[index];
+            if (
+                current &&
+                typeof current === 'object' &&
+                !Array.isArray(current) &&
+                item &&
+                typeof item === 'object' &&
+                !Array.isArray(item)
+            ) {
+                Object.entries(item as Record<string, unknown>).forEach(([nestedKey, nestedValue]) => {
+                    if (Object.prototype.hasOwnProperty.call(current, nestedKey))
+                        mergeParsed(current as Record<string, unknown>, nestedKey, nestedValue);
+                    else (current as Record<string, unknown>)[nestedKey] = materializeMarkers(nestedValue);
+                });
+                return;
+            }
+            (existing as unknown[])[index] = item;
         });
         return;
     }

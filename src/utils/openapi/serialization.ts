@@ -1,4 +1,5 @@
 import type {Parameter} from '../../types';
+import {queryPairsFromJson} from '../runner/queryStringCore';
 
 export interface SerializedPair {
     name: string;
@@ -225,13 +226,9 @@ export const serializeOpenApiParameter = (parameter: any, value: any): Serialize
             } else if (explode && (style === 'form' || style === 'cookie')) {
                 const rawItems = Array.isArray(value) ? value : values;
                 rawItems.forEach((item, index) => {
-                    if (item && typeof item === 'object' && !Array.isArray(item)) {
-                        Object.entries(item).forEach(([key, child]) =>
-                            result.query.push({
-                                name: `${name}[${index}][${key}]`,
-                                value: scalar(child),
-                                allowReserved: allowReservedForLocation,
-                            }),
+                    if (item !== null && typeof item === 'object') {
+                        queryPairsFromJson({[`${name}[${index}]`]: item}).forEach(pair =>
+                            result.query.push({...pair, allowReserved: allowReservedForLocation}),
                         );
                         return;
                     }

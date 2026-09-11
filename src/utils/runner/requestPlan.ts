@@ -11,6 +11,7 @@ import {
 } from '../openapi/serialization';
 import {getMergedParameters, resolveParameter, resolveReference, resolveRequestBody} from '../openapi';
 import {resolveEffectiveServer, type ResolvedServer} from '../specification/serverResolver';
+import {queryPairsFromJson} from './queryStringCore';
 import {schemaDeclaresBinary} from './runnerResponse';
 
 export type RunnerInputValue = unknown;
@@ -618,8 +619,7 @@ const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
             return;
         }
         if (Array.isArray(value)) {
-            if (value.length === 0) pairs.push({name: `${name}[]`, value: ''});
-            else value.forEach(part => pairs.push({name: `${name}[]`, value: multipartScalar(part)}));
+            pairs.push(...bracketPairs(name, value));
             return;
         }
         if (value && typeof value === 'object') {
@@ -633,32 +633,8 @@ const materializeUrlEncoded = (bodyIntent: RequestBodyIntent): string => {
 
 /** Serialize nested arrays and objects with bracket notation (`j[]=1&k[key]=foo`)
  *  so urlencoded bodies round-trip through the query-string raw editor. */
-const bracketPairs = (name: string, value: unknown): SerializedPair[] => {
-    const pairs: SerializedPair[] = [];
-    const walk = (item: unknown, prefix: string) => {
-        if (item === undefined) return;
-        if (item === null) {
-            pairs.push({name: prefix, value: ''});
-            return;
-        }
-        if (Array.isArray(item)) {
-            if (item.length === 0) {
-                pairs.push({name: `${prefix}[]`, value: ''});
-                return;
-            }
-            item.forEach(part => walk(part, `${prefix}[]`));
-            return;
-        }
-        if (typeof item === 'object') {
-            Object.entries(item as Record<string, unknown>).forEach(([key, part]) => walk(part, `${prefix}[${key}]`));
-            return;
-        }
-        pairs.push({name: prefix, value: String(item)});
-    };
-    walk(value, name);
-    return pairs;
-};
-
+const bracketPairs = (name: string, value: unknown): SerializedPair[] =>
+    queryPairsFromJson({[name]: value}).map(pair => ({...pair, allowReserved: false}));
 const cookieTargetMaterializable = (url: string): boolean => {
     if (typeof window === 'undefined') return false;
     try {
