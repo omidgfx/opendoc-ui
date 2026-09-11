@@ -6,6 +6,7 @@ import {useModalShortcuts} from '../../hooks/useModalShortcuts';
 import {useModalTransition} from '../../hooks/useModalTransition';
 import {
     describeParameterSerialization,
+    parsePlaygroundSample,
     previewParameterSerialization,
 } from '../../utils/endpoint/parameterSerialization';
 
@@ -17,7 +18,7 @@ interface SerializerPlaygroundModalProps {
      * Sends the tested value back to the field it came from. Only the Runner
      * passes this, and only a value the serializer accepted can be used.
      */
-    onUseValue?: (value: string) => void;
+    onUseValue?: (value: string | string[]) => void;
     onClose: () => void;
 }
 
@@ -140,7 +141,8 @@ export default function SerializerPlaygroundModal({
                                     type="button"
                                     disabled={!canUseValue}
                                     onClick={() => {
-                                        onUseValue(testValue);
+                                        const sample = parsePlaygroundSample(parameter, testValue);
+                                        onUseValue(Array.isArray(sample) ? sample.map(String) : testValue);
                                         requestClose();
                                     }}
                                     className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-1.5 text-xs font-semibold transition-all border-[var(--border)] text-[var(--text-heading)] hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"

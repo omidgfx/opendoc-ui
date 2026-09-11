@@ -96,6 +96,12 @@ const parseCandidate = (raw: string): any => {
 };
 
 /** Runs the real serializer over a sample value, for the playground. */
+export const parsePlaygroundSample = (parameter: any, rawValue: string): unknown => {
+    const sample = parseCandidate(rawValue);
+    if (parameterType(parameter) === 'array' && typeof sample === 'string' && sample !== '') return sample.split(',');
+    return sample;
+};
+
 export const previewParameterSerialization = (
     parameter: any,
     rawValue: string,
@@ -103,9 +109,7 @@ export const previewParameterSerialization = (
 ): SerializationPreview => {
     const location = String(parameter?.in || 'query').toLowerCase();
     try {
-        let sample = parseCandidate(rawValue);
-        if (parameterType(parameter) === 'array' && typeof sample === 'string' && sample !== '')
-            sample = sample.split(',');
+        const sample = parsePlaygroundSample(parameter, rawValue);
         const serialized = serializeOpenApiParameter(parameter, sample);
         if (location === 'path') {
             return {output: serialized.pathValue ?? '', target: 'Path segment', error: null};
