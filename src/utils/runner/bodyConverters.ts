@@ -249,7 +249,10 @@ export const xmlToJson = (text: string): unknown => {
         while ((attributeMatch = attributePattern.exec(body.slice(name.length)))) {
             const attrName = attributeMatch[1];
             const attrValue = attributeMatch[2] !== undefined ? attributeMatch[2] : attributeMatch[3];
-            if (attrName.startsWith('xmlns:')) declaredPrefixes.add(attrName.slice('xmlns:'.length));
+            if (attrName === 'xmlns' || attrName.startsWith('xmlns:')) {
+                if (attrName.startsWith('xmlns:')) declaredPrefixes.add(attrName.slice('xmlns:'.length));
+                continue;
+            }
             attributes[`@${attrName}`] = xmlUnescape(attrValue);
         }
         if (selfClosing) {
