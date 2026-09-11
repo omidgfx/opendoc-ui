@@ -270,7 +270,8 @@ export default function Field({
             </RunnerFieldFrame>
         );
     }
-    if (type === 'object' || current.properties) {
+    const valueIsPlainObject = !!value && typeof value === 'object' && !Array.isArray(value);
+    if (type === 'object' || current.properties || (type === undefined && valueIsPlainObject)) {
         const objectValue =
             value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
         const properties = current.properties || {};
@@ -403,7 +404,7 @@ export default function Field({
             </RunnerFieldFrame>
         );
     }
-    if (type === 'array') {
+    if (type === 'array' || (type === undefined && Array.isArray(value))) {
         const items = Array.isArray(value) ? value : [];
         const tupleSchemas = Array.isArray(current.prefixItems) ? current.prefixItems : [];
         const hasTuple = tupleSchemas.length > 0;
