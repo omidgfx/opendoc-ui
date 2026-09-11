@@ -590,6 +590,20 @@ const materializeMultipart = (body: RequestBodyIntent, diagnostics: Diagnostic[]
             form.append(name, file, multipartFileName(file, name));
             consumed.add(name);
         } else {
+            const contentType = firstContentType(encoding);
+            const binaryLike =
+                !!contentType &&
+                (/^(image|audio|video)\//.test(contentType) || contentType === 'application/octet-stream');
+            if (binaryLike && (item === '' || item === null || item === undefined || item === 'string')) {
+                diagnostics.push(
+                    diagnostic(
+                        'RUN_MULTIPART_BINARY_PART_SKIPPED',
+                        `Multipart field '${name}' has a binary encoding but no selected file; the placeholder part was omitted.`,
+                        {severity: 'info', transport: 'browser'},
+                    ),
+                );
+                return;
+            }
             appendMultipartValue(form, name, item, encoding);
         }
     });

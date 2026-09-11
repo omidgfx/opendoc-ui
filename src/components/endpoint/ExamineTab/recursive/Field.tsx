@@ -264,8 +264,17 @@ export default function Field({
                     />
                 </label>
                 {selectedFile && (
-                    <span className={clsx('mt-1 block text-[9px]', mutedLineClass)}>
-                        {Math.max(1, Math.round(selectedFile.size / 1024))} KB
+                    <span className={clsx('mt-1 flex items-center gap-2 text-[9px]', mutedLineClass)}>
+                        <span>{Math.max(1, Math.round(selectedFile.size / 1024))} KB</span>
+                        <button
+                            type="button"
+                            aria-label={`Clear ${label} file`}
+                            onClick={() => setSelectedFiles({...selectedFiles, [fileKey]: null})}
+                            className="inline-flex items-center gap-0.5 rounded text-[var(--method-delete)] hover:bg-[var(--method-delete)]/10 cursor-pointer"
+                        >
+                            <i className="ph ph-x text-[10px]" />
+                            Clear
+                        </button>
                     </span>
                 )}
             </RunnerFieldFrame>
