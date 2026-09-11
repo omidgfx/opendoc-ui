@@ -1,4 +1,4 @@
-import {lazy, Suspense, useEffect, useState} from 'react';
+import {lazy, Suspense, useEffect, useRef, useState} from 'react';
 import type {OpenApiSpec} from '../../../types';
 import {resolveReference, resolveRequestBody} from '../../../utils/openapi';
 import {parseStructuredBody} from '../../../utils/runner/bodyFormats';
@@ -64,6 +64,7 @@ export default function BodyEditor(props: BodyEditorProps) {
     const contentSchema = resolvedBody?.content?.[requestBodyType]?.schema;
     const resolvedSchema =
         contentSchema !== undefined ? (resolveReference(contentSchema, spec) ?? contentSchema) : null;
+    const lastEmittedTextRef = useRef<string | null>(null);
     const [formValue, setFormValue] = useState<BodyValue>(() => {
         try {
             return (
@@ -76,6 +77,7 @@ export default function BodyEditor(props: BodyEditorProps) {
     });
     useEffect(() => {
         if (bodyEditorMode !== 'form') return;
+        if (requestBodyText === lastEmittedTextRef.current) return;
         try {
             const parsed = parseStructuredBody(requestBodyText, requestBodyType);
             setFormValue(parsed ?? (resolvedSchema !== null ? defaultBodyValue(resolvedSchema, spec) : {}));
@@ -87,7 +89,9 @@ export default function BodyEditor(props: BodyEditorProps) {
         setFormValue(value);
         setBodyFields(topLevelFields(value));
         const jsonText = JSON.stringify(value, null, 2);
-        setRequestBodyText(getBodyFormatForForm(jsonText, requestBodyType, resolvedSchema));
+        const text = getBodyFormatForForm(jsonText, requestBodyType, resolvedSchema);
+        lastEmittedTextRef.current = text;
+        setRequestBodyText(text);
     };
     const isTopLevelBinary = schemaDeclaresBinary(resolvedSchema);
     if (bodyEditorMode === 'form' && resolvedSchema === null) {

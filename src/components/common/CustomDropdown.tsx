@@ -118,6 +118,10 @@ export default function CustomDropdown({
             const target = event.target;
             if (target instanceof Node && menuRef.current?.contains(target)) return;
             if (Date.now() - openedAtRef.current < 150) return;
+            if (event.type === 'scroll') {
+                updatePosition();
+                return;
+            }
             close(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -134,9 +138,13 @@ export default function CustomDropdown({
 
     useEffect(() => {
         if (!isOpen) return;
-        menuRef.current
-            ?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
-            ?.scrollIntoView({block: 'nearest'});
+        const menu = menuRef.current;
+        const option = menu?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`);
+        if (!menu || !option) return;
+        const top = option.offsetTop;
+        const bottom = top + option.offsetHeight;
+        if (top < menu.scrollTop) menu.scrollTop = top;
+        else if (bottom > menu.scrollTop + menu.clientHeight) menu.scrollTop = bottom - menu.clientHeight;
     }, [isOpen, activeIndex]);
 
     const hasDescriptions = options.some(option => !!option.description?.trim());

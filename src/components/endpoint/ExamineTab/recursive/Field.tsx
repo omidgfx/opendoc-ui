@@ -7,6 +7,13 @@ import GuideBranch from './GuideBranch';
 import CustomDropdown from '../../../common/CustomDropdown';
 import RunnerFieldFrame from '../RunnerFieldFrame';
 import {enumDropdownOptions} from '@/src/utils/enumOptions';
+
+const enumSelectedIndex = (enumValues: unknown[], value: unknown): number => {
+    const strict = enumValues.findIndex(item => Object.is(item, value));
+    if (strict >= 0) return strict;
+    if (value === '' || value === null || value === undefined) return -1;
+    return enumValues.findIndex(item => String(item) === String(value));
+};
 import {getRefName, resolveReference} from '@/src/utils/openapi';
 import {isNullOnlySchema, RECURSIVE_SCHEMA_ICON, schemaVariantLabel} from '@/src/utils/schemaProperties';
 import type {FieldProps} from '@/src/types/recursiveBody';
@@ -614,12 +621,7 @@ export default function Field({
             {enumValues ? (
                 <CustomDropdown
                     ariaLabel={`${label} documented values`}
-                    value={String(
-                        Math.max(
-                            -1,
-                            enumValues.findIndex((item: any) => Object.is(item, value)),
-                        ),
-                    )}
+                    value={String(Math.max(-1, enumSelectedIndex(enumValues, value)))}
                     onChange={selected => {
                         setFocusedPath(path);
                         const index = Number(selected);
