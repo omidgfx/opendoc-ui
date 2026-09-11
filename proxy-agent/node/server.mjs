@@ -245,8 +245,7 @@ const parseProxyDescriptor = requestHeaders => {
 
 export const executeProxiedRequest = async (rawBody, requestHeaders, config) => {
     const startedAt = Date.now();
-    if (!config.proxyEnabled)
-        throw fail('PROXY_DISABLED', 'The request proxy is disabled on this proxy agent.', 403);
+    if (!config.proxyEnabled) throw fail('PROXY_DISABLED', 'The request proxy is disabled on this proxy agent.', 403);
     const descriptor = parseProxyDescriptor(requestHeaders);
     let method = descriptor.method;
     let body = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody || []);
